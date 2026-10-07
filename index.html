@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Pay</title>
-<meta name="theme-color" content="#e9e9ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d10" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -15,231 +15,227 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
 :root {
-  --bg: #e9e9ec;
-  --card-a: #fdfdfd;
-  --card-b: #f1f1f3;
-  --panel-a: #e3e3e7;
-  --panel-b: #f4f4f6;
-  --ink: #0f0f10;
-  --muted: #8e8e93;
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --card: #eef0f4;
+  --ink: #111114;
+  --muted: #8a8d96;
   --line: rgba(0, 0, 0, .07);
-  --pill: rgba(0, 0, 0, .055);
-  --btn-a: #ffffff;
-  --btn-b: #ececef;
-  --hi: rgba(255, 255, 255, .95);
-  --shadow: rgba(20, 20, 30, .16);
-  --cta-a: #3a3a3c;
-  --cta-b: #000000;
+  --pill: rgba(0, 0, 0, .05);
+  --hero: #dfe5ff;
+  --hero-ink: #111114;
+  --good: #dff3e3;
+  --good-ink: #2f7a43;
+  --cta: #111114;
   --cta-ink: #ffffff;
-  --sheet: #fbfbfc;
   --danger: #d92d20;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b0b0c;
-    --card-a: #1f1f22;
-    --card-b: #161618;
-    --panel-a: #2a2a2e;
-    --panel-b: #1d1d20;
+    --bg: #0d0d10;
+    --surface: #17171b;
+    --card: #1d1d22;
     --ink: #f5f5f7;
-    --muted: #8e8e93;
+    --muted: #8e8f98;
     --line: rgba(255, 255, 255, .08);
     --pill: rgba(255, 255, 255, .08);
-    --btn-a: #2c2c30;
-    --btn-b: #222225;
-    --hi: rgba(255, 255, 255, .08);
-    --shadow: rgba(0, 0, 0, .6);
-    --cta-a: #ffffff;
-    --cta-b: #d9d9de;
-    --cta-ink: #000000;
-    --sheet: #1c1c1f;
+    --hero: #242b4d;
+    --hero-ink: #f5f5f7;
+    --good: #1f3a27;
+    --good-ink: #8fdca3;
+    --cta: #ffffff;
+    --cta-ink: #111114;
     --danger: #ff6b5e;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; }
 body {
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--bg); color: var(--ink);
   font: 16px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-  overscroll-behavior: none;
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased; overscroll-behavior-y: none;
 }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; padding: 0; }
+.wrap { max-width: 480px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 120px); }
 
-/* ---------- Thẻ chính ---------- */
-.stage {
-  min-height: 100dvh; display: flex; align-items: center; justify-content: center;
-  padding: calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px);
-}
-.device {
-  width: 100%; max-width: 440px; padding: 10px; border-radius: 46px;
-  background: linear-gradient(180deg, var(--card-a), var(--card-b));
-  box-shadow: 0 40px 80px -20px var(--shadow), 0 2px 6px rgba(0,0,0,.05), inset 0 1.5px 0 var(--hi), inset 0 -3px 8px rgba(0,0,0,.04);
-}
-.panel {
-  position: relative; border-radius: 38px 38px 56px 56px; padding: 18px 18px 64px;
-  background: linear-gradient(180deg, var(--panel-a), var(--panel-b));
-  box-shadow: inset 0 1px 0 var(--hi), inset 0 -1px 0 var(--line);
-}
-.top { display: flex; align-items: center; justify-content: space-between; }
-.me { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; }
-.logo { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 700; color: #fff; background: linear-gradient(145deg, #3a3a3c, #000); box-shadow: 0 0 0 3px var(--card-a), 0 2px 6px rgba(0,0,0,.15); }
-.date { font-size: 13px; color: var(--muted); padding: 6px 12px; border-radius: 999px; background: var(--pill); }
-.badge { display: table; margin: 18px auto 0; padding: 6px 14px; border-radius: 999px; background: var(--pill); color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: .6px; text-transform: uppercase; }
-.today { text-align: center; font-size: clamp(42px, 14vw, 60px); font-weight: 600; letter-spacing: -2px; line-height: 1.1; margin-top: 10px; font-variant-numeric: tabular-nums; }
-.today small { font-size: .55em; font-weight: 500; letter-spacing: 0; margin-left: 4px; color: var(--muted); }
-.month { text-align: center; color: var(--muted); font-size: 14px; margin-top: 4px; font-variant-numeric: tabular-nums; }
-.month b { color: var(--ink); font-weight: 600; }
-
-/* Hàng danh mục (các vòng tròn) */
-.cats { display: flex; justify-content: space-evenly; margin: -36px 0 0; position: relative; z-index: 1; padding: 0 2px; }
-.cat { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 19%; max-width: 66px; }
-.dot {
-  width: min(60px, 15vw); height: min(60px, 15vw); border-radius: 50%; display: grid; place-items: center; font-size: min(26px, 6.6vw);
-  border: 4px solid var(--card-a);
-  box-shadow: 0 8px 16px -6px rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -4px 8px rgba(0,0,0,.08);
-  transition: transform .12s;
-}
-.cat:active .dot { transform: scale(.92); }
-.cat .lbl { font-size: 11px; color: var(--muted); white-space: nowrap; }
-
-/* Thẻ giao dịch gần đây */
-.recent {
-  margin: 14px 4px 0; padding: 14px 16px 6px; border-radius: 30px;
-  background: linear-gradient(180deg, var(--btn-a), var(--btn-b));
-  box-shadow: inset 0 1px 0 var(--hi), 0 1px 2px rgba(0,0,0,.04);
-}
-.rhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--muted); }
-.rhead button { color: var(--ink); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
-.row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 0; text-align: left; }
-.row + .row { border-top: 1px solid var(--line); }
-.ic { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 21px; flex: none; border: 3px solid var(--card-a); box-shadow: 0 3px 8px -3px rgba(0,0,0,.2); }
-.tx { flex: 1; min-width: 0; }
-.nt { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tm { color: var(--muted); font-size: 13px; margin-top: 1px; }
-.am { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; align-self: flex-end; padding-bottom: 2px; }
-.empty { color: var(--muted); font-size: 14px; padding: 16px 0 14px; line-height: 1.55; }
-.empty b { color: var(--ink); font-weight: 600; }
-
-/* Hai nút cực lớn */
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 4px 4px; }
-.big {
-  height: clamp(120px, 34vw, 150px); border-radius: 40px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 8px; font-size: 22px; font-weight: 600; letter-spacing: -.3px;
-  transition: transform .12s;
-}
-.big svg { width: 38px; height: 38px; }
-.big:active { transform: scale(.97); }
-.soft {
-  background: linear-gradient(180deg, var(--btn-a), var(--btn-b));
-  box-shadow: inset 0 1px 0 var(--hi), 0 1px 3px rgba(0,0,0,.06), 0 10px 20px -12px rgba(0,0,0,.25);
-}
-.cta {
-  color: var(--cta-ink);
-  background: linear-gradient(180deg, var(--cta-a), var(--cta-b));
-  box-shadow: 0 18px 30px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18);
-}
+/* Đầu trang */
+.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.brand { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
 .tright { display: flex; align-items: center; gap: 8px; }
-.gear { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--pill); color: var(--muted); }
-.gear svg { width: 18px; height: 18px; }
+.date { font-size: 14px; color: var(--muted); padding: 8px 14px; border-radius: 999px; background: var(--pill); }
+.gear { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--pill); }
+.gear svg { width: 20px; height: 20px; }
+
+/* Thẻ số tiền */
+.hero { border-radius: 32px; padding: 22px 22px 20px; background: var(--hero); color: var(--hero-ink); }
+.hero .lbl { font-size: 15px; opacity: .6; }
+.today { font-size: clamp(46px, 15vw, 64px); font-weight: 700; letter-spacing: -2.5px; line-height: 1.05; margin: 14px 0 16px; font-variant-numeric: tabular-nums; }
+.today small { font-size: .5em; font-weight: 600; letter-spacing: 0; margin-left: 4px; opacity: .45; }
+.hrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mpill { white-space: nowrap; padding: 8px 14px; border-radius: 999px; background: var(--good); color: var(--good-ink); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cnt { font-size: 14px; opacity: .55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Ô danh mục */
+.h2 { display: flex; justify-content: space-between; align-items: center; margin: 26px 2px 12px; }
+.h2 b { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+.h2 button, .h2 span { font-size: 14px; color: var(--muted); padding: 7px 14px; border-radius: 999px; background: var(--pill); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile { position: relative; border-radius: 28px; padding: 16px; min-height: 128px; text-align: left; color: #111114; display: flex; flex-direction: column; justify-content: space-between; transition: transform .12s; }
+.tile:active { transform: scale(.97); }
+.tile .ti { width: 50px; height: 50px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 25px; }
+.tile .tn { font-size: 16px; font-weight: 500; margin-top: 14px; opacity: .75; }
+.tile .ta { font-size: 21px; font-weight: 700; letter-spacing: -.4px; font-variant-numeric: tabular-nums; }
+.tile .plus { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.55); display: grid; place-items: center; font-size: 20px; font-weight: 500; line-height: 1; }
+
+/* Danh sách */
+.list { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 16px 12px 12px; border-radius: 24px; background: var(--card); text-align: left; }
+.ic { width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; font-size: 26px; flex: none; }
+.tx { flex: 1; min-width: 0; }
+.nt { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.am { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { color: var(--muted); font-size: 16px; padding: 22px 18px; line-height: 1.55; border-radius: 24px; background: var(--card); text-align: center; }
+.empty b { color: var(--ink); }
+.daylbl { color: var(--muted); font-size: 14px; font-weight: 600; margin: 14px 4px 2px; display: flex; justify-content: space-between; }
+
+/* 2 nút to dưới đáy */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px); background: var(--bg); border-top: 1px solid var(--line); }
+.dock .in { max-width: 448px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.big { height: 76px; border-radius: 999px; display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 20px; white-space: nowrap; font-weight: 600; transition: transform .12s; }
+.big:active { transform: scale(.97); }
+.big .bi { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.big .bi svg { width: 26px; height: 26px; }
+.big.soft { background: var(--card); }
+.big.soft .bi { background: var(--surface); }
+.big.cta { background: var(--cta); color: var(--cta-ink); }
+.big.cta .bi { background: rgba(127,127,127,.25); }
+
+/* ---------- Màn hình nhập số tiền ---------- */
+.entry {
+  position: fixed; inset: 0; z-index: 45; background: var(--surface); display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 8px) 18px calc(env(safe-area-inset-bottom) + 14px);
+  transform: translateY(102%); transition: transform .28s cubic-bezier(.2,.8,.2,1);
+}
+.entry.on { transform: none; }
+.entry .in { max-width: 460px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ehead { display: flex; align-items: center; gap: 10px; height: 48px; }
+.back { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--pill); flex: none; }
+.back svg { width: 22px; height: 22px; }
+.etitle { font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.esub { color: var(--muted); font-size: 14px; margin: 2px 0 0 54px; min-height: 0; overflow-wrap: anywhere; }
+.elbl { color: var(--muted); font-size: 14px; margin-top: 14px; }
+.eamt { display: flex; align-items: baseline; gap: 6px; padding: 2px 0 10px; border-bottom: 2px solid var(--ink); font-variant-numeric: tabular-nums; }
+.eamt .v { font-size: clamp(44px, 13vw, 56px); font-weight: 700; letter-spacing: -2px; line-height: 1.1; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eamt .v.zero { color: var(--muted); opacity: .5; }
+.eamt .u { font-size: 20px; color: var(--muted); font-weight: 600; }
+.echips { display: flex; gap: 8px; overflow-x: auto; margin: 14px -18px 0; padding: 0 18px 4px; scrollbar-width: none; }
+.echips::-webkit-scrollbar { display: none; }
+.echips button { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px 8px 8px; border-radius: 999px; background: var(--pill); font-size: 16px; font-weight: 500; border: 2px solid transparent; }
+.echips button span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 18px; }
+.echips button.sel { border-color: var(--ink); background: transparent; }
+.enote { width: 100%; margin-top: 12px; padding: 14px 18px; border-radius: 18px; border: 0; background: var(--pill); outline: none; font-size: 17px; }
+.keys { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(46px, 1fr); gap: 4px; margin: 10px 0 10px; max-height: 330px; align-self: stretch; }
+.keys button { font-size: 30px; font-weight: 500; border-radius: 20px; display: grid; place-items: center; }
+.keys button:active { background: var(--pill); }
+.keys button.k000 { font-size: 24px; }
+.keys svg { width: 30px; height: 30px; }
+.eacts { display: flex; flex-direction: column; gap: 8px; }
+.primary { height: 64px; border-radius: 999px; background: var(--cta); color: var(--cta-ink); font-size: 19px; font-weight: 600; }
+.primary:disabled { opacity: .35; }
+.secondary { height: 54px; border-radius: 999px; background: var(--pill); font-size: 17px; font-weight: 600; }
+.del { height: 46px; color: var(--danger); font-weight: 600; }
+.tip { color: var(--muted); font-size: 13px; text-align: center; margin-top: 8px; line-height: 1.45; }
 
 /* ---------- Camera ---------- */
 .cam { position: fixed; inset: 0; background: #000; z-index: 50; display: none; }
 .cam.on { display: block; }
 .cam video { width: 100%; height: 100%; object-fit: cover; }
 .cam .frame { position: absolute; top: 50%; left: 50%; width: 68vmin; height: 68vmin; transform: translate(-50%, -55%); border: 3px solid rgba(255,255,255,.9); border-radius: 36px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.5); }
-.cam .hint { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 24px); text-align: center; color: #fff; font-size: 15px; padding: 0 16px; }
-.cam .bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
-.cam .bar button, .cam .bar label { flex: 1; height: 60px; display: grid; place-items: center; border-radius: 999px; background: rgba(255,255,255,.16); color: #fff; font-weight: 500; font-size: 17px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); cursor: pointer; }
-.cam .err { position: absolute; top: 40%; left: 16px; right: 16px; color: #fff; text-align: center; line-height: 1.5; }
+.cam .hint { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 24px); text-align: center; color: #fff; font-size: 17px; padding: 0 16px; }
+.cam .bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 12px; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+.cam .bar button, .cam .bar label { flex: 1; height: 68px; display: grid; place-items: center; border-radius: 999px; background: rgba(255,255,255,.18); color: #fff; font-weight: 600; font-size: 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); cursor: pointer; }
+.cam .err { position: absolute; top: 40%; left: 16px; right: 16px; color: #fff; text-align: center; line-height: 1.5; font-size: 17px; }
 
-/* ---------- Sheet ---------- */
-.dim { position: fixed; inset: 0; background: rgba(0,0,0,.32); z-index: 30; opacity: 0; pointer-events: none; transition: opacity .2s; }
+/* ---------- Sheet (lịch sử, cài đặt) ---------- */
+.dim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 30; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .dim.on { opacity: 1; pointer-events: auto; }
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; max-width: 460px; margin: 0 auto;
-  background: var(--sheet); border-radius: 36px 36px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
-  box-shadow: 0 -10px 40px rgba(0,0,0,.15), inset 0 1px 0 var(--hi);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; max-width: 480px; margin: 0 auto;
+  background: var(--surface); border-radius: 32px 32px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
   transform: translateY(105%); transition: transform .25s cubic-bezier(.2,.8,.2,1);
-  max-height: 88dvh; display: flex; flex-direction: column;
+  max-height: 90dvh; display: flex; flex-direction: column;
 }
 .sheet.on { transform: none; }
-.grip { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; flex: none; }
-.stitle { font-size: 13px; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: .6px; font-weight: 500; }
-.sname { font-size: 18px; font-weight: 600; text-align: center; margin-top: 4px; overflow-wrap: anywhere; }
-.amt { display: flex; align-items: center; gap: 8px; margin: 16px 0 2px; padding: 4px 6px 4px 18px; border-radius: 999px; background: var(--pill); }
-.amt input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font-size: 34px; font-weight: 600; padding: 6px 0; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
-.kbtn { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(180deg, var(--btn-a), var(--btn-b)); box-shadow: inset 0 1px 0 var(--hi), 0 2px 6px rgba(0,0,0,.1); font-size: 20px; font-weight: 600; flex: none; }
-.hint2 { color: var(--muted); font-size: 13px; min-height: 18px; margin: 6px 0 10px; text-align: center; }
-.note { width: 100%; padding: 14px 18px; border-radius: 999px; border: 0; background: var(--pill); outline: none; margin-bottom: 14px; font-size: 16px; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 18px; }
-.chips button { padding: 9px 14px; border-radius: 999px; background: var(--pill); font-size: 15px; }
-.chips button.sel { background: var(--ink); color: var(--bg); }
-.acts { display: flex; flex-direction: column; gap: 8px; }
-.primary { height: 58px; border-radius: 999px; color: var(--cta-ink); font-weight: 600; font-size: 17px; background: linear-gradient(180deg, var(--cta-a), var(--cta-b)); box-shadow: 0 10px 20px -10px rgba(0,0,0,.5); }
-.secondary { height: 54px; border-radius: 999px; font-weight: 500; background: var(--pill); }
-.del { height: 48px; color: var(--danger); font-weight: 500; }
-.tip { color: var(--muted); font-size: 12px; text-align: center; margin-top: 10px; line-height: 1.45; }
-.qinput { width: 100%; padding: 18px 22px; border-radius: 999px; border: 0; background: var(--pill); outline: none; font-size: 22px; font-weight: 500; text-align: center; margin-top: 14px; }
-
-/* Lịch sử */
-.hist { overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 6px -4px 0; padding: 0 4px; }
-.day { margin-top: 14px; }
-.dayhead { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; padding: 0 2px 4px; }
-.hist .row { padding: 8px 0; }
-.hist .ic { width: 40px; height: 40px; font-size: 18px; border-width: 2px; }
-.hist .nt { font-size: 16px; }
-.hist .am { font-size: 16px; }
-
-/* Cài đặt */
-.field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 999px; background: var(--pill); margin-top: 14px; }
-.field select { border: 0; background: none; outline: none; text-align: right; font-weight: 600; max-width: 60%; }
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.grid3 button { height: 54px; border-radius: 999px; background: var(--pill); font-weight: 500; font-size: 15px; }
+.grip { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; flex: none; }
+.stitle { font-size: 20px; font-weight: 700; margin: 0 4px 6px; }
+.hist { overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+.field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-radius: 22px; background: var(--card); margin-top: 10px; font-size: 17px; }
+.field select { border: 0; background: none; outline: none; text-align: right; font-weight: 700; max-width: 60%; font-size: 17px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.grid3 button { height: 60px; border-radius: 20px; background: var(--card); font-weight: 600; font-size: 16px; }
 
 /* Toast */
-.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; background: var(--cta-b); color: var(--cta-ink); padding: 14px 16px 14px 22px; border-radius: 999px; display: flex; gap: 16px; align-items: center; transition: .2s; z-index: 60; white-space: nowrap; font-size: 15px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; background: var(--cta); color: var(--cta-ink); padding: 15px 18px 15px 24px; border-radius: 999px; display: flex; gap: 18px; align-items: center; transition: .2s; z-index: 60; white-space: nowrap; font-size: 17px; font-weight: 500; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 .toast button { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 </style>
 </head>
 <body>
-<div class="stage">
-  <main class="device">
-    <section class="panel">
-      <div class="top">
-        <div class="me"><span class="logo">₫</span>Pay</div>
-        <div class="tright">
-          <div class="date" id="date"></div>
-          <button class="gear" id="setBtn" aria-label="Cài đặt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z"/><circle cx="12" cy="12" r="3.2"/></svg></button>
-        </div>
-      </div>
-      <div class="badge">Hôm nay đã chi</div>
-      <div class="today" id="today">0<small>đ</small></div>
-      <div class="month" id="month"></div>
-    </section>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Pay</div>
+    <div class="tright">
+      <div class="date" id="date"></div>
+      <button class="gear" id="setBtn" aria-label="Cài đặt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z"/><circle cx="12" cy="12" r="3.2"/></svg></button>
+    </div>
+  </header>
 
-    <div class="cats" id="cats"></div>
+  <section class="hero">
+    <div class="lbl">Hôm nay đã chi</div>
+    <div class="today" id="today">0<small>đ</small></div>
+    <div class="hrow"><span class="mpill" id="month"></span><span class="cnt" id="cnt"></span></div>
+  </section>
 
-    <section class="recent">
-      <div class="rhead"><span>Gần đây</span><button id="allBtn">Xem tất cả</button></div>
-      <div id="recent"></div>
-    </section>
+  <div class="h2"><b>Danh mục</b><span id="mlabel">Tháng này</span></div>
+  <div class="tiles" id="tiles"></div>
 
-    <nav class="actions">
-      <button class="big soft" id="typeBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        Lưu
-      </button>
-      <button class="big cta" id="scanBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M7 12h10"/></svg>
-        Quét QR
-      </button>
-    </nav>
-  </main>
+  <div class="h2"><b>Gần đây</b><button id="allBtn">Xem tất cả</button></div>
+  <div class="list" id="recent"></div>
 </div>
+
+<div class="dock"><div class="in">
+  <button class="big soft" id="typeBtn">
+    <span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Lưu
+  </button>
+  <button class="big cta" id="scanBtn">
+    <span class="bi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M7 12h10"/></svg></span>Quét QR
+  </button>
+</div></div>
+
+<!-- Màn hình nhập số tiền (lưu mới / sau khi quét / sửa) -->
+<section class="entry" id="entry"><div class="in">
+  <div class="ehead">
+    <button class="back" id="eBack" aria-label="Quay lại"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="etitle" id="eTitle">Lưu khoản chi</div>
+  </div>
+  <div class="esub" id="eSub"></div>
+  <div class="elbl">Số tiền</div>
+  <div class="eamt"><span class="v zero" id="eAmt">0</span><span class="u">đ</span></div>
+  <div class="echips" id="eCats"></div>
+  <input class="enote" id="eNote" placeholder="Ghi chú (không bắt buộc)" enterkeyhint="done">
+  <div class="keys" id="keys">
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+    <button data-k="000" class="k000">000</button><button data-k="0">0</button>
+    <button data-k="del" aria-label="Xoá"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M9 5h11v14H9l-6-7z"/><path d="m12.5 9.5 5 5M17.5 9.5l-5 5"/></svg></button>
+  </div>
+  <div class="eacts" id="eActs"></div>
+  <div class="tip" id="eTip"></div>
+</div></section>
 
 <div class="cam" id="cam">
   <video id="video" playsinline muted></video>
@@ -254,36 +250,12 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 
 <div class="dim" id="dim"></div>
 
-<!-- Ghi sau khi quét / sửa khoản -->
-<div class="sheet" id="sheet">
-  <div class="grip"></div>
-  <div class="stitle" id="sTo">Trả cho</div>
-  <div class="sname" id="sName"></div>
-  <div class="amt"><input id="sAmt" inputmode="numeric" placeholder="0"><button type="button" class="kbtn" id="sK">k</button></div>
-  <div class="hint2" id="sHint"></div>
-  <input class="note" id="sNote" placeholder="Ghi chú (không bắt buộc)">
-  <div class="chips" id="sCats"></div>
-  <div class="acts" id="sActs"></div>
-  <div class="tip" id="sTip"></div>
-</div>
-
-<!-- Gõ tay -->
-<form class="sheet" id="qSheet" autocomplete="off">
-  <div class="grip"></div>
-  <div class="stitle" id="qTitle">Lưu khoản chi</div>
-  <input class="qinput" id="qi" placeholder="35k cafe" enterkeyhint="done">
-  <div class="hint2" id="qprev">Ví dụ: 35k cafe · grab 52000 · 1tr2 tiền nhà</div>
-  <div class="acts"><button class="primary" type="submit">Ghi</button></div>
-</form>
-
-<!-- Lịch sử -->
 <div class="sheet" id="hSheet">
   <div class="grip"></div>
   <div class="stitle">Lịch sử chi tiêu</div>
   <div class="hist" id="hist"></div>
 </div>
 
-<!-- Cài đặt -->
 <div class="sheet" id="setSheet">
   <div class="grip"></div>
   <div class="stitle">Cài đặt</div>
@@ -348,7 +320,8 @@ const APPS = [
 const BANKS = {"970415":"VietinBank","970436":"Vietcombank","970418":"BIDV","970405":"Agribank","970448":"OCB","970422":"MBBank","970407":"Techcombank","970416":"ACB","970432":"VPBank","970423":"TPBank","970403":"Sacombank","970437":"HDBank","970454":"VietCapitalBank","970429":"SCB","970441":"VIB","970443":"SHB","970431":"Eximbank","970426":"MSB","546034":"CAKE","546035":"Ubank","971005":"ViettelMoney","963388":"Timo","971011":"VNPTMoney","970400":"SaigonBank","970409":"BacABank","971025":"MoMo","971133":"PVcomBank Pay","970412":"PVcomBank","970414":"MBV","970419":"NCB","970424":"ShinhanBank","970425":"ABBANK","970427":"VietABank","970428":"NamABank","970430":"PGBank","970433":"VietBank","970438":"BaoVietBank","970440":"SeABank","970446":"COOPBANK","970449":"LPBank","970452":"KienLongBank","668888":"KBank","977777":"MAFC","970442":"HongLeong","970467":"KEBHANAHN","970466":"KEBHanaHCM","533948":"Citibank","970444":"CBBank","422589":"CIMB","796500":"DBSBank","970406":"Vikki","999888":"VBSP","970408":"GPBank","970463":"KookminHCM","970462":"KookminHN","970457":"Woori","970421":"VRB","458761":"HSBC","970455":"IBKHN","970456":"IBKHCM","970434":"IndovinaBank","970458":"UnitedOverseas","801011":"Nonghyup","970410":"StandardChartered","970439":"PublicBank"};
 
 const CATS = [
-  { k: 'an',   icon: '🍜', name: 'Ăn uống', kw: ['an','com','pho','bun','banh','mi','cafe','ca phe','coffee','tra','tra sua','highlands','starbucks','phuc long','katinat','bia','lau','nuong','kfc','lotteria','jollibee','pizza','grabfood','shopeefood','quan','nha hang','restaurant','food','bakery','an sang','an trua','an toi','chao','xoi','che','kem','nuoc mia','sinh to','tap hoa'] },
+  { k: 'an',   icon: '🍜', name: 'Ăn uống', kw: ['an','com','pho','bun','banh','mi','bia','lau','nuong','kfc','lotteria','jollibee','pizza','grabfood','shopeefood','quan','nha hang','restaurant','food','bakery','an sang','an trua','an toi','chao','xoi','che','kem','tap hoa'] },
+  { k: 'cafe', icon: '☕', name: 'Cafe',    kw: ['cafe','ca phe','coffee','tra','tra sua','highlands','starbucks','phuc long','katinat','sinh to','nuoc mia','trung nguyen','cong ca phe','the coffee house','tocotoco','gong cha','mixue','phe la'] },
   { k: 'di',   icon: '🛵', name: 'Đi lại',  kw: ['grab','be','xanh sm','gojek','xang','taxi','gui xe','do xe','parking','ve xe','ve tau','may bay','petrolimex','rua xe','sua xe','vetc','bot'] },
   { k: 'mua',  icon: '🛍️', name: 'Mua sắm', kw: ['shopee','lazada','tiki','tiktok','sieu thi','winmart','bach hoa','circle k','gs25','familymart','7-eleven','ministop','quan ao','ao','quan','giay','dep','my pham','mart','store','shop','uniqlo','cho'] },
   { k: 'hd',   icon: '🧾', name: 'Hoá đơn', kw: ['dien','tien nuoc','internet','wifi','mang','4g','5g','dien thoai','nap tien','tien nha','thue nha','phong','hoc phi','evn','viettel','vnpt','fpt','mobifone','vinaphone','netflix','spotify','youtube','icloud','bao hiem','chung cu','phi dich vu'] },
@@ -439,71 +412,73 @@ function parseVietQR(text) {
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Màu pastel cho từng danh mục (vòng tròn)
-const CAT_BG = { an: ['#d6f6dc', '#9fe3ad'], di: ['#e6dcff', '#bfaeff'], mua: ['#ffd8df', '#ffaabb'], hd: ['#fde3cc', '#f3be92'], khac: ['#d6eeff', '#a3d7ff'] };
-const catBg = k => { const c = CAT_BG[k] || CAT_BG.khac; return 'background:linear-gradient(160deg,' + c[0] + ',' + c[1] + ')'; };
-const SHORT = { an: 'Ăn uống', di: 'Đi lại', mua: 'Mua sắm', hd: 'Hoá đơn', khac: 'Khác' };
+// Màu pastel cho từng danh mục
+const CAT_BG = { an: '#ffc9c1', cafe: '#f1dcc0', di: '#c9e3ff', mua: '#ffd3e6', hd: '#e2dbff', khac: '#cfeedd' };
+const bg = k => 'background:' + (CAT_BG[k] || CAT_BG.khac);
 
-/* ---------- Sheet: mở chồng lên nhau, bấm nền mờ để đóng sheet trên cùng ---------- */
+/* ---------- Sheet (lịch sử, cài đặt) ---------- */
 const stack = [];
 function openS(id) {
-  const el = $(id);
   if (!stack.includes(id)) stack.push(id);
-  el.style.zIndex = 31 + stack.length;
-  $('dim').style.zIndex = 30 + stack.length;
-  $('dim').classList.add('on'); el.classList.add('on');
+  $(id).style.zIndex = 31 + stack.length; $('dim').style.zIndex = 30 + stack.length;
+  $('dim').classList.add('on'); $(id).classList.add('on');
 }
 function closeS(id) {
   const i = stack.indexOf(id); if (i < 0) return;
   stack.splice(i, 1); $(id).classList.remove('on');
-  document.activeElement?.blur();
   if (stack.length) $('dim').style.zIndex = 30 + stack.length; else $('dim').classList.remove('on');
 }
 $('dim').onclick = () => stack.length && closeS(stack[stack.length - 1]);
 
-/* ---------- Giao diện chính ---------- */
+/* ---------- Trang chính ---------- */
 const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const DOW_LONG = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 const hhmm = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-function rowHtml(it) {
+const sameMonth = (t, now) => { const d = new Date(t); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); };
+
+function rowHtml(it, showDay) {
   const c = CAT[it.c] || CAT.khac, d = new Date(it.t);
   const when = dayKey(it.t) === dayKey(Date.now()) ? 'Hôm nay' : d.getDate() + '/' + (d.getMonth() + 1);
-  return '<button class="row" data-id="' + it.id + '"><span class="ic" style="' + catBg(it.c) + '">' + c.icon + '</span>'
-    + '<span class="tx"><div class="nt">' + esc(it.n || c.name) + '</div><div class="tm">' + when + ' &nbsp;•&nbsp; ' + hhmm(it.t) + '</div></span>'
+  return '<button class="row" data-id="' + it.id + '"><span class="ic" style="' + bg(it.c) + '">' + c.icon + '</span>'
+    + '<span class="tx"><div class="nt">' + esc(it.n || c.name) + '</div><div class="tm">' + (showDay ? when + ' · ' : '') + hhmm(it.t) + ' · ' + c.name + '</div></span>'
     + '<span class="am">' + fmt(it.a) + 'đ</span></button>';
 }
 
 function render() {
   const now = new Date(), tk = dayKey(now);
   $('date').textContent = DOW[now.getDay()] + ', ' + now.getDate() + '/' + (now.getMonth() + 1);
-  let today = 0, month = 0;
+  let today = 0, month = 0, nToday = 0;
+  const perCat = {};
   for (const it of items) {
-    const d = new Date(it.t);
-    if (dayKey(it.t) === tk) today += it.a;
-    if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) month += it.a;
+    if (dayKey(it.t) === tk) { today += it.a; nToday++; }
+    if (sameMonth(it.t, now)) { month += it.a; perCat[it.c] = (perCat[it.c] || 0) + it.a; }
   }
   $('today').innerHTML = fmt(today) + '<small>đ</small>';
-  $('month').innerHTML = 'Tháng ' + (now.getMonth() + 1) + ' &nbsp;·&nbsp; <b>' + fmt(month) + 'đ</b>';
+  $('month').textContent = 'Tháng ' + (now.getMonth() + 1) + ': ' + fmt(month) + 'đ';
+  $('cnt').textContent = nToday ? nToday + ' khoản' : '';
+  $('mlabel').textContent = 'Tháng ' + (now.getMonth() + 1);
+
+  $('tiles').innerHTML = CATS.map(c => '<button class="tile" data-k="' + c.k + '" style="' + bg(c.k) + '">'
+    + '<span class="plus">+</span><span class="ti">' + c.icon + '</span>'
+    + '<span><div class="tn">' + c.name + '</div><div class="ta">' + fmt(perCat[c.k] || 0) + 'đ</div></span></button>').join('');
 
   const sorted = [...items].sort((a, b) => b.t - a.t);
   $('recent').innerHTML = sorted.length
-    ? sorted.slice(0, 3).map(rowHtml).join('')
-    : '<div class="empty">Chưa có khoản nào. Bấm <b>Quét QR</b> khi trả tiền, hoặc <b>Lưu</b> để gõ kiểu “35k cafe”.</div>';
+    ? sorted.slice(0, 5).map(it => rowHtml(it, true)).join('')
+    : '<div class="empty">Chưa có khoản nào.<br>Bấm <b>Quét QR</b> khi trả tiền,<br>hoặc <b>Lưu</b> / bấm vào một danh mục ở trên.</div>';
   if (stack.includes('hSheet')) renderHist();
 }
 
-$('cats').innerHTML = CATS.map(c => '<button class="cat" data-k="' + c.k + '"><span class="dot" style="' + catBg(c.k) + '">' + c.icon + '</span><span class="lbl">' + SHORT[c.k] + '</span></button>').join('');
-
 function renderHist() {
   const sorted = [...items].sort((a, b) => b.t - a.t).slice(0, 300);
-  if (!sorted.length) { $('hist').innerHTML = '<div class="empty" style="text-align:center">Chưa có khoản nào.</div>'; return; }
+  if (!sorted.length) { $('hist').innerHTML = '<div class="empty">Chưa có khoản nào.</div>'; return; }
   const groups = new Map(), tk = dayKey(Date.now()), yk = dayKey(Date.now() - 864e5);
   for (const it of sorted) { const k = dayKey(it.t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
   let html = '';
   for (const [k, arr] of groups) {
     const d = new Date(arr[0].t);
     const title = k === tk ? 'Hôm nay' : k === yk ? 'Hôm qua' : DOW_LONG[d.getDay()] + ', ' + d.getDate() + '/' + (d.getMonth() + 1);
-    html += '<div class="day"><div class="dayhead"><span>' + title + '</span><span>' + fmt(arr.reduce((s, x) => s + x.a, 0)) + 'đ</span></div>' + arr.map(rowHtml).join('') + '</div>';
+    html += '<div class="daylbl"><span>' + title + '</span><span>' + fmt(arr.reduce((s, x) => s + x.a, 0)) + 'đ</span></div>' + arr.map(it => rowHtml(it, false)).join('');
   }
   $('hist').innerHTML = html;
 }
@@ -521,93 +496,91 @@ $('toastUndo').onclick = () => { if (lastUndo) lastUndo(); lastUndo = null; $('t
 function addItem(it) {
   it.id = uid(); it.t = it.t || Date.now();
   items.push(it); save(); render();
-  toast('Đã ghi ' + fmt(it.a) + 'đ', () => { items = items.filter(x => x.id !== it.id); save(); render(); });
+  toast('Đã lưu ' + fmt(it.a) + 'đ', () => { items = items.filter(x => x.id !== it.id); save(); render(); });
 }
 
-/* ---------- Lưu tay (nút "Lưu" hoặc bấm vào một danh mục) ---------- */
-let qCat = null;
-function openQuick(cat) {
-  qCat = cat || null;
-  $('qTitle').textContent = cat ? CAT[cat].icon + ' ' + CAT[cat].name : 'Lưu khoản chi';
-  $('qi').placeholder = cat ? '45k' : '35k cafe';
-  $('qi').value = ''; qPreview();
-  openS('qSheet');
-  $('qi').focus();   // gọi ngay trong lúc bấm để iPhone bật bàn phím
+/* ---------- Màn hình nhập số tiền ---------- */
+const E = { digits: '', cat: null };
+const entryAmount = () => parseInt(E.digits || '0', 10);
+function showAmt() {
+  const a = entryAmount();
+  $('eAmt').textContent = a ? fmt(a) : '0';
+  $('eAmt').classList.toggle('zero', !a);
+  for (const b of $('eActs').querySelectorAll('.needamt')) b.disabled = !a;
 }
-function qParse() {
-  const v = $('qi').value.trim();
-  const p = parseQuick(v) || (parseAmount(v) ? { a: parseAmount(v), n: '' } : null);
-  if (p) p.c = qCat || guessCat(p.n);
-  return p;
+function showCats() {
+  $('eCats').innerHTML = CATS.map(c => '<button data-k="' + c.k + '" class="' + (c.k === E.cat ? 'sel' : '') + '"><span style="' + bg(c.k) + '">' + c.icon + '</span>' + c.name + '</button>').join('');
 }
-function qPreview() {
-  const p = qParse();
-  $('qprev').textContent = p ? fmt(p.a) + 'đ · ' + CAT[p.c].icon + ' ' + CAT[p.c].name : (qCat ? 'Ví dụ: 45k hoặc 45000 phở' : 'Ví dụ: 35k cafe · grab 52000 · 1tr2 tiền nhà');
-}
-$('qi').addEventListener('input', qPreview);
-$('qSheet').addEventListener('submit', e => {
-  e.preventDefault();
-  const p = qParse();
-  if (!p) { $('qprev').textContent = 'Gõ kèm số tiền, ví dụ: 35k cafe'; $('qi').focus(); return; }
-  addItem({ a: p.a, n: p.n, c: p.c });
-  closeS('qSheet');
-});
-$('typeBtn').onclick = () => openQuick();
-$('cats').addEventListener('click', e => { const b = e.target.closest('.cat'); if (b) openQuick(b.dataset.k); });
-
-/* ---------- Sheet ghi sau khi quét / sửa ---------- */
-let sheetCat = 'khac';
-function openSheet({ title, name, amount, note, cat, actions, tip }) {
-  $('sTo').textContent = title; $('sName').textContent = name || '';
-  $('sName').hidden = !name;
-  $('sAmt').value = amount ? String(amount) : '';
-  $('sNote').value = note || '';
-  sheetCat = cat || 'khac';
-  $('sCats').innerHTML = CATS.map(c => '<button data-k="' + c.k + '" class="' + (c.k === sheetCat ? 'sel' : '') + '">' + c.icon + ' ' + SHORT[c.k] + '</button>').join('');
-  $('sActs').innerHTML = '';
+function openEntry({ title, sub, amount, note, cat, actions, tip }) {
+  $('eTitle').textContent = title;
+  $('eSub').textContent = sub || ''; $('eSub').hidden = !sub;
+  E.digits = amount ? String(amount) : '';
+  E.cat = cat || null;
+  $('eNote').value = note || '';
+  showCats();
+  $('eActs').innerHTML = '';
   for (const a of actions) {
-    const b = document.createElement('button'); b.className = a.cls; b.textContent = a.label; b.onclick = a.run;
-    $('sActs').appendChild(b);
+    const b = document.createElement('button');
+    b.className = a.cls + (a.needAmt ? ' needamt' : ''); b.textContent = a.label; b.onclick = a.run;
+    $('eActs').appendChild(b);
   }
-  $('sTip').textContent = tip || '';
-  updHint();
-  openS('sheet');
-  if (!amount) setTimeout(() => $('sAmt').focus(), 250);
+  $('eTip').textContent = tip || ''; $('eTip').hidden = !tip;
+  showAmt();
+  $('entry').classList.add('on');
+  requestAnimationFrame(() => { const s = $('eCats').querySelector('.sel'); if (s) s.scrollIntoView({ inline: 'center', block: 'nearest' }); });
 }
-const closeSheet = () => closeS('sheet');
-$('sCats').addEventListener('click', e => {
+const closeEntry = () => { $('entry').classList.remove('on'); document.activeElement?.blur(); };
+const entryCat = () => E.cat || guessCat($('eNote').value);
+$('eBack').onclick = closeEntry;
+$('eCats').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  sheetCat = b.dataset.k;
-  [...$('sCats').children].forEach(x => x.classList.toggle('sel', x === b));
+  E.cat = b.dataset.k; E.catPicked = true;
+  [...$('eCats').children].forEach(x => x.classList.toggle('sel', x === b));
 });
-// Ô số tiền: gõ 45000 hoặc 45k
-const sheetAmount = () => parseAmount($('sAmt').value || '') || 0;
-function updHint() { const a = sheetAmount(); $('sHint').textContent = a ? '= ' + fmt(a) + 'đ' : 'Ví dụ: 45000 hoặc 45k'; }
-$('sAmt').addEventListener('input', updHint);
-// Nút "k": thêm/bỏ chữ k sau số (bàn phím số trên iPhone không có chữ k)
-$('sK').onmousedown = e => e.preventDefault();
-$('sK').onclick = () => {
-  const v = $('sAmt').value.trim();
-  $('sAmt').value = /k$/i.test(v) ? v.slice(0, -1) : v.replace(/k/gi, '') + 'k';
-  updHint(); $('sAmt').focus();
-};
-$('sNote').addEventListener('input', () => {
-  const g = guessCat($('sNote').value);
-  if (g !== 'khac') { sheetCat = g; [...$('sCats').children].forEach(x => x.classList.toggle('sel', x.dataset.k === g)); }
+$('eNote').addEventListener('input', () => {
+  if (E.catPicked) return;
+  const g = guessCat($('eNote').value);
+  if (g !== 'khac') { E.cat = g; [...$('eCats').children].forEach(x => x.classList.toggle('sel', x.dataset.k === g)); }
 });
-
-function needAmount() {
-  const a = sheetAmount();
-  if (!a) { $('sAmt').focus(); $('sHint').textContent = 'Nhập số tiền trước nhé'; }
-  return a;
+$('eNote').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+function press(k) {
+  if (k === 'del') E.digits = E.digits.slice(0, -1);
+  else if (!E.digits && (k === '0' || k === '000')) return;
+  else if (E.digits.length + k.length <= 12) E.digits += k;
+  showAmt();
 }
+$('keys').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { press(b.dataset.k); navigator.vibrate?.(8); } });
+document.addEventListener('keydown', e => {
+  if (!$('entry').classList.contains('on') || document.activeElement === $('eNote')) return;
+  if (/^\d$/.test(e.key)) press(e.key);
+  else if (e.key === 'Backspace') press('del');
+  else if (e.key.toLowerCase() === 'k') press('000');
+  else if (e.key === 'Enter') $('eActs').querySelector('.primary')?.click();
+  else if (e.key === 'Escape') closeEntry();
+});
 
+// Lưu tay (nút "Lưu" hoặc bấm một ô danh mục)
+function openNew(cat) {
+  E.catPicked = !!cat;
+  openEntry({
+    title: cat ? CAT[cat].icon + ' ' + CAT[cat].name : 'Lưu khoản chi', cat,
+    actions: [{ label: 'Lưu', cls: 'primary', needAmt: true, run: () => {
+      const a = entryAmount(); if (!a) return;
+      addItem({ a, n: $('eNote').value.trim(), c: entryCat() }); closeEntry();
+    } }],
+  });
+}
+$('typeBtn').onclick = () => openNew();
+$('tiles').addEventListener('click', e => { const b = e.target.closest('.tile'); if (b) openNew(b.dataset.k); });
+
+/* ---------- Sau khi quét QR ---------- */
 function onScanned(text) {
   const q = parseVietQR(text);
   if (!q || !q.acct) {
-    openSheet({
-      title: 'Mã QR không phải VietQR', name: text.slice(0, 80), note: '', cat: 'khac',
-      actions: [{ label: 'Ghi chi tiêu', cls: 'primary', run: () => { const a = needAmount(); if (!a) return; addItem({ a, n: $('sNote').value.trim(), c: sheetCat }); closeSheet(); } }],
+    E.catPicked = false;
+    openEntry({
+      title: 'Mã QR không phải VietQR', sub: text.slice(0, 80),
+      actions: [{ label: 'Lưu', cls: 'primary', needAmt: true, run: () => { const a = entryAmount(); if (!a) return; addItem({ a, n: $('eNote').value.trim(), c: entryCat() }); closeEntry(); } }],
     });
     return;
   }
@@ -615,26 +588,26 @@ function onScanned(text) {
   const m = memo[mkey] || {};
   const note = m.n || q.name || q.purpose || '';
   const save1 = () => {
-    const a = needAmount(); if (!a) return false;
-    const n = $('sNote').value.trim() || q.name || (q.bank + ' ' + q.acct);
-    memo[mkey] = { c: sheetCat, n: $('sNote').value.trim() || m.n || '' };
-    addItem({ a, n, c: sheetCat, acct: mkey });
-    closeSheet(); return true;
+    const a = entryAmount(); if (!a) return false;
+    const n = $('eNote').value.trim() || q.name || (q.bank + ' ' + q.acct);
+    const c = entryCat();
+    memo[mkey] = { c, n: $('eNote').value.trim() || m.n || '' };
+    addItem({ a, n, c, acct: mkey });
+    closeEntry(); return true;
   };
-  openSheet({
-    title: 'Trả cho',
-    name: (q.name || 'Tài khoản ' + q.acct) + (q.bank ? ' · ' + q.bank : ''),
+  E.catPicked = !!m.c;
+  openEntry({
+    title: 'Trả cho ' + (q.name || 'TK ' + q.acct),
+    sub: (q.bank ? q.bank + ' · ' : '') + q.acct,
     amount: q.amount, note, cat: m.c || guessCat(note),
     actions: [
-      { label: 'Ghi & mở ' + bankApp().name, cls: 'primary', run: () => {
-        const a = sheetAmount();
+      { label: 'Lưu & mở ' + bankApp().name, cls: 'primary', needAmt: true, run: () => {
+        const a = entryAmount();
         if (save1()) setTimeout(() => location.href = appLink(q, a), 150);
       } },
-      { label: 'Chỉ ghi', cls: 'secondary', run: save1 },
+      { label: 'Chỉ lưu', cls: 'secondary', needAmt: true, run: save1 },
     ],
-    tip: bankApp().fill
-      ? bankApp().name + ' sẽ mở sẵn người nhận và số tiền, bạn chỉ cần xác nhận.'
-      : 'Khi ' + bankApp().name + ' mở ra, bạn quét lại mã QR này để chuyển tiền. Muốn khỏi quét lại thì chọn ACB One, MB Bank, BIDV, VietinBank hoặc OCB trong Cài đặt.',
+    tip: bankApp().fill ? '' : 'Khi ' + bankApp().name + ' mở ra, bạn quét lại mã QR. Chọn ACB One, MB, BIDV, VietinBank hoặc OCB trong Cài đặt để khỏi quét lại.',
   });
 }
 
@@ -653,23 +626,24 @@ function appLink(q, amount) {
   return IS_IOS && app.ios ? app.ios : 'https://dl.vietqr.io/pay?app=' + app.id;
 }
 
-/* ---------- Sửa / xoá khoản đã ghi ---------- */
+/* ---------- Sửa / xoá ---------- */
 function editItem(id) {
   const it = items.find(x => x.id === id); if (!it) return;
-  openSheet({
-    title: 'Sửa khoản chi', amount: it.a, note: it.n, cat: it.c,
+  E.catPicked = true;
+  openEntry({
+    title: 'Sửa khoản chi', sub: new Date(it.t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' }),
+    amount: it.a, note: it.n, cat: it.c,
     actions: [
-      { label: 'Lưu', cls: 'primary', run: () => { const a = needAmount(); if (!a) return; it.a = a; it.n = $('sNote').value.trim(); it.c = sheetCat; save(); render(); closeSheet(); } },
+      { label: 'Lưu thay đổi', cls: 'primary', needAmt: true, run: () => { const a = entryAmount(); if (!a) return; it.a = a; it.n = $('eNote').value.trim(); it.c = entryCat(); save(); render(); closeEntry(); } },
       { label: 'Xoá khoản này', cls: 'del', run: () => {
-        const idx = items.indexOf(it); items.splice(idx, 1); save(); render(); closeSheet();
+        const idx = items.indexOf(it); items.splice(idx, 1); save(); render(); closeEntry();
         toast('Đã xoá', () => { items.splice(idx, 0, it); save(); render(); });
       } },
     ],
   });
 }
 for (const id of ['recent', 'hist']) $(id).addEventListener('click', e => { const b = e.target.closest('.row'); if (b) editItem(b.dataset.id); });
-const openHist = () => { renderHist(); openS('hSheet'); $('hist').scrollTop = 0; };
-$('allBtn').onclick = openHist;
+$('allBtn').onclick = () => { renderHist(); openS('hSheet'); $('hist').scrollTop = 0; };
 
 /* ---------- Camera ---------- */
 let stream = null, scanning = false;

@@ -1,4 +1,4 @@
-const CACHE = 'pay-v5';
+const CACHE = 'pay-v6';
 const FILES = ['./', 'index.html', 'jsQR.js', 'manifest.json', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

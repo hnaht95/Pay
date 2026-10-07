@@ -121,6 +121,7 @@ button { cursor: pointer; border: 0; background: none; }
 .toname { font-size: 18px; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
 .amt { display: flex; align-items: baseline; gap: 6px; margin: 14px 0 2px; border-bottom: 2px solid var(--line); }
 .amt input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font-size: 40px; font-weight: 700; padding: 4px 0; font-variant-numeric: tabular-nums; }
+.kbtn { padding: 6px 14px; border-radius: 10px; background: var(--soft); font-size: 18px; font-weight: 700; align-self: center; }
 .amt span { color: var(--muted); font-size: 18px; }
 .amthint { color: var(--muted); font-size: 13px; min-height: 18px; margin-bottom: 10px; }
 .note { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); outline: none; margin-bottom: 12px; }
@@ -188,7 +189,7 @@ button { cursor: pointer; border: 0; background: none; }
   <div class="grip"></div>
   <div class="to" id="sTo">Trả cho</div>
   <div class="toname" id="sName"></div>
-  <div class="amt"><input id="sAmt" inputmode="numeric" placeholder="0"><span>nghìn đ</span></div>
+  <div class="amt"><input id="sAmt" inputmode="numeric" placeholder="0"><button type="button" class="kbtn" id="sK">k</button><span>đ</span></div>
   <div class="amthint" id="sHint"></div>
   <input class="note" id="sNote" placeholder="Ghi chú (không bắt buộc)">
   <div class="cats" id="sCats"></div>
@@ -271,7 +272,7 @@ const strip = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').repl
 const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-// "35k" -> 35000, "1tr2" -> 1200000, "1.5tr" -> 1500000, "35.000" -> 35000, "35" -> 35000
+// "35k" -> 35000, "1tr2" -> 1200000, "1.5tr" -> 1500000, "35.000" -> 35000, "35000" -> 35000
 function parseAmount(raw) {
   const s = strip(String(raw)).replace(/\s+/g, '');
   let m = s.match(/^(\d+(?:[.,]\d+)?)(tr|trieu|m|cu)(\d+)?$/);
@@ -285,7 +286,7 @@ function parseAmount(raw) {
   m = s.match(/^\d{1,3}(?:[.,]\d{3})+$/);
   if (m) return parseInt(s.replace(/[.,]/g, ''), 10);
   m = s.match(/^\d+$/);
-  if (m) { const v = parseInt(s, 10); return v < 1000 ? v * 1000 : v; }
+  if (m) return parseInt(s, 10);
   return null;
 }
 
@@ -407,7 +408,7 @@ let sheetCat = 'khac';
 function openSheet({ title, name, amount, note, cat, actions, tip }) {
   $('sTo').textContent = title; $('sName').textContent = name || '';
   $('sName').hidden = !name;
-  $('sAmt').value = amount ? String(amount / 1000) : '';
+  $('sAmt').value = amount ? String(amount) : '';
   $('sNote').value = note || '';
   sheetCat = cat || 'khac';
   $('sCats').innerHTML = CATS.map(c => '<button data-k="' + c.k + '" class="' + (c.k === sheetCat ? 'sel' : '') + '">' + c.icon + ' ' + c.name + '</button>').join('');
@@ -428,9 +429,16 @@ $('sCats').addEventListener('click', e => {
   sheetCat = b.dataset.k;
   [...$('sCats').children].forEach(x => x.classList.toggle('sel', x === b));
 });
-// Ô số tiền tính theo nghìn: gõ 35 = 35.000đ
-const sheetAmount = () => { const v = parseFloat(($('sAmt').value || '').replace(',', '.')); return v > 0 ? Math.round(v * 1000) : 0; };
-function updHint() { const a = sheetAmount(); $('sHint').textContent = a ? '= ' + fmt(a) + 'đ' : 'Gõ số nghìn, ví dụ 35 = 35.000đ'; }
+// Ô số tiền: gõ 45000 hoặc 45k
+const sheetAmount = () => parseAmount($('sAmt').value || '') || 0;
+function updHint() { const a = sheetAmount(); $('sHint').textContent = a ? '= ' + fmt(a) + 'đ' : 'Ví dụ: 45000 hoặc 45k'; }
+// Nút "k": thêm/bỏ chữ k sau số (bàn phím số trên iPhone không có chữ k)
+$('sK').onmousedown = e => e.preventDefault();
+$('sK').onclick = () => {
+  const v = $('sAmt').value.trim();
+  $('sAmt').value = /k$/i.test(v) ? v.slice(0, -1) : v.replace(/k/gi, '') + 'k';
+  updHint(); $('sAmt').focus();
+};
 $('sAmt').addEventListener('input', updHint);
 $('sNote').addEventListener('input', () => {
   const g = guessCat($('sNote').value);

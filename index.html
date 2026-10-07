@@ -201,15 +201,16 @@ button { cursor: pointer; border: 0; background: none; }
 <script src="jsQR.js"></script>
 <script>
 // App ngân hàng mở sau khi ghi (danh sách deeplink của VietQR).
-// Hiện chưa app nào nhận thông tin người nhận qua link, nên chỉ mở app rồi quét lại QR.
-// iPhone: mở thẳng bằng scheme của app; Android: đi qua dl.vietqr.io (trang đó tạo intent mở app).
+// fill: app nhận được người nhận + số tiền qua dl.vietqr.io (bắt buộc có tham số url), không phải quét lại.
+// Các app khác chỉ mở được app: iPhone mở thẳng bằng scheme, Android đi qua dl.vietqr.io.
+const CODES = {"970415":"icb","970436":"vcb","970418":"bidv","970405":"vba","970448":"ocb","970422":"mb","970407":"tcb","970416":"acb","970432":"vpb","970423":"tpb","970403":"stb","970437":"hdb","970454":"vccb","970429":"scb","970441":"vib","970443":"shb","970431":"eib","970426":"msb","546034":"cake","546035":"ubank","971005":"vtlmoney","963388":"timo","971011":"vnptmoney","970400":"sgicb","970409":"bab","971025":"momo","971133":"pvdb","970412":"pvcb","970414":"mbv","970419":"ncb","970424":"shbvn","970425":"abb","970427":"vab","970428":"nab","970430":"pgb","970433":"vietbank","970438":"bvb","970440":"seab","970446":"coopbank","970449":"lpb","970452":"klb","668888":"kbank","977777":"mafc","970442":"hlbvn","970467":"kebhanahn","970466":"kebhanahcm","533948":"citibank","970444":"cbb","422589":"cimb","796500":"dbs","970406":"vikki","999888":"vbsp","970408":"gpb","970463":"kbhcm","970462":"kbhn","970457":"wvn","970421":"vrb","458761":"hsbc","970434":"ivb","970458":"uob","970410":"scvn","970439":"pbvn"};
 const APPS = [
-  { id: "acb", name: "ACB One", ios: "acbone://" },
+  { id: "acb", name: "ACB One", ios: "acbone://", fill: 1 },
   { id: "vpb", name: "VPBank NEO", ios: "vpbankneo://" },
-  { id: "mb", name: "MB Bank", ios: "mbbank://" },
-  { id: "bidv", name: "BIDV SmartBanking", ios: "bidv.smartbanking.partner://" },
-  { id: "icb", name: "VietinBank iPay", ios: "vietinbankipay://" },
-  { id: "ocb", name: "OCB OMNI", ios: "newomni-app://" },
+  { id: "mb", name: "MB Bank", ios: "mbbank://", fill: 1 },
+  { id: "bidv", name: "BIDV SmartBanking", ios: "bidv.smartbanking.partner://", fill: 1 },
+  { id: "icb", name: "VietinBank iPay", ios: "vietinbankipay://", fill: 1 },
+  { id: "ocb", name: "OCB OMNI", ios: "newomni-app://", fill: 1 },
   { id: "vba", name: "Agribank E-Mobile Banking", ios: "agribankmobile://" },
   { id: "tcb", name: "Techcombank Mobile", ios: "tcb://" },
   { id: "vcb", name: "Vietcombank", ios: "vietcombankmobile://" },
@@ -467,16 +468,31 @@ function onScanned(text) {
     amount: q.amount, note, cat: m.c || guessCat(note),
     actions: [
       { label: 'Ghi & mở ' + bankApp().name, cls: 'primary', run: () => {
-        if (save1()) setTimeout(() => location.href = appLink(), 150);
+        const a = sheetAmount();
+        if (save1()) setTimeout(() => location.href = appLink(q, a), 150);
       } },
       { label: 'Chỉ ghi', cls: 'secondary', run: save1 },
     ],
-    tip: 'Khi ' + bankApp().name + ' mở ra, bạn quét lại mã QR này để chuyển tiền.',
+    tip: bankApp().fill
+      ? bankApp().name + ' sẽ mở sẵn người nhận và số tiền, bạn chỉ cần xác nhận.'
+      : 'Khi ' + bankApp().name + ' mở ra, bạn quét lại mã QR này để chuyển tiền. Muốn khỏi quét lại thì chọn ACB One, MB Bank, BIDV, VietinBank hoặc OCB ở cuối trang.',
   });
 }
 
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const appLink = () => IS_IOS && bankApp().ios ? bankApp().ios : 'https://dl.vietqr.io/pay?app=' + bankApp().id;
+// https://dl.vietqr.io/pay?app=acb&ba=<số TK>@<mã NH>&am=<số tiền>&tn=<nội dung>&bn=<tên>&url=<quay lại>
+function appLink(q, amount) {
+  const app = bankApp(), code = q && CODES[q.bin];
+  if (app.fill && code && q.acct) {
+    const p = new URLSearchParams({ app: app.id });
+    let url = 'https://dl.vietqr.io/pay?' + p + '&ba=' + encodeURIComponent(q.acct) + '@' + code;
+    if (amount) url += '&am=' + amount;
+    if (q.purpose) url += '&tn=' + encodeURIComponent(q.purpose);
+    if (q.name) url += '&bn=' + encodeURIComponent(q.name);
+    return url + '&url=' + encodeURIComponent(location.origin + location.pathname);
+  }
+  return IS_IOS && app.ios ? app.ios : 'https://dl.vietqr.io/pay?app=' + app.id;
+}
 
 /* ---------- Sửa / xoá khoản đã ghi ---------- */
 $('list').addEventListener('click', e => {
@@ -570,7 +586,8 @@ $('importFile').onchange = async e => {
 };
 
 const opt = a => '<option value="' + a.id + '"' + (a.id === bankApp().id ? ' selected' : '') + '>' + esc(a.name) + '</option>';
-$('appSel').innerHTML = APPS.map(opt).join('');
+$('appSel').innerHTML = '<optgroup label="Mở sẵn người nhận + số tiền">' + APPS.filter(a => a.fill).map(opt).join('') + '</optgroup>'
+  + '<optgroup label="Chỉ mở app (quét lại QR)">' + APPS.filter(a => !a.fill).map(opt).join('') + '</optgroup>';
 $('appSel').onchange = e => { appId = e.target.value; try { localStorage.setItem('sochi.app', JSON.stringify(appId)); } catch {} };
 
 render();

@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Pay</title>
+<meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1a17" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pay">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root {
+  --paper: #f6f1e7;
+  --card: #fffdf8;
+  --ink: #2b2925;
+  --muted: #8a8378;
+  --line: #e6dfd1;
+  --accent: #c2410c;
+  --accent-ink: #ffffff;
+  --soft: #efe8da;
+  --danger: #b91c1c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1c1a17;
+    --card: #26231f;
+    --ink: #f1ece2;
+    --muted: #9b9488;
+    --line: #36322c;
+    --accent: #f97316;
+    --accent-ink: #1c1a17;
+    --soft: #2f2b26;
+    --danger: #f87171;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top) 0 0;
+  overscroll-behavior: none;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+.wrap { max-width: 480px; margin: 0 auto; padding: 0 16px 140px; }
+
+/* Tổng */
+.hero { padding: 28px 4px 18px; }
+.date { color: var(--muted); font-size: 14px; }
+.label { color: var(--muted); font-size: 15px; margin-top: 14px; }
+.today { font-size: 52px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.today small { font-size: 26px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.month { color: var(--muted); font-size: 15px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.month b { color: var(--ink); font-weight: 600; }
+
+/* Ô gõ nhanh */
+.quick { display: flex; gap: 8px; margin: 6px 0 18px; }
+.quick input {
+  flex: 1; min-width: 0; padding: 14px 16px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--card); outline: none; font-size: 17px;
+}
+.quick input:focus { border-color: var(--accent); }
+.quick button {
+  padding: 0 18px; border-radius: 14px; background: var(--ink); color: var(--paper); font-weight: 600;
+}
+.preview { color: var(--muted); font-size: 13px; margin: -12px 4px 14px; min-height: 18px; }
+
+/* Danh sách */
+.day { margin-top: 18px; }
+.dayhead { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; padding: 0 4px 6px; border-bottom: 1px solid var(--line); }
+.item { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); width: 100%; text-align: left; }
+.item .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; font-size: 18px; flex: none; }
+.item .tx { flex: 1; min-width: 0; }
+.item .nt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .tm { color: var(--muted); font-size: 12px; }
+.item .am { font-weight: 600; font-variant-numeric: tabular-nums; }
+.empty { text-align: center; color: var(--muted); padding: 40px 20px; line-height: 1.6; }
+.foot { display: flex; justify-content: center; gap: 22px; margin-top: 30px; }
+.appsel { display: block; text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
+.appsel select { font: inherit; color: var(--ink); background: var(--soft); border: 0; border-radius: 8px; padding: 4px 6px; }
+.foot button { color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Nút quét */
+.scanbar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--paper) 70%, transparent); }
+.scanbtn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  max-width: 448px; margin: 0 auto; width: 100%; padding: 18px; border-radius: 18px;
+  background: var(--accent); color: var(--accent-ink); font-size: 18px; font-weight: 700;
+  box-shadow: 0 6px 20px rgba(194, 65, 12, .25);
+}
+.scanbtn svg { width: 24px; height: 24px; }
+
+/* Camera */
+.cam { position: fixed; inset: 0; background: #000; z-index: 20; display: none; }
+.cam.on { display: block; }
+.cam video { width: 100%; height: 100%; object-fit: cover; }
+.cam .frame { position: absolute; top: 50%; left: 50%; width: 68vmin; height: 68vmin; transform: translate(-50%, -55%); border: 3px solid rgba(255,255,255,.9); border-radius: 24px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+.cam .hint { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 24px); text-align: center; color: #fff; font-size: 15px; padding: 0 16px; }
+.cam .bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 12px; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+.cam .bar button, .cam .bar label { flex: 1; padding: 15px; border-radius: 14px; background: rgba(255,255,255,.16); color: #fff; font-weight: 600; text-align: center; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; }
+.cam .err { position: absolute; top: 40%; left: 16px; right: 16px; color: #fff; text-align: center; line-height: 1.5; }
+
+/* Sheet */
+.dim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 30; display: none; }
+.dim.on { display: block; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; background: var(--card);
+  border-radius: 22px 22px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+  transform: translateY(105%); transition: transform .22s ease; max-width: 520px; margin: 0 auto;
+}
+.sheet.on { transform: none; }
+.grip { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+.to { color: var(--muted); font-size: 14px; }
+.toname { font-size: 18px; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+.amt { display: flex; align-items: baseline; gap: 6px; margin: 14px 0 2px; border-bottom: 2px solid var(--line); }
+.amt input { flex: 1; min-width: 0; border: 0; outline: none; background: none; font-size: 40px; font-weight: 700; padding: 4px 0; font-variant-numeric: tabular-nums; }
+.amt span { color: var(--muted); font-size: 18px; }
+.amthint { color: var(--muted); font-size: 13px; min-height: 18px; margin-bottom: 10px; }
+.note { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); outline: none; margin-bottom: 12px; }
+.cats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.cats button { padding: 9px 13px; border-radius: 999px; background: var(--soft); font-size: 15px; }
+.cats button.sel { background: var(--ink); color: var(--paper); }
+.acts { display: flex; flex-direction: column; gap: 8px; }
+.primary { padding: 16px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 17px; }
+.secondary { padding: 14px; border-radius: 14px; background: var(--soft); font-weight: 600; }
+.del { padding: 12px; color: var(--danger); font-weight: 600; }
+.tip { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; line-height: 1.45; }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; background: var(--ink); color: var(--paper); padding: 12px 14px 12px 18px; border-radius: 14px; display: flex; gap: 16px; align-items: center; transition: .2s; z-index: 40; white-space: nowrap; font-size: 15px; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="date" id="date"></div>
+    <div class="label">Hôm nay đã chi</div>
+    <div class="today" id="today">0<small>đ</small></div>
+    <div class="month" id="month"></div>
+  </section>
+
+  <form class="quick" id="quick" autocomplete="off">
+    <input id="qi" placeholder="35k cafe, 1tr2 tiền nhà…" enterkeyhint="done">
+    <button type="submit">Ghi</button>
+  </form>
+  <div class="preview" id="qprev"></div>
+
+  <div id="list"></div>
+
+  <div class="foot">
+    <button id="exportBtn">Sao lưu</button>
+    <button id="importBtn">Khôi phục</button>
+    <button id="csvBtn">Xuất CSV</button>
+  </div>
+  <label class="appsel">App ngân hàng: <select id="appSel"></select></label>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+</div>
+
+<div class="scanbar">
+  <button class="scanbtn" id="scanBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg>
+    Quét QR thanh toán
+  </button>
+</div>
+
+<div class="cam" id="cam">
+  <video id="video" playsinline muted></video>
+  <div class="frame"></div>
+  <div class="hint">Đưa mã QR của quán vào khung</div>
+  <div class="err" id="camErr" hidden></div>
+  <div class="bar">
+    <label>Chọn ảnh QR<input type="file" id="qrFile" accept="image/*" hidden></label>
+    <button id="camClose">Đóng</button>
+  </div>
+</div>
+
+<div class="dim" id="dim"></div>
+<div class="sheet" id="sheet">
+  <div class="grip"></div>
+  <div class="to" id="sTo">Trả cho</div>
+  <div class="toname" id="sName"></div>
+  <div class="amt"><input id="sAmt" inputmode="numeric" placeholder="0"><span>nghìn đ</span></div>
+  <div class="amthint" id="sHint"></div>
+  <input class="note" id="sNote" placeholder="Ghi chú (không bắt buộc)">
+  <div class="cats" id="sCats"></div>
+  <div class="acts" id="sActs"></div>
+  <div class="tip" id="sTip"></div>
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo">Hoàn tác</button></div>
+
+<script src="jsQR.js"></script>
+<script>
+// App ngân hàng mở sau khi ghi (theo danh sách deeplink của VietQR). fill = app tự điền sẵn người nhận + số tiền
+const APPS = [
+  { id: "mb", name: "MB Bank", fill: 1 },
+  { id: "bidv", name: "BIDV SmartBanking", fill: 1 },
+  { id: "icb", name: "VietinBank iPay", fill: 1 },
+  { id: "ocb", name: "OCB OMNI", fill: 1 },
+  { id: "acb", name: "ACB One", fill: 1 },
+  { id: "vba", name: "Agribank E-Mobile Banking", fill: 0 },
+  { id: "tcb", name: "Techcombank Mobile", fill: 0 },
+  { id: "vcb", name: "Vietcombank", fill: 0 },
+  { id: "vpb", name: "VPBank NEO", fill: 0 },
+  { id: "cake", name: "CAKE - Digital Banking", fill: 0 },
+  { id: "tpb", name: "TPBank Mobile", fill: 0 },
+  { id: "lpb", name: "Liên Việt 24h", fill: 0 },
+  { id: "timo", name: "Timo Digital Bank", fill: 0 },
+  { id: "vib", name: "MyVIB", fill: 0 },
+  { id: "vib-2", name: "MyVIB 2.0", fill: 0 },
+  { id: "hdb", name: "HDBank", fill: 0 },
+  { id: "scb", name: "SCB Mobile Banking", fill: 0 },
+  { id: "shb", name: "SHB SAHA", fill: 0 },
+  { id: "seab", name: "SeAMobile", fill: 0 },
+  { id: "shbvn", name: "Shinhan Bank Vietnam SOL", fill: 0 },
+  { id: "abb", name: "ABBank", fill: 0 },
+  { id: "eib", name: "Eximbank EDigi", fill: 0 },
+  { id: "nab", name: "Nam A Bank Mobile", fill: 0 },
+  { id: "pvcb", name: "PVConnect", fill: 0 },
+  { id: "coopbank", name: "Co-opBank Mobile Banking", fill: 0 },
+  { id: "acb-biz", name: "ACB One Biz", fill: 0 },
+  { id: "bvb", name: "BAOVIET Smart", fill: 0 },
+  { id: "klb", name: "KienlongBank Plus", fill: 0 },
+  { id: "ncb", name: "NCB iziMobile", fill: 0 },
+  { id: "cimb", name: "OCTO by CIMB Vietnam", fill: 0 },
+  { id: "oceanbank", name: "OceanBank", fill: 0 },
+  { id: "pbvn", name: "PB engage VN", fill: 0 },
+  { id: "sgicb", name: "SAIGONBANK Smart Banking", fill: 0 },
+  { id: "tpb-pay", name: "TPBank QuickPay", fill: 0 },
+  { id: "vietbank", name: "Vietbank Digital", fill: 0 },
+  { id: "vab", name: "Vietbank Digital Plus", fill: 0 },
+  { id: "wvn", name: "Woori WON Vietnam", fill: 0 }
+];
+const CODES = {"970415":"ICB","970436":"VCB","970418":"BIDV","970405":"VBA","970448":"OCB","970422":"MB","970407":"TCB","970416":"ACB","970432":"VPB","970423":"TPB","970403":"STB","970437":"HDB","970454":"VCCB","970429":"SCB","970441":"VIB","970443":"SHB","970431":"EIB","970426":"MSB","546034":"CAKE","546035":"Ubank","971005":"VTLMONEY","963388":"TIMO","971011":"VNPTMONEY","970400":"SGICB","970409":"BAB","971025":"momo","971133":"PVDB","970412":"PVCB","970414":"MBV","970419":"NCB","970424":"SHBVN","970425":"ABB","970427":"VAB","970428":"NAB","970430":"PGB","970433":"VIETBANK","970438":"BVB","970440":"SEAB","970446":"COOPBANK","970449":"LPB","970452":"KLB","668888":"KBank","977777":"MAFC","970442":"HLBVN","970467":"KEBHANAHN","970466":"KEBHANAHCM","533948":"CITIBANK","970444":"CBB","422589":"CIMB","796500":"DBS","970406":"Vikki","999888":"VBSP","970408":"GPB","970463":"KBHCM","970462":"KBHN","970457":"WVN","970421":"VRB","458761":"HSBC","970434":"IVB","970458":"UOB","970410":"SCVN","970439":"PBVN"};
+const BANKS = {"970415":"VietinBank","970436":"Vietcombank","970418":"BIDV","970405":"Agribank","970448":"OCB","970422":"MBBank","970407":"Techcombank","970416":"ACB","970432":"VPBank","970423":"TPBank","970403":"Sacombank","970437":"HDBank","970454":"VietCapitalBank","970429":"SCB","970441":"VIB","970443":"SHB","970431":"Eximbank","970426":"MSB","546034":"CAKE","546035":"Ubank","971005":"ViettelMoney","963388":"Timo","971011":"VNPTMoney","970400":"SaigonBank","970409":"BacABank","971025":"MoMo","971133":"PVcomBank Pay","970412":"PVcomBank","970414":"MBV","970419":"NCB","970424":"ShinhanBank","970425":"ABBANK","970427":"VietABank","970428":"NamABank","970430":"PGBank","970433":"VietBank","970438":"BaoVietBank","970440":"SeABank","970446":"COOPBANK","970449":"LPBank","970452":"KienLongBank","668888":"KBank","977777":"MAFC","970442":"HongLeong","970467":"KEBHANAHN","970466":"KEBHanaHCM","533948":"Citibank","970444":"CBBank","422589":"CIMB","796500":"DBSBank","970406":"Vikki","999888":"VBSP","970408":"GPBank","970463":"KookminHCM","970462":"KookminHN","970457":"Woori","970421":"VRB","458761":"HSBC","970455":"IBKHN","970456":"IBKHCM","970434":"IndovinaBank","970458":"UnitedOverseas","801011":"Nonghyup","970410":"StandardChartered","970439":"PublicBank"};
+
+const CATS = [
+  { k: 'an',   icon: '🍜', name: 'Ăn uống', kw: ['an','com','pho','bun','banh','mi','cafe','ca phe','coffee','tra','tra sua','highlands','starbucks','phuc long','katinat','bia','lau','nuong','kfc','lotteria','jollibee','pizza','grabfood','shopeefood','quan','nha hang','restaurant','food','bakery','an sang','an trua','an toi','chao','xoi','che','kem','nuoc mia','sinh to','tap hoa'] },
+  { k: 'di',   icon: '🛵', name: 'Đi lại',  kw: ['grab','be','xanh sm','gojek','xang','taxi','gui xe','do xe','parking','ve xe','ve tau','may bay','petrolimex','rua xe','sua xe','vetc','bot'] },
+  { k: 'mua',  icon: '🛍️', name: 'Mua sắm', kw: ['shopee','lazada','tiki','tiktok','sieu thi','winmart','bach hoa','circle k','gs25','familymart','7-eleven','ministop','quan ao','ao','quan','giay','dep','my pham','mart','store','shop','uniqlo','cho'] },
+  { k: 'hd',   icon: '🧾', name: 'Hoá đơn', kw: ['dien','tien nuoc','internet','wifi','mang','4g','5g','dien thoai','nap tien','tien nha','thue nha','phong','hoc phi','evn','viettel','vnpt','fpt','mobifone','vinaphone','netflix','spotify','youtube','icloud','bao hiem','chung cu','phi dich vu'] },
+  { k: 'khac', icon: '📌', name: 'Khác', kw: [] },
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.k, c]));
+
+/* ---------- Lưu trữ ---------- */
+const KEY = 'sochi.v1', MEMO = 'sochi.memo.v1';
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+let items = load(KEY, []);
+let memo = load(MEMO, {});           // số tài khoản -> { c, n } để lần sau tự điền
+let appId = load('sochi.app', 'acb');
+const bankApp = () => APPS.find(a => a.id === appId) || APPS[0];
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(items)); localStorage.setItem(MEMO, JSON.stringify(memo)); } catch {} };
+if (navigator.storage?.persist) navigator.storage.persist();
+
+/* ---------- Tiện ích ---------- */
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('vi-VN');
+const strip = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+// "35k" -> 35000, "1tr2" -> 1200000, "1.5tr" -> 1500000, "35.000" -> 35000, "35" -> 35000
+function parseAmount(raw) {
+  const s = strip(String(raw)).replace(/\s+/g, '');
+  let m = s.match(/^(\d+(?:[.,]\d+)?)(tr|trieu|m|cu)(\d+)?$/);
+  if (m) {
+    let v = parseFloat(m[1].replace(',', '.'));
+    if (m[3]) v += parseFloat('0.' + m[3]);
+    return Math.round(v * 1e6);
+  }
+  m = s.match(/^(\d+(?:[.,]\d+)?)(k|nghin|ngan|ng|n)$/);
+  if (m) return Math.round(parseFloat(m[1].replace(',', '.')) * 1e3);
+  m = s.match(/^\d{1,3}(?:[.,]\d{3})+$/);
+  if (m) return parseInt(s.replace(/[.,]/g, ''), 10);
+  m = s.match(/^\d+$/);
+  if (m) { const v = parseInt(s, 10); return v < 1000 ? v * 1000 : v; }
+  return null;
+}
+
+// "35k cafe sáng" -> { a: 35000, n: "cafe sáng" }
+const QRE = /(^|\s)(\d+(?:[.,]\d+)*)\s*(k|tr|triệu|trieu|củ|cu|m|nghìn|ngàn|nghin|ngan)?(\d+)?(?![\p{L}\d])/iu;
+function parseQuick(text) {
+  const m = text.match(QRE); if (!m) return null;
+  const a = parseAmount(m[2] + (m[3] || '') + (m[4] || ''));
+  if (!a) return null;
+  return { a, n: (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim() };
+}
+
+function guessCat(text) {
+  const s = ' ' + strip(text || '').replace(/[^a-z0-9 ]/g, ' ') + ' ';
+  let best = 'khac', len = 0;
+  for (const c of CATS) for (const w of c.kw) {
+    if (s.includes(' ' + w + ' ') && w.length > len) { best = c.k; len = w.length; }
+  }
+  return best;
+}
+
+/* ---------- Đọc mã VietQR (chuẩn EMVCo) ---------- */
+function tlv(str) {
+  const out = {}; let i = 0;
+  while (i + 4 <= str.length) {
+    const id = str.slice(i, i + 2), len = parseInt(str.slice(i + 2, i + 4), 10);
+    if (isNaN(len)) break;
+    out[id] = str.slice(i + 4, i + 4 + len);
+    i += 4 + len;
+  }
+  return out;
+}
+function parseVietQR(text) {
+  if (!/^000201/.test(text)) return null;
+  const top = tlv(text);
+  const r = { amount: top['54'] ? Math.round(parseFloat(top['54'])) : null, name: (top['59'] || '').trim(), raw: text };
+  for (const id of ['38', '26', '27', '28']) {
+    if (!top[id]) continue;
+    const sub = tlv(top[id]);
+    if (sub['00'] === 'A000000727' && sub['01']) {
+      const ben = tlv(sub['01']);
+      r.bin = ben['00']; r.acct = ben['01'];
+    }
+  }
+  if (top['62']) { const add = tlv(top['62']); r.purpose = (add['08'] || '').trim(); }
+  r.bank = BANKS[r.bin] || (r.bin ? 'Ngân hàng ' + r.bin : '');
+  return r;
+}
+
+/* ---------- Giao diện chính ---------- */
+const DOW = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+function render() {
+  const now = new Date(), tk = dayKey(now);
+  $('date').textContent = DOW[now.getDay()] + ', ' + now.getDate() + '/' + (now.getMonth() + 1);
+  let today = 0, month = 0;
+  for (const it of items) {
+    const d = new Date(it.t);
+    if (dayKey(it.t) === tk) today += it.a;
+    if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) month += it.a;
+  }
+  $('today').innerHTML = fmt(today) + '<small>đ</small>';
+  $('month').innerHTML = 'Tháng ' + (now.getMonth() + 1) + ': <b>' + fmt(month) + 'đ</b>';
+
+  const list = $('list');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">Chưa có khoản nào.<br>Gõ <b>35k cafe</b> ở trên, hoặc bấm <b>Quét QR</b> khi trả tiền.</div>';
+    return;
+  }
+  const sorted = [...items].sort((a, b) => b.t - a.t).slice(0, 200);
+  const groups = new Map();
+  for (const it of sorted) { const k = dayKey(it.t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
+  const yk = dayKey(Date.now() - 864e5);
+  let html = '';
+  for (const [k, arr] of groups) {
+    const d = new Date(arr[0].t);
+    const title = k === tk ? 'Hôm nay' : k === yk ? 'Hôm qua' : DOW[d.getDay()] + ', ' + d.getDate() + '/' + (d.getMonth() + 1);
+    html += '<div class="day"><div class="dayhead"><span>' + title + '</span><span>' + fmt(arr.reduce((s, x) => s + x.a, 0)) + 'đ</span></div>';
+    for (const it of arr) {
+      const c = CAT[it.c] || CAT.khac, t = new Date(it.t);
+      html += '<button class="item" data-id="' + it.id + '"><span class="ic">' + c.icon + '</span><span class="tx"><div class="nt">' + esc(it.n || c.name) + '</div><div class="tm">' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' · ' + c.name + '</div></span><span class="am">' + fmt(it.a) + '</span></button>';
+    }
+    html += '</div>';
+  }
+  list.innerHTML = html;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- Thêm / hoàn tác ---------- */
+let lastUndo = null, toastTimer;
+function toast(msg, undo) {
+  $('toastMsg').textContent = msg; lastUndo = undo;
+  $('toastUndo').hidden = !undo;
+  $('toast').classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), 5000);
+}
+$('toastUndo').onclick = () => { if (lastUndo) lastUndo(); lastUndo = null; $('toast').classList.remove('on'); };
+
+function addItem(it) {
+  it.id = uid(); it.t = it.t || Date.now();
+  items.push(it); save(); render();
+  toast('Đã ghi ' + fmt(it.a) + 'đ', () => { items = items.filter(x => x.id !== it.id); save(); render(); });
+}
+
+/* ---------- Ô gõ nhanh ---------- */
+$('qi').addEventListener('input', () => {
+  const p = parseQuick($('qi').value);
+  $('qprev').textContent = p ? fmt(p.a) + 'đ · ' + CAT[guessCat(p.n)].icon + ' ' + CAT[guessCat(p.n)].name : '';
+});
+$('quick').addEventListener('submit', e => {
+  e.preventDefault();
+  const p = parseQuick($('qi').value);
+  if (!p) { toast('Gõ kèm số tiền, ví dụ: 35k cafe'); return; }
+  addItem({ a: p.a, n: p.n, c: guessCat(p.n) });
+  $('qi').value = ''; $('qprev').textContent = ''; $('qi').blur();
+});
+
+/* ---------- Sheet (sau khi quét / sửa) ---------- */
+let sheetCat = 'khac';
+function openSheet({ title, name, amount, note, cat, actions, tip }) {
+  $('sTo').textContent = title; $('sName').textContent = name || '';
+  $('sName').hidden = !name;
+  $('sAmt').value = amount ? String(amount / 1000) : '';
+  $('sNote').value = note || '';
+  sheetCat = cat || 'khac';
+  $('sCats').innerHTML = CATS.map(c => '<button data-k="' + c.k + '" class="' + (c.k === sheetCat ? 'sel' : '') + '">' + c.icon + ' ' + c.name + '</button>').join('');
+  $('sActs').innerHTML = '';
+  for (const a of actions) {
+    const b = document.createElement('button'); b.className = a.cls; b.textContent = a.label; b.onclick = a.run;
+    $('sActs').appendChild(b);
+  }
+  $('sTip').textContent = tip || '';
+  updHint();
+  $('dim').classList.add('on'); $('sheet').classList.add('on');
+  if (!amount) setTimeout(() => $('sAmt').focus(), 250);
+}
+function closeSheet() { $('dim').classList.remove('on'); $('sheet').classList.remove('on'); document.activeElement?.blur(); }
+$('dim').onclick = closeSheet;
+$('sCats').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  sheetCat = b.dataset.k;
+  [...$('sCats').children].forEach(x => x.classList.toggle('sel', x === b));
+});
+// Ô số tiền tính theo nghìn: gõ 35 = 35.000đ
+const sheetAmount = () => { const v = parseFloat(($('sAmt').value || '').replace(',', '.')); return v > 0 ? Math.round(v * 1000) : 0; };
+function updHint() { const a = sheetAmount(); $('sHint').textContent = a ? '= ' + fmt(a) + 'đ' : 'Gõ số nghìn, ví dụ 35 = 35.000đ'; }
+$('sAmt').addEventListener('input', updHint);
+$('sNote').addEventListener('input', () => {
+  const g = guessCat($('sNote').value);
+  if (g !== 'khac') { sheetCat = g; [...$('sCats').children].forEach(x => x.classList.toggle('sel', x.dataset.k === g)); }
+});
+
+function needAmount() {
+  const a = sheetAmount();
+  if (!a) { $('sAmt').focus(); $('sHint').textContent = 'Nhập số tiền trước nhé'; }
+  return a;
+}
+
+function onScanned(text) {
+  const q = parseVietQR(text);
+  if (!q || !q.acct) {
+    openSheet({
+      title: 'Mã QR không phải VietQR', name: text.slice(0, 80), note: '', cat: 'khac',
+      actions: [{ label: 'Ghi chi tiêu', cls: 'primary', run: () => { const a = needAmount(); if (!a) return; addItem({ a, n: $('sNote').value.trim(), c: sheetCat }); closeSheet(); } }],
+    });
+    return;
+  }
+  const mkey = q.bin + ':' + q.acct;
+  const m = memo[mkey] || {};
+  const note = m.n || q.name || q.purpose || '';
+  const save1 = () => {
+    const a = needAmount(); if (!a) return false;
+    const n = $('sNote').value.trim() || q.name || (q.bank + ' ' + q.acct);
+    memo[mkey] = { c: sheetCat, n: $('sNote').value.trim() || m.n || '' };
+    addItem({ a, n, c: sheetCat, acct: mkey });
+    closeSheet(); return true;
+  };
+  openSheet({
+    title: 'Trả cho',
+    name: (q.name || 'Tài khoản ' + q.acct) + (q.bank ? ' · ' + q.bank : ''),
+    amount: q.amount, note, cat: m.c || guessCat(note),
+    actions: [
+      { label: 'Ghi & mở ' + bankApp().name, cls: 'primary', run: () => {
+        const a = sheetAmount();
+        if (save1()) setTimeout(() => location.href = payLink(q, a), 150);
+      } },
+      { label: 'Chỉ ghi', cls: 'secondary', run: save1 },
+    ],
+    tip: bankApp().fill
+      ? bankApp().name + ' sẽ điền sẵn người nhận và số tiền, bạn chỉ cần kiểm tra rồi xác nhận.'
+      : bankApp().name + ' chưa hỗ trợ điền sẵn, nên khi app mở ra bạn quét lại mã QR một lần nữa.',
+  });
+}
+
+// https://dl.vietqr.io/pay?app=acb&ba=<số TK>@<mã NH>&am=<số tiền>&tn=<nội dung>
+function payLink(q, amount) {
+  let url = 'https://dl.vietqr.io/pay?app=' + bankApp().id;
+  const code = CODES[q.bin];
+  if (code && q.acct) url += '&ba=' + encodeURIComponent(q.acct) + '@' + code.toLowerCase();
+  if (amount) url += '&am=' + amount;
+  if (q.purpose) url += '&tn=' + encodeURIComponent(q.purpose);
+  return url;
+}
+
+/* ---------- Sửa / xoá khoản đã ghi ---------- */
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('.item'); if (!b) return;
+  const it = items.find(x => x.id === b.dataset.id); if (!it) return;
+  openSheet({
+    title: 'Sửa khoản chi', amount: it.a, note: it.n, cat: it.c,
+    actions: [
+      { label: 'Lưu', cls: 'primary', run: () => { const a = needAmount(); if (!a) return; it.a = a; it.n = $('sNote').value.trim(); it.c = sheetCat; save(); render(); closeSheet(); } },
+      { label: 'Xoá khoản này', cls: 'del', run: () => {
+        const idx = items.indexOf(it); items.splice(idx, 1); save(); render(); closeSheet();
+        toast('Đã xoá', () => { items.splice(idx, 0, it); save(); render(); });
+      } },
+    ],
+  });
+});
+
+/* ---------- Camera ---------- */
+let stream = null, scanning = false;
+const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+function decodeFrom(src, w, h) {
+  const scale = Math.min(1, 800 / Math.max(w, h));
+  canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+  ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+}
+
+async function openCam() {
+  $('cam').classList.add('on'); $('camErr').hidden = true;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+    const v = $('video'); v.srcObject = stream; await v.play();
+    scanning = true; tick();
+  } catch (err) {
+    $('camErr').hidden = false;
+    $('camErr').textContent = 'Không mở được camera. Hãy cho phép quyền camera, hoặc bấm "Chọn ảnh QR" để dùng ảnh chụp màn hình.';
+  }
+}
+function closeCam() {
+  scanning = false;
+  stream?.getTracks().forEach(t => t.stop()); stream = null;
+  $('cam').classList.remove('on');
+}
+function tick() {
+  if (!scanning) return;
+  const v = $('video');
+  if (v.readyState >= 2 && v.videoWidth) {
+    const r = decodeFrom(v, v.videoWidth, v.videoHeight);
+    if (r && r.data) { navigator.vibrate?.(40); closeCam(); onScanned(r.data); return; }
+  }
+  setTimeout(() => requestAnimationFrame(tick), 120);
+}
+$('scanBtn').onclick = openCam;
+$('camClose').onclick = closeCam;
+$('qrFile').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const r = decodeFrom(img, img.naturalWidth, img.naturalHeight);
+    URL.revokeObjectURL(img.src);
+    if (r && r.data) { closeCam(); onScanned(r.data); } else toast('Không đọc được mã QR trong ảnh');
+  };
+  img.src = URL.createObjectURL(f);
+};
+
+/* ---------- Sao lưu ---------- */
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const stamp = () => new Date().toISOString().slice(0, 10);
+$('exportBtn').onclick = () => download('pay-' + stamp() + '.json', JSON.stringify({ items, memo }), 'application/json');
+$('csvBtn').onclick = () => {
+  const rows = [['Ngày', 'Giờ', 'Số tiền', 'Danh mục', 'Ghi chú']].concat(
+    [...items].sort((a, b) => a.t - b.t).map(it => { const d = new Date(it.t); return [d.toLocaleDateString('vi-VN'), d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }), it.a, (CAT[it.c] || CAT.khac).name, it.n || '']; }));
+  download('pay-' + stamp() + '.csv', '﻿' + rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n'), 'text/csv');
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    const ids = new Set(items.map(x => x.id));
+    const add = (d.items || []).filter(x => x && x.id && x.a && !ids.has(x.id));
+    items = items.concat(add); memo = Object.assign({}, d.memo || {}, memo);
+    save(); render(); toast('Đã khôi phục ' + add.length + ' khoản');
+  } catch { toast('File sao lưu không hợp lệ'); }
+};
+
+const opt = a => '<option value="' + a.id + '"' + (a.id === bankApp().id ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+$('appSel').innerHTML = '<optgroup label="Tự điền sẵn người nhận">' + APPS.filter(a => a.fill).map(opt).join('') + '</optgroup>'
+  + '<optgroup label="Chỉ mở app (quét lại QR)">' + APPS.filter(a => !a.fill).map(opt).join('') + '</optgroup>';
+$('appSel').onchange = e => { appId = e.target.value; try { localStorage.setItem('sochi.app', JSON.stringify(appId)); } catch {} };
+
+render();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

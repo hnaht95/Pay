@@ -200,47 +200,48 @@ button { cursor: pointer; border: 0; background: none; }
 
 <script src="jsQR.js"></script>
 <script>
-// App ngân hàng mở sau khi ghi (theo danh sách deeplink của VietQR). fill = app tự điền sẵn người nhận + số tiền
+// App ngân hàng mở sau khi ghi (danh sách deeplink của VietQR).
+// Hiện chưa app nào nhận thông tin người nhận qua link, nên chỉ mở app rồi quét lại QR.
+// iPhone: mở thẳng bằng scheme của app; Android: đi qua dl.vietqr.io (trang đó tạo intent mở app).
 const APPS = [
-  { id: "mb", name: "MB Bank", fill: 1 },
-  { id: "bidv", name: "BIDV SmartBanking", fill: 1 },
-  { id: "icb", name: "VietinBank iPay", fill: 1 },
-  { id: "ocb", name: "OCB OMNI", fill: 1 },
-  { id: "acb", name: "ACB One", fill: 1 },
-  { id: "vba", name: "Agribank E-Mobile Banking", fill: 0 },
-  { id: "tcb", name: "Techcombank Mobile", fill: 0 },
-  { id: "vcb", name: "Vietcombank", fill: 0 },
-  { id: "vpb", name: "VPBank NEO", fill: 0 },
-  { id: "cake", name: "CAKE - Digital Banking", fill: 0 },
-  { id: "tpb", name: "TPBank Mobile", fill: 0 },
-  { id: "lpb", name: "Liên Việt 24h", fill: 0 },
-  { id: "timo", name: "Timo Digital Bank", fill: 0 },
-  { id: "vib", name: "MyVIB", fill: 0 },
-  { id: "vib-2", name: "MyVIB 2.0", fill: 0 },
-  { id: "hdb", name: "HDBank", fill: 0 },
-  { id: "scb", name: "SCB Mobile Banking", fill: 0 },
-  { id: "shb", name: "SHB SAHA", fill: 0 },
-  { id: "seab", name: "SeAMobile", fill: 0 },
-  { id: "shbvn", name: "Shinhan Bank Vietnam SOL", fill: 0 },
-  { id: "abb", name: "ABBank", fill: 0 },
-  { id: "eib", name: "Eximbank EDigi", fill: 0 },
-  { id: "nab", name: "Nam A Bank Mobile", fill: 0 },
-  { id: "pvcb", name: "PVConnect", fill: 0 },
-  { id: "coopbank", name: "Co-opBank Mobile Banking", fill: 0 },
-  { id: "acb-biz", name: "ACB One Biz", fill: 0 },
-  { id: "bvb", name: "BAOVIET Smart", fill: 0 },
-  { id: "klb", name: "KienlongBank Plus", fill: 0 },
-  { id: "ncb", name: "NCB iziMobile", fill: 0 },
-  { id: "cimb", name: "OCTO by CIMB Vietnam", fill: 0 },
-  { id: "oceanbank", name: "OceanBank", fill: 0 },
-  { id: "pbvn", name: "PB engage VN", fill: 0 },
-  { id: "sgicb", name: "SAIGONBANK Smart Banking", fill: 0 },
-  { id: "tpb-pay", name: "TPBank QuickPay", fill: 0 },
-  { id: "vietbank", name: "Vietbank Digital", fill: 0 },
-  { id: "vab", name: "Vietbank Digital Plus", fill: 0 },
-  { id: "wvn", name: "Woori WON Vietnam", fill: 0 }
+  { id: "acb", name: "ACB One", ios: "acbone://" },
+  { id: "vpb", name: "VPBank NEO", ios: "vpbankneo://" },
+  { id: "mb", name: "MB Bank", ios: "mbbank://" },
+  { id: "bidv", name: "BIDV SmartBanking", ios: "bidv.smartbanking.partner://" },
+  { id: "icb", name: "VietinBank iPay", ios: "vietinbankipay://" },
+  { id: "ocb", name: "OCB OMNI", ios: "newomni-app://" },
+  { id: "vba", name: "Agribank E-Mobile Banking", ios: "agribankmobile://" },
+  { id: "tcb", name: "Techcombank Mobile", ios: "tcb://" },
+  { id: "vcb", name: "Vietcombank", ios: "vietcombankmobile://" },
+  { id: "cake", name: "CAKE - Digital Banking", ios: "cake.vn://" },
+  { id: "tpb", name: "TPBank Mobile", ios: "hydro://" },
+  { id: "lpb", name: "Liên Việt 24h", ios: "lv24h://" },
+  { id: "timo", name: "Timo Digital Bank", ios: "plus://" },
+  { id: "vib", name: "MyVIB", ios: "myvib://" },
+  { id: "vib-2", name: "MyVIB 2.0", ios: "myvib2://" },
+  { id: "hdb", name: "HDBank", ios: "hdbankmobile://" },
+  { id: "scb", name: "SCB Mobile Banking", ios: "scbmobilebanking://" },
+  { id: "shb", name: "SHB SAHA", ios: "shbmobile://" },
+  { id: "seab", name: "SeAMobile", ios: "seamobile://" },
+  { id: "shbvn", name: "Shinhan Bank Vietnam SOL", ios: "shinhanglbvnbank://" },
+  { id: "abb", name: "ABBank", ios: "abbankmobile://" },
+  { id: "eib", name: "Eximbank EDigi", ios: "eximbankmobile://" },
+  { id: "nab", name: "Nam A Bank Mobile", ios: "namabankmobile://" },
+  { id: "pvcb", name: "PVConnect", ios: "pvcombankapp://" },
+  { id: "coopbank", name: "Co-opBank Mobile Banking", ios: "coopbankmobile://" },
+  { id: "acb-biz", name: "ACB One Biz", ios: "abaapp://" },
+  { id: "bvb", name: "BAOVIET Smart", ios: "baovietmobile://" },
+  { id: "klb", name: "KienlongBank Plus", ios: "kienlongbankmobilebanking://" },
+  { id: "ncb", name: "NCB iziMobile", ios: "ncbizimobile://" },
+  { id: "cimb", name: "OCTO by CIMB Vietnam", ios: "cimb://" },
+  { id: "oceanbank", name: "OceanBank", ios: "oceanbankmobilebanking://" },
+  { id: "pbvn", name: "PB engage VN", ios: "publicbankmobile://" },
+  { id: "sgicb", name: "SAIGONBANK Smart Banking", ios: "saigonbankmobilebanking://" },
+  { id: "tpb-pay", name: "TPBank QuickPay", ios: "qpaymobile://" },
+  { id: "vietbank", name: "Vietbank Digital", ios: "vietbankmobilebanking://" },
+  { id: "vab", name: "Vietbank Digital Plus", ios: "vabmobilebanking://" },
+  { id: "wvn", name: "Woori WON Vietnam", ios: "wvbs://" }
 ];
-const CODES = {"970415":"ICB","970436":"VCB","970418":"BIDV","970405":"VBA","970448":"OCB","970422":"MB","970407":"TCB","970416":"ACB","970432":"VPB","970423":"TPB","970403":"STB","970437":"HDB","970454":"VCCB","970429":"SCB","970441":"VIB","970443":"SHB","970431":"EIB","970426":"MSB","546034":"CAKE","546035":"Ubank","971005":"VTLMONEY","963388":"TIMO","971011":"VNPTMONEY","970400":"SGICB","970409":"BAB","971025":"momo","971133":"PVDB","970412":"PVCB","970414":"MBV","970419":"NCB","970424":"SHBVN","970425":"ABB","970427":"VAB","970428":"NAB","970430":"PGB","970433":"VIETBANK","970438":"BVB","970440":"SEAB","970446":"COOPBANK","970449":"LPB","970452":"KLB","668888":"KBank","977777":"MAFC","970442":"HLBVN","970467":"KEBHANAHN","970466":"KEBHANAHCM","533948":"CITIBANK","970444":"CBB","422589":"CIMB","796500":"DBS","970406":"Vikki","999888":"VBSP","970408":"GPB","970463":"KBHCM","970462":"KBHN","970457":"WVN","970421":"VRB","458761":"HSBC","970434":"IVB","970458":"UOB","970410":"SCVN","970439":"PBVN"};
 const BANKS = {"970415":"VietinBank","970436":"Vietcombank","970418":"BIDV","970405":"Agribank","970448":"OCB","970422":"MBBank","970407":"Techcombank","970416":"ACB","970432":"VPBank","970423":"TPBank","970403":"Sacombank","970437":"HDBank","970454":"VietCapitalBank","970429":"SCB","970441":"VIB","970443":"SHB","970431":"Eximbank","970426":"MSB","546034":"CAKE","546035":"Ubank","971005":"ViettelMoney","963388":"Timo","971011":"VNPTMoney","970400":"SaigonBank","970409":"BacABank","971025":"MoMo","971133":"PVcomBank Pay","970412":"PVcomBank","970414":"MBV","970419":"NCB","970424":"ShinhanBank","970425":"ABBANK","970427":"VietABank","970428":"NamABank","970430":"PGBank","970433":"VietBank","970438":"BaoVietBank","970440":"SeABank","970446":"COOPBANK","970449":"LPBank","970452":"KienLongBank","668888":"KBank","977777":"MAFC","970442":"HongLeong","970467":"KEBHANAHN","970466":"KEBHanaHCM","533948":"Citibank","970444":"CBBank","422589":"CIMB","796500":"DBSBank","970406":"Vikki","999888":"VBSP","970408":"GPBank","970463":"KookminHCM","970462":"KookminHN","970457":"Woori","970421":"VRB","458761":"HSBC","970455":"IBKHN","970456":"IBKHCM","970434":"IndovinaBank","970458":"UnitedOverseas","801011":"Nonghyup","970410":"StandardChartered","970439":"PublicBank"};
 
 const CATS = [
@@ -466,26 +467,16 @@ function onScanned(text) {
     amount: q.amount, note, cat: m.c || guessCat(note),
     actions: [
       { label: 'Ghi & mở ' + bankApp().name, cls: 'primary', run: () => {
-        const a = sheetAmount();
-        if (save1()) setTimeout(() => location.href = payLink(q, a), 150);
+        if (save1()) setTimeout(() => location.href = appLink(), 150);
       } },
       { label: 'Chỉ ghi', cls: 'secondary', run: save1 },
     ],
-    tip: bankApp().fill
-      ? bankApp().name + ' sẽ điền sẵn người nhận và số tiền, bạn chỉ cần kiểm tra rồi xác nhận.'
-      : bankApp().name + ' chưa hỗ trợ điền sẵn, nên khi app mở ra bạn quét lại mã QR một lần nữa.',
+    tip: 'Khi ' + bankApp().name + ' mở ra, bạn quét lại mã QR này để chuyển tiền.',
   });
 }
 
-// https://dl.vietqr.io/pay?app=acb&ba=<số TK>@<mã NH>&am=<số tiền>&tn=<nội dung>
-function payLink(q, amount) {
-  let url = 'https://dl.vietqr.io/pay?app=' + bankApp().id;
-  const code = CODES[q.bin];
-  if (code && q.acct) url += '&ba=' + encodeURIComponent(q.acct) + '@' + code.toLowerCase();
-  if (amount) url += '&am=' + amount;
-  if (q.purpose) url += '&tn=' + encodeURIComponent(q.purpose);
-  return url;
-}
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const appLink = () => IS_IOS && bankApp().ios ? bankApp().ios : 'https://dl.vietqr.io/pay?app=' + bankApp().id;
 
 /* ---------- Sửa / xoá khoản đã ghi ---------- */
 $('list').addEventListener('click', e => {
@@ -579,8 +570,7 @@ $('importFile').onchange = async e => {
 };
 
 const opt = a => '<option value="' + a.id + '"' + (a.id === bankApp().id ? ' selected' : '') + '>' + esc(a.name) + '</option>';
-$('appSel').innerHTML = '<optgroup label="Tự điền sẵn người nhận">' + APPS.filter(a => a.fill).map(opt).join('') + '</optgroup>'
-  + '<optgroup label="Chỉ mở app (quét lại QR)">' + APPS.filter(a => !a.fill).map(opt).join('') + '</optgroup>';
+$('appSel').innerHTML = APPS.map(opt).join('');
 $('appSel').onchange = e => { appId = e.target.value; try { localStorage.setItem('sochi.app', JSON.stringify(appId)); } catch {} };
 
 render();

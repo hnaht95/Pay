@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 /// Một khoản chi. Cùng định dạng với file sao lưu của bản web (t = mili giây).
 struct Expense: Codable, Identifiable, Hashable {
@@ -97,6 +98,7 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: fileURL), let b = try? JSONDecoder().decode(Backup.self, from: data) {
             apply(b)
         }
+        refreshWidget()
         Task { await cloud.start { [weak self] remote in self?.absorb(remote) } }
     }
 
@@ -128,6 +130,14 @@ final class Store: ObservableObject {
     private func writeLocal() {
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: fileURL, options: .atomic)
+        refreshWidget()
+    }
+
+    /// Ghi số liệu cho widget rồi bảo widget vẽ lại.
+    private func refreshWidget() {
+        let now = Date()
+        Summary(today: total(on: now), month: monthItems(now).reduce(0) { $0 + $1.a }, count: count(on: now), day: now).save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func add(amount: Int, note: String, cat: String, acct: String? = nil) {
@@ -228,15 +238,4 @@ final class Store: ObservableObject {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         return f.string(from: Date())
     }
-}
-
-/// 45000 -> "45.000"
-func fmt(_ n: Int) -> String {
-    let s = String(abs(n))
-    var out = ""
-    for (i, ch) in s.enumerated() {
-        if i > 0 && (s.count - i) % 3 == 0 { out += "." }
-        out.append(ch)
-    }
-    return (n < 0 ? "-" : "") + out
 }

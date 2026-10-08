@@ -19,6 +19,7 @@ enum EntryMode: Identifiable {
 
 struct HomeView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var quick: QuickAction
     @State private var entry: EntryMode?
     @State private var scanning = false
     @State private var showHistory = false
@@ -61,6 +62,23 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
+        .onChange(of: quick.pending, initial: true) { _, k in
+            guard let k else { return }
+            quick.pending = nil
+            Task { await run(k) }
+        }
+    }
+
+    /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
+    private func run(_ k: QuickKind) async {
+        let busy = entry != nil || scanning || showHistory || showSettings
+        if k == .scan && scanning { return }
+        entry = nil; scanning = false; showHistory = false; showSettings = false
+        if busy { try? await Task.sleep(for: .milliseconds(450)) }
+        switch k {
+        case .scan: scanning = true
+        case .add: entry = .new(cat: nil)
+        }
     }
 
     // MARK: Các phần

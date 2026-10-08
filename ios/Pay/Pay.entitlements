@@ -14,5 +14,9 @@
 	<array>
 		<string>iCloud.com.hnaht95.sochipay</string>
 	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.hnaht95.sochipay</string>
+	</array>
 </dict>
 </plist>

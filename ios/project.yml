@@ -11,7 +11,9 @@ targets:
   Pay:
     type: application
     platform: iOS
-    sources: [Pay]
+    sources: [Pay, Shared]
+    dependencies:
+      - target: PayWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay
@@ -28,6 +30,7 @@ targets:
         com.apple.developer.icloud-container-identifiers: [iCloud.com.hnaht95.sochipay]
         com.apple.developer.icloud-services: [CloudDocuments]
         com.apple.developer.ubiquity-container-identifiers: [iCloud.com.hnaht95.sochipay]
+        com.apple.security.application-groups: [group.com.hnaht95.sochipay]
     info:
       path: Pay/Info.plist
       properties:
@@ -79,3 +82,27 @@ targets:
           - vietinbankipay
           - vpbankneo
           - wvbs
+  PayWidget:
+    type: app-extension
+    platform: iOS
+    sources: [PayWidget, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay.widget
+        PRODUCT_NAME: PayWidget
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+    entitlements:
+      path: PayWidget/PayWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.hnaht95.sochipay]
+    info:
+      path: PayWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Pay
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension

@@ -259,6 +259,7 @@ struct ExpenseRow: View {
 }
 
 struct BigButton: View {
+    static let inset: CGFloat = 11
     let title: String
     let icon: String
     let primary: Bool
@@ -266,14 +267,19 @@ struct BigButton: View {
 
     var body: some View {
         Button(action: action) {
+            // Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với đầu nút bo tròn).
+            // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
             HStack(spacing: 10) {
                 Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                     .frame(width: 56, height: 56)
                     .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
+                if primary { Spacer(minLength: 0) }
                 Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
+                if primary { Spacer(minLength: 0) }
             }
-            .padding(.leading, 10).padding(.trailing, 26)
-            .frame(maxWidth: primary ? .infinity : nil, minHeight: 78)   // nút phụ ôm vừa chữ, nút chính lấy phần còn lại, nội dung căn giữa
+            .padding(BigButton.inset)
+            .padding(.trailing, 14)
+            .frame(maxWidth: primary ? .infinity : nil)
             .foregroundStyle(primary ? Palette.ctaInk : .primary)
             .contentShape(Capsule())
             .glassCapsule(tint: primary ? Palette.cta : nil)

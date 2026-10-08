@@ -184,13 +184,15 @@ struct HomeView: View {
         }
     }
 
+    /// Hai nút nổi trên nội dung, nền kính (Liquid Glass trên iOS 26).
     private var dock: some View {
-        HStack(spacing: 12) {
-            BigButton(title: "Lưu", icon: "plus", primary: false) { entry = .new(cat: nil) }
-            BigButton(title: "Quét QR", icon: "qrcode.viewfinder", primary: true) { scanning = true }
+        GlassGroup {
+            HStack(spacing: 12) {
+                BigButton(title: "Lưu", icon: "plus", primary: false) { entry = .new(cat: nil) }
+                BigButton(title: "Quét QR", icon: "qrcode.viewfinder", primary: true) { scanning = true }
+            }
         }
-        .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
-        .background(Palette.bg.ignoresSafeArea(edges: .bottom).overlay(alignment: .top) { Divider() })
+        .padding(.horizontal, 16).padding(.bottom, 8)
     }
 
     private func dayLabel(_ d: Date) -> String {
@@ -249,16 +251,42 @@ struct BigButton: View {
             HStack(spacing: 10) {
                 Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                     .frame(width: 56, height: 56)
-                    .background(primary ? Color.gray.opacity(0.3) : Palette.surface, in: Circle())
+                    .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
                 Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 10)
             .frame(maxWidth: .infinity, minHeight: 78)
             .foregroundStyle(primary ? Palette.ctaInk : .primary)
-            .background(primary ? Palette.cta : Palette.card, in: Capsule())
+            .contentShape(Capsule())
+            .glassCapsule(tint: primary ? Palette.cta : nil)
         }
         .buttonStyle(Pressable())
+    }
+}
+
+/// Gom các nút kính lại để iOS 26 vẽ chung một lớp kính (hai nút gần nhau trông liền mạch).
+struct GlassGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) { GlassEffectContainer(spacing: 12) { content } } else { content }
+    }
+}
+
+extension View {
+    /// Nền kính hình viên thuốc: Liquid Glass trên iOS 26, kính mờ + bóng đổ trên iOS cũ hơn.
+    @ViewBuilder func glassCapsule(tint: Color?) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(tint.map { Glass.regular.tint($0).interactive() } ?? .regular.interactive(), in: Capsule())
+        } else {
+            background {
+                Capsule().fill(.ultraThinMaterial)
+                    .overlay { if let tint { Capsule().fill(tint.opacity(0.92)) } }
+                    .overlay { Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5) }
+                    .shadow(color: .black.opacity(0.15), radius: 14, y: 6)
+            }
+        }
     }
 }
 

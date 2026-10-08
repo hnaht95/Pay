@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01E0A28C224E7B027FF43876 /* Cloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58FCDD317DCE4C3F8181526 /* Cloud.swift */; };
 		1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5CCA8FB4425669D725FC11F /* Assets.xcassets */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
 		5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5F00314D0B8638AAA8CF56 /* EntryView.swift */; };
@@ -32,6 +33,8 @@
 		A2852463900AD9FAE95133FC /* Pay.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5CCA8FB4425669D725FC11F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		ED087675452679C35387B98C /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		F58FCDD317DCE4C3F8181526 /* Cloud.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cloud.swift; sourceTree = "<group>"; };
+		FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pay.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -41,11 +44,13 @@
 				C5CCA8FB4425669D725FC11F /* Assets.xcassets */,
 				670B9C247A53BD43509CC680 /* BankData.swift */,
 				12AB5AFA5A99EE9F7A62F93F /* Category.swift */,
+				F58FCDD317DCE4C3F8181526 /* Cloud.swift */,
 				9C5F00314D0B8638AAA8CF56 /* EntryView.swift */,
 				5CA7538B886B5157A6125740 /* HistoryView.swift */,
 				51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */,
 				323469640D98E325EFD569FA /* Info.plist */,
 				ED087675452679C35387B98C /* Model.swift */,
+				FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */,
 				5EC9417995E09D8907ED785B /* PayApp.swift */,
 				8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */,
 				6710F63C94C742F268FE2D19 /* VietQR.swift */,
@@ -141,6 +146,7 @@
 			files = (
 				BCCC32A2A03A84C57664153D /* BankData.swift in Sources */,
 				E14979FF90B5058C781A6727 /* Category.swift in Sources */,
+				01E0A28C224E7B027FF43876 /* Cloud.swift in Sources */,
 				5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */,
 				DE8ACBD25F257AE1FDA5E3F2 /* HistoryView.swift in Sources */,
 				B7BB8FBA27616CC043B35EEC /* HomeView.swift in Sources */,
@@ -277,6 +283,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Pay/Pay.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -287,7 +294,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.hnaht95.pay;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hnaht95.sochipay;
 				PRODUCT_NAME = Pay;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -298,6 +305,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Pay/Pay.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -308,7 +316,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.hnaht95.pay;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hnaht95.sochipay;
 				PRODUCT_NAME = Pay;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;

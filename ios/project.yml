@@ -14,7 +14,7 @@ targets:
     sources: [Pay]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.pay
+        PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay
         PRODUCT_NAME: Pay
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -22,6 +22,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
+    entitlements:
+      path: Pay/Pay.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.hnaht95.sochipay]
+        com.apple.developer.icloud-services: [CloudDocuments]
+        com.apple.developer.ubiquity-container-identifiers: [iCloud.com.hnaht95.sochipay]
     info:
       path: Pay/Info.plist
       properties:

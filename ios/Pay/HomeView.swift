@@ -45,11 +45,10 @@ struct HomeView: View {
                     recent
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 120)
+                .padding(.bottom, Self.nativeEdge ? 16 : 120)
             }
+            .withDock(dock: dock, fallbackBlur: bottomBlur)
 
-            bottomBlur
-            dock
             ToastView()
                 .padding(.bottom, 108)
         }
@@ -185,7 +184,10 @@ struct HomeView: View {
         }
     }
 
-    /// Lớp mờ dưới đáy: mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
+    /// iOS 26 tự làm mờ mép dưới (scroll edge effect) sau thanh nút, đúng kiểu app hệ thống.
+    static var nativeEdge: Bool { if #available(iOS 26.0, *) { true } else { false } }
+
+    /// Lớp mờ dưới đáy cho iOS cũ hơn 26: mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
     private var bottomBlur: some View {
         Color.clear
             .overlay(alignment: .bottom) {
@@ -278,6 +280,18 @@ struct BigButton: View {
             .glassCapsule(tint: primary ? Palette.cta : nil)
         }
         .buttonStyle(Pressable())
+    }
+}
+
+extension View {
+    /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
+    @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B) -> some View {
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom) { dock }
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
+        } else {
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock } }
+        }
     }
 }
 

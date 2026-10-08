@@ -112,15 +112,20 @@ struct StatsView: View {
         let avg = sum(items) / max(days, 1), prevAvg = sum(prev) / max(prevDays, 1)
         let biggest = items.max { $0.a < $1.a }
         let today = store.total(on: Date()), yesterday = store.total(on: cal.date(byAdding: .day, value: -1, to: Date())!)
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible())], spacing: 14) {
+        // Grid: hai ô cùng hàng cao bằng nhau, chiều cao theo nội dung (không chừa chỗ trống)
+        return Grid(horizontalSpacing: 14, verticalSpacing: 14) {
+            GridRow {
             if isRunning {
                 tile("Hôm nay", "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: "hôm qua")
             } else {
                 tile("Ngày có chi", "calendar", "\(Set(items.map { cal.component(.day, from: $0.date) }).count)/\(days)", delta: nil, note: "")
             }
             tile("TB mỗi ngày", "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: isRunning ? "cùng kỳ" : "tháng trước")
+            }
+            GridRow {
             tile("Lớn nhất", "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil, note: "")
             tile("Số khoản", "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: isRunning ? "cùng kỳ" : "tháng trước")
+            }
         }
     }
 
@@ -132,12 +137,11 @@ struct StatsView: View {
                 Spacer(minLength: 4)
                 iconChip(icon, fg: .primary, bg: Self.chip)
             }
-            Spacer(minLength: 0)
             Text(value).font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.5).lineLimit(1)
-            if let d { deltaPill(d) } else { deltaPill(0).hidden() }
+            if let d { deltaPill(d) }
         }
         .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Self.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 

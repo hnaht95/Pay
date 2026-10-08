@@ -45,6 +45,21 @@ struct Category: Identifiable, Hashable {
     }
 }
 
+/// Hình minh hoạ phẳng của danh mục (Fluent Emoji Flat của Microsoft, giấy phép MIT), trong Assets "cat-<k>".
+/// Danh mục chưa có hình thì hiện emoji.
+struct CategoryIcon: View {
+    let c: Category
+    var size: CGFloat = 28
+
+    var body: some View {
+        if UIImage(named: "cat-\(c.k)") != nil {
+            Image("cat-\(c.k)").resizable().scaledToFit().frame(width: size, height: size)
+        } else {
+            Text(c.icon).font(.system(size: size * 0.85))
+        }
+    }
+}
+
 /// Bỏ dấu tiếng Việt, chữ thường: "Phở Bò" -> "pho bo"
 func strip(_ s: String) -> String {
     s.lowercased().replacingOccurrences(of: "đ", with: "d").folding(options: .diacriticInsensitive, locale: Locale(identifier: "vi_VN"))

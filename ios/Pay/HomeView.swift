@@ -184,7 +184,7 @@ struct HomeView: View {
                 Button { entry = .new(cat: c.k) } label: {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .top) {
-                            Text(c.icon).font(.system(size: 26))
+                            CategoryIcon(c: c, size: 30)
                                 .frame(width: 52, height: 52).background(.white, in: Circle())
                             Spacer()
                             Image(systemName: "plus").font(.system(size: 14, weight: .bold))
@@ -265,7 +265,7 @@ struct ExpenseRow: View {
     var body: some View {
         let c = Category.get(e.c)
         HStack(spacing: 14) {
-            Text(c.icon).font(.system(size: 26))
+            CategoryIcon(c: c, size: 30)
                 .frame(width: 56, height: 56)
                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {

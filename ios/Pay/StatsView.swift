@@ -351,7 +351,7 @@ struct StatsView: View {
                     let v = byCat[c.k]!
                     VStack(spacing: 10) {
                         HStack(spacing: 12) {
-                            Text(c.icon).font(.system(size: 18)).frame(width: 38, height: 38).background(c.color, in: Circle())
+                            CategoryIcon(c: c, size: 22).frame(width: 38, height: 38).background(c.color, in: Circle())
                             Text(c.name).font(.system(size: 16, weight: .medium))
                             Text("\(Int((Double(v) / Double(total) * 100).rounded()))%")
                                 .font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
@@ -388,7 +388,7 @@ struct StatsView: View {
                 ForEach(rows) { e in
                     let c = Category.get(e.c)
                     HStack(spacing: 12) {
-                        Text(c.icon).font(.system(size: 16)).frame(width: 34, height: 34)
+                        CategoryIcon(c: c, size: 20).frame(width: 34, height: 34)
                             .background(c.color, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(e.n?.isEmpty == false ? e.n! : c.name).font(.system(size: 15, weight: .medium)).lineLimit(1)

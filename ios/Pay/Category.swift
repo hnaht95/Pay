@@ -19,6 +19,19 @@ struct Category: Identifiable, Hashable {
 
     static func get(_ k: String?) -> Category { all.first { $0.k == k } ?? all.last! }
 
+    /// Màu đậm dùng cho biểu đồ (màu pastel ở trên quá nhạt để phân biệt). Cùng tông với màu pastel,
+    /// cố định theo danh mục; đã kiểm tra phân biệt được cả khi mù màu, ở chế độ sáng lẫn tối.
+    var chart: Color {
+        switch k {
+        case "an": Color(light: 0xE34948, dark: 0xE34948)
+        case "cafe": Color(light: 0xEDA100, dark: 0xC98500)
+        case "di": Color(light: 0x2A78D6, dark: 0x3987E5)
+        case "mua": Color(light: 0xE87BA4, dark: 0xD55181)
+        case "hd": Color(light: 0x4A3AA7, dark: 0x9085E9)
+        default: Color(light: 0x1BAF7A, dark: 0x199E70)
+        }
+    }
+
     /// Đoán danh mục từ ghi chú / tên quán: lấy từ khoá khớp dài nhất.
     static func guess(_ text: String?) -> String {
         let s = " " + strip(text ?? "").map { $0.isLetter || $0.isNumber || $0 == " " ? String($0) : " " }.joined() + " "

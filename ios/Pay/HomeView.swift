@@ -24,6 +24,7 @@ struct HomeView: View {
     @State private var scanning = false
     @State private var showHistory = false
     @State private var showSettings = false
+    @State private var showStats = false
     @State private var scanned: String?
 
     var body: some View {
@@ -34,7 +35,9 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     header(now)
-                    hero(now).padding(.top, 14)
+                    Button { showStats = true } label: { hero(now) }
+                        .buttonStyle(Pressable())
+                        .padding(.top, 14)
 
                     sectionTitle("Danh mục") { Text("Tháng \(Calendar.current.component(.month, from: now))") }
                     tiles(now)
@@ -62,6 +65,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
+        .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
             quick.pending = nil
@@ -71,9 +75,9 @@ struct HomeView: View {
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
     private func run(_ k: QuickKind) async {
-        let busy = entry != nil || scanning || showHistory || showSettings
+        let busy = entry != nil || scanning || showHistory || showSettings || showStats
         if k == .scan && scanning { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false
+        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true
@@ -91,6 +95,12 @@ struct HomeView: View {
                 .font(.system(size: 15)).foregroundStyle(.secondary)
                 .padding(.horizontal, 14).padding(.vertical, 8)
                 .background(Palette.pill, in: Capsule())
+            Button { showStats = true } label: {
+                Image(systemName: "chart.bar.xaxis").font(.system(size: 18, weight: .medium))
+                    .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+            }
+            .foregroundStyle(.primary)
+            .accessibilityLabel("Thống kê")
             Button { showSettings = true } label: {
                 Image(systemName: "gearshape").font(.system(size: 18, weight: .medium))
                     .frame(width: 42, height: 42).background(Palette.pill, in: Circle())

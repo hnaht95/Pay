@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		01E0A28C224E7B027FF43876 /* Cloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58FCDD317DCE4C3F8181526 /* Cloud.swift */; };
+		1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D89B234044050006AE979177 /* StatsView.swift */; };
 		1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5CCA8FB4425669D725FC11F /* Assets.xcassets */; };
 		28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
@@ -72,6 +73,7 @@
 		C495C9B5ABDB2E162467B1A8 /* PayWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PayWidget.entitlements; sourceTree = "<group>"; };
 		C52368CCF0CD05A29F53F06A /* PayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayWidget.swift; sourceTree = "<group>"; };
 		C5CCA8FB4425669D725FC11F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D89B234044050006AE979177 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		DA4B5C6B3F3A1E13827F11A9 /* PayWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PayWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E141264B0193BD7C93AC85D7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		ED087675452679C35387B98C /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
@@ -98,6 +100,7 @@
 				1A44344E8096362017AC591B /* QuickParse.swift */,
 				8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */,
 				E141264B0193BD7C93AC85D7 /* SettingsView.swift */,
+				D89B234044050006AE979177 /* StatsView.swift */,
 				6710F63C94C742F268FE2D19 /* VietQR.swift */,
 			);
 			path = Pay;
@@ -248,6 +251,7 @@
 				AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */,
 				9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */,
 				9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */,
+				1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */,
 				E1C3818D189576DA486E6398 /* Summary.swift in Sources */,
 				E1C4BAAEA60CC5544DE0C0EF /* VietQR.swift in Sources */,
 			);

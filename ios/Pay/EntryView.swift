@@ -37,7 +37,7 @@ struct EntryView: View {
                 .focused($noteFocused)
                 .submitLabel(.done)
                 .padding(.horizontal, 18).padding(.vertical, 15)
-                .background(Palette.pill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .padding(.top, 12)
                 .onChange(of: note) { _, v in
                     guard !catPicked else { return }
@@ -98,15 +98,17 @@ struct EntryView: View {
                 HStack(spacing: 8) {
                     ForEach(Category.all) { c in
                         Button { cat = c.k; catPicked = true } label: {
+                            let on = cat == c.k
+                            // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
                             HStack(spacing: 8) {
-                                Text(c.icon).font(.system(size: 18)).frame(width: 36, height: 36).background(c.color, in: Circle())
-                                Text(c.name).font(.system(size: 17, weight: .medium))
+                                Text(c.icon).font(.system(size: 18)).frame(width: 36, height: 36)
+                                    .background(on ? Color.white.opacity(0.7) : c.color, in: Circle())
+                                Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
                             }
                             .padding(.leading, 6).padding(.trailing, 16).padding(.vertical, 6)
-                            .background(cat == c.k ? Color.clear : Palette.pill, in: Capsule())
-                            .overlay(Capsule().strokeBorder(cat == c.k ? Color.primary : .clear, lineWidth: 2))
+                            .foregroundStyle(on ? Color.black : Color.primary)
+                            .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
-                        .foregroundStyle(.primary)
                         .id(c.k)
                     }
                 }

@@ -7,6 +7,8 @@ struct StatsView: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
     @State private var month = Date()
+    /// Tháng cuối của khung 6 tháng đang hiện (thanh chọn tháng + biểu đồ 6 tháng)
+    @State private var windowEnd = Date()
 
     private let cal = Calendar.current
 
@@ -47,26 +49,57 @@ struct StatsView: View {
 
     // MARK: Chọn tháng (dạng tab, tháng đang chọn là viên thuốc đậm)
 
+    /// 6 tháng của khung đang xem, cũ trước mới sau.
+    private var windowMonths: [Date] {
+        (0..<6).reversed().map { cal.date(from: cal.dateComponents([.year, .month], from: cal.date(byAdding: .month, value: -$0, to: windowEnd)!))! }
+    }
+
+    private var atLatest: Bool { cal.isDate(windowEnd, equalTo: Date(), toGranularity: .month) }
+
+    /// Lùi / tiến cả khung 6 tháng; tháng đang xem nhảy theo nếu rơi ra ngoài khung.
+    private func page(_ n: Int) {
+        var end = cal.date(byAdding: .month, value: 6 * n, to: windowEnd)!
+        if end > Date() { end = Date() }
+        windowEnd = end
+        if !windowMonths.contains(where: { isSelected($0) }) { month = windowMonths.last! }
+    }
+
     private var monthTabs: some View {
-        // 6 tháng gần nhất, chia đều chiều ngang (khớp với biểu đồ 6 tháng), không cuộn nên không bị cắt chữ
-        let months = (0..<6).reversed().map { cal.date(byAdding: .month, value: -$0, to: Date())! }
-        return HStack(spacing: 4) {
-            ForEach(months, id: \.self) { m in
-                let on = cal.isDate(m, equalTo: month, toGranularity: .month)
+        // 6 tháng chia đều; ‹ › để lùi / tiến cả khung 6 tháng
+        HStack(spacing: 2) {
+            pageButton("chevron.left", label: "6 tháng trước") { page(-1) }
+            ForEach(windowMonths, id: \.self) { m in
+                let on = isSelected(m)
+                let otherYear = cal.component(.year, from: m) != cal.component(.year, from: Date())
                 Button { month = m } label: {
-                    Text(shortMonth(m))
-                        .font(.system(size: 15, weight: on ? .semibold : .regular))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .foregroundStyle(on ? Self.inkText : Color.secondary)
-                        .background(on ? Self.ink : .clear, in: Capsule())
-                        .contentShape(Capsule())
+                    VStack(spacing: 0) {
+                        Text(shortMonth(m)).font(.system(size: 15, weight: on ? .semibold : .regular))
+                        if otherYear { Text(String(cal.component(.year, from: m))).font(.system(size: 10)).opacity(0.8) }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .foregroundStyle(on ? Self.inkText : Color.secondary)
+                    .background(on ? Self.ink : .clear, in: Capsule())
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
+            pageButton("chevron.right", label: "6 tháng sau") { page(1) }
+                .disabled(atLatest)
+                .opacity(atLatest ? 0.3 : 1)
         }
         .padding(4)
         .background(Self.card, in: Capsule())
+    }
+
+    private func pageButton(_ symbol: String, label: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                .frame(width: 32, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        .accessibilityLabel(label)
     }
 
     // MARK: Thẻ cam: tổng chi tháng
@@ -194,12 +227,11 @@ struct StatsView: View {
     }
 
     private var trendCard: some View {
-        // Luôn là 6 tháng gần nhất; tháng đang xem chỉ được tô đậm
-        let bars: [MonthBar] = (0..<6).reversed().map { i in
-            let m = cal.date(byAdding: .month, value: -i, to: Date())!
+        // Cùng khung 6 tháng với thanh chọn tháng; tháng đang xem được tô đậm
+        let bars: [MonthBar] = windowMonths.map { m in
             let items = store.monthItems(m)
             let bills = sum(items.filter { $0.c == "hd" })
-            return MonthBar(date: cal.date(from: cal.dateComponents([.year, .month], from: m))!, bills: bills, other: sum(items) - bills)
+            return MonthBar(date: m, bills: bills, other: sum(items) - bills)
         }
         let top = max(bars.map(\.total).max() ?? 0, 1)
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quay về Pay</title>
+<style>
+  :root { --bg: #f4f5f8; --ink: #111114; --muted: #8a8d96; --cta: #111114; --cta-ink: #fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0d0d10; --ink: #f5f5f7; --cta: #fff; --cta-ink: #111114; } }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: var(--bg); color: var(--ink); font: 17px -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 0 16px; }
+  a { display: inline-block; margin-top: 18px; padding: 20px 40px; border-radius: 999px; background: var(--cta); color: var(--cta-ink); text-decoration: none; font-weight: 600; font-size: 19px; }
+  p { color: var(--muted); }
+</style>
+</head>
+<body>
+<div>
+  <div style="font-size:22px;font-weight:700">Đã chuyển khoản xong</div>
+  <p>Bấm nút dưới để quay về app Pay.</p>
+  <a href="sochipay://done">Mở Pay</a>
+</div>
+<script>location.href = 'sochipay://done';</script>
+</body>
+</html>

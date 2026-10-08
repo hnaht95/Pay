@@ -1,0 +1,63 @@
+import SwiftUI
+
+struct Category: Identifiable, Hashable {
+    let k: String
+    let icon: String
+    let name: String
+    let color: Color
+    let kw: [String]
+    var id: String { k }
+
+    static let all: [Category] = [
+        Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa"]),
+        Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la"]),
+        Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot"]),
+        Category(k: "mua", icon: "🛍️", name: "Mua sắm", color: Color(hex: 0xFFD3E6), kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "cho"]),
+        Category(k: "hd", icon: "🧾", name: "Hoá đơn", color: Color(hex: 0xE2DBFF), kw: ["dien", "tien nuoc", "internet", "wifi", "mang", "4g", "5g", "dien thoai", "nap tien", "tien nha", "thue nha", "phong", "hoc phi", "evn", "viettel", "vnpt", "fpt", "mobifone", "vinaphone", "netflix", "spotify", "youtube", "icloud", "bao hiem", "chung cu", "phi dich vu"]),
+        Category(k: "khac", icon: "📌", name: "Khác", color: Color(hex: 0xCFEEDD), kw: []),
+    ]
+
+    static func get(_ k: String?) -> Category { all.first { $0.k == k } ?? all.last! }
+
+    /// Đoán danh mục từ ghi chú / tên quán: lấy từ khoá khớp dài nhất.
+    static func guess(_ text: String?) -> String {
+        let s = " " + strip(text ?? "").map { $0.isLetter || $0.isNumber || $0 == " " ? String($0) : " " }.joined() + " "
+        var best = "khac", len = 0
+        for c in all {
+            for w in c.kw where s.contains(" \(w) ") && w.count > len {
+                best = c.k; len = w.count
+            }
+        }
+        return best
+    }
+}
+
+/// Bỏ dấu tiếng Việt, chữ thường: "Phở Bò" -> "pho bo"
+func strip(_ s: String) -> String {
+    s.lowercased().replacingOccurrences(of: "đ", with: "d").folding(options: .diacriticInsensitive, locale: Locale(identifier: "vi_VN"))
+}
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    }
+
+    /// Màu đổi theo sáng / tối
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { $0.userInterfaceStyle == .dark ? UIColor(Color(hex: dark)) : UIColor(Color(hex: light)) })
+    }
+}
+
+/// Bảng màu phẳng, giống bản web
+enum Palette {
+    static let bg = Color(light: 0xF4F5F8, dark: 0x0D0D10)
+    static let surface = Color(light: 0xFFFFFF, dark: 0x17171B)
+    static let card = Color(light: 0xEBEDF2, dark: 0x1D1D22)
+    static let pill = Color(light: 0xE6E8EE, dark: 0x26262C)
+    static let hero = Color(light: 0xDFE5FF, dark: 0x242B4D)
+    static let good = Color(light: 0xDFF3E3, dark: 0x1F3A27)
+    static let goodInk = Color(light: 0x2F7A43, dark: 0x8FDCA3)
+    static let cta = Color(light: 0x111114, dark: 0xFFFFFF)
+    static let ctaInk = Color(light: 0xFFFFFF, dark: 0x111114)
+    static let danger = Color(light: 0xD92D20, dark: 0xFF6B5E)
+}

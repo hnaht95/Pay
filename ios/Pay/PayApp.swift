@@ -22,7 +22,7 @@ struct PayShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: ScanIntent(), phrases: ["Quét QR bằng \(.applicationName)", "\(.applicationName) quét QR"],
                     shortTitle: "Quét QR", systemImageName: "qrcode.viewfinder")
-        AppShortcut(intent: AddIntent(), phrases: ["Ghi chi tiêu bằng \(.applicationName)", "\(.applicationName) ghi khoản chi"],
-                    shortTitle: "Ghi khoản chi", systemImageName: "plus")
+        AppShortcut(intent: AddIntent(), phrases: ["Nhập chi tiêu bằng \(.applicationName)", "\(.applicationName) nhập khoản chi"],
+                    shortTitle: "Nhập khoản chi", systemImageName: "plus")
     }
 }

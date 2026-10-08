@@ -34,7 +34,7 @@ struct ScanIntent: AppIntent {
 }
 
 struct AddIntent: AppIntent {
-    static let title: LocalizedStringResource = "Ghi khoản chi"
+    static let title: LocalizedStringResource = "Nhập khoản chi"
     static let description = IntentDescription("Mở Pay và nhập ngay một khoản chi.")
     static let openAppWhenRun = true
 

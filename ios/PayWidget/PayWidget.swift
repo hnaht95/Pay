@@ -40,7 +40,7 @@ struct SpendWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "SpendWidget", provider: SpendProvider()) { SpendView(e: $0) }
             .configurationDisplayName("Chi tiêu hôm nay")
-            .description("Xem nhanh số đã chi, chạm để quét QR hoặc ghi khoản mới.")
+            .description("Xem nhanh số đã chi, chạm để quét QR hoặc nhập khoản mới.")
             .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }
@@ -67,7 +67,7 @@ struct SpendView: View {
                 totals.frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: 10) {
                     action("Quét QR", "qrcode.viewfinder", .scan, primary: true)
-                    action("Ghi", "plus", .add, primary: false)
+                    action("Nhập", "plus", .add, primary: false)
                 }
                 .frame(width: 118)
             }

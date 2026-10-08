@@ -206,7 +206,7 @@ struct HomeView: View {
     private var dock: some View {
         GlassGroup {
             HStack(spacing: 12) {
-                BigButton(title: "Lưu", icon: "plus", primary: false) { entry = .new(cat: nil) }
+                BigButton(title: "Nhập", icon: "plus", primary: false) { entry = .new(cat: nil) }
                 BigButton(title: "Quét QR", icon: "qrcode.viewfinder", primary: true) { scanning = true }
             }
         }
@@ -271,10 +271,9 @@ struct BigButton: View {
                     .frame(width: 56, height: 56)
                     .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
                 Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 78)
+            .padding(.leading, 10).padding(.trailing, 26)
+            .frame(maxWidth: primary ? .infinity : nil, minHeight: 78)   // nút phụ ôm vừa chữ, nút chính lấy phần còn lại, nội dung căn giữa
             .foregroundStyle(primary ? Palette.ctaInk : .primary)
             .contentShape(Capsule())
             .glassCapsule(tint: primary ? Palette.cta : nil)

@@ -125,9 +125,9 @@ struct HomeView: View {
             .padding(.top, 10).padding(.bottom, 14)
             HStack {
                 Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))đ")
-                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(Palette.goodInk)
+                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Palette.good, in: Capsule())
+                    .background(Palette.surface.opacity(0.85), in: Capsule())
                     .lineLimit(1)
                 Spacer()
                 if n > 0 { Text("\(n) khoản").font(.system(size: 15)).foregroundStyle(.secondary) }
@@ -142,9 +142,11 @@ struct HomeView: View {
     /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
     private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            BudgetBar(s: b, height: 10)
-            HStack {
-                Text(b.label).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.color)
+            BudgetBar(s: b, height: 10, track: Palette.surface.opacity(0.7))
+            HStack(spacing: 4) {
+                // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
+                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
+                Text(b.label).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
                 Spacer()
                 Text(b.level == .over ? "Ngân sách \(fmt(b.budget))đ" : "~\(fmt(b.perDay(at: now)))đ/ngày")
                     .font(.system(size: 15)).foregroundStyle(.secondary)

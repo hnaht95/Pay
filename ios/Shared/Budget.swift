@@ -34,11 +34,12 @@ struct BudgetStatus {
 struct BudgetBar: View {
     let s: BudgetStatus
     var height: CGFloat = 8
+    var track: Color = Color.primary.opacity(0.1)
 
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.primary.opacity(0.1))
+                Capsule().fill(track)
                 Capsule().fill(s.color).frame(width: max(height, g.size.width * min(s.ratio, 1)))
             }
         }

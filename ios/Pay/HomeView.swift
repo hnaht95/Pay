@@ -88,27 +88,35 @@ struct HomeView: View {
     // MARK: Các phần
 
     private func header(_ now: Date) -> some View {
-        HStack {
+        HStack(spacing: 8) {
             Text("Pay").font(.system(size: 28, weight: .bold))
             Spacer()
             Text(dayLabel(now))
-                .font(.system(size: 15)).foregroundStyle(.secondary)
-                .padding(.horizontal, 14).padding(.vertical, 8)
+                .font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .frame(height: Self.headerSize)
                 .background(Palette.pill, in: Capsule())
-            Button { showStats = true } label: {
-                Image(systemName: "chart.bar.xaxis").font(.system(size: 18, weight: .medium))
-                    .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
-            }
-            .foregroundStyle(.primary)
-            .accessibilityLabel("Thống kê")
-            Button { showSettings = true } label: {
-                Image(systemName: "gearshape").font(.system(size: 18, weight: .medium))
-                    .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
-            }
-            .foregroundStyle(.primary)
-            .accessibilityLabel("Cài đặt")
+            headerButton("chart.bar.fill", "Thống kê") { showStats = true }
+            headerButton("gearshape.fill", "Cài đặt") { showSettings = true }
         }
         .padding(.top, 8)
+    }
+
+    /// Cao của mọi thứ trên thanh đầu trang: nhãn ngày và các nút tròn.
+    private static let headerSize: CGFloat = 42
+
+    /// Nút tròn trên thanh đầu trang: biểu tượng tô đặc, cùng kích thước.
+    private func headerButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Image(systemName: symbol)
+                .resizable().scaledToFit()
+                .fontWeight(.semibold)
+                .frame(width: 18, height: 18)   // mọi biểu tượng vừa trong cùng ô 18×18 nên to bằng nhau
+                .frame(width: Self.headerSize, height: Self.headerSize)
+                .background(Palette.pill, in: Circle())
+        }
+        .foregroundStyle(.primary)
+        .accessibilityLabel(label)
     }
 
     private func hero(_ now: Date) -> some View {

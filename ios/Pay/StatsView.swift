@@ -146,20 +146,23 @@ struct StatsView: View {
         return Grid(horizontalSpacing: 14, verticalSpacing: 14) {
             GridRow {
             if isRunning {
-                tile("Hôm nay", "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: "hôm qua")
+                tile("Hôm nay", "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: "chưa có để so")
             } else {
-                tile("Ngày có chi", "calendar", "\(Set(items.map { cal.component(.day, from: $0.date) }).count)/\(days)", delta: nil, note: "")
+                let active = Set(items.map { cal.component(.day, from: $0.date) }).count
+                tile("Ngày có chi", "calendar", "\(active)/\(days)", delta: nil, note: "\(active * 100 / max(days, 1))% số ngày")
             }
-            tile("TB mỗi ngày", "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: isRunning ? "cùng kỳ" : "tháng trước")
+            tile("TB mỗi ngày", "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: "chưa có để so")
             }
             GridRow {
-            tile("Lớn nhất", "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil, note: "")
-            tile("Số khoản", "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: isRunning ? "cùng kỳ" : "tháng trước")
+            tile("Lớn nhất", "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil,
+                 note: biggest.map { $0.n?.isEmpty == false ? $0.n! : Category.get($0.c).name } ?? "chưa có")
+            tile("Số khoản", "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: "chưa có để so")
             }
         }
     }
 
-    /// Ô số liệu tối giản: tên + biểu tượng, con số, nhãn % (nếu có). note giữ cho đủ tham số, không hiện.
+    /// Ô số liệu tối giản: tên + biểu tượng, con số, và luôn một nhãn ở đáy: % nếu có so sánh, không thì nhãn xám ghi note.
+    /// Nhờ vậy hai ô cùng hàng luôn cao bằng nhau mà không ô nào bị trống đáy.
     private func tile(_ title: String, _ icon: String, _ value: String, delta d: Int?, note: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             // Chữ tiêu đề nằm sát mép trên như lề trái/dưới; biểu tượng tròn lùi lên góc
@@ -169,7 +172,7 @@ struct StatsView: View {
                 iconChip(icon, fg: .primary, bg: Self.chip).padding(.top, 0.5).padding(.trailing, -1.5)   // cách mép trên và phải đều ~16,5pt (đã đo)
             }
             Text(value).font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.5).lineLimit(1)
-            if let d { deltaPill(d) }
+            if let d { deltaPill(d) } else { notePill(note) }
         }
         .padding(18)
         .padding(.top, 2.5)   // đỉnh chữ tiêu đề cách mép trên ~18,5pt, bằng lề trái/dưới (đã đo trên ảnh chụp)
@@ -185,6 +188,16 @@ struct StatsView: View {
             .foregroundStyle(up ? Color(light: 0xB42318, dark: 0xFF8A80) : Color(light: 0x067647, dark: 0x6CE9A6))
             .padding(.horizontal, 7).padding(.vertical, 3)
             .background((up ? Color.red : Color.green).opacity(0.14), in: Capsule())
+    }
+
+    /// Nhãn xám cùng cỡ với nhãn %, cho ô không có gì để so.
+    private func notePill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(Self.chip, in: Capsule())
     }
 
     // MARK: Hạn mức tháng

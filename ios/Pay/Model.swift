@@ -71,6 +71,14 @@ struct Backup: Codable {
     }
 }
 
+/// Trạng thái đồng bộ iCloud để hiện trong Cài đặt.
+enum CloudState: Equatable {
+    case off                 // người dùng tắt
+    case connecting
+    case unavailable         // máy chưa đăng nhập iCloud / bản build không có quyền iCloud
+    case on(last: Date?)     // đang đồng bộ; lần đọc/ghi gần nhất
+}
+
 struct Toast: Identifiable {
     let id = UUID()
     let message: String
@@ -87,6 +95,13 @@ final class Store: ObservableObject {
     @Published var toast: Toast?
     private var deleted: [String: Double] = [:]
     private let cloud = Cloud()
+    @Published private(set) var cloudState: CloudState = .connecting
+    @Published var cloudOn: Bool = UserDefaults.standard.object(forKey: "cloudSync") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(cloudOn, forKey: "cloudSync")
+            Task { await applyCloud() }
+        }
+    }
 
     private let fileURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -99,7 +114,25 @@ final class Store: ObservableObject {
             apply(b)
         }
         refreshWidget()
-        Task { await cloud.start { [weak self] remote in self?.absorb(remote) } }
+        cloud.onSynced = { [weak self] in self?.cloudState = .on(last: Date()) }
+        Task { await applyCloud() }
+    }
+
+    /// Bật / tắt đồng bộ theo công tắc trong Cài đặt.
+    private func applyCloud() async {
+        guard cloudOn else { cloud.stop(); cloudState = .off; return }
+        if cloud.active { return }
+        cloudState = .connecting
+        let ok = await cloud.start { [weak self] remote in self?.absorb(remote) }
+        if !cloudOn { cloud.stop(); cloudState = .off; return }   // vừa tắt trong lúc đang kết nối
+        cloudState = ok ? .on(last: nil) : .unavailable
+    }
+
+    /// Nút "Đồng bộ ngay": đẩy bản máy này lên rồi đọc lại bản trên iCloud.
+    func syncNow() async {
+        guard cloud.active else { await applyCloud(); return }
+        cloud.push(snapshot)
+        await cloud.pull()
     }
 
     private var snapshot: Backup { Backup(items: items, memo: memo, deleted: deleted) }
@@ -169,6 +202,15 @@ final class Store: ObservableObject {
                 self.persist()
             }
         }
+    }
+
+    /// Xoá mọi khoản chi (có dấu xoá nên các máy đồng bộ iCloud cũng xoá theo). Giữ ghi nhớ người nhận.
+    func eraseAll() {
+        let t = now
+        for e in items { deleted[e.id] = t }
+        items = []
+        persist()
+        show("Đã xoá tất cả khoản chi")
     }
 
     func remember(_ key: String, _ m: Memo) {

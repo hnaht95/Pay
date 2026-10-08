@@ -48,6 +48,7 @@ struct HomeView: View {
                 .padding(.bottom, 120)
             }
 
+            bottomBlur
             dock
             ToastView()
                 .padding(.bottom, 108)
@@ -182,6 +183,21 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    /// Lớp mờ dưới đáy: mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
+    private var bottomBlur: some View {
+        Color.clear
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Palette.bg.opacity(0.5))
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.4), .init(color: .clear, location: 1)],
+                                         startPoint: .bottom, endPoint: .top))
+                    .frame(height: 190)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 
     /// Hai nút nổi trên nội dung, nền kính (Liquid Glass trên iOS 26).

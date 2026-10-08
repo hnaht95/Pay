@@ -16,6 +16,7 @@ struct SettingsView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
 
+                budgetSection
                 cloudSection
                 bankSection
 
@@ -80,6 +81,52 @@ struct SettingsView: View {
         }
         .padding(16)
         .background(Palette.hero, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    // MARK: Ngân sách
+
+    private var budgetSection: some View {
+        Section {
+            HStack {
+                icon("chart.pie.fill", .pink)
+                Text("Ngân sách tháng").lineLimit(1).layoutPriority(1).padding(.leading, 8)
+                Spacer(minLength: 8)
+                TextField("Chưa đặt", value: budgetValue, format: .number.locale(Locale(identifier: "vi_VN")))
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(minWidth: 60, maxWidth: 130)
+                Text("đ").foregroundStyle(.secondary)
+            }
+            HStack(spacing: 8) {
+                ForEach([3, 5, 8, 10, 15], id: \.self) { tr in
+                    Button("\(tr)tr") { store.budget = tr * 1_000_000 }
+                        .font(.system(size: 15, weight: .medium))
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(store.budget == tr * 1_000_000 ? Color.pink.opacity(0.2) : Color.primary.opacity(0.06), in: Capsule())
+                        .buttonStyle(.plain)
+                }
+                Spacer(minLength: 0)
+                if store.budget > 0 {
+                    Button("Bỏ") { store.budget = 0 }.font(.system(size: 15)).foregroundStyle(.red).buttonStyle(.plain)
+                }
+            }
+            if let b = store.budgetStatus() {
+                VStack(alignment: .leading, spacing: 6) {
+                    BudgetBar(s: b)
+                    Text("\(b.label) · đã dùng \(Int((b.ratio * 100).rounded()))%").font(.system(size: 14)).foregroundStyle(b.color)
+                }
+                .padding(.vertical, 4)
+            }
+        } header: {
+            Text("Ngân sách")
+        } footer: {
+            Text("Màn hình chính và widget hiện số còn lại và mức nên tiêu mỗi ngày. Dùng từ 80% thì chuyển màu cam, vượt thì màu đỏ.")
+        }
+    }
+
+    /// 0 hiện là ô trống "Chưa đặt".
+    private var budgetValue: Binding<Int?> {
+        Binding(get: { store.budget > 0 ? store.budget : nil }, set: { store.budget = max($0 ?? 0, 0) })
     }
 
     // MARK: iCloud
@@ -189,16 +236,21 @@ struct SettingsView: View {
 
     // MARK: Phụ
 
-    private func row(_ title: String, _ icon: String, _ color: Color, destructive: Bool = false) -> some View {
+    private func row(_ title: String, _ symbol: String, _ color: Color, destructive: Bool = false) -> some View {
         Label {
             Text(title).foregroundStyle(destructive ? Color.red : Color.primary)
         } icon: {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 29, height: 29)
-                .background(color, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            icon(symbol, color)
         }
+    }
+
+    /// Ô vuông màu có biểu tượng trắng, kiểu Cài đặt của iPhone.
+    private func icon(_ symbol: String, _ color: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 29, height: 29)
+            .background(color, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 
     private var version: String {
@@ -228,17 +280,27 @@ struct QuickAccessHelp: View {
             }
 
             Section {
-                step(1, "Mở Cài đặt › Nút Tác vụ.")
-                step(2, "Vuốt đến Điều khiển, bấm Chọn điều khiển.")
-                step(3, "Tìm \"Pay: Quét QR\". Từ giờ nhấn giữ nút Tác vụ là mở camera quét ngay.")
+                step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Phím tắt.")
+                step(2, "Bấm Chọn phím tắt › Pay › Ghi chi tiêu.")
+                step(3, "Nhấn giữ nút Tác vụ, nói \"35k cafe\" là ghi xong, không cần mở app.")
             } header: {
-                Label("Nút Tác vụ (iPhone 15 Pro trở lên)", systemImage: "button.vertical.left.press.fill")
+                Label("Nút Tác vụ: ghi bằng giọng nói", systemImage: "mic.fill")
             } footer: {
-                Text("Cần iOS 18 trở lên. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển.")
+                Text("Cần iPhone 15 Pro trở lên. Nói được nhiều kiểu: \"35 nghìn cà phê\", \"1tr2 tiền nhà\", \"grab 52k\". Danh mục tự đoán theo ghi chú.")
             }
 
             Section {
-                step(1, "Nói \"Quét QR bằng Pay\" hoặc \"Nhập chi tiêu bằng Pay\" với Siri.")
+                step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Điều khiển.")
+                step(2, "Bấm Chọn điều khiển, tìm \"Pay: Quét QR\".")
+                step(3, "Nhấn giữ nút Tác vụ là mở camera quét ngay.")
+            } header: {
+                Label("Nút Tác vụ: quét QR", systemImage: "qrcode.viewfinder")
+            } footer: {
+                Text("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói hoặc quét QR. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển.")
+            }
+
+            Section {
+                step(1, "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\".")
                 step(2, "Hoặc mở app Phím tắt, hai lệnh này có sẵn trong mục Pay.")
             } header: {
                 Label("Siri và Phím tắt", systemImage: "wand.and.stars")

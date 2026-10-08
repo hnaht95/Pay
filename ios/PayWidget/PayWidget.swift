@@ -19,7 +19,7 @@ struct SpendEntry: TimelineEntry {
 
 struct SpendProvider: TimelineProvider {
     func placeholder(in context: Context) -> SpendEntry {
-        SpendEntry(date: Date(), s: Summary(today: 125_000, month: 3_450_000, count: 3, day: Date()))
+        SpendEntry(date: Date(), s: Summary(today: 125_000, month: 3_450_000, count: 3, day: Date(), budget: 8_000_000))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SpendEntry) -> Void) {
@@ -81,7 +81,7 @@ struct SpendView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Label("Hôm nay", systemImage: "qrcode.viewfinder").font(.caption)
                 Text("\(fmt(e.s.today))đ").font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
-                Text("Tháng: \(fmt(e.s.month))đ").font(.caption2).lineLimit(1)
+                Text(e.s.budgetStatus.map(\.label) ?? "Tháng: \(fmt(e.s.month))đ").font(.caption2).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(QuickKind.scan.url)
@@ -110,9 +110,15 @@ struct SpendView: View {
                 Text("đ").font(.system(size: 16, weight: .semibold)).foregroundStyle(.secondary)
             }
             .minimumScaleFactor(0.5).lineLimit(1)
-            Text("Tháng \(Calendar.current.component(.month, from: e.date)): \(fmt(e.s.month))đ")
-                .font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
-                .minimumScaleFactor(0.7).lineLimit(1)
+            if let b = e.s.budgetStatus {
+                Text(b.label).font(.system(size: 13, weight: .semibold)).foregroundStyle(b.color)
+                    .minimumScaleFactor(0.7).lineLimit(1)
+                BudgetBar(s: b, height: 5)
+            } else {
+                Text("Tháng \(Calendar.current.component(.month, from: e.date)): \(fmt(e.s.month))đ")
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+                    .minimumScaleFactor(0.7).lineLimit(1)
+            }
         }
     }
 

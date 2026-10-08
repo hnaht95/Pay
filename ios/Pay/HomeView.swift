@@ -122,10 +122,25 @@ struct HomeView: View {
                 Spacer()
                 if n > 0 { Text("\(n) khoản").font(.system(size: 15)).foregroundStyle(.secondary) }
             }
+            if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.hero, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+    }
+
+    /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
+    private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            BudgetBar(s: b, height: 10)
+            HStack {
+                Text(b.label).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.color)
+                Spacer()
+                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))đ" : "~\(fmt(b.perDay(at: now)))đ/ngày")
+                    .font(.system(size: 15)).foregroundStyle(.secondary)
+            }
+            .lineLimit(1).minimumScaleFactor(0.8)
+        }
     }
 
     private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {

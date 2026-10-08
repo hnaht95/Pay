@@ -9,14 +9,17 @@
 /* Begin PBXBuildFile section */
 		01E0A28C224E7B027FF43876 /* Cloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58FCDD317DCE4C3F8181526 /* Cloud.swift */; };
 		1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5CCA8FB4425669D725FC11F /* Assets.xcassets */; };
+		28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
 		5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5F00314D0B8638AAA8CF56 /* EntryView.swift */; };
 		79B85BA7716448436AB6F746 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED087675452679C35387B98C /* Model.swift */; };
 		91C3E24BBC0387D5264FA56D /* PayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C52368CCF0CD05A29F53F06A /* PayWidget.swift */; };
 		9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E141264B0193BD7C93AC85D7 /* SettingsView.swift */; };
 		9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */; };
+		A545C30BDF4D6CF5519EA278 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
 		ACA5747DA4A0AE572D34F222 /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44363C52BE264A2C9A5D3E8D /* QuickAction.swift */; };
 		AE1526A32B9A892E36FFC96F /* PayWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA4B5C6B3F3A1E13827F11A9 /* PayWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A44344E8096362017AC591B /* QuickParse.swift */; };
 		B7BB8FBA27616CC043B35EEC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */; };
 		BCCC32A2A03A84C57664153D /* BankData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670B9C247A53BD43509CC680 /* BankData.swift */; };
 		DE8ACBD25F257AE1FDA5E3F2 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA7538B886B5157A6125740 /* HistoryView.swift */; };
@@ -52,7 +55,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0ED480E454B97B65E2A4153C /* Budget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Budget.swift; sourceTree = "<group>"; };
 		12AB5AFA5A99EE9F7A62F93F /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
+		1A44344E8096362017AC591B /* QuickParse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickParse.swift; sourceTree = "<group>"; };
 		323469640D98E325EFD569FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		44363C52BE264A2C9A5D3E8D /* QuickAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAction.swift; sourceTree = "<group>"; };
 		51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -90,6 +95,7 @@
 				ED087675452679C35387B98C /* Model.swift */,
 				FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */,
 				5EC9417995E09D8907ED785B /* PayApp.swift */,
+				1A44344E8096362017AC591B /* QuickParse.swift */,
 				8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */,
 				E141264B0193BD7C93AC85D7 /* SettingsView.swift */,
 				6710F63C94C742F268FE2D19 /* VietQR.swift */,
@@ -110,6 +116,7 @@
 		77435D60E22E2FBAF952E75B /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				0ED480E454B97B65E2A4153C /* Budget.swift */,
 				44363C52BE264A2C9A5D3E8D /* QuickAction.swift */,
 				F129DFA9AABEFF1CFB450789 /* Summary.swift */,
 			);
@@ -229,6 +236,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BCCC32A2A03A84C57664153D /* BankData.swift in Sources */,
+				A545C30BDF4D6CF5519EA278 /* Budget.swift in Sources */,
 				E14979FF90B5058C781A6727 /* Category.swift in Sources */,
 				01E0A28C224E7B027FF43876 /* Cloud.swift in Sources */,
 				5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */,
@@ -237,6 +245,7 @@
 				79B85BA7716448436AB6F746 /* Model.swift in Sources */,
 				40405BB47395FF979965CD24 /* PayApp.swift in Sources */,
 				F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */,
+				AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */,
 				9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */,
 				9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */,
 				E1C3818D189576DA486E6398 /* Summary.swift in Sources */,
@@ -248,6 +257,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */,
 				91C3E24BBC0387D5264FA56D /* PayWidget.swift in Sources */,
 				ACA5747DA4A0AE572D34F222 /* QuickAction.swift in Sources */,
 				FF57A27DDE16FAD031AE7639 /* Summary.swift in Sources */,

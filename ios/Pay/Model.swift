@@ -87,12 +87,19 @@ struct Toast: Identifiable {
 
 @MainActor
 final class Store: ObservableObject {
+    /// Dùng chung cho app và lệnh Siri (Siri có thể ghi khi app chưa mở giao diện).
+    static let shared = Store()
+
     @Published private(set) var items: [Expense] = []
     @Published var memo: [String: Memo] = [:]
     @Published var appId: String = UserDefaults.standard.string(forKey: "bankApp") ?? "acb" {
         didSet { UserDefaults.standard.set(appId, forKey: "bankApp") }
     }
     @Published var toast: Toast?
+    /// Ngân sách tháng (đồng), 0 = không đặt.
+    @Published var budget: Int = UserDefaults.standard.integer(forKey: "budget") {
+        didSet { UserDefaults.standard.set(budget, forKey: "budget"); refreshWidget() }
+    }
     private var deleted: [String: Double] = [:]
     private let cloud = Cloud()
     @Published private(set) var cloudState: CloudState = .connecting
@@ -169,7 +176,7 @@ final class Store: ObservableObject {
     /// Ghi số liệu cho widget rồi bảo widget vẽ lại.
     private func refreshWidget() {
         let now = Date()
-        Summary(today: total(on: now), month: monthItems(now).reduce(0) { $0 + $1.a }, count: count(on: now), day: now).save()
+        Summary(today: total(on: now), month: monthItems(now).reduce(0) { $0 + $1.a }, count: count(on: now), day: now, budget: budget).save()
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -178,6 +185,19 @@ final class Store: ObservableObject {
         items.append(e)
         persist()
         show("Đã lưu \(fmt(amount))đ") { [weak self] in self?.remove(id: e.id, toast: false) }
+    }
+
+    /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.
+    @discardableResult
+    func quickAdd(_ text: String) -> Expense? {
+        guard let q = QuickParse.expense(text) else { return nil }
+        add(amount: q.amount, note: q.note, cat: Category.guess(q.note))
+        return items.last
+    }
+
+    /// Tình hình ngân sách tháng này, nil nếu chưa đặt.
+    func budgetStatus(_ day: Date = Date()) -> BudgetStatus? {
+        budget > 0 ? BudgetStatus(budget: budget, spent: monthItems(day).reduce(0) { $0 + $1.a }) : nil
     }
 
     func update(_ e: Expense) {

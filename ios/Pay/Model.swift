@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 /// Một khoản chi. Cùng định dạng với file sao lưu của bản web (t = mili giây).
 struct Expense: Codable, Identifiable, Hashable {
@@ -70,6 +71,14 @@ struct Backup: Codable {
     }
 }
 
+/// Trạng thái đồng bộ iCloud để hiện trong Cài đặt.
+enum CloudState: Equatable {
+    case off                 // người dùng tắt
+    case connecting
+    case unavailable         // máy chưa đăng nhập iCloud / bản build không có quyền iCloud
+    case on(last: Date?)     // đang đồng bộ; lần đọc/ghi gần nhất
+}
+
 struct Toast: Identifiable {
     let id = UUID()
     let message: String
@@ -86,6 +95,13 @@ final class Store: ObservableObject {
     @Published var toast: Toast?
     private var deleted: [String: Double] = [:]
     private let cloud = Cloud()
+    @Published private(set) var cloudState: CloudState = .connecting
+    @Published var cloudOn: Bool = UserDefaults.standard.object(forKey: "cloudSync") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(cloudOn, forKey: "cloudSync")
+            Task { await applyCloud() }
+        }
+    }
 
     private let fileURL: URL = {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -97,7 +113,26 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: fileURL), let b = try? JSONDecoder().decode(Backup.self, from: data) {
             apply(b)
         }
-        Task { await cloud.start { [weak self] remote in self?.absorb(remote) } }
+        refreshWidget()
+        cloud.onSynced = { [weak self] in self?.cloudState = .on(last: Date()) }
+        Task { await applyCloud() }
+    }
+
+    /// Bật / tắt đồng bộ theo công tắc trong Cài đặt.
+    private func applyCloud() async {
+        guard cloudOn else { cloud.stop(); cloudState = .off; return }
+        if cloud.active { return }
+        cloudState = .connecting
+        let ok = await cloud.start { [weak self] remote in self?.absorb(remote) }
+        if !cloudOn { cloud.stop(); cloudState = .off; return }   // vừa tắt trong lúc đang kết nối
+        cloudState = ok ? .on(last: nil) : .unavailable
+    }
+
+    /// Nút "Đồng bộ ngay": đẩy bản máy này lên rồi đọc lại bản trên iCloud.
+    func syncNow() async {
+        guard cloud.active else { await applyCloud(); return }
+        cloud.push(snapshot)
+        await cloud.pull()
     }
 
     private var snapshot: Backup { Backup(items: items, memo: memo, deleted: deleted) }
@@ -128,6 +163,14 @@ final class Store: ObservableObject {
     private func writeLocal() {
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: fileURL, options: .atomic)
+        refreshWidget()
+    }
+
+    /// Ghi số liệu cho widget rồi bảo widget vẽ lại.
+    private func refreshWidget() {
+        let now = Date()
+        Summary(today: total(on: now), month: monthItems(now).reduce(0) { $0 + $1.a }, count: count(on: now), day: now).save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func add(amount: Int, note: String, cat: String, acct: String? = nil) {
@@ -159,6 +202,15 @@ final class Store: ObservableObject {
                 self.persist()
             }
         }
+    }
+
+    /// Xoá mọi khoản chi (có dấu xoá nên các máy đồng bộ iCloud cũng xoá theo). Giữ ghi nhớ người nhận.
+    func eraseAll() {
+        let t = now
+        for e in items { deleted[e.id] = t }
+        items = []
+        persist()
+        show("Đã xoá tất cả khoản chi")
     }
 
     func remember(_ key: String, _ m: Memo) {
@@ -228,15 +280,4 @@ final class Store: ObservableObject {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         return f.string(from: Date())
     }
-}
-
-/// 45000 -> "45.000"
-func fmt(_ n: Int) -> String {
-    let s = String(abs(n))
-    var out = ""
-    for (i, ch) in s.enumerated() {
-        if i > 0 && (s.count - i) % 3 == 0 { out += "." }
-        out.append(ch)
-    }
-    return (n < 0 ? "-" : "") + out
 }

@@ -19,6 +19,7 @@ enum EntryMode: Identifiable {
 
 struct HomeView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var quick: QuickAction
     @State private var entry: EntryMode?
     @State private var scanning = false
     @State private var showHistory = false
@@ -44,10 +45,10 @@ struct HomeView: View {
                     recent
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 120)
+                .padding(.bottom, Self.nativeEdge ? 16 : 120)
             }
+            .withDock(dock: dock, fallbackBlur: bottomBlur)
 
-            dock
             ToastView()
                 .padding(.bottom, 108)
         }
@@ -61,6 +62,23 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
+        .onChange(of: quick.pending, initial: true) { _, k in
+            guard let k else { return }
+            quick.pending = nil
+            Task { await run(k) }
+        }
+    }
+
+    /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
+    private func run(_ k: QuickKind) async {
+        let busy = entry != nil || scanning || showHistory || showSettings
+        if k == .scan && scanning { return }
+        entry = nil; scanning = false; showHistory = false; showSettings = false
+        if busy { try? await Task.sleep(for: .milliseconds(450)) }
+        switch k {
+        case .scan: scanning = true
+        case .add: entry = .new(cat: nil)
+        }
     }
 
     // MARK: Các phần
@@ -166,13 +184,33 @@ struct HomeView: View {
         }
     }
 
+    /// iOS 26 tự làm mờ mép dưới (scroll edge effect) sau thanh nút, đúng kiểu app hệ thống.
+    static var nativeEdge: Bool { if #available(iOS 26.0, *) { true } else { false } }
+
+    /// Lớp mờ dưới đáy cho iOS cũ hơn 26: mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
+    private var bottomBlur: some View {
+        Color.clear
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Palette.bg.opacity(0.5))
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.4), .init(color: .clear, location: 1)],
+                                         startPoint: .bottom, endPoint: .top))
+                    .frame(height: 190)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+    }
+
+    /// Hai nút nổi trên nội dung, nền kính (Liquid Glass trên iOS 26).
     private var dock: some View {
-        HStack(spacing: 12) {
-            BigButton(title: "Lưu", icon: "plus", primary: false) { entry = .new(cat: nil) }
-            BigButton(title: "Quét QR", icon: "qrcode.viewfinder", primary: true) { scanning = true }
+        GlassGroup {
+            HStack(spacing: 12) {
+                BigButton(title: "Nhập", icon: "plus", primary: false) { entry = .new(cat: nil) }
+                BigButton(title: "Quét QR", icon: "qrcode.viewfinder", primary: true) { scanning = true }
+            }
         }
-        .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
-        .background(Palette.bg.ignoresSafeArea(edges: .bottom).overlay(alignment: .top) { Divider() })
+        .padding(.horizontal, 16).padding(.bottom, 8)
     }
 
     private func dayLabel(_ d: Date) -> String {
@@ -221,6 +259,7 @@ struct ExpenseRow: View {
 }
 
 struct BigButton: View {
+    static let inset: CGFloat = 11
     let title: String
     let icon: String
     let primary: Bool
@@ -228,19 +267,61 @@ struct BigButton: View {
 
     var body: some View {
         Button(action: action) {
+            // Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với đầu nút bo tròn).
+            // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
             HStack(spacing: 10) {
                 Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                     .frame(width: 56, height: 56)
-                    .background(primary ? Color.gray.opacity(0.3) : Palette.surface, in: Circle())
+                    .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
+                if primary { Spacer(minLength: 0) }
                 Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
-                Spacer(minLength: 0)
+                if primary { Spacer(minLength: 0) }
             }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 78)
+            .padding(BigButton.inset)
+            .padding(.trailing, 14)
+            .frame(maxWidth: primary ? .infinity : nil)
             .foregroundStyle(primary ? Palette.ctaInk : .primary)
-            .background(primary ? Palette.cta : Palette.card, in: Capsule())
+            .contentShape(Capsule())
+            .glassCapsule(tint: primary ? Palette.cta : nil)
         }
         .buttonStyle(Pressable())
+    }
+}
+
+extension View {
+    /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
+    @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B) -> some View {
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom) { dock }
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
+        } else {
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock } }
+        }
+    }
+}
+
+/// Gom các nút kính lại để iOS 26 vẽ chung một lớp kính (hai nút gần nhau trông liền mạch).
+struct GlassGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) { GlassEffectContainer(spacing: 12) { content } } else { content }
+    }
+}
+
+extension View {
+    /// Nền kính hình viên thuốc: Liquid Glass trên iOS 26, kính mờ + bóng đổ trên iOS cũ hơn.
+    @ViewBuilder func glassCapsule(tint: Color?) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(tint.map { Glass.regular.tint($0).interactive() } ?? .regular.interactive(), in: Capsule())
+        } else {
+            background {
+                Capsule().fill(.ultraThinMaterial)
+                    .overlay { if let tint { Capsule().fill(tint.opacity(0.92)) } }
+                    .overlay { Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5) }
+                    .shadow(color: .black.opacity(0.15), radius: 14, y: 6)
+            }
+        }
     }
 }
 

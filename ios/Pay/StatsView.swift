@@ -132,15 +132,17 @@ struct StatsView: View {
     /// Ô số liệu tối giản: tên + biểu tượng, con số, nhãn % (nếu có). note giữ cho đủ tham số, không hiện.
     private func tile(_ title: String, _ icon: String, _ value: String, delta d: Int?, note: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
+            // Chữ tiêu đề nằm sát mép trên như lề trái/dưới; biểu tượng tròn lùi lên góc
+            HStack(alignment: .top) {
                 Text(title).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 4)
-                iconChip(icon, fg: .primary, bg: Self.chip)
+                iconChip(icon, fg: .primary, bg: Self.chip).padding(.top, 0.5).padding(.trailing, -1.5)   // cách mép trên và phải đều ~16,5pt (đã đo)
             }
             Text(value).font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.5).lineLimit(1)
             if let d { deltaPill(d) }
         }
         .padding(18)
+        .padding(.top, 2.5)   // đỉnh chữ tiêu đề cách mép trên ~18,5pt, bằng lề trái/dưới (đã đo trên ảnh chụp)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Self.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }

@@ -127,7 +127,7 @@ struct HomeView: View {
                 Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))đ")
                     .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Palette.surface.opacity(0.85), in: Capsule())
+                    .background(Palette.pill, in: Capsule())
                     .lineLimit(1)
                 Spacer()
                 if n > 0 { Text("\(n) khoản").font(.system(size: 15)).foregroundStyle(.secondary) }
@@ -136,13 +136,13 @@ struct HomeView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.hero, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))   // thẻ trắng đen
     }
 
     /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
     private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            BudgetBar(s: b, height: 10, track: Palette.surface.opacity(0.7))
+            BudgetBar(s: b, height: 10, track: Palette.pill)
             HStack(spacing: 4) {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
                 if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }

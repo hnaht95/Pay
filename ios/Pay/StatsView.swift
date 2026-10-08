@@ -48,28 +48,25 @@ struct StatsView: View {
     // MARK: Chọn tháng (dạng tab, tháng đang chọn là viên thuốc đậm)
 
     private var monthTabs: some View {
-        let months = (0..<12).reversed().map { cal.date(byAdding: .month, value: -$0, to: Date())! }
-        return ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(months, id: \.self) { m in
-                        let on = cal.isDate(m, equalTo: month, toGranularity: .month)
-                        Button { month = m } label: {
-                            Text(shortMonth(m))
-                                .font(.system(size: 15, weight: on ? .semibold : .regular))
-                                .padding(.horizontal, 16).padding(.vertical, 9)
-                                .foregroundStyle(on ? Self.inkText : Color.secondary)
-                                .background(on ? Self.ink : .clear, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .id(shortMonth(m))
-                    }
+        // 6 tháng gần nhất, chia đều chiều ngang (khớp với biểu đồ 6 tháng), không cuộn nên không bị cắt chữ
+        let months = (0..<6).reversed().map { cal.date(byAdding: .month, value: -$0, to: Date())! }
+        return HStack(spacing: 4) {
+            ForEach(months, id: \.self) { m in
+                let on = cal.isDate(m, equalTo: month, toGranularity: .month)
+                Button { month = m } label: {
+                    Text(shortMonth(m))
+                        .font(.system(size: 15, weight: on ? .semibold : .regular))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(on ? Self.inkText : Color.secondary)
+                        .background(on ? Self.ink : .clear, in: Capsule())
+                        .contentShape(Capsule())
                 }
-                .padding(4)
+                .buttonStyle(.plain)
             }
-            .background(Self.card, in: Capsule())
-            .onAppear { proxy.scrollTo(shortMonth(month), anchor: .trailing) }
         }
+        .padding(4)
+        .background(Self.card, in: Capsule())
     }
 
     // MARK: Thẻ cam: tổng chi tháng

@@ -7,6 +7,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: U5DGWB7A5X   # tài khoản nhà phát triển cá nhân (trả phí)
 targets:
   Pay:
     type: application
@@ -14,6 +15,10 @@ targets:
     sources: [Pay, Shared]
     dependencies:
       - target: PayWidget
+    attributes:
+      SystemCapabilities:
+        com.apple.iCloud: {enabled: 1}
+        com.apple.ApplicationGroups.iOS: {enabled: 1}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay
@@ -86,6 +91,9 @@ targets:
     type: app-extension
     platform: iOS
     sources: [PayWidget, Shared]
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS: {enabled: 1}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay.widget

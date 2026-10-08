@@ -195,10 +195,14 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					10BFFAA6DC5CE3486132ECCF = {
+						DevelopmentTeam = U5DGWB7A5X;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
 					};
 					2CA39577F5A44AC9D635F905 = {
+						DevelopmentTeam = U5DGWB7A5X;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
 					};
 				};
 			};
@@ -314,6 +318,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = U5DGWB7A5X;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -377,6 +382,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = U5DGWB7A5X;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

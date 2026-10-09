@@ -19,7 +19,7 @@ struct HistoryView: View {
                         ForEach(list) { e in
                             Button { editing = .edit(e) } label: { ExpenseRow(e: e) }
                                 .buttonStyle(Pressable())
-                                .expenseSwipe(edit: { editing = .edit(e) }, delete: { store.remove(id: e.id) })
+                                .expenseSwipe(delete: { store.remove(id: e.id) })
                         }
                     } header: {
                         HStack {

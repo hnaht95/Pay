@@ -227,7 +227,7 @@ struct HomeView: View {
                 ForEach(list) { e in
                     Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true) }
                         .buttonStyle(Pressable())
-                        .expenseSwipe(edit: { entry = .edit(e) }, delete: { store.remove(id: e.id) })
+                        .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
             }
             .listStyle(.plain)
@@ -276,8 +276,8 @@ struct HomeView: View {
 // MARK: Thành phần dùng chung
 
 extension View {
-    /// Hàng khoản chi trong List: vuốt sang trái hiện Sửa / Xoá (vuốt hết cỡ là xoá), không kẻ dòng, nền trong suốt.
-    func expenseSwipe(edit: @escaping () -> Void, delete: @escaping () -> Void) -> some View {
+    /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (vuốt hết cỡ là xoá; chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
+    func expenseSwipe(delete: @escaping () -> Void) -> some View {
         self
             .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
             .listRowBackground(Color.clear)
@@ -285,8 +285,6 @@ extension View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
                 Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel("Xoá")
-                Button(action: edit) { Image(systemName: "pencil") }.accessibilityLabel("Sửa")
-                    .tint(Color(light: 0x2A78D6, dark: 0x3987E5))
             }
     }
 }

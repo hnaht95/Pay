@@ -444,7 +444,11 @@ struct BigButton: View {
                     .frame(width: 56, height: 56)
                     .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
                 if primary { Spacer(minLength: 0) }
-                Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)   // màn hình hẹp: thu nhỏ chữ, không cắt thành "Quét…"
+                Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
+                    // Chữ được ưu tiên chỗ trước hai khoảng trống hai bên: không thì khi bật Chữ đậm (Trợ năng)
+                    // chữ rộng ra mà vẫn bị cắt thành "Quét…" dù nút còn trống
+                    .layoutPriority(1)
+                    .minimumScaleFactor(0.7)
                 if primary { Spacer(minLength: 0) }
             }
             .padding(BigButton.inset)

@@ -100,19 +100,21 @@ struct SettingsView: View {
     // MARK: Ngân sách
 
     private var budgetSection: some View {
+        // Thanh kéo nằm ở chân mục chứ không làm một hàng: hàng của Form bị cắt theo góc bo lớn của ô,
+        // làm góc thanh kéo méo thành góc vuông bo to. Chân mục không bị cắt.
         Section {
-            BudgetSlider(value: store.budget, draft: $budgetDraft, commit: { store.budget = $0 }) {
-                budgetText = store.budget > 0 ? fmt(store.budget) : ""
-                typingBudget = true
-            }
-            // Chừa lề trên dưới: sát mép ô thì ô danh sách cắt mất góc bo phía dưới của thanh
-            .padding(.vertical, 4)
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
         } header: {
             Text("Ngân sách")
         } footer: {
-            budgetFooter
+            VStack(alignment: .leading, spacing: 12) {
+                BudgetSlider(value: store.budget, draft: $budgetDraft, commit: { store.budget = $0 }) {
+                    budgetText = store.budget > 0 ? fmt(store.budget) : ""
+                    typingBudget = true
+                }
+                .padding(.horizontal, -16)   // chân mục lùi vào 16 so với mép ô: thanh vẫn rộng bằng các ô khác
+                budgetFooter
+            }
+            .textCase(nil)
         }
     }
 
@@ -338,7 +340,7 @@ struct BudgetSlider: View {
     private static let handleActive = Color(.sRGB, red: 0.62, green: 0.85, blue: 0.10)
     private static let height: CGFloat = 48
     /// Bo nhẹ thôi, không phải viên thuốc: đúng tỉ lệ Peek (bo 11 trên cao 34)
-    private static let radius: CGFloat = 18
+    private static let radius: CGFloat = 14
     private static let leadingPad: CGFloat = 18
     private static let barWidth: CGFloat = 4
     private static let barInset: CGFloat = 13
@@ -389,8 +391,8 @@ struct BudgetSlider: View {
         // Hết chỗ thì số chuyển vào trong mảng sáng, sát bên trái vạch tay nắm và chạy theo nó
         let inside = width - Self.leadingPad - valueWidth - filled < Self.valueGap
         ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(Self.track)
-            RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(Self.fill)
+            RoundedRectangle(cornerRadius: Self.radius, style: .circular).fill(Self.track)
+            RoundedRectangle(cornerRadius: Self.radius, style: .circular).fill(Self.fill)
                 .frame(width: filled)
                 .overlay(alignment: .trailing) {
                     Capsule()

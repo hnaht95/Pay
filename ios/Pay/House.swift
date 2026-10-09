@@ -323,6 +323,9 @@ final class House: ObservableObject {
             info["name"] = groupName
             let m = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: z.zoneID))
             m["name"] = myName
+            if let u = try? await container.userRecordID().recordName { m["user"] = u }
+            // Nhớ "tôi là ai" trước khi lưu: lần tải lại chạy song song cũng nhận ra ngay, khỏi hỏi lại
+            UserDefaults.standard.set(m.recordID.recordName, forKey: "house.me.\(z.zoneID.zoneName)")
             try await save([info, m])
             me = m.recordID.recordName
             phase = .ready

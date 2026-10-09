@@ -724,9 +724,10 @@ struct HouseView: View {
                         .padding(.vertical, 6)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)   // trải hết bề ngang, không co thành cột giữa
                 .padding(.horizontal, 16).padding(.bottom, 30)
             }
-            .background(Palette.bg)
+            .background(Palette.bg.ignoresSafeArea())
             .navigationTitle("Thông báo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Xong") { showInbox = false } } }

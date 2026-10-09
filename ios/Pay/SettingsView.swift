@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var budgetText = ""
     /// Sửa / thêm danh mục tự tạo (nil k = thêm mới)
     @State private var editingCat: CatEdit?
+    /// Ngôn ngữ đang chọn trong Cài đặt
+    @State private var lang = Lang.current
 
     var body: some View {
         NavigationStack {
@@ -27,29 +29,30 @@ struct SettingsView: View {
                 recurringSection
                 cloudSection
                 bankSection
+                languageSection
 
                 Section {
                     NavigationLink { QuickAccessHelp() } label: {
-                        row("Widget, nút Tác vụ, Phím tắt", "bolt.fill", .orange)
+                        row(L("Widget, nút Tác vụ, Phím tắt"), "bolt.fill", .orange)
                     }
                 } header: {
-                    Text("Truy cập nhanh")
+                    Text(L("Truy cập nhanh"))
                 }
 
                 dataSection
 
                 Section {
                     LabeledContent { Text(version).foregroundStyle(.secondary) } label: {
-                        row("Phiên bản", "info.circle.fill", .gray)
+                        row(L("Phiên bản"), "info.circle.fill", .gray)
                     }
                 } footer: {
-                    Text("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR.")
+                    Text(L("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR."))
                 }
             }
-            .navigationTitle("Cài đặt")
+            .navigationTitle(L("Cài đặt"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { dismiss() } }
             }
         }
         // File sao lưu có cả khoản định kỳ và danh mục đã học: đổi gì cũng làm lại
@@ -57,21 +60,21 @@ struct SettingsView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result { store.importBackup(from: url) }
         }
-        .confirmationDialog("Xoá tất cả khoản chi?", isPresented: $confirmErase, titleVisibility: .visible) {
-            Button("Xoá tất cả", role: .destructive) { store.eraseAll() }
+        .confirmationDialog(L("Xoá tất cả khoản chi?"), isPresented: $confirmErase, titleVisibility: .visible) {
+            Button(L("Xoá tất cả"), role: .destructive) { store.eraseAll() }
         } message: {
-            Text((store.cloudOn ? "Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá." : "Không hoàn tác được.")
-                 + (store.rules.values.contains(where: \.on) ? " Khoản định kỳ cũng dừng tự ghi." : "") + " Nên sao lưu trước.")
+            Text((store.cloudOn ? L("Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá.") : L("Không hoàn tác được."))
+                 + (store.rules.values.contains(where: \.on) ? " " + L("Khoản định kỳ cũng dừng tự ghi.") : "") + " " + L("Nên sao lưu trước."))
         }
-        .alert("Ngân sách tháng", isPresented: $typingBudget) {
-            TextField("Ví dụ 8.000.000", text: $budgetText).keyboardType(.numberPad)
-            Button("Huỷ", role: .cancel) {}
-            Button("Lưu") {
+        .alert(L("Ngân sách tháng"), isPresented: $typingBudget) {
+            TextField(L("Ví dụ 8.000.000"), text: $budgetText).keyboardType(.numberPad)
+            Button(L("Huỷ"), role: .cancel) {}
+            Button(L("Lưu")) {
                 let digits = budgetText.filter(\.isNumber)
                 if digits.isEmpty { store.budget = 0 } else if let v = Int(digits.prefix(12)) { store.budget = v }
             }
         } message: {
-            Text("Số tiền tiêu mỗi tháng. Để trống là bỏ ngân sách.")
+            Text(L("Số tiền tiêu mỗi tháng. Để trống là bỏ ngân sách."))
         }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store) }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
@@ -97,13 +100,13 @@ struct SettingsView: View {
                     Button(role: .destructive) { store.removeCategory(c.k) } label: { Image(systemName: "trash.fill") }
                 }
             }
-            Button { editingCat = CatEdit(cat: nil) } label: { row("Thêm danh mục", "plus", .orange) }
+            Button { editingCat = CatEdit(cat: nil) } label: { row(L("Thêm danh mục"), "plus", .orange) }
         } header: {
-            Text("Danh mục")
+            Text(L("Danh mục"))
         } footer: {
-            Text((list.isEmpty ? "Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng như Thú cưng, Con nhỏ, Gym."
-                               : "Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác.")
-                 + " Muốn đổi biểu tượng, màu của danh mục có sẵn thì nhấn giữ ô danh mục ở màn hình chính.")
+            Text((list.isEmpty ? L("Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng như Thú cưng, Con nhỏ, Gym.")
+                               : L("Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác."))
+                 + " " + L("Muốn đổi biểu tượng, màu của danh mục có sẵn thì nhấn giữ ô danh mục ở màn hình chính."))
         }
     }
 
@@ -120,9 +123,9 @@ struct SettingsView: View {
                 .background(Palette.cta, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Pay").font(.system(size: 22, weight: .bold))
-                Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month.reduce(0) { $0 + $1.a }))đ · \(month.count) khoản")
+                Text(L("Tháng %@: %@đ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
                     .font(.system(size: 15)).foregroundStyle(.secondary)
-                Text("Tổng cộng \(store.items.count) khoản đã ghi")
+                Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
                     .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -138,7 +141,7 @@ struct SettingsView: View {
         // làm góc thanh kéo méo thành góc vuông bo to. Chân mục không bị cắt.
         Section {
         } header: {
-            Text("Ngân sách")
+            Text(L("Ngân sách"))
         } footer: {
             VStack(alignment: .leading, spacing: 12) {
                 BudgetSlider(value: store.budget, draft: $budgetDraft, commit: { store.budget = $0 }) {
@@ -161,13 +164,13 @@ struct SettingsView: View {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
                 HStack(spacing: 4) {
                     if s.level == .over { Image(systemName: "exclamationmark.triangle.fill") }
-                    Text("\(s.label) · đã dùng \(Int((s.ratio * 100).rounded()))%")
+                    Text(L("%@ · đã dùng %@%%", s.label, String(Int((s.ratio * 100).rounded()))))
                 }
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(s.level == .over ? Palette.danger : .primary)
             }
-            Text(v > 0 ? "Kéo hoặc chạm vào thanh để chỉnh, giữ lâu để nhập số chính xác. Kéo hết sang trái là bỏ ngân sách."
-                       : "Kéo hoặc chạm vào thanh để đặt ngân sách tháng, giữ lâu để nhập số. Màn hình chính và widget sẽ hiện số còn lại và mức nên tiêu mỗi ngày.")
+            Text(v > 0 ? L("Kéo hoặc chạm vào thanh để chỉnh, giữ lâu để nhập số chính xác. Kéo hết sang trái là bỏ ngân sách.")
+                       : L("Kéo hoặc chạm vào thanh để đặt ngân sách tháng, giữ lâu để nhập số. Màn hình chính và widget sẽ hiện số còn lại và mức nên tiêu mỗi ngày."))
         }
     }
 
@@ -178,7 +181,7 @@ struct SettingsView: View {
         return Section {
             if list.isEmpty {
                 Label {
-                    Text("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")
+                    Text(LocalizedStringKey(L("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")))
                         .font(.system(size: 15)).foregroundStyle(.secondary)
                 } icon: {
                     icon("repeat", .purple)
@@ -192,20 +195,20 @@ struct SettingsView: View {
                         .background(c.color, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.n?.isEmpty == false ? r.n! : c.name).lineLimit(1)
-                        Text("Ngày \(r.day) hằng tháng").font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 14)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
                     Text("\(fmt(r.a))đ").fontWeight(.semibold).lineLimit(1)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) { store.stopRepeating(r) } label: { Text("Bỏ lặp") }
+                    Button(role: .destructive) { store.stopRepeating(r) } label: { Text(L("Bỏ lặp")) }
                 }
             }
         } header: {
-            Text("Khoản định kỳ")
+            Text(L("Khoản định kỳ"))
         } footer: {
             if !list.isEmpty {
-                Text("Tới ngày là app tự ghi (khi mở app). Tháng nào đã tự ghi tay khoản giống hệt thì bỏ qua. Vuốt sang trái để bỏ lặp.")
+                Text(L("Tới ngày là app tự ghi (khi mở app). Tháng nào đã tự ghi tay khoản giống hệt thì bỏ qua. Vuốt sang trái để bỏ lặp."))
             }
         }
     }
@@ -214,16 +217,16 @@ struct SettingsView: View {
 
     private var cloudSection: some View {
         Section {
-            Toggle(isOn: $store.cloudOn) { row("Đồng bộ iCloud", "icloud.fill", .blue) }
+            Toggle(isOn: $store.cloudOn) { row(L("Đồng bộ iCloud"), "icloud.fill", .blue) }
             if store.cloudOn {
-                HStack { Text("Trạng thái"); Spacer(); cloudStatus }
+                HStack { Text(L("Trạng thái")); Spacer(); cloudStatus }
                 if cloudReady {
                     Button {
                         syncing = true
                         Task { await store.syncNow(); syncing = false }
                     } label: {
                         HStack {
-                            Text("Đồng bộ ngay")
+                            Text(L("Đồng bộ ngay"))
                             Spacer()
                             if syncing { ProgressView() }
                         }
@@ -246,16 +249,16 @@ struct SettingsView: View {
     @ViewBuilder private var cloudStatus: some View {
         switch store.cloudState {
         case .off:
-            Text("Đang tắt").foregroundStyle(.secondary)
+            Text(L("Đang tắt")).foregroundStyle(.secondary)
         case .connecting:
-            Label("Đang kết nối…", systemImage: "arrow.triangle.2.circlepath").foregroundStyle(.secondary)
+            Label(L("Đang kết nối…"), systemImage: "arrow.triangle.2.circlepath").foregroundStyle(.secondary)
         case .unavailable:
-            Label("Không dùng được", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Label(L("Không dùng được"), systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
         case .on(let last):
             if let last {
-                Label("Đã đồng bộ \(time(last))", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                Label(L("Đã đồng bộ %@", time(last)), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             } else {
-                Label("Đã bật", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                Label(L("Đã bật"), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
         }
     }
@@ -263,11 +266,11 @@ struct SettingsView: View {
     private var cloudFooter: String {
         switch store.cloudState {
         case .unavailable:
-            return "Máy này chưa đăng nhập iCloud hoặc đã tắt iCloud Drive (Cài đặt › Tên bạn › iCloud › iCloud Drive). Dữ liệu vẫn lưu trên máy."
+            return L("Máy này chưa đăng nhập iCloud hoặc đã tắt iCloud Drive (Cài đặt › Tên bạn › iCloud › iCloud Drive). Dữ liệu vẫn lưu trên máy.")
         case .off:
-            return "Dữ liệu chỉ lưu trên iPhone này. Bật để dùng chung với iPhone/iPad khác cùng Apple ID."
+            return L("Dữ liệu chỉ lưu trên iPhone này. Bật để dùng chung với iPhone/iPad khác cùng Apple ID.")
         default:
-            return "Dữ liệu tự đồng bộ với iPhone/iPad khác cùng Apple ID. Không có mạng vẫn dùng được, có mạng sẽ tự cập nhật."
+            return L("Dữ liệu tự đồng bộ với iPhone/iPad khác cùng Apple ID. Không có mạng vẫn dùng được, có mạng sẽ tự cập nhật.")
         }
     }
 
@@ -276,20 +279,37 @@ struct SettingsView: View {
     private var bankSection: some View {
         Section {
             Picker(selection: $store.appId) {
-                Section("Mở sẵn người nhận + số tiền") {
+                Section(L("Mở sẵn người nhận + số tiền")) {
                     ForEach(BankData.apps.filter(\.fill)) { Text($0.name).tag($0.id) }
                 }
-                Section("Chỉ mở app (quét lại QR)") {
+                Section(L("Chỉ mở app (quét lại QR)")) {
                     ForEach(BankData.apps.filter { !$0.fill }) { Text($0.name).tag($0.id) }
                 }
             } label: {
-                row("App ngân hàng", "building.columns.fill", .green)
+                row(L("App ngân hàng"), "building.columns.fill", .green)
             }
             .pickerStyle(.navigationLink)
         } header: {
-            Text("Thanh toán")
+            Text(L("Thanh toán"))
         } footer: {
-            Text(store.bankApp.fill ? "Sau khi quét, Pay mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại." : "App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng.")
+            Text(store.bankApp.fill ? L("Sau khi quét, Pay mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
+        }
+    }
+
+    // MARK: Ngôn ngữ
+
+    private var languageSection: some View {
+        Section {
+            Picker(selection: Binding(get: { lang }, set: { lang = $0; Lang.set($0) })) {
+                ForEach(Lang.allCases, id: \.self) { Text($0.title).tag($0) }
+            } label: {
+                row(L("Ngôn ngữ app"), "globe", .blue)
+            }
+            .pickerStyle(.navigationLink)
+        } header: {
+            Text(L("Ngôn ngữ"))
+        } footer: {
+            Text(L("Đổi ngôn ngữ của app và widget."))
         }
     }
 
@@ -298,20 +318,20 @@ struct SettingsView: View {
     private var dataSection: some View {
         Section {
             if let jsonURL {
-                ShareLink(item: jsonURL) { row("Sao lưu ra file", "square.and.arrow.up.fill", .indigo) }
+                ShareLink(item: jsonURL) { row(L("Sao lưu ra file"), "square.and.arrow.up.fill", .indigo) }
             }
-            Button { importing = true } label: { row("Khôi phục từ file sao lưu", "arrow.down.doc.fill", .teal) }
+            Button { importing = true } label: { row(L("Khôi phục từ file sao lưu"), "arrow.down.doc.fill", .teal) }
             if let csvURL {
-                ShareLink(item: csvURL) { row("Xuất CSV (Excel)", "tablecells.fill", .green) }
+                ShareLink(item: csvURL) { row(L("Xuất CSV (Excel)"), "tablecells.fill", .green) }
             }
             Button(role: .destructive) { confirmErase = true } label: {
-                row("Xoá tất cả khoản chi", "trash.fill", .red, destructive: true)
+                row(L("Xoá tất cả khoản chi"), "trash.fill", .red, destructive: true)
             }
             .disabled(store.items.isEmpty)
         } header: {
-            Text("Dữ liệu")
+            Text(L("Dữ liệu"))
         } footer: {
-            Text("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè.")
+            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè."))
         }
     }
 
@@ -341,7 +361,22 @@ struct SettingsView: View {
 
     private func time(_ d: Date) -> String {
         let f = DateFormatter()
-        f.dateFormat = Calendar.current.isDateInToday(d) ? "'lúc' HH:mm" : "dd/MM 'lúc' HH:mm"
+        let today = Calendar.current.isDateInToday(d)
+        if Lang.isEnglish {
+            f.locale = Lang.locale
+            f.dateFormat = today ? "'at' h:mm a" : "MMM d 'at' h:mm a"
+        } else {
+            f.dateFormat = today ? "'lúc' HH:mm" : "dd/MM 'lúc' HH:mm"
+        }
+        return f.string(from: d)
+    }
+
+    /// Tên tháng trong dòng tổng quan: tiếng Việt là số ("Tháng 10"), tiếng Anh là tên tháng ("October")
+    private func monthName(_ d: Date) -> String {
+        guard Lang.isEnglish else { return String(Calendar.current.component(.month, from: d)) }
+        let f = DateFormatter()
+        f.locale = Lang.locale
+        f.dateFormat = "LLLL"
         return f.string(from: d)
     }
 }
@@ -435,7 +470,7 @@ struct BudgetSlider: View {
                         .padding(.trailing, Self.barInset)
                         .animation(.easeOut(duration: 0.14), value: grab != nil)
                 }
-            Text("Mỗi tháng")
+            Text(L("Mỗi tháng"))
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Self.ink.opacity(0.78))
                 .fixedSize()
@@ -462,17 +497,17 @@ struct BudgetSlider: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = max($0, 1) }
         .overlay { SliderGestures(pan: pan, tap: tap, hold: hold) }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ngân sách tháng")
-        .accessibilityValue(shown > 0 ? "\(fmt(shown)) đồng" : "Chưa đặt")
+        .accessibilityLabel(L("Ngân sách tháng"))
+        .accessibilityValue(shown > 0 ? L("%@ đồng", fmt(shown)) : L("Chưa đặt"))
         .accessibilityAdjustableAction { dir in
             let i = Int((Self.position(value) * Self.last).rounded()) + (dir == .increment ? 1 : -1)
             commit(Self.levels[min(max(i, 0), Self.levels.count - 1)])
         }
-        .accessibilityAction(named: "Nhập số chính xác", typeExact)
+        .accessibilityAction(named: Text(L("Nhập số chính xác")), typeExact)
     }
 
     private func valueLabel(size: CGFloat) -> some View {
-        Text(shown > 0 ? Self.compact(shown) : "Chưa đặt")
+        Text(shown > 0 ? Self.compact(shown) : L("Chưa đặt"))
             .font(.system(size: size, weight: .medium, design: .rounded))
             .monospacedDigit()
             .fixedSize()
@@ -608,7 +643,7 @@ struct CatEdit: Identifiable {
     @MainActor static func of(_ k: String, store: Store) -> CatEdit {
         if let c = store.cats[k], c.on { return CatEdit(cat: c) }
         let c = Category.get(k)
-        return CatEdit(cat: CustomCat(k: k, name: c.name, icon: c.icon, tone: -1, on: true, u: 0))
+        return CatEdit(cat: CustomCat(k: k, name: c.rawName, icon: c.icon, tone: -1, on: true, u: 0))   // tên gốc tiếng Việt, không lưu bản dịch
     }
 }
 
@@ -636,7 +671,7 @@ struct CategoryEditor: View {
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)
-        return !k.isEmpty && Category.all.contains { strip($0.name) == k && $0.k != editing?.k }
+        return !k.isEmpty && Category.all.contains { (strip($0.name) == k || strip($0.rawName) == k) && $0.k != editing?.k }
     }
 
     var body: some View {
@@ -649,7 +684,7 @@ struct CategoryEditor: View {
                             if let b = builtin, icon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(icon).font(.system(size: 28)) }
                         }
                             .frame(width: 56, height: 56).background(.white, in: Circle())
-                        Text(trimmed.isEmpty ? "Tên danh mục" : trimmed)
+                        Text(trimmed.isEmpty ? L("Tên danh mục") : trimmed)
                             .font(.system(size: 20, weight: .semibold)).lineLimit(1)
                             .opacity(trimmed.isEmpty ? 0.4 : 1)
                         Spacer(minLength: 0)
@@ -662,13 +697,13 @@ struct CategoryEditor: View {
                 }
 
                 Section {
-                    TextField("Ví dụ: Thú cưng", text: $name)
+                    TextField(L("Ví dụ: Thú cưng"), text: $name)
                         .focused($nameFocused)
                         .submitLabel(.done)
                 } header: {
-                    Text("Tên")
+                    Text(L("Tên"))
                 } footer: {
-                    if duplicate { Text("Đã có danh mục tên này.").foregroundStyle(.red) }
+                    if duplicate { Text(L("Đã có danh mục tên này.")).foregroundStyle(.red) }
                 }
 
                 Section {
@@ -677,7 +712,7 @@ struct CategoryEditor: View {
                         HStack(spacing: 12) {
                             Image(systemName: "face.smiling").font(.system(size: 18, weight: .semibold))
                                 .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
-                            Text("Tất cả biểu tượng").foregroundStyle(.primary)
+                            Text(L("Tất cả biểu tượng")).foregroundStyle(.primary)
                             Spacer()
                             if !Self.emojis.contains(icon) { Text(icon).font(.system(size: 24)) }
                         }
@@ -691,49 +726,49 @@ struct CategoryEditor: View {
                                     .frame(maxWidth: .infinity, minHeight: 46)
                                     .background(icon == e ? previewColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(Pressable())
                         }
                     }
                     .padding(.vertical, 4)
                 } header: {
-                    Text("Biểu tượng")
+                    Text(L("Biểu tượng"))
                 } footer: {
-                    Text("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS.")
+                    Text(L("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS."))
                 }
 
-                Section("Màu") {
+                Section(L("Màu")) {
                     if let b = builtin {
                         Button { tone = -1 } label: {
                             HStack(spacing: 12) {
                                 swatch(b.color, on: tone < 0)
-                                Text("Màu gốc").foregroundStyle(.primary)
+                                Text(L("Màu gốc")).foregroundStyle(.primary)
                                 Spacer()
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(Pressable())
                     }
                     swatchRow(CategoryTone.light)
                     swatchRow(CategoryTone.strong)
                 }
             }
-            .navigationTitle(editing == nil ? "Danh mục mới" : "Sửa danh mục")
+            .navigationTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Huỷ") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Lưu") { save() }.disabled(trimmed.isEmpty || duplicate)
+                    Button(L("Lưu")) { save() }.disabled(trimmed.isEmpty || duplicate)
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 if let b = builtin, store.cats[b.k]?.on == true {
-                    Button("Về mặc định") { store.resetCategory(b.k); dismiss() }
+                    Button(L("Về mặc định")) { store.resetCategory(b.k); dismiss() }
                         .font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .padding(.horizontal, 16).padding(.bottom, 8)
                 }
             }
             .onAppear {
-                if let e = editing { name = e.name; icon = e.icon; tone = e.tone }
+                if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone }
                 else { tone = store.cats.count % CategoryTone.all.count; nameFocused = true }
             }
         }
@@ -743,8 +778,8 @@ struct CategoryEditor: View {
         HStack(spacing: 0) {
             ForEach(r, id: \.self) { i in
                 Button { tone = i } label: { swatch(CategoryTone.bg(i), on: tone == i).frame(maxWidth: .infinity, minHeight: 44) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Màu \(i + 1)")
+                    .buttonStyle(Pressable())
+                    .accessibilityLabel(L("Màu %@", String(i + 1)))
             }
         }
     }
@@ -757,7 +792,8 @@ struct CategoryEditor: View {
 
     private func save() {
         if let e = editing {
-            store.updateCategory(e.k, name: trimmed, icon: icon, tone: tone)
+            // không đổi tên (đang xem bản dịch của tên gốc): giữ tên gốc, khỏi lưu chữ tiếng Anh
+            store.updateCategory(e.k, name: trimmed == L(e.name) ? e.name : trimmed, icon: icon, tone: tone)
         } else {
             onAdd(store.addCategory(name: trimmed, icon: icon, tone: tone))
         }
@@ -820,7 +856,7 @@ struct QuickAccessHelp: View {
                 step(2, "Bấm Sửa › Thêm tiện ích, tìm \"Pay\".")
                 step(3, "Chọn \"Chi tiêu hôm nay\" (cỡ vừa có nút Quét QR, Nói, Nhập) hoặc \"Nói để ghi\" (chạm là nghe luôn).")
             } header: {
-                Label("Widget màn hình chính", systemImage: "square.grid.2x2.fill")
+                Label(L("Widget màn hình chính"), systemImage: "square.grid.2x2.fill")
             }
 
             Section {
@@ -828,9 +864,9 @@ struct QuickAccessHelp: View {
                 step(2, "Bấm vùng widget dưới đồng hồ, chọn Pay › \"Nói để ghi\" (nút micro tròn).")
                 step(3, "iOS 18 trở lên: bấm nút ở góc dưới (đèn pin, camera), đổi thành \"Pay: Ghi bằng giọng nói\".")
             } header: {
-                Label("Màn hình khoá: nút micro", systemImage: "lock.fill")
+                Label(L("Màn hình khoá: nút micro"), systemImage: "lock.fill")
             } footer: {
-                Text("Chạm nút micro, mở khoá xong là Pay nghe luôn. Màn hình khoá cũng có nút quét QR và số đã chi hôm nay.")
+                Text(L("Chạm nút micro, mở khoá xong là Pay nghe luôn. Màn hình khoá cũng có nút quét QR và số đã chi hôm nay."))
             }
 
             Section {
@@ -838,9 +874,9 @@ struct QuickAccessHelp: View {
                 step(2, "Bấm Chọn điều khiển, tìm \"Pay: Ghi bằng giọng nói\".")
                 step(3, "Nhấn giữ nút Tác vụ: Pay mở và nghe luôn. Nói \"35k cafe\", ngừng nói là tự ghi.")
             } header: {
-                Label("Nút Tác vụ: ghi bằng giọng nói", systemImage: "mic.fill")
+                Label(L("Nút Tác vụ: ghi bằng giọng nói"), systemImage: "mic.fill")
             } footer: {
-                Text("Cần iPhone 15 Pro trở lên, iOS 18 trở lên. Nói được nhiều kiểu: \"35 nghìn cà phê\", \"1tr2 tiền nhà\", \"grab 52k\". Danh mục tự đoán theo ghi chú.")
+                Text(L("Cần iPhone 15 Pro trở lên, iOS 18 trở lên. Nói được nhiều kiểu: \"35 nghìn cà phê\", \"1tr2 tiền nhà\", \"grab 52k\". Danh mục tự đoán theo ghi chú."))
             }
 
             Section {
@@ -848,19 +884,19 @@ struct QuickAccessHelp: View {
                 step(2, "Bấm Chọn điều khiển, tìm \"Pay: Quét QR\".")
                 step(3, "Nhấn giữ nút Tác vụ là mở camera quét ngay.")
             } header: {
-                Label("Nút Tác vụ: quét QR", systemImage: "qrcode.viewfinder")
+                Label(L("Nút Tác vụ: quét QR"), systemImage: "qrcode.viewfinder")
             } footer: {
-                Text("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói hoặc quét QR. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển.")
+                Text(L("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói hoặc quét QR. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển."))
             }
 
             Section {
                 step(1, "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\".")
                 step(2, "Hoặc mở app Phím tắt, hai lệnh này có sẵn trong mục Pay.")
             } header: {
-                Label("Siri và Phím tắt", systemImage: "wand.and.stars")
+                Label(L("Siri và Phím tắt"), systemImage: "wand.and.stars")
             }
         }
-        .navigationTitle("Truy cập nhanh")
+        .navigationTitle(L("Truy cập nhanh"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -870,7 +906,7 @@ struct QuickAccessHelp: View {
                 .font(.system(size: 13, weight: .bold))
                 .frame(width: 22, height: 22)
                 .background(Color.primary.opacity(0.08), in: Circle())
-            Text(text)
+            Text(L(text))
         }
     }
 }

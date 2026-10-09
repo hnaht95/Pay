@@ -53,11 +53,11 @@ struct HomeView: View {
 
                     againSection
 
-                    sectionTitle("Danh mục") { Text("Tháng \(Calendar.current.component(.month, from: now))") }
+                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }
                     tiles(now)
 
-                    sectionTitle("Gần đây") {
-                        Button("Xem tất cả") { showHistory = true }.foregroundStyle(.primary)
+                    sectionTitle(L("Gần đây")) {
+                        Button(L("Xem tất cả")) { showHistory = true }.buttonStyle(Pressable()).foregroundStyle(.primary)
                     }
                     recent
                 }
@@ -137,9 +137,9 @@ struct HomeView: View {
         HStack(spacing: 2) {
             Text("Pay").font(.system(size: 28, weight: .bold))
             Spacer()
-            headerButton("person.2.crop.square.stack.fill", "Nhóm chung") { showHouse = true }
-            headerButton("icon-dashboard", "Thống kê", asset: true) { showStats = true }
-            headerButton("icon-settings", "Cài đặt", asset: true) { showSettings = true }
+            headerButton("person.2.crop.square.stack.fill", L("Nhóm chung")) { showHouse = true }
+            headerButton("icon-dashboard", L("Thống kê"), asset: true) { showStats = true }
+            headerButton("icon-settings", L("Cài đặt"), asset: true) { showSettings = true }
         }
         .padding(.top, 8)
     }
@@ -160,6 +160,7 @@ struct HomeView: View {
                 .frame(width: Self.headerSize, height: Self.headerSize)   // không nền, nhưng vùng chạm vẫn 42×42
                 .contentShape(Rectangle())
         }
+        .buttonStyle(Pressable())
         .foregroundStyle(.primary)
         .accessibilityLabel(label)
     }
@@ -169,7 +170,7 @@ struct HomeView: View {
         let n = store.count(on: now)
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Hôm nay đã chi")
+                Text(L("Hôm nay đã chi"))
                 Spacer()
                 Text(dayLabel(now))
             }
@@ -181,13 +182,13 @@ struct HomeView: View {
             }
             .padding(.top, 8).padding(.bottom, 14)
             HStack {
-                Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))")
+                Text(L("%@: %@", monthLabel(now), fmt(month)))
                     .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(Palette.pill, in: Capsule())
                     .lineLimit(1)
                 Spacer()
-                if n > 0 { Text("\(n) khoản").font(.system(size: 15)).foregroundStyle(.secondary) }
+                if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
             }
             if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
         }
@@ -204,9 +205,9 @@ struct HomeView: View {
             HStack(spacing: 4) {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
                 if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
-                Text(b.remaining >= 0 ? "Còn \(fmt(b.remaining))" : "Vượt \(fmt(-b.remaining))").font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
+                Text(b.remaining >= 0 ? L("Còn %@", fmt(b.remaining)) : L("Vượt %@", fmt(-b.remaining))).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
                 Spacer()
-                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))" : "\(fmt(b.perDay(at: now)))/ngày")
+                Text(b.level == .over ? L("Ngân sách %@", fmt(b.budget)) : L("%@/ngày", fmt(b.perDay(at: now))))
                     .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             .lineLimit(1).minimumScaleFactor(0.8)
@@ -228,7 +229,7 @@ struct HomeView: View {
     /// Chi lại một chạm: những khoản hay chi, chạm là ghi luôn (có Hoàn tác ở dưới).
     @ViewBuilder private var againSection: some View {
         if !again.isEmpty {
-            sectionTitle("Chi lại") { Text("Chạm là ghi") }
+            sectionTitle(L("Chi lại")) { Text(L("Chạm là ghi")) }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(again) { f in
@@ -262,7 +263,7 @@ struct HomeView: View {
         .background(Palette.card, in: Capsule())
         .foregroundStyle(.primary)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ghi lại \(name), \(fmt(f.amount)) đồng")
+        .accessibilityLabel(L("Ghi lại %@, %@ đồng", name, fmt(f.amount)))
     }
 
     private func tiles(_ now: Date) -> some View {
@@ -286,7 +287,7 @@ struct HomeView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
             .buttonStyle(Pressable())
-            .accessibilityLabel("Thêm danh mục")
+            .accessibilityLabel(L("Thêm danh mục"))
         }
     }
 
@@ -313,25 +314,26 @@ struct HomeView: View {
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { $0.c == c.k }
         var items = [
-            AppMenuItem(icon: "plus", title: "Nhập khoản \(c.name)") { entry = .new(cat: c.k) },
-            AppMenuItem(icon: "paintpalette.fill", title: "Đổi biểu tượng, màu, tên") { editingCat = CatEdit.of(c.k, store: store) },
+            AppMenuItem(icon: "plus", title: L("Nhập khoản %@", c.name)) { entry = .new(cat: c.k) },
+            AppMenuItem(icon: "paintpalette.fill", title: L("Đổi biểu tượng, màu, tên")) { editingCat = CatEdit.of(c.k, store: store) },
         ]
         if Category.isBuiltin(c.k) {
-            if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: "Về mặc định") { store.resetCategory(c.k) }) }
+            if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: L("Về mặc định")) { store.resetCategory(c.k) }) }
         } else {
-            items.append(AppMenuItem(icon: "trash.fill", title: "Xoá danh mục", danger: true) { store.removeCategory(c.k) })
+            items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá danh mục"), danger: true) { store.removeCategory(c.k) })
         }
         return AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
                             .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                            title: c.name,
-                           subtitle: "Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month.reduce(0) { $0 + $1.a })) · \(month.count) khoản",
+                           subtitle: L("%@: %@", monthLabel(now), fmt(month.reduce(0) { $0 + $1.a })) + " · " + (month.count == 1 ? L("1 khoản") : L("%d khoản", month.count)),
                            items: items)
     }
 
     @ViewBuilder private var recent: some View {
         let list = Array(store.sorted.prefix(5))
         if list.isEmpty {
-            Text("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")
+            // Chữ có **đậm** (Markdown): đưa qua LocalizedStringKey để Text vẽ đậm
+            Text(LocalizedStringKey(L("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")))
                 .font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -377,14 +379,28 @@ struct HomeView: View {
     private var dock: some View {
         GlassGroup {
             HStack(spacing: 12) {
-                BigButton(title: "Nhập", icon: "plus", primary: false) { entry = .new(cat: nil) }
-                BigButton(title: "Quét QR", icon: "qrcode.viewfinder", primary: true) { scanning = true }
+                BigButton(title: L("Nhập"), icon: "plus", primary: false) { entry = .new(cat: nil) }
+                BigButton(title: L("Quét QR"), icon: "qrcode.viewfinder", primary: true) { scanning = true }
             }
         }
         .padding(.horizontal, 16).padding(.bottom, 8)
     }
 
+    /// "Tháng 10" / "October"
+    private func monthLabel(_ d: Date) -> String {
+        if Lang.isEnglish {
+            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "LLLL"
+            return f.string(from: d)
+        }
+        return "Tháng \(Calendar.current.component(.month, from: d))"
+    }
+
+    /// "T7, 10/10" / "Sat, Oct 10"
     private func dayLabel(_ d: Date) -> String {
+        if Lang.isEnglish {
+            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "EEE, MMM d"
+            return f.string(from: d)
+        }
         let dow = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"][Calendar.current.component(.weekday, from: d) - 1]
         let c = Calendar.current.dateComponents([.day, .month], from: d)
         return "\(dow), \(c.day!)/\(c.month!)"
@@ -402,7 +418,7 @@ extension View {
             .listRowSeparator(.hidden)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
-                Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel("Xoá")
+                Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel(L("Xoá"))
             }
     }
 }
@@ -427,7 +443,7 @@ struct ExpenseRow: View {
                     Text((e.n?.isEmpty == false ? e.n! : c.name)).font(.system(size: 18, weight: .semibold)).lineLimit(1)
                     if repeats {
                         Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
-                            .accessibilityLabel("Hằng tháng")
+                            .accessibilityLabel(L("Hằng tháng"))
                     }
                 }
                 Text(sub(c)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
@@ -445,7 +461,8 @@ struct ExpenseRow: View {
         var parts: [String] = []
         if showDay {
             let cal = Calendar.current
-            if cal.isDate(e.date, inSameDayAs: now) { parts.append("Hôm nay") }
+            if cal.isDate(e.date, inSameDayAs: now) { parts.append(L("Hôm nay")) }
+            else if Lang.isEnglish { let df = DateFormatter(); df.locale = Lang.locale; df.dateFormat = "MMM d"; parts.append(df.string(from: e.date)) }
             else { let d = cal.dateComponents([.day, .month], from: e.date); parts.append("\(d.day!)/\(d.month!)") }
         }
         parts.append(tf.string(from: e.date))
@@ -527,11 +544,15 @@ extension View {
     }
 }
 
+/// Hiệu ứng nhấn chung của các nút tự vẽ: thu nhỏ và mờ đi một chút khi đang nhấn, bật lại khi thả
+/// (chỉ thu nhỏ 3% thì nút nhỏ gần như không thấy gì).
 struct Pressable: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(configuration.isPressed ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35),
+                       value: configuration.isPressed)
     }
 }
 
@@ -546,7 +567,7 @@ struct ToastView: View {
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     Button { undo(); store.toast = nil } label: {
-                        Label("Hoàn tác", systemImage: "arrow.uturn.backward")
+                        Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
                             .font(.system(size: 16, weight: .semibold))
                             .padding(.horizontal, 18).frame(height: 48)
                             .background(Palette.ctaInk.opacity(0.14), in: Capsule())

@@ -70,10 +70,10 @@ struct HouseView: View {
             #endif
         }
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store) }
-        .alert("Thêm người vào nhóm", isPresented: $addingMember) {
-            TextField("Tên", text: $newMember)
-            Button("Huỷ", role: .cancel) { newMember = "" }
-            Button("Thêm") {
+        .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
+            TextField(L("Tên"), text: $newMember)
+            Button(L("Huỷ"), role: .cancel) { newMember = "" }
+            Button(L("Thêm")) {
                 let n = newMember.trimmingCharacters(in: .whitespaces)
                 newMember = ""
                 let claim = claimAfterAdd
@@ -81,26 +81,26 @@ struct HouseView: View {
                 if !n.isEmpty { Task { if let id = await house.addMember(n), claim { await house.claim(id) } } }
             }
         } message: {
-            Text("Thêm được cả người không dùng Pay; bạn ghi giúp phần của họ.")
+            Text(L("Thêm được cả người không dùng Pay; bạn ghi giúp phần của họ."))
         }
-        .confirmationDialog(house.isOwner ? "Xoá nhóm cho cả nhà?" : "Rời nhóm?", isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button(house.isOwner ? "Xoá nhóm" : "Rời nhóm", role: .destructive) { Task { await house.leave() } }
+        .confirmationDialog(house.isOwner ? L("Xoá nhóm cho cả nhà?") : L("Rời nhóm?"), isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), role: .destructive) { Task { await house.leave() } }
         } message: {
-            Text(house.isOwner ? "Mọi người trong nhóm sẽ mất sổ chung này. Không hoàn tác được." : "Sổ chung vẫn còn ở người tạo nhóm, họ mời lại được.")
+            Text(house.isOwner ? L("Mọi người trong nhóm sẽ mất sổ chung này. Không hoàn tác được.") : L("Sổ chung vẫn còn ở người tạo nhóm, họ mời lại được."))
         }
-        .confirmationDialog("Xác nhận đã chuyển?", isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } }), titleVisibility: .visible) {
             if let t = paying {
                 if t.from == house.me {
-                    Button("Đã chuyển \(fmt(t.amount))đ") { Task { await house.settle(t) } }
-                    Button("Chưa chuyển", role: .cancel) {}
+                    Button(L("Đã chuyển %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
+                    Button(L("Chưa chuyển"), role: .cancel) {}
                 } else {
-                    Button("Đã nhận \(fmt(t.amount))đ") { Task { await house.settle(t) } }
+                    Button(L("Đã nhận %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
                 }
             }
         } message: {
             if let t = paying {
-                Text(t.from == house.me ? "\(house.memberName(t.to)) sẽ nhận thông báo để xác nhận đã nhận tiền."
-                                        : "Ghi nhận bạn đã nhận tiền từ \(house.memberName(t.from)).")
+                Text(t.from == house.me ? L("%@ sẽ nhận thông báo để xác nhận đã nhận tiền.", house.memberName(t.to))
+                                        : L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from)))
             }
         }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store) }
@@ -110,7 +110,7 @@ struct HouseView: View {
         .onChange(of: scenePhase) { _, p in
             if p == .active, let t = house.pendingPay { house.pendingPay = nil; paying = t }
         }
-        .alert("Không mở được lời mời", isPresented: Binding(get: { inviteError != nil }, set: { if !$0 { inviteError = nil } })) {
+        .alert(L("Không mở được lời mời"), isPresented: Binding(get: { inviteError != nil }, set: { if !$0 { inviteError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(inviteError ?? "") }
     }
@@ -121,7 +121,7 @@ struct HouseView: View {
     @ViewBuilder private var dock: some View {
         if inGroup && house.me != nil {
             GlassGroup {
-                BigButton(title: "Thêm khoản chung", icon: "plus", primary: true) { adding = true }
+                BigButton(title: L("Thêm khoản chung"), icon: "plus", primary: true) { adding = true }
             }
             .padding(.horizontal, 16).padding(.bottom, 8)
         }
@@ -145,14 +145,14 @@ struct HouseView: View {
     private var header: some View {
         HStack(spacing: 8) {
             if inGroup {
-                circleButton("chevron.left", "Các nhóm") { withAnimation(.snappy) { house.open(nil) } }
+                circleButton("chevron.left", L("Các nhóm")) { withAnimation(.snappy) { house.open(nil) } }
             } else if creating && !house.groups.isEmpty {
-                circleButton("chevron.left", "Các nhóm") { withAnimation(.snappy) { creating = false } }
+                circleButton("chevron.left", L("Các nhóm")) { withAnimation(.snappy) { creating = false } }
             } else {
-                circleButton("chevron.down", "Đóng") { dismiss() }
+                circleButton("chevron.down", L("Đóng")) { dismiss() }
             }
             Spacer()
-            Text(inGroup && !house.name.isEmpty ? house.name : creating ? "Nhóm mới" : "Nhóm chung")
+            Text(inGroup && !house.name.isEmpty ? house.name : creating ? L("Nhóm mới") : L("Nhóm chung"))
                 .font(.system(size: 19, weight: .bold)).lineLimit(1)
             Spacer()
             if inGroup && house.me != nil {
@@ -168,14 +168,15 @@ struct HouseView: View {
                             }
                         }
                 }
+                .buttonStyle(Pressable())
                 .foregroundStyle(.primary)
-                .accessibilityLabel(pending.isEmpty ? "Thông báo" : "Thông báo, \(pending.count) việc cần xác nhận")
+                .accessibilityLabel(pending.isEmpty ? L("Thông báo") : L("Thông báo, %d việc cần xác nhận", pending.count))
             }
             if inGroup {
                 Menu {
-                    Button(house.isOwner ? "Mời thành viên" : "Người trong nhóm", systemImage: "person.badge.plus") { invite() }
-                    Button("Thêm người", systemImage: "plus") { addingMember = true }
-                    Button(house.isOwner ? "Xoá nhóm" : "Rời nhóm", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
+                    Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
+                    Button(L("Thêm người"), systemImage: "plus") { addingMember = true }
+                    Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
                 } label: {
                     Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold))
                         .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
@@ -194,6 +195,7 @@ struct HouseView: View {
             Image(systemName: symbol).font(.system(size: 17, weight: .bold))
                 .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
         }
+        .buttonStyle(Pressable())
         .foregroundStyle(.primary)
         .accessibilityLabel(label)
     }
@@ -216,10 +218,10 @@ struct HouseView: View {
         case .loading:
             ProgressView().frame(maxWidth: .infinity).padding(.top, 120)
         case .noAccount:
-            message("icloud.slash", "Chưa đăng nhập iCloud", "Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt của iPhone rồi mở lại.")
+            message("icloud.slash", L("Chưa đăng nhập iCloud"), L("Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt của iPhone rồi mở lại."))
         case .failed(let why):
-            message("exclamationmark.triangle", "Chưa tải được nhóm", why)
-            primaryButton("Thử lại") { Task { await house.load() } }.padding(.top, 16)
+            message("exclamationmark.triangle", L("Chưa tải được nhóm"), why)
+            primaryButton(L("Thử lại")) { Task { await house.load() } }.padding(.top, 16)
         case .ready:
             if creating || house.groups.isEmpty { createForm }
             else if house.current == nil { groupList }
@@ -267,8 +269,8 @@ struct HouseView: View {
                     HouseAvatar(id: "demo\(i)", name: n, size: 52).overlay(Circle().stroke(Palette.surface, lineWidth: 3))
                 }
             }
-            Text("Sổ chi tiêu chung").font(.system(size: 26, weight: .bold))
-            Text("Cho nhà chung, phòng trọ, chuyến đi… Ai ứng tiền thì ghi vào đây, Pay tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất.")
+            Text(L("Sổ chi tiêu chung")).font(.system(size: 26, weight: .bold))
+            Text(L("Cho nhà chung, phòng trọ, chuyến đi… Ai ứng tiền thì ghi vào đây, Pay tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất."))
                 .font(.system(size: 16)).foregroundStyle(.secondary)
         }
         .padding(22)
@@ -276,12 +278,12 @@ struct HouseView: View {
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
 
         VStack(spacing: 14) {
-            field("Tên nhóm, ví dụ: Nhà mình, Đi Đà Lạt", $groupName)
-            field("Tên của bạn", $myName)
+            field(L("Tên nhóm, ví dụ: Nhà mình, Đi Đà Lạt"), $groupName)
+            field(L("Tên của bạn"), $myName)
         }
         .padding(.top, 20)
 
-        primaryButton("Tạo nhóm") {
+        primaryButton(L("Tạo nhóm")) {
             Task {
                 await house.create(name: groupName.trimmingCharacters(in: .whitespaces), me: myName.trimmingCharacters(in: .whitespaces))
                 creating = false
@@ -291,7 +293,7 @@ struct HouseView: View {
         .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
         .padding(.top, 20)
 
-        Text("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Pay và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi.")
+        Text(L("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Pay và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi."))
             .font(.system(size: 14)).foregroundStyle(.secondary)
             .padding(.top, 12).padding(.horizontal, 4)
     }
@@ -312,18 +314,20 @@ struct HouseView: View {
                     .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
             .buttonStyle(Pressable())
-            .accessibilityLabel("Tạo nhóm mới")
+            .accessibilityLabel(L("Tạo nhóm mới"))
         }
         if !old.isEmpty {
             Button { withAnimation(.snappy) { showArchived.toggle() } } label: {
                 HStack {
-                    Text("Đã lưu trữ").font(.system(size: 21, weight: .bold))
+                    Text(L("Đã lưu trữ")).font(.system(size: 21, weight: .bold))
                     Text("\(old.count)").font(.system(size: 15)).foregroundStyle(.secondary)
                     Spacer()
                     Image(systemName: showArchived ? "chevron.up" : "chevron.down").font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
                 }
                 .foregroundStyle(.primary)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(Pressable())
             .padding(.top, 26).padding(.bottom, 12)
             if showArchived {
                 VStack(spacing: 10) { ForEach(old) { groupCard($0).opacity(0.6) } }
@@ -338,18 +342,18 @@ struct HouseView: View {
             HStack(spacing: 14) {
                 groupIcon(g.id)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(g.name.isEmpty ? "Nhóm chung" : g.name).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                    Text(g.name.isEmpty ? L("Nhóm chung") : g.name).font(.system(size: 18, weight: .semibold)).lineLimit(1)
                     HStack(spacing: -6) {
                         ForEach(g.members.prefix(5)) { m in
                             HouseAvatar(id: m.id, name: m.name, size: 22).overlay(Circle().stroke(Palette.card, lineWidth: 1.5))
                         }
-                        Text("  \(g.members.count) người").font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text("  " + L("%d người", g.members.count)).font(.system(size: 14)).foregroundStyle(.secondary)
                             .lineLimit(1).fixedSize()
                     }
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(net > 0 ? "Được nhận" : net < 0 ? "Còn phải trả" : "Đã cân bằng")
+                    Text(net > 0 ? L("Được nhận") : net < 0 ? L("Còn phải trả") : L("Đã cân bằng"))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                     if net != 0 {
                         Text(fmt(abs(net))).font(.system(size: 17, weight: .bold))
@@ -380,20 +384,20 @@ struct HouseView: View {
 
     private func groupMenu(_ g: HouseGroup) -> AppMenuSpec {
         let archived = house.archived.contains(g.id)
-        return AppMenuSpec(icon: AnyView(groupIcon(g.id)), title: g.name.isEmpty ? "Nhóm chung" : g.name,
-                           subtitle: "\(g.members.count) người · \(g.spends.count) khoản chung", items: [
-            AppMenuItem(icon: "arrow.right", title: "Mở nhóm") { house.open(g.id) },
-            AppMenuItem(icon: "person.badge.plus", title: g.isOwner ? "Mời thành viên" : "Người trong nhóm") { house.open(g.id); invite() },
-            archived ? AppMenuItem(icon: "tray.and.arrow.up", title: "Bỏ lưu trữ") { house.setArchived(g.id, false) }
-                     : AppMenuItem(icon: "archivebox", title: "Lưu trữ", subtitle: "Ẩn khỏi danh sách, chỉ trên máy này") { house.setArchived(g.id, true) },
+        return AppMenuSpec(icon: AnyView(groupIcon(g.id)), title: g.name.isEmpty ? L("Nhóm chung") : g.name,
+                           subtitle: L("%d người · %d khoản chung", g.members.count, g.spends.count), items: [
+            AppMenuItem(icon: "arrow.right", title: L("Mở nhóm")) { house.open(g.id) },
+            AppMenuItem(icon: "person.badge.plus", title: g.isOwner ? L("Mời thành viên") : L("Người trong nhóm")) { house.open(g.id); invite() },
+            archived ? AppMenuItem(icon: "tray.and.arrow.up", title: L("Bỏ lưu trữ")) { house.setArchived(g.id, false) }
+                     : AppMenuItem(icon: "archivebox", title: L("Lưu trữ"), subtitle: L("Ẩn khỏi danh sách, chỉ trên máy này")) { house.setArchived(g.id, true) },
         ])
     }
 
     // MARK: Chọn "tôi là ai"
 
     @ViewBuilder private var pickMe: some View {
-        Text("Bạn là ai trong nhóm?").font(.system(size: 26, weight: .bold)).padding(.top, 10)
-        Text("Chỉ để biết phần nào là của bạn trên máy này.").font(.system(size: 16)).foregroundStyle(.secondary).padding(.top, 4)
+        Text(L("Bạn là ai trong nhóm?")).font(.system(size: 26, weight: .bold)).padding(.top, 10)
+        Text(L("Chỉ để biết phần nào là của bạn trên máy này.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.top, 4)
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(house.members) { m in
                 Button { Task { await house.claim(m.id) } } label: {
@@ -415,7 +419,7 @@ struct HouseView: View {
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
             .buttonStyle(Pressable())
-            .accessibilityLabel("Thêm tôi vào nhóm")
+            .accessibilityLabel(L("Thêm tôi vào nhóm"))
         }
         .padding(.top, 20)
     }
@@ -433,8 +437,8 @@ struct HouseView: View {
                     Image(systemName: "building.columns.fill").font(.system(size: 18))
                         .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Thêm tài khoản nhận tiền").font(.system(size: 16, weight: .semibold))
-                        Text("Mọi người bấm Trả ngay là app ngân hàng điền sẵn cho bạn.").font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text(L("Thêm tài khoản nhận tiền")).font(.system(size: 16, weight: .semibold))
+                        Text(L("Mọi người bấm Trả ngay là app ngân hàng điền sẵn cho bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
@@ -449,11 +453,11 @@ struct HouseView: View {
 
         pendingSection
 
-        sectionTitle("Ai chuyển cho ai", trailing: transfers.isEmpty ? nil : "\(transfers.count) lần")
+        sectionTitle(L("Ai chuyển cho ai"), trailing: transfers.isEmpty ? nil : L("%d lần", transfers.count))
         if transfers.isEmpty {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 26)).foregroundStyle(.green)
-                Text("Mọi người đã cân bằng, không ai nợ ai.").font(.system(size: 16)).foregroundStyle(.secondary)
+                Text(L("Mọi người đã cân bằng, không ai nợ ai.")).font(.system(size: 16)).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading).padding(18)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -462,22 +466,24 @@ struct HouseView: View {
             ForEach(transfers, id: \.self) { transferRow($0) }
         }
 
-        sectionTitle("Thành viên", trailing: "\(house.members.count) người")
+        sectionTitle(L("Thành viên"), trailing: L("%d người", house.members.count))
         members(net)
 
-        sectionTitle("Khoản chung", trailing: monthTotal)
+        sectionTitle(L("Khoản chung"), trailing: monthTotal)
         timeline
     }
 
     private var monthTotal: String? {
         let cal = Calendar.current
         let sum = house.spends.filter { cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }.reduce(0) { $0 + $1.amount }
-        return sum > 0 ? "Tháng \(cal.component(.month, from: Date())): \(fmt(sum))" : nil
+        guard sum > 0 else { return nil }
+        if Lang.isEnglish { return "\(Date().formatted(.dateTime.month(.wide).locale(Lang.locale))): \(fmt(sum))" }
+        return "Tháng \(cal.component(.month, from: Date())): \(fmt(sum))"
     }
 
     private func hero(_ mine: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(mine > 0 ? "Cả nhà còn nợ bạn" : mine < 0 ? "Bạn còn phải trả" : "Bạn đã cân bằng")
+            Text(mine > 0 ? L("Cả nhà còn nợ bạn") : mine < 0 ? L("Bạn còn phải trả") : L("Bạn đã cân bằng"))
                 .font(.system(size: 16)).foregroundStyle(.secondary)
             Text(fmt(abs(mine)))
                 .font(.system(size: 46, weight: .bold)).kerning(-1.5)
@@ -495,7 +501,7 @@ struct HouseView: View {
                 }
                 Spacer()
                 Button { invite() } label: {
-                    Label("Mời", systemImage: "person.badge.plus")
+                    Label(L("Mời"), systemImage: "person.badge.plus")
                         .font(.system(size: 16, weight: .semibold))
                         .padding(.horizontal, 16).frame(height: 40)
                         .background(Palette.pill, in: Capsule())
@@ -520,7 +526,7 @@ struct HouseView: View {
                 HouseAvatar(id: t.to, name: to, size: 40)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(t.from == house.me ? "Bạn trả \(to)" : t.to == house.me ? "\(from) trả bạn" : "\(from) trả \(to)")
+                Text(t.from == house.me ? L("Bạn trả %@", to) : t.to == house.me ? L("%@ trả bạn", from) : L("%@ trả %@", from, to))
                     .font(.system(size: 16, weight: .semibold)).lineLimit(1)
                 Text(fmt(t.amount)).font(.system(size: 16, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
             }
@@ -529,14 +535,17 @@ struct HouseView: View {
             // Chỉ người trả và người nhận mới có nút; người khác chỉ xem
             let canPay = t.from == house.me && house.members.first { $0.id == t.to }?.hasBank == true
             if mine {
-                Button(canPay ? "Trả ngay" : t.to == house.me ? "Đã nhận" : "Đã chuyển") {
+                Button {
                     if canPay { Task { await house.payNow(t, app: store.bankApp) } } else { paying = t }
+                } label: {
+                    // nền nằm trong nhãn để cả viên thuốc cùng thu nhỏ khi nhấn (để ngoài thì chỉ chữ động)
+                    Text(canPay ? L("Trả ngay") : t.to == house.me ? L("Đã nhận") : L("Đã chuyển"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1).fixedSize()
+                        .padding(.horizontal, 14).frame(height: 38)
+                        .foregroundStyle(Palette.ctaInk)
+                        .background(Palette.cta, in: Capsule())
                 }
-                .font(.system(size: 15, weight: .semibold))
-                .lineLimit(1).fixedSize()
-                .padding(.horizontal, 14).frame(height: 38)
-                .foregroundStyle(Palette.ctaInk)
-                .background(Palette.cta, in: Capsule())
                 .buttonStyle(Pressable())
 
             }
@@ -545,11 +554,11 @@ struct HouseView: View {
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onHold {
             guard t.from == house.me else { return }
-            menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: to, size: 56)), title: "Bạn trả \(to) · \(fmt(t.amount))",
-                               subtitle: house.members.first { $0.id == t.to }?.hasBank == true ? "Đã có tài khoản nhận tiền" : "Chưa có tài khoản nhận tiền",
+            menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: to, size: 56)), title: L("Bạn trả %@", to) + " · \(fmt(t.amount))",
+                               subtitle: house.members.first { $0.id == t.to }?.hasBank == true ? L("Đã có tài khoản nhận tiền") : L("Chưa có tài khoản nhận tiền"),
                                items: [
-                AppMenuItem(icon: "building.columns.fill", title: "Trả qua app ngân hàng") { Task { await house.payNow(t, app: store.bankApp) } },
-                AppMenuItem(icon: "checkmark", title: "Đã chuyển bằng cách khác", subtitle: "Tiền mặt, ví điện tử…") { paying = t },
+                AppMenuItem(icon: "building.columns.fill", title: L("Trả qua app ngân hàng")) { Task { await house.payNow(t, app: store.bankApp) } },
+                AppMenuItem(icon: "checkmark", title: L("Đã chuyển bằng cách khác"), subtitle: L("Tiền mặt, ví điện tử…")) { paying = t },
             ].filter { $0.icon != "building.columns.fill" || house.members.first { $0.id == t.to }?.hasBank == true })
         }
     }
@@ -561,7 +570,7 @@ struct HouseView: View {
                     let v = net[m.id] ?? 0
                     VStack(spacing: 8) {
                         HouseAvatar(id: m.id, name: m.name, size: 48)
-                        Text(m.id == house.me ? "Bạn" : m.name).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                        Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 15, weight: .semibold)).lineLimit(1)
                         Text(v == 0 ? "0" : (v > 0 ? "+" : "−") + fmt(abs(v)))
                             .font(.system(size: 14, weight: .medium)).monospacedDigit()
                             .foregroundStyle(v < 0 ? Palette.danger : v > 0 ? Palette.goodInk : .secondary)
@@ -582,7 +591,7 @@ struct HouseView: View {
                     .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 .buttonStyle(Pressable())
-                .accessibilityLabel("Thêm người")
+                .accessibilityLabel(L("Thêm người"))
             }
             .fixedSize(horizontal: false, vertical: true)   // ô dấu + cao bằng các ô thành viên
             .padding(.horizontal, 16)
@@ -594,7 +603,7 @@ struct HouseView: View {
     @ViewBuilder private var timeline: some View {
         let items: [(Date, AnyView)] = house.spends.map { ($0.date, AnyView(spendRow($0))) } + house.settles.map { ($0.date, AnyView(settleRow($0))) }
         if items.isEmpty {
-            Text("Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhà.")
+            Text(L("Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhà."))
                 .font(.system(size: 16)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -613,14 +622,14 @@ struct HouseView: View {
                 .background(c.color, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(e.note.isEmpty ? c.name : e.note).font(.system(size: 17, weight: .semibold)).lineLimit(1)
-                Text("\(e.payer == house.me ? "Bạn" : payer) ứng · chia \(Set(e.shares).count) người · \(day(e.date))")
+                Text(L("%@ ứng · chia %d người · %@", e.payer == house.me ? L("Bạn") : payer, Set(e.shares).count, day(e.date)))
                     .font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 3) {
                 Text(fmt(e.amount)).font(.system(size: 17, weight: .bold))
                 if let me = house.me, e.shares.contains(me) {
-                    Text("bạn \(fmt(Settle.split(e.amount, e.shares, seed: e.id)[me] ?? 0))")
+                    Text(L("bạn %@", fmt(Settle.split(e.amount, e.shares, seed: e.id)[me] ?? 0)))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
             }
@@ -632,27 +641,27 @@ struct HouseView: View {
             menu = AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
                                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                                title: "\(e.note.isEmpty ? c.name : e.note) · \(fmt(e.amount))",
-                               subtitle: "\(house.memberName(e.payer)) ứng · chia \(Set(e.shares).count) người · \(day(e.date))",
-                               items: [AppMenuItem(icon: "trash.fill", title: "Xoá khoản này", subtitle: "Cả nhóm sẽ không thấy khoản này nữa", danger: true) {
+                               subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
+                               items: [AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
                                    Task { await house.delete(e.id) }
                                }])
         }
     }
 
     private func settleRow(_ s: HouseSettle) -> some View {
-        let from = s.from == house.me ? "Bạn" : house.memberName(s.from)
-        let to = s.to == house.me ? "bạn" : house.memberName(s.to)
+        let from = s.from == house.me ? L("Bạn") : house.memberName(s.from)
+        let to = s.to == house.me ? L("bạn") : house.memberName(s.to)
         let (icon, tint, note): (String, Color, String) = switch s.status {
-        case "wait": ("clock", .orange, "Chờ xác nhận")
-        case "no": ("xmark", Palette.danger, "Chưa nhận được")
-        default: ("checkmark", Palette.goodInk, "Đã xác nhận")
+        case "wait": ("clock", .orange, L("Chờ xác nhận"))
+        case "no": ("xmark", Palette.danger, L("Chưa nhận được"))
+        default: ("checkmark", Palette.goodInk, L("Đã xác nhận"))
         }
         return HStack(spacing: 14) {
             Image(systemName: icon).font(.system(size: 20, weight: .bold)).foregroundStyle(tint)
                 .frame(width: 52, height: 52)
                 .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(from) chuyển \(to)").font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                Text(L("%@ chuyển %@", from, to)).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                 Text("\(note) · \(day(s.date))").font(.system(size: 14)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
@@ -664,8 +673,8 @@ struct HouseView: View {
         .onHold {
             menu = AppMenuSpec(icon: AnyView(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(tint)
                                 .frame(width: 56, height: 56).background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
-                               title: "\(from) chuyển \(to) · \(fmt(s.amount))", subtitle: "\(note) · \(day(s.date))",
-                               items: [AppMenuItem(icon: "trash.fill", title: "Xoá lần trả này", subtitle: "Số nợ sẽ tính lại như chưa trả", danger: true) {
+                               title: L("%@ chuyển %@", from, to) + " · \(fmt(s.amount))", subtitle: "\(note) · \(day(s.date))",
+                               items: [AppMenuItem(icon: "trash.fill", title: L("Xoá lần trả này"), subtitle: L("Số nợ sẽ tính lại như chưa trả"), danger: true) {
                                    Task { await house.delete(s.id) }
                                }])
         }
@@ -692,11 +701,11 @@ struct HouseView: View {
                                 Image(systemName: "bell.slash.fill").font(.system(size: 18)).foregroundStyle(.orange)
                                     .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Đang tắt thông báo").font(.system(size: 16, weight: .semibold))
-                                    Text("Bật để biết ngay khi có người báo đã chuyển tiền.").font(.system(size: 14)).foregroundStyle(.secondary)
+                                    Text(L("Đang tắt thông báo")).font(.system(size: 16, weight: .semibold))
+                                    Text(L("Bật để biết ngay khi có người báo đã chuyển tiền.")).font(.system(size: 14)).foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 0)
-                                Text("Bật").font(.system(size: 15, weight: .semibold))
+                                Text(L("Bật")).font(.system(size: 15, weight: .semibold))
                             }
                             .foregroundStyle(.primary).padding(14)
                             .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -704,13 +713,13 @@ struct HouseView: View {
                         .buttonStyle(Pressable())
                     }
                     if !pending.isEmpty {
-                        Text("Cần xác nhận").font(.system(size: 21, weight: .bold)).padding(.top, 8)
+                        Text(L("Cần xác nhận")).font(.system(size: 21, weight: .bold)).padding(.top, 8)
                         ForEach(pending) { pendingCard($0) }
                     }
-                    Text("Gần đây").font(.system(size: 21, weight: .bold)).padding(.top, 16)
+                    Text(L("Gần đây")).font(.system(size: 21, weight: .bold)).padding(.top, 16)
                     let recent = activity
                     if recent.isEmpty {
-                        Text("Chưa có gì mới.").font(.system(size: 16)).foregroundStyle(.secondary).padding(.vertical, 20)
+                        Text(L("Chưa có gì mới.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.vertical, 20)
                     }
                     ForEach(recent, id: \.id) { a in
                         HStack(alignment: .top, spacing: 12) {
@@ -728,9 +737,9 @@ struct HouseView: View {
                 .padding(.horizontal, 16).padding(.bottom, 30)
             }
             .background(Palette.bg.ignoresSafeArea())
-            .navigationTitle("Thông báo")
+            .navigationTitle(L("Thông báo"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Xong") { showInbox = false } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { showInbox = false } } }
             .task {
                 let s = await UNUserNotificationCenter.current().notificationSettings()
                 notifyOn = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
@@ -746,18 +755,18 @@ struct HouseView: View {
         var out: [Activity] = []
         for e in house.spends where e.payer != me {
             let part = me.flatMap { e.shares.contains($0) ? Settle.split(e.amount, e.shares, seed: e.id)[$0] : nil }
-            out.append(Activity(id: e.id, who: e.payer, text: "\(name(e.payer)) thêm \(e.note.isEmpty ? "một khoản" : "\"\(e.note)\"") \(fmt(e.amount))đ"
-                                + (part.map { ", phần bạn \(fmt($0))đ" } ?? ""), date: e.date))
+            out.append(Activity(id: e.id, who: e.payer, text: L("%@ thêm %@ %@đ", name(e.payer), e.note.isEmpty ? L("một khoản") : "\"\(e.note)\"", fmt(e.amount))
+                                + (part.map { L(", phần bạn %@đ", fmt($0)) } ?? ""), date: e.date))
         }
         for s in house.settles where s.from == me || s.to == me {
             let other = s.from == me ? s.to : s.from
             let text: String = switch (s.from == me, s.status) {
-            case (true, "wait"): "Đã báo chuyển \(fmt(s.amount))đ cho \(name(s.to)), chờ xác nhận"
-            case (true, "no"): "\(name(s.to)) chưa nhận được \(fmt(s.amount))đ bạn chuyển"
-            case (true, _): "\(name(s.to)) đã nhận \(fmt(s.amount))đ của bạn"
-            case (false, "wait"): "\(name(s.from)) báo đã chuyển cho bạn \(fmt(s.amount))đ"
-            case (false, "no"): "Bạn báo chưa nhận được \(fmt(s.amount))đ từ \(name(s.from))"
-            case (false, _): "Bạn đã nhận \(fmt(s.amount))đ từ \(name(s.from))"
+            case (true, "wait"): L("Đã báo chuyển %@đ cho %@, chờ xác nhận", fmt(s.amount), name(s.to))
+            case (true, "no"): L("%@ chưa nhận được %@đ bạn chuyển", name(s.to), fmt(s.amount))
+            case (true, _): L("%@ đã nhận %@đ của bạn", name(s.to), fmt(s.amount))
+            case (false, "wait"): L("%@ báo đã chuyển cho bạn %@đ", name(s.from), fmt(s.amount))
+            case (false, "no"): L("Bạn báo chưa nhận được %@đ từ %@", fmt(s.amount), name(s.from))
+            case (false, _): L("Bạn đã nhận %@đ từ %@", fmt(s.amount), name(s.from))
             }
             out.append(Activity(id: s.id, who: other, text: text, date: s.date))
         }
@@ -766,14 +775,14 @@ struct HouseView: View {
 
     private func ago(_ d: Date) -> String {
         let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "vi_VN")
+        f.locale = Lang.locale
         return f.localizedString(for: d, relativeTo: Date())
     }
 
     @ViewBuilder private var pendingSection: some View {
         let mine = pending
         if !mine.isEmpty {
-            sectionTitle("Cần xác nhận")
+            sectionTitle(L("Cần xác nhận"))
             VStack(spacing: 10) {
                 ForEach(mine) { s in pendingCard(s) }
             }
@@ -787,7 +796,7 @@ struct HouseView: View {
             HStack(spacing: 12) {
                 HouseAvatar(id: incoming ? s.from : s.to, name: incoming ? from : to, size: 44)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(incoming ? "\(from) báo đã chuyển cho bạn" : s.status == "no" ? "\(to) chưa nhận được" : "Chờ \(to) xác nhận")
+                    Text(incoming ? L("%@ báo đã chuyển cho bạn", from) : s.status == "no" ? L("%@ chưa nhận được", to) : L("Chờ %@ xác nhận", to))
                         .font(.system(size: 16, weight: .semibold)).lineLimit(1)
                     Text(fmt(s.amount)).font(.system(size: 20, weight: .bold))
                         .foregroundStyle(s.status == "no" ? Palette.danger : .primary)
@@ -799,15 +808,15 @@ struct HouseView: View {
             }
             if incoming {
                 HStack(spacing: 8) {
-                    pill("Chưa nhận được", primary: false) { Task { await house.respond(s.id, received: false) } }
-                    pill("Đã nhận", primary: true) { Task { await house.respond(s.id, received: true) } }
+                    pill(L("Chưa nhận được"), primary: false) { Task { await house.respond(s.id, received: false) } }
+                    pill(L("Đã nhận"), primary: true) { Task { await house.respond(s.id, received: true) } }
                 }
             } else if s.status == "no" {
-                Text("Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại.")
+                Text(L("Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại."))
                     .font(.system(size: 14)).foregroundStyle(.secondary)
                 HStack(spacing: 8) {
-                    pill("Bỏ", primary: false) { Task { await house.delete(s.id) } }
-                    pill("Chuyển lại", primary: true) {
+                    pill(L("Bỏ"), primary: false) { Task { await house.delete(s.id) } }
+                    pill(L("Chuyển lại"), primary: true) {
                         Task {
                             await house.delete(s.id)
                             let t = HouseTransfer(from: s.from, to: s.to, amount: s.amount)
@@ -841,8 +850,9 @@ struct HouseView: View {
 
     private func day(_ d: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(d) { return "Hôm nay" }
-        if cal.isDateInYesterday(d) { return "Hôm qua" }
+        if cal.isDateInToday(d) { return L("Hôm nay") }
+        if cal.isDateInYesterday(d) { return L("Hôm qua") }
+        if Lang.isEnglish { return d.formatted(.dateTime.month(.abbreviated).day().locale(Lang.locale)) }
         let c = cal.dateComponents([.day, .month], from: d)
         return "\(c.day!)/\(c.month!)"
     }
@@ -875,34 +885,34 @@ struct HouseMemberEditor: View {
                             }
                         }
                         HStack(spacing: 16) {
-                            PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? "Chọn ảnh" : "Đổi ảnh") }
-                            if photo != nil { Button("Bỏ ảnh", role: .destructive) { photo = nil; photoChanged = true } }
+                            PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")) }
+                            if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
                         }
                         .font(.system(size: 16, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
                 }
-                Section("Tên") { TextField("Tên", text: $name) }
+                Section(L("Tên")) { TextField(L("Tên"), text: $name) }
                 Section {
-                    Picker("Ngân hàng", selection: $bin) {
-                        Text("Chưa chọn").tag("")
+                    Picker(L("Ngân hàng"), selection: $bin) {
+                        Text(L("Chưa chọn")).tag("")
                         ForEach(Self.banks, id: \.key) { Text($0.value).tag($0.key) }
                     }
                     .pickerStyle(.navigationLink)   // danh sách dài: mở trang riêng để cuộn
-                    TextField("Số tài khoản", text: $acct).keyboardType(.numberPad)
+                    TextField(L("Số tài khoản"), text: $acct).keyboardType(.numberPad)
                 } header: {
-                    Text("Tài khoản nhận tiền")
+                    Text(L("Tài khoản nhận tiền"))
                 } footer: {
-                    Text("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung.")
+                    Text(L("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung."))
                 }
             }
-            .navigationTitle(member.id == house.me ? "Bạn" : member.name)
+            .navigationTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Huỷ") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Lưu") {
+                    Button(L("Lưu")) {
                         let n = name.trimmingCharacters(in: .whitespaces)
                         let a = acct.filter(\.isNumber)
                         let p: Data? = photoChanged ? (photo ?? Data()) : nil
@@ -960,15 +970,16 @@ struct HouseSpendEditor: View {
                     Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
                         .frame(width: 46, height: 46).background(Palette.pill, in: Circle())
                 }
+                .buttonStyle(Pressable())
                 .foregroundStyle(.primary)
-                Text("Khoản chung").font(.system(size: 21, weight: .bold))
+                Text(L("Khoản chung")).font(.system(size: 21, weight: .bold))
                 Spacer()
             }
             .padding(.top, 8)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Số tiền").font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
+                    Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
                     // Ô nhập ẩn giữ các chữ số, phía trên hiện số đã chia dấu chấm; con trỏ luôn ở cuối, không nhảy giữa số
                     HStack(alignment: .firstTextBaseline) {
                         Text(amount > 0 ? fmt(amount) : "0")
@@ -990,7 +1001,7 @@ struct HouseSpendEditor: View {
                     .animation(.snappy(duration: 0.15), value: amount)
                     Rectangle().fill(.primary).frame(height: 2).padding(.top, 4)
 
-                    TextField("Ghi chú, ví dụ: đi chợ", text: $note)
+                    TextField(L("Ghi chú, ví dụ: đi chợ"), text: $note)
                         .font(.system(size: 18))
                         .padding(.horizontal, 18).padding(.vertical, 15)
                         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -999,7 +1010,7 @@ struct HouseSpendEditor: View {
 
                     categories.padding(.top, 12)
 
-                    label("Ai ứng tiền")
+                    label(L("Ai ứng tiền"))
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(house.members) { m in
@@ -1011,11 +1022,12 @@ struct HouseSpendEditor: View {
                     .padding(.horizontal, -18)
 
                     HStack {
-                        label("Chia đều cho")
+                        label(L("Chia đều cho"))
                         Spacer()
-                        Button(shares.count == house.members.count ? "Bỏ chọn" : "Cả nhà") {
+                        Button(shares.count == house.members.count ? L("Bỏ chọn") : L("Cả nhà")) {
                             shares = shares.count == house.members.count ? [] : Set(house.members.map(\.id))
                         }
+                        .buttonStyle(Pressable())
                         .font(.system(size: 15, weight: .semibold)).padding(.top, 22)
                     }
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
@@ -1030,8 +1042,8 @@ struct HouseSpendEditor: View {
                     if let mine = myShare, mine > 0 {
                         Toggle(isOn: $logMine) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Ghi \(fmt(mine))đ vào chi tiêu của tôi").font(.system(size: 16, weight: .semibold))
-                                Text("Thống kê và ngân sách chỉ tính phần của bạn.").font(.system(size: 14)).foregroundStyle(.secondary)
+                                Text(L("Ghi %@đ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
+                                Text(L("Thống kê và ngân sách chỉ tính phần của bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
                             }
                         }
                         .padding(16)
@@ -1044,7 +1056,7 @@ struct HouseSpendEditor: View {
             .scrollDismissesKeyboard(.interactively)
 
             Button { save() } label: {
-                Text("Lưu").font(.system(size: 19, weight: .semibold))
+                Text(L("Lưu")).font(.system(size: 19, weight: .semibold))
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .foregroundStyle(Palette.ctaInk)
                     .background(Palette.cta, in: Capsule())
@@ -1083,6 +1095,7 @@ struct HouseSpendEditor: View {
                         .foregroundStyle(on ? Color.black : Color.primary)
                         .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                     }
+                    .buttonStyle(Pressable())
                 }
             }
             .padding(.horizontal, 18)
@@ -1095,7 +1108,7 @@ struct HouseSpendEditor: View {
             HStack(spacing: 10) {
                 HouseAvatar(id: m.id, name: m.name, size: 36)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(m.id == house.me ? "Bạn" : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                    Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
                     if let line = sub { Text(line).font(.system(size: 13)).foregroundStyle(on ? Palette.ctaInk.opacity(0.7) : .secondary).lineLimit(1) }
                 }
                 if wide { Spacer(minLength: 0) }
@@ -1117,7 +1130,7 @@ struct HouseSpendEditor: View {
         let log = logMine
         Task {
             guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c) else { return }
-            if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? "Nhà chung" : n, cat: c) }
+            if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c) }
             dismiss()
         }
     }

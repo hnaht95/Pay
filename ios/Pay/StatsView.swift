@@ -39,10 +39,10 @@ struct StatsView: View {
                 .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 32)
             }
             .background(Self.page.ignoresSafeArea())
-            .navigationTitle("Thống kê")
+            .navigationTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { dismiss() } }
             }
         }
     }
@@ -108,7 +108,7 @@ struct StatsView: View {
             .background(on ? Self.ink : .clear, in: Capsule())
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(Pressable())
     }
 
     // MARK: Thẻ cam: tổng chi tháng
@@ -117,7 +117,7 @@ struct StatsView: View {
         let total = sum(items)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Tổng chi \(monthName(month).lowercased())").font(.system(size: 16, weight: .medium))
+                Text(L("Tổng chi %@", Lang.isEnglish ? monthName(month) : monthName(month).lowercased())).font(.system(size: 16, weight: .medium))
                 Spacer()
                 iconChip("creditcard", fg: .white, bg: .white.opacity(0.2))
             }
@@ -131,7 +131,7 @@ struct StatsView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(.white.opacity(0.22), in: Capsule())
-                    Text(isRunning ? "so với cùng kỳ" : "so với tháng trước")
+                    Text(isRunning ? L("so với cùng kỳ") : L("so với tháng trước"))
                         .font(.system(size: 13)).opacity(0.85)
                 }
             }
@@ -155,17 +155,17 @@ struct StatsView: View {
         return Grid(horizontalSpacing: 14, verticalSpacing: 14) {
             GridRow {
             if isRunning {
-                tile("Hôm nay", "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: "chưa có để so")
+                tile(L("Hôm nay"), "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: L("chưa có để so"))
             } else {
                 let active = Set(items.map { cal.component(.day, from: $0.date) }).count
-                tile("Ngày có chi", "calendar", "\(active)/\(days)", delta: nil, note: "\(active * 100 / max(days, 1))% số ngày")
+                tile(L("Ngày có chi"), "calendar", "\(active)/\(days)", delta: nil, note: L("%ld%% số ngày", active * 100 / max(days, 1)))
             }
-            tile("TB mỗi ngày", "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: "chưa có để so")
+            tile(L("TB mỗi ngày"), "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: L("chưa có để so"))
             }
             GridRow {
-            tile("Lớn nhất", "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil,
-                 note: biggest.map { $0.n?.isEmpty == false ? $0.n! : Category.get($0.c).name } ?? "chưa có")
-            tile("Số khoản", "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: "chưa có để so")
+            tile(L("Lớn nhất"), "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil,
+                 note: biggest.map { $0.n?.isEmpty == false ? $0.n! : Category.get($0.c).name } ?? L("chưa có"))
+            tile(L("Số khoản"), "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: L("chưa có để so"))
             }
         }
     }
@@ -217,7 +217,7 @@ struct StatsView: View {
         let limit = store.budget(for: month)
         if limit != nil || isRunning {
         card {
-            Text("Hạn mức chi tháng").font(.system(size: 17, weight: .semibold))
+            Text(L("Hạn mức chi tháng")).font(.system(size: 17, weight: .semibold))
             if let limit {
                 let ratio = min(Double(spent) / Double(limit), 1)
                 GeometryReader { g in
@@ -236,7 +236,7 @@ struct StatsView: View {
                 }
                 .padding(.top, 6)
             } else {
-                Text("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.").font(.system(size: 14)).foregroundStyle(.secondary)
+                Text(L("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.")).font(.system(size: 14)).foregroundStyle(.secondary)
             }
         }
         }
@@ -263,10 +263,10 @@ struct StatsView: View {
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
         let used = bars.filter { $0.total > 0 }.map(\.total)
         return card {
-            Text("Chi 6 tháng").font(.system(size: 17, weight: .semibold))
+            Text(L("Chi 6 tháng")).font(.system(size: 17, weight: .semibold))
             HStack(spacing: 14) {
-                legend(AnyShapeStyle(Self.ink), "Hoá đơn")
-                legend(AnyShapeStyle(Hatch.orange), "Chi tiêu khác")
+                legend(AnyShapeStyle(Self.ink), L("Hoá đơn"))
+                legend(AnyShapeStyle(Hatch.orange), L("Chi tiêu khác"))
                 Spacer()
             }
             .padding(.top, 4)
@@ -314,11 +314,11 @@ struct StatsView: View {
             // Trung bình / Thấp nhất / Cao nhất của các tháng có chi
             if !used.isEmpty {
                 HStack(spacing: 0) {
-                    stat("Trung bình", used.reduce(0, +) / used.count)
+                    stat(L("Trung bình"), used.reduce(0, +) / used.count)
                     Divider().frame(height: 36)
-                    stat("Thấp nhất", used.min()!)
+                    stat(L("Thấp nhất"), used.min()!)
                     Divider().frame(height: 36)
-                    stat("Cao nhất", used.max()!)
+                    stat(L("Cao nhất"), used.max()!)
                 }
                 .padding(.top, 16)
             }
@@ -349,7 +349,7 @@ struct StatsView: View {
         let byCat = Dictionary(grouping: items, by: \.c).mapValues(sum)
         let ranked = Category.all.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }
         return card {
-            Text("Theo danh mục").font(.system(size: 17, weight: .semibold))
+            Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold))
             VStack(spacing: 22) {
                 ForEach(ranked) { c in
                     let v = byCat[c.k]!
@@ -384,9 +384,9 @@ struct StatsView: View {
         let rows = Array(items.sorted { $0.t > $1.t }.prefix(6))
         return card {
             HStack {
-                Text("Khoản chi gần đây").font(.system(size: 17, weight: .semibold))
+                Text(L("Khoản chi gần đây")).font(.system(size: 17, weight: .semibold))
                 Spacer()
-                Text("\(items.count) khoản").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(L("%ld khoản", items.count)).font(.system(size: 13)).foregroundStyle(.secondary)
             }
             VStack(spacing: 0) {
                 ForEach(rows) { e in
@@ -443,21 +443,38 @@ struct StatsView: View {
 
     private func monthName(_ d: Date) -> String {
         let c = cal.dateComponents([.month, .year], from: d)
+        if Lang.isEnglish {
+            let f = DateFormatter()
+            f.locale = Lang.locale
+            f.dateFormat = c.year == cal.component(.year, from: Date()) ? "LLLL" : "LLLL yyyy"
+            return f.string(from: d)
+        }
         return c.year == cal.component(.year, from: Date()) ? "Tháng \(c.month!)" : "Tháng \(c.month!)/\(c.year!)"
     }
 
-    private func shortMonth(_ d: Date) -> String { "T\(cal.component(.month, from: d))" }
-
-    private func when(_ d: Date) -> String {
+    private func shortMonth(_ d: Date) -> String {
+        guard Lang.isEnglish else { return "T\(cal.component(.month, from: d))" }
         let f = DateFormatter()
-        f.dateFormat = "dd/MM HH:mm"
+        f.locale = Lang.locale
+        f.dateFormat = "LLL"   // "Oct"
         return f.string(from: d)
     }
 
-    /// 1250000 -> "1,3tr", 45000 -> "45k"
+    private func when(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Lang.locale
+        f.dateFormat = Lang.isEnglish ? "MMM d, HH:mm" : "dd/MM HH:mm"
+        return f.string(from: d)
+    }
+
+    /// 1250000 -> "1,3tr", 45000 -> "45k" (tiếng Anh: "1.3M", "45k")
     private func short(_ n: Int) -> String {
         if n >= 1_000_000 {
             let v = Double(n) / 1e6
+            if Lang.isEnglish {
+                let t = v >= 10 ? String(Int(v.rounded())) : String(format: "%.1f", v)
+                return (t.hasSuffix(".0") ? String(t.dropLast(2)) : t) + "M"
+            }
             let t = v >= 10 ? String(Int(v.rounded())) : String(format: "%.1f", v).replacingOccurrences(of: ".", with: ",")
             return (t.hasSuffix(",0") ? String(t.dropLast(2)) : t) + "tr"
         }

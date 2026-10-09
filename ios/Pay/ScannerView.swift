@@ -25,7 +25,7 @@ struct ScannerView: View {
             .allowsHitTesting(false)
 
             VStack {
-                Text("Đưa mã QR của quán vào khung")
+                Text(L("Đưa mã QR của quán vào khung"))
                     .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
                     .padding(.top, 20)
                 if let error {
@@ -34,8 +34,8 @@ struct ScannerView: View {
                 }
                 Spacer()
                 HStack(spacing: 12) {
-                    PhotosPicker(selection: $photo, matching: .images) { pill("Chọn ảnh QR") }
-                    Button { dismiss() } label: { pill("Đóng") }
+                    PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh QR")) }
+                    Button { dismiss() } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
                 }
                 .padding(.horizontal, 16).padding(.bottom, 12)
             }
@@ -44,7 +44,7 @@ struct ScannerView: View {
             guard let item else { return }
             Task {
                 guard let data = try? await item.loadTransferable(type: Data.self), let code = decodeQR(data) else {
-                    error = "Không đọc được mã QR trong ảnh"; return
+                    error = L("Không đọc được mã QR trong ảnh"); return
                 }
                 found(code)
             }
@@ -94,13 +94,13 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
         super.viewDidLoad()
         view.backgroundColor = .black
         AVCaptureDevice.requestAccess(for: .video) { ok in
-            DispatchQueue.main.async { ok ? self.configure() : self.onError?("Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".") }
+            DispatchQueue.main.async { ok ? self.configure() : self.onError?(L("Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".")) }
         }
     }
 
     private func configure() {
         guard let device = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
-            onError?("Không mở được camera. Bấm \"Chọn ảnh QR\" để dùng ảnh chụp màn hình.")
+            onError?(L("Không mở được camera. Bấm \"Chọn ảnh QR\" để dùng ảnh chụp màn hình."))
             return
         }
         session.addInput(input)

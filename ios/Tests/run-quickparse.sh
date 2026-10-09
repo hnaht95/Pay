@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 tmp=$(mktemp -d)
 {
   echo 'import Foundation'
+  echo 'enum Lang { static var isEnglish = false }   // QuickParse đọc theo ngôn ngữ của app; câu thử chạy kiểu tiếng Việt'
   sed -n '/^func strip/,/^}/p' Pay/Category.swift
   sed 1d Pay/QuickParse.swift
   cat Tests/QuickParseCases.swift

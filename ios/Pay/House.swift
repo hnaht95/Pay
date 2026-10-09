@@ -193,22 +193,22 @@ final class House: ObservableObject {
     private func loadDemo() {
         let now = Date()
         func ago(_ d: Double) -> Date { now.addingTimeInterval(-d * 86_400) }
-        var home = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo1"), scope: .private, isOwner: true, name: "Nhà mình")
+        var home = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo1"), scope: .private, isOwner: true, name: L("Nhà mình"))
         home.members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan", bin: "970416", acct: "123456789"),
                         HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà")]
         home.spends = [
-            HouseSpend(id: "e1", amount: 420_000, note: "Đi chợ cuối tuần", payer: "a", shares: ["a", "b", "c", "d"], date: ago(0.2), cat: "an"),
-            HouseSpend(id: "e2", amount: 860_000, note: "Tiền điện tháng 9", payer: "b", shares: ["a", "b", "c", "d"], date: ago(2), cat: "hd"),
-            HouseSpend(id: "e3", amount: 300_000, note: "Lẩu tối thứ 6", payer: "c", shares: ["a", "c", "d"], date: ago(4), cat: "an"),
+            HouseSpend(id: "e1", amount: 420_000, note: L("Đi chợ cuối tuần"), payer: "a", shares: ["a", "b", "c", "d"], date: ago(0.2), cat: "an"),
+            HouseSpend(id: "e2", amount: 860_000, note: L("Tiền điện tháng 9"), payer: "b", shares: ["a", "b", "c", "d"], date: ago(2), cat: "hd"),
+            HouseSpend(id: "e3", amount: 300_000, note: L("Lẩu tối thứ 6"), payer: "c", shares: ["a", "c", "d"], date: ago(4), cat: "an"),
             HouseSpend(id: "e4", amount: 250_000, note: "Internet", payer: "a", shares: ["a", "b", "c", "d"], date: ago(8), cat: "hd"),
         ]
         home.settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1)),
                         HouseSettle(id: "s2", from: "a", to: "c", amount: 50_000, date: ago(0.1), status: "wait")]
         home.me = "c"
-        var trip = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo2"), scope: .shared, isOwner: false, name: "Đi Đà Lạt")
+        var trip = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo2"), scope: .shared, isOwner: false, name: L("Đi Đà Lạt"))
         trip.members = [HouseMember(id: "c", name: "Minh"), HouseMember(id: "x", name: "Khoa"), HouseMember(id: "y", name: "Vy")]
-        trip.spends = [HouseSpend(id: "t1", amount: 1_800_000, note: "Homestay 2 đêm", payer: "c", shares: ["c", "x", "y"], date: ago(12), cat: "di"),
-                       HouseSpend(id: "t2", amount: 450_000, note: "Lẩu gà lá é", payer: "x", shares: ["c", "x", "y"], date: ago(11), cat: "an")]
+        trip.spends = [HouseSpend(id: "t1", amount: 1_800_000, note: L("Homestay 2 đêm"), payer: "c", shares: ["c", "x", "y"], date: ago(12), cat: "di"),
+                       HouseSpend(id: "t2", amount: 450_000, note: L("Lẩu gà lá é"), payer: "x", shares: ["c", "x", "y"], date: ago(11), cat: "an")]
         trip.me = "c"
         groups = [home, trip]
         phase = .ready
@@ -219,7 +219,7 @@ final class House: ObservableObject {
 
     var memberName: (String) -> String {
         let m = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0.name) })
-        return { m[$0] ?? "Người đã xoá" }
+        return { m[$0] ?? L("Người đã xoá") }
     }
 
     // MARK: Tải
@@ -503,7 +503,7 @@ final class House: ObservableObject {
         let first = UserDefaults.standard.object(forKey: key) == nil
         var seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
         let names = Dictionary(uniqueKeysWithValues: g.members.map { ($0.id, $0.name) })
-        let name = { (id: String) in names[id] ?? "Người đã xoá" }
+        let name = { (id: String) in names[id] ?? L("Người đã xoá") }
         for s in g.settles where s.to == me || s.from == me {
             let tag = "\(s.id).\(s.status)"
             guard seen.insert(tag).inserted, !first else { continue }
@@ -512,15 +512,15 @@ final class House: ObservableObject {
             c.subtitle = g.name
             c.userInfo = ["settle": s.id, "group": g.id]
             if s.to == me && s.from != me && s.status == "wait" {
-                c.title = "\(name(s.from)) báo đã chuyển \(fmt(s.amount))đ"
-                c.body = "Kiểm tra tài khoản rồi xác nhận đã nhận."
+                c.title = L("%@ báo đã chuyển %@đ", name(s.from), fmt(s.amount))
+                c.body = L("Kiểm tra tài khoản rồi xác nhận đã nhận.")
                 c.categoryIdentifier = "HOUSE_CONFIRM"
             } else if s.from == me && s.to != me && s.status == "no" {
-                c.title = "\(name(s.to)) chưa nhận được \(fmt(s.amount))đ"
-                c.body = "Kiểm tra lại giao dịch trong app ngân hàng hoặc chuyển lại."
+                c.title = L("%@ chưa nhận được %@đ", name(s.to), fmt(s.amount))
+                c.body = L("Kiểm tra lại giao dịch trong app ngân hàng hoặc chuyển lại.")
             } else if s.from == me && s.to != me && s.status == "ok" && seen.contains("\(s.id).wait") {
-                c.title = "\(name(s.to)) đã nhận \(fmt(s.amount))đ"
-                c.body = "Khoản trả đã được xác nhận."
+                c.title = L("%@ đã nhận %@đ", name(s.to), fmt(s.amount))
+                c.body = L("Khoản trả đã được xác nhận.")
             } else { continue }
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: tag, content: c, trigger: nil))
         }
@@ -569,10 +569,10 @@ final class House: ObservableObject {
     static func describe(_ e: Error) -> String {
         guard let ck = e as? CKError else { return e.localizedDescription }
         switch ck.code {
-        case .networkUnavailable, .networkFailure: return "Không có mạng. Thử lại khi có mạng."
-        case .notAuthenticated: return "Máy chưa đăng nhập iCloud."
-        case .quotaExceeded: return "iCloud đã đầy dung lượng."
-        case .permissionFailure: return "Bạn không có quyền sửa nhóm này."
+        case .networkUnavailable, .networkFailure: return L("Không có mạng. Thử lại khi có mạng.")
+        case .notAuthenticated: return L("Máy chưa đăng nhập iCloud.")
+        case .quotaExceeded: return L("iCloud đã đầy dung lượng.")
+        case .permissionFailure: return L("Bạn không có quyền sửa nhóm này.")
         default: return ck.localizedDescription
         }
     }
@@ -611,8 +611,8 @@ final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationC
         center.delegate = self
         // Nút ngay trên thông báo: xác nhận mà không cần mở app
         center.setNotificationCategories([UNNotificationCategory(identifier: "HOUSE_CONFIRM", actions: [
-            UNNotificationAction(identifier: "yes", title: "Đã nhận", options: []),
-            UNNotificationAction(identifier: "no", title: "Chưa nhận được", options: [.destructive]),
+            UNNotificationAction(identifier: "yes", title: L("Đã nhận"), options: []),
+            UNNotificationAction(identifier: "no", title: L("Chưa nhận được"), options: [.destructive]),
         ], intentIdentifiers: [])])
         application.registerForRemoteNotifications()
         return true

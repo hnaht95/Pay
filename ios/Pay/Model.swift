@@ -192,7 +192,7 @@ final class Store: ObservableObject {
         }
         #if DEBUG
         // "-filmSeed YES": sáu tháng chi tiêu mẫu, không đồng bộ iCloud (để quay phim giới thiệu)
-        if UserDefaults.standard.bool(forKey: "filmSeed") { items = Self.filmSeed(); budget = 9_000_000; cloudOn = false; return }
+        if UserDefaults.standard.bool(forKey: "filmSeed") { items = Self.filmSeed(); cats = [:]; budget = 9_000_000; cloudOn = false; return }   // danh mục gốc, không sửa gì
         #endif
         if budget > 0 && budgetHistory.isEmpty { rememberBudget() }   // máy đã đặt ngân sách từ trước khi có ghi nhớ theo tháng
         if runRecurring() { writeLocal() }   // ghi các khoản định kỳ đã tới hạn khi app tắt
@@ -267,7 +267,7 @@ final class Store: ObservableObject {
         let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct)
         items.append(e)
         persist()
-        if toast { show("Đã lưu \(fmt(amount))đ") { [weak self] in self?.remove(id: e.id, toast: false) } }
+        if toast { show(L("Đã lưu %@đ", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
     }
 
     /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.
@@ -317,7 +317,7 @@ final class Store: ObservableObject {
         deleted[id] = now
         persist()
         if toast {
-            show("Đã xoá") { [weak self] in
+            show(L("Đã xoá")) { [weak self] in
                 guard let self else { return }
                 e.u = self.now
                 self.deleted[id] = nil
@@ -335,7 +335,7 @@ final class Store: ObservableObject {
         // Không để tháng sau tự hiện lại khoản định kỳ
         for (k, var r) in rules where r.on { r.on = false; r.u = t; rules[k] = r }
         persist()
-        show("Đã xoá tất cả khoản chi")
+        show(L("Đã xoá tất cả khoản chi"))
     }
 
     func remember(_ key: String, _ m: Memo) {
@@ -378,7 +378,7 @@ final class Store: ObservableObject {
         let df = DateFormatter(); df.dateFormat = "dd/MM/yyyy"
         let tf = DateFormatter(); tf.dateFormat = "HH:mm"
         let q = { (s: String) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
-        var rows = [["Ngày", "Giờ", "Số tiền", "Danh mục", "Ghi chú"].map(q).joined(separator: ",")]
+        var rows = [[L("Ngày"), L("Giờ"), L("Số tiền"), L("Danh mục"), L("Ghi chú")].map(q).joined(separator: ",")]
         for e in items.sorted(by: { $0.t < $1.t }) {
             rows.append([df.string(from: e.date), tf.string(from: e.date), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
         }
@@ -391,7 +391,7 @@ final class Store: ObservableObject {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         guard let data = try? Data(contentsOf: url), let b = try? JSONDecoder().decode(Backup.self, from: data) else {
-            show("File sao lưu không hợp lệ"); return
+            show(L("File sao lưu không hợp lệ")); return
         }
         let ids = Set(items.map(\.id))
         let t = now
@@ -413,7 +413,7 @@ final class Store: ObservableObject {
         for (k, c) in b.cats ?? [:] where c.on && cats[k]?.on != true { var c = c; c.u = t; cats[k] = c }
         runRecurring()
         persist()
-        show("Đã khôi phục \(add.count) khoản")
+        show(L("Đã khôi phục %ld khoản", add.count))
     }
 
     // MARK: Tự học danh mục
@@ -474,7 +474,7 @@ final class Store: ObservableObject {
         c.on = false; c.u = now
         cats[k] = c
         persist()
-        show("Đã xoá danh mục \(c.name)") { [weak self] in
+        show(L("Đã xoá danh mục %@", c.name)) { [weak self] in
             guard let self, var c = self.cats[k] else { return }
             c.on = true; c.u = self.now
             self.cats[k] = c
@@ -535,7 +535,7 @@ final class Store: ObservableObject {
         rules[r.id] = r
         persist()
         let d = cal.dateComponents([.day, .month], from: due(r, in: first))
-        show("Sẽ tự ghi ngày \(r.day) hằng tháng, lần tới \(d.day!)/\(d.month!)")
+        show(L("Sẽ tự ghi ngày %1$ld hằng tháng, lần tới %2$ld/%3$ld", r.day, d.day!, d.month!))
     }
 
     /// Lúc tới hạn của khoản định kỳ trong tháng bắt đầu bằng `month`; tháng ngắn hơn thì ngày cuối tháng.
@@ -552,7 +552,7 @@ final class Store: ObservableObject {
         r.u = now
         rules[r.id] = r
         persist()
-        show("Đã bỏ lặp \(r.n?.isEmpty == false ? r.n! : Category.get(r.c).name)")
+        show(L("Đã bỏ lặp %@", r.n?.isEmpty == false ? r.n! : Category.get(r.c).name))
     }
 
     /// Ghi các kỳ đã tới hạn. Mã khoản cố định theo (khoản định kỳ, tháng) nên nhiều máy cùng ghi vẫn không trùng;
@@ -603,8 +603,8 @@ extension Store {
         let cal = Calendar.current, now = Date()
         let today = cal.startOfDay(for: now)
         let daily: [(String, String, ClosedRange<Int>)] = [
-            ("an", "ăn trưa", 45...45), ("cafe", "cà phê", 35...35), ("an", "ăn sáng", 30...30),
-            ("di", "grab", 30...90), ("an", "ăn tối", 60...180), ("cafe", "trà sữa", 35...60), ("mua", "đi chợ", 120...380)]
+            ("an", L("ăn trưa"), 45...45), ("cafe", L("cà phê"), 35...35), ("an", L("ăn sáng"), 30...30),
+            ("di", "grab", 30...90), ("an", L("ăn tối"), 60...180), ("cafe", L("trà sữa"), 35...60), ("mua", L("đi chợ"), 120...380)]
         var out: [Expense] = []
         func add(_ d: Date, _ c: String, _ n: String, _ a: Int) {
             let t = d.timeIntervalSince1970 * 1000
@@ -616,8 +616,8 @@ extension Store {
                 add(day.addingTimeInterval(Double(7 + i * 2) * 3600), item.0, item.1, Int(rng.next() % UInt64(item.2.count) + UInt64(item.2.lowerBound)) * 1000)
             }
             if cal.component(.day, from: day) == 5 {
-                add(day.addingTimeInterval(9 * 3600), "hd", "tiền nhà", 3_500_000)
-                add(day.addingTimeInterval(10 * 3600), "hd", "điện nước", Int(rng.next() % 300 + 450) * 1000)
+                add(day.addingTimeInterval(9 * 3600), "hd", L("tiền nhà"), 3_500_000)
+                add(day.addingTimeInterval(10 * 3600), "hd", L("điện nước"), Int(rng.next() % 300 + 450) * 1000)
                 add(day.addingTimeInterval(11 * 3600), "hd", "internet", 220_000)
             }
             if rng.next() % 100 < 6 { add(day.addingTimeInterval(20 * 3600), "mua", "shopee", Int(rng.next() % 600 + 150) * 1000) }

@@ -22,7 +22,7 @@ struct EntryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             head
-            Text("Số tiền").font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
+            Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
             HStack(alignment: .firstTextBaseline) {
                 Text(amount > 0 ? fmt(amount) : "0")
                     .font(.system(size: 56, weight: .bold)).kerning(-2)
@@ -36,7 +36,7 @@ struct EntryView: View {
 
             chips.padding(.top, 14)
 
-            TextField("Ghi chú (không bắt buộc)", text: $note)
+            TextField(L("Ghi chú (không bắt buộc)"), text: $note)
                 .font(.system(size: 18))
                 .focused($noteFocused)
                 .submitLabel(.done)
@@ -70,6 +70,7 @@ struct EntryView: View {
                     Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
                         .frame(width: 46, height: 46).background(Palette.pill, in: Circle())
                 }
+                .buttonStyle(Pressable())
                 .foregroundStyle(.primary)
                 Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
             }
@@ -80,10 +81,10 @@ struct EntryView: View {
 
     private var title: String {
         switch mode {
-        case .new(let c): return c.map { "\(Category.get($0).icon) \(Category.get($0).name)" } ?? "Lưu khoản chi"
-        case .scan(let q): return "Trả cho " + (q.name.isEmpty ? "TK \(q.acct ?? "")" : q.name)
-        case .raw: return "Mã QR không phải VietQR"
-        case .edit: return "Sửa khoản chi"
+        case .new(let c): return c.map { "\(Category.get($0).icon) \(Category.get($0).name)" } ?? L("Lưu khoản chi")
+        case .scan(let q): return L("Trả cho %@", q.name.isEmpty ? L("TK %@", q.acct ?? "") : q.name)
+        case .raw: return L("Mã QR không phải VietQR")
+        case .edit: return L("Sửa khoản chi")
         }
     }
 
@@ -94,6 +95,7 @@ struct EntryView: View {
         case .raw(let s): return String(s.prefix(80))
         case .edit(let e):
             let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
+            if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }
             return f.string(from: e.date)
         }
     }
@@ -117,16 +119,18 @@ struct EntryView: View {
                             .foregroundStyle(on ? Color.black : Color.primary)
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
+                        .buttonStyle(Pressable())
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
                     Button { addingCat = true } label: {
-                        Label("Mới", systemImage: "plus")
+                        Label(L("Mới"), systemImage: "plus")
                             .font(.system(size: 17, weight: .medium))
                             .padding(.horizontal, 16).frame(height: 48)
                             .foregroundStyle(Color.primary)
                             .background(Color.primary.opacity(0.05), in: Capsule())
                     }
+                    .buttonStyle(Pressable())
                     .id("new")
                 }
                 .padding(.horizontal, 18)
@@ -153,7 +157,7 @@ struct EntryView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(KeyStyle())
-                        .accessibilityLabel(k == "del" ? "Xoá" : k)
+                        .accessibilityLabel(k == "del" ? L("Xoá") : k)
                     }
                 }
             }
@@ -178,27 +182,27 @@ struct EntryView: View {
         VStack(spacing: 8) {
             switch mode {
             case .new, .raw:
-                primary("Lưu") { learn(); store.add(amount: amount, note: trimmed, cat: finalCat); dismiss() }
+                primary(L("Lưu")) { learn(); store.add(amount: amount, note: trimmed, cat: finalCat); dismiss() }
             case .scan(let q):
                 let app = store.bankApp
-                primary("Lưu & mở \(app.name)") {
+                primary(L("Lưu & mở %@", app.name)) {
                     saveScan(q); dismiss()
                     let a = amount
                     Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }
                 }
-                secondary("Chỉ lưu") { saveScan(q); dismiss() }
+                secondary(L("Chỉ lưu")) { saveScan(q); dismiss() }
                 if !app.fill {
-                    Text("Khi \(app.name) mở ra, bạn quét lại mã QR. Chọn ACB One, MB, BIDV, VietinBank hoặc OCB trong Cài đặt để khỏi quét lại.")
+                    Text(L("Khi %@ mở ra, bạn quét lại mã QR. Chọn ACB One, MB, BIDV, VietinBank hoặc OCB trong Cài đặt để khỏi quét lại.", app.name))
                         .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                 }
             case .edit(var e):
-                primary("Lưu thay đổi") {
+                primary(L("Lưu thay đổi")) {
                     e.a = amount; e.n = trimmed; e.c = finalCat
                     learn(); store.update(e); dismiss()
                 }
                 Button(role: .destructive) { store.remove(id: e.id); dismiss() } label: {
-                    Text("Xoá khoản này").font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 46)
+                    Text(L("Xoá khoản này")).font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 46)
                 }
                 .foregroundStyle(Palette.danger)
             }

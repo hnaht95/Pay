@@ -3,7 +3,10 @@ import SwiftUI
 struct Category: Identifiable, Hashable {
     let k: String
     let icon: String
-    let name: String
+    /// Tên lưu trữ: tiếng Việt với danh mục có sẵn, hoặc đúng chữ người dùng đặt
+    let rawName: String
+    /// Tên để hiện: danh mục có sẵn ra tiếng Anh khi chọn English; tên người dùng tự đặt giữ nguyên (L trả lại chữ lạ)
+    var name: String { L(rawName) }
     let color: Color
     /// Dùng hình vẽ phẳng trong Assets ("cat-<k>"); đổi sang emoji khác thì không
     var art = false
@@ -11,6 +14,11 @@ struct Category: Identifiable, Hashable {
     /// Màu biểu đồ của danh mục tự tạo (danh mục có sẵn dùng bảng màu cố định bên dưới)
     var customChart: Color? = nil
     var id: String { k }
+
+    init(k: String, icon: String, name: String, color: Color, art: Bool = false, kw: [String], customChart: Color? = nil) {
+        self.k = k; self.icon = icon; self.rawName = name; self.color = color
+        self.art = art; self.kw = kw; self.customChart = customChart
+    }
 
     /// Danh mục tự tạo đang dùng, Store cập nhật mỗi khi đổi (cả khi máy khác thêm qua iCloud)
     nonisolated(unsafe) static var custom: [Category] = []
@@ -24,11 +32,11 @@ struct Category: Identifiable, Hashable {
     }
 
     static let builtin: [Category] = [
-        Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), art: true, kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa"]),
-        Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), art: true, kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la"]),
-        Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), art: true, kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot"]),
-        Category(k: "mua", icon: "🛍️", name: "Mua sắm", color: Color(hex: 0xFFD3E6), art: true, kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "di cho"]),
-        Category(k: "hd", icon: "🧾", name: "Hoá đơn", color: Color(hex: 0xE2DBFF), art: true, kw: ["dien", "tien nuoc", "internet", "wifi", "mang", "4g", "5g", "dien thoai", "nap tien", "tien nha", "thue nha", "phong", "hoc phi", "evn", "viettel", "vnpt", "fpt", "mobifone", "vinaphone", "netflix", "spotify", "youtube", "icloud", "bao hiem", "chung cu", "phi dich vu"]),
+        Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), art: true, kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa", "lunch", "dinner", "breakfast", "brunch", "meal", "rice", "noodle", "noodles", "beer", "snack", "snacks", "burger", "eat", "eating", "mcdonalds", "takeout"]),
+        Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), art: true, kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la", "tea", "milk tea", "bubble tea", "boba", "latte", "cappuccino", "espresso", "smoothie", "juice"]),
+        Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), art: true, kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot", "gas", "fuel", "petrol", "bus", "train", "flight", "plane", "uber", "toll", "metro", "car wash"]),
+        Category(k: "mua", icon: "🛍️", name: "Mua sắm", color: Color(hex: 0xFFD3E6), art: true, kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "di cho", "shopping", "clothes", "shirt", "shoes", "market", "groceries", "grocery", "supermarket", "amazon", "cosmetics"]),
+        Category(k: "hd", icon: "🧾", name: "Hoá đơn", color: Color(hex: 0xE2DBFF), art: true, kw: ["dien", "tien nuoc", "internet", "wifi", "mang", "4g", "5g", "dien thoai", "nap tien", "tien nha", "thue nha", "phong", "hoc phi", "evn", "viettel", "vnpt", "fpt", "mobifone", "vinaphone", "netflix", "spotify", "youtube", "icloud", "bao hiem", "chung cu", "phi dich vu", "rent", "electricity", "electric", "electric bill", "water bill", "phone bill", "mobile", "top up", "insurance", "tuition", "subscription", "utilities"]),
         Category(k: "khac", icon: "📌", name: "Khác", color: Color(hex: 0xCFEEDD), art: true, kw: []),
     ]
 

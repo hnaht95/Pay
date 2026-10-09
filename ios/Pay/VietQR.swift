@@ -10,7 +10,7 @@ struct VietQR: Hashable {
     var name: String
     var purpose: String
 
-    var bank: String { bin.map { BankData.names[$0] ?? "Ngân hàng \($0)" } ?? "" }
+    var bank: String { bin.map { BankData.names[$0] ?? L("Ngân hàng %@", $0) } ?? "" }
     var memoKey: String? { bin.flatMap { b in acct.map { "\(b):\($0)" } } }
 
     /// Đọc chuỗi kiểu ID(2) + độ dài(2) + giá trị

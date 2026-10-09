@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import WidgetKit
 
 @main
 struct PayApp: App {
@@ -7,10 +8,18 @@ struct PayApp: App {
     @StateObject private var quick = QuickAction.shared
     /// Nhận lời mời vào Nhà chung (iOS gọi qua scene delegate)
     @UIApplicationDelegateAdaptor(PayAppDelegate.self) private var appDelegate
+    /// Đổi ngôn ngữ trong Cài đặt: dựng lại toàn bộ giao diện bằng ngôn ngữ mới, widget vẽ lại theo
+    @State private var lang = Lang.current
 
     var body: some Scene {
         WindowGroup {
             HomeView()
+                .id(lang)
+                .environment(\.locale, Lang.locale)
+                .onReceive(NotificationCenter.default.publisher(for: Lang.changed)) { _ in
+                    lang = Lang.current
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
                 .environmentObject(store)
                 .environmentObject(quick)
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app

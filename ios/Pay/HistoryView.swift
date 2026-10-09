@@ -11,7 +11,7 @@ struct HistoryView: View {
             let groups = grouped()
             List {
                 if groups.isEmpty {
-                    Text("Chưa có khoản nào.").font(.system(size: 17)).foregroundStyle(.secondary)
+                    Text(L("Chưa có khoản nào.")).font(.system(size: 17)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity).padding(40)
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
@@ -37,7 +37,7 @@ struct HistoryView: View {
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
-            .navigationTitle("Lịch sử chi tiêu")
+            .navigationTitle(L("Lịch sử chi tiêu"))
             .navigationBarTitleDisplayMode(.inline)
         }
         .fullScreenCover(item: $editing) { EntryView(mode: $0).environmentObject(store) }
@@ -53,8 +53,12 @@ struct HistoryView: View {
 
     private func title(_ d: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(d) { return "Hôm nay" }
-        if cal.isDateInYesterday(d) { return "Hôm qua" }
+        if cal.isDateInToday(d) { return L("Hôm nay") }
+        if cal.isDateInYesterday(d) { return L("Hôm qua") }
+        if Lang.isEnglish {
+            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "EEEE, MMM d"
+            return f.string(from: d)
+        }
         let dow = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][cal.component(.weekday, from: d) - 1]
         let c = cal.dateComponents([.day, .month], from: d)
         return "\(dow), \(c.day!)/\(c.month!)"

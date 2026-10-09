@@ -43,8 +43,8 @@ struct SpendProvider: TimelineProvider {
 struct SpendWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "SpendWidget", provider: SpendProvider()) { SpendView(e: $0) }
-            .configurationDisplayName("Chi tiêu hôm nay")
-            .description("Xem nhanh số đã chi, chạm để quét QR, nói hoặc nhập khoản mới.")
+            .configurationDisplayName(L("Chi tiêu hôm nay"))
+            .description(L("Xem nhanh số đã chi, chạm để quét QR, nói hoặc nhập khoản mới."))
             .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }
@@ -70,10 +70,10 @@ struct SpendView: View {
             HStack(spacing: 14) {
                 totals.frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: 8) {
-                    action("Quét QR", "qrcode.viewfinder", .scan, primary: true)
+                    action(L("Quét QR"), "qrcode.viewfinder", .scan, primary: true)
                     HStack(spacing: 8) {
-                        iconAction("mic.fill", .voice, "Nói để ghi")
-                        iconAction("plus", .add, "Nhập")
+                        iconAction("mic.fill", .voice, L("Nói để ghi"))
+                        iconAction("plus", .add, L("Nhập"))
                     }
                 }
                 .frame(width: 118)
@@ -86,20 +86,20 @@ struct SpendView: View {
             .widgetURL(QuickKind.scan.url)
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Label("Hôm nay", systemImage: "qrcode.viewfinder").font(.caption)
+                Label(L("Hôm nay"), systemImage: "qrcode.viewfinder").font(.caption)
                 Text("\(fmt(e.s.today))đ").font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.6).lineLimit(1)
-                Text(e.s.budgetStatus.map(\.label) ?? "Tháng: \(fmt(e.s.month))đ").font(.caption2).lineLimit(1)
+                Text(e.s.budgetStatus.map(\.label) ?? L("Tháng: %@đ", fmt(e.s.month))).font(.caption2).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(QuickKind.scan.url)
         case .accessoryInline:
-            Text("Hôm nay \(fmt(e.s.today))đ").widgetURL(QuickKind.scan.url)
+            Text(L("Hôm nay %@đ", fmt(e.s.today))).widgetURL(QuickKind.scan.url)
         default:   // nhỏ: chạm vào là quét QR luôn
             VStack(alignment: .leading, spacing: 0) {
                 totals
                 Spacer(minLength: 6)
                 // Màu chữ đặt trước nền: nền .primary lấy theo màu chữ bên ngoài nó
-                Label("Quét QR", systemImage: "qrcode.viewfinder")
+                Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(scheme == .dark ? .black : .white)
                     .padding(.horizontal, 12).padding(.vertical, 7)
@@ -112,7 +112,7 @@ struct SpendView: View {
 
     private var totals: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Hôm nay đã chi").font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(L("Hôm nay đã chi")).font(.system(size: 13)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(fmt(e.s.today)).font(.system(size: 30, weight: .bold)).kerning(-1)
                 Text("đ").font(.system(size: 16, weight: .semibold)).foregroundStyle(.secondary)
@@ -123,7 +123,7 @@ struct SpendView: View {
                     .minimumScaleFactor(0.7).lineLimit(1)
                 BudgetBar(s: b, height: 5)
             } else {
-                Text("Tháng \(Calendar.current.component(.month, from: e.date)): \(fmt(e.s.month))đ")
+                Text(L("Tháng %ld: %@đ", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
                     .minimumScaleFactor(0.7).lineLimit(1)
             }
@@ -159,8 +159,8 @@ struct SpendView: View {
 struct VoiceWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "VoiceWidget", provider: SpendProvider()) { VoiceView(e: $0) }
-            .configurationDisplayName("Nói để ghi")
-            .description("Chạm là Pay nghe luôn, nói \"35k cafe\" là ghi.")
+            .configurationDisplayName(L("Nói để ghi"))
+            .description(L("Chạm là Pay nghe luôn, nói \"35k cafe\" là ghi."))
             .supportedFamilies([.systemSmall, .accessoryCircular])
     }
 }
@@ -184,7 +184,7 @@ struct VoiceView: View {
                 AccessoryWidgetBackground()
                 Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
             }
-            .accessibilityLabel("Nói để ghi")
+            .accessibilityLabel(L("Nói để ghi"))
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 Image(systemName: "mic.fill")
@@ -193,8 +193,8 @@ struct VoiceView: View {
                     .frame(width: 60, height: 60)
                     .background(.primary, in: Circle())
                 Spacer(minLength: 6)
-                Text("Nói để ghi").font(.system(size: 18, weight: .bold))
-                Text("Hôm nay \(fmt(e.s.today))đ")
+                Text(L("Nói để ghi")).font(.system(size: 18, weight: .bold))
+                Text(L("Hôm nay %@đ", fmt(e.s.today)))
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                     .minimumScaleFactor(0.7).lineLimit(1)
             }
@@ -210,11 +210,11 @@ struct VoiceControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "VoiceControl") {
             ControlWidgetButton(action: VoiceIntent()) {
-                Label("Ghi bằng giọng nói", systemImage: "mic.fill")
+                Label(L("Ghi bằng giọng nói"), systemImage: "mic.fill")
             }
         }
-        .displayName("Pay: Ghi bằng giọng nói")
-        .description("Mở Pay và nghe luôn, nói \"35k cafe\" là ghi.")
+        .displayName("\(L("Pay: Ghi bằng giọng nói"))")
+        .description("\(L("Mở Pay và nghe luôn, nói \"35k cafe\" là ghi."))")
     }
 }
 
@@ -223,10 +223,10 @@ struct ScanControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "ScanControl") {
             ControlWidgetButton(action: ScanIntent()) {
-                Label("Quét QR", systemImage: "qrcode.viewfinder")
+                Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
             }
         }
-        .displayName("Pay: Quét QR")
-        .description("Mở Pay và quét mã QR thanh toán.")
+        .displayName("\(L("Pay: Quét QR"))")
+        .description("\(L("Mở Pay và quét mã QR thanh toán."))")
     }
 }

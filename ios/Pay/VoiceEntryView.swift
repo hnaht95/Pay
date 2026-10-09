@@ -60,8 +60,8 @@ final class VoiceListener: ObservableObject {
         }
         let micOK = await AVAudioApplication.requestRecordPermission()
         guard speechOK, micOK else { phase = .denied; return }
-        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "vi-VN")), recognizer.isAvailable else {
-            phase = .failed("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR.")
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: Lang.isEnglish ? "en-US" : "vi-VN")), recognizer.isAvailable else {
+            phase = .failed(L("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR."))
             return
         }
         do {
@@ -72,8 +72,11 @@ final class VoiceListener: ObservableObject {
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults = true
             // Báo trước những từ hay nói để nhận dạng số tiền chuẩn hơn
-            req.contextualStrings = ["nghìn", "ngàn", "triệu", "trăm", "mươi", "rưỡi", "nửa triệu", "đồng", "củ",
-                                     "cà phê", "cafe", "trà sữa", "ăn sáng", "ăn trưa", "phở", "cơm", "grab", "xăng", "gửi xe", "shopee"]
+            req.contextualStrings = Lang.isEnglish
+                ? ["thousand", "million", "hundred", "k", "half a million", "dong", "coffee", "lunch", "breakfast", "dinner",
+                   "groceries", "gas", "parking", "grab", "rent", "shopee", "bubble tea", "pho"]
+                : ["nghìn", "ngàn", "triệu", "trăm", "mươi", "rưỡi", "nửa triệu", "đồng", "củ",
+                   "cà phê", "cafe", "trà sữa", "ăn sáng", "ăn trưa", "phở", "cơm", "grab", "xăng", "gửi xe", "shopee"]
             req.taskHint = .dictation
             if recognizer.supportsOnDeviceRecognition { req.requiresOnDeviceRecognition = true }   // không gửi giọng lên mạng nếu máy tự làm được
             request = req
@@ -83,7 +86,7 @@ final class VoiceListener: ObservableObject {
             // Không có micro dùng được (vd máy ảo, micro đang bị app khác chiếm): báo lỗi thay vì để app văng
             guard format.sampleRate > 0, format.channelCount > 0 else {
                 stop()
-                phase = .failed("Không dùng được micro lúc này. Thử lại, hoặc quét QR.")
+                phase = .failed(L("Không dùng được micro lúc này. Thử lại, hoặc quét QR."))
                 return
             }
             input.removeTap(onBus: 0)   // phòng còn tap cũ
@@ -118,7 +121,7 @@ final class VoiceListener: ObservableObject {
             waitForSilence()
         } catch {
             stop()
-            phase = .failed("Không bật được micro.")
+            phase = .failed(L("Không bật được micro."))
         }
     }
 
@@ -214,16 +217,16 @@ struct VoiceEntryView: View {
         HStack(spacing: 8) {
             if saved != nil {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("Đã ghi").foregroundStyle(.secondary)
+                Text(L("Đã ghi")).foregroundStyle(.secondary)
             } else if mic.phase == .listening {
                 PulseDot()
-                Text("Đang nghe").foregroundStyle(.secondary)
+                Text(L("Đang nghe")).foregroundStyle(.secondary)
             } else if undone {
                 Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary)
-                Text("Đã hoàn tác, chưa ghi gì").foregroundStyle(.secondary)
+                Text(L("Đã hoàn tác, chưa ghi gì")).foregroundStyle(.secondary)
             } else if notUnderstood {
                 Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange)
-                Text("Chưa nghe rõ số tiền").foregroundStyle(.secondary)
+                Text(L("Chưa nghe rõ số tiền")).foregroundStyle(.secondary)
             } else {
                 Image(systemName: "mic.fill").foregroundStyle(.secondary)
                 Text(statusText).foregroundStyle(.secondary).lineLimit(2)
@@ -233,8 +236,9 @@ struct VoiceEntryView: View {
                 Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
                     .frame(width: 30, height: 30).background(Palette.pill, in: Circle())
             }
+            .buttonStyle(Pressable())
             .foregroundStyle(.primary)
-            .accessibilityLabel("Đóng")
+            .accessibilityLabel(L("Đóng"))
         }
         .font(.system(size: 15, weight: .medium))
     }
@@ -273,7 +277,7 @@ struct VoiceEntryView: View {
                     let others = Category.matches(l.note).filter { $0 != l.cat }.prefix(3)
                     if !others.isEmpty {
                         HStack(spacing: 6) {
-                            Text("Hay là").font(.system(size: 14)).foregroundStyle(.secondary)
+                            Text(L("Hay là")).font(.system(size: 14)).foregroundStyle(.secondary)
                             ForEach(Array(others), id: \.self) { k in
                                 let o = Category.get(k)
                                 Button { switchCategory(to: k) } label: {
@@ -297,18 +301,18 @@ struct VoiceEntryView: View {
     }
 
     private var hint: String {
-        if undone { return "Bấm Nói lại để nói khoản khác." }
-        if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
-        if mic.phase == .listening { return mic.text.isEmpty ? "Nói ví dụ: \"ba lăm nghìn cà phê\"" : mic.text }
-        if mic.phase == .denied { return "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói." }
+        if undone { return L("Bấm Nói lại để nói khoản khác.") }
+        if notUnderstood { return mic.text.isEmpty ? L("Không nghe thấy gì.") : L("Đã nghe: \"%@\"", mic.text) }
+        if mic.phase == .listening { return mic.text.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : mic.text }
+        if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
         return ""
     }
 
     private var statusText: String {
         switch mic.phase {
-        case .denied: return "Cần quyền micro"
+        case .denied: return L("Cần quyền micro")
         case .failed(let why): return why
-        default: return "Đang bật micro…"
+        default: return L("Đang bật micro…")
         }
     }
 
@@ -318,21 +322,21 @@ struct VoiceEntryView: View {
         HStack(spacing: 10) {
             if let e = saved {
                 // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
-                pill("Hoàn tác", primary: false) { undo(e) }
-                pill("Sửa", primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
-                pill("Xong", primary: true) { autoClose?.cancel(); leave() }
+                pill(L("Hoàn tác"), primary: false) { undo(e) }
+                pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
+                pill(L("Xong"), primary: true) { autoClose?.cancel(); leave() }
             } else if mic.phase == .listening {
-                pill("Quét QR", primary: false) { mic.stop(); leave(); onScan() }
-                pill("Xong", primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
+                pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
+                pill(L("Xong"), primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
                     .disabled(mic.text.isEmpty).opacity(mic.text.isEmpty ? 0.4 : 1)
             } else if mic.phase == .denied {
-                pill("Quét QR", primary: false) { leave(); onScan() }
-                pill("Mở Cài đặt", primary: true) {
+                pill(L("Quét QR"), primary: false) { leave(); onScan() }
+                pill(L("Mở Cài đặt"), primary: true) {
                     if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
                 }
             } else if notUnderstood || undone || mic.phase != .idle {
-                pill("Quét QR", primary: false) { mic.stop(); leave(); onScan() }
-                pill("Nói lại", primary: true) { retry() }
+                pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
+                pill(L("Nói lại"), primary: true) { retry() }
             }
         }
     }

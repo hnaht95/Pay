@@ -108,7 +108,7 @@ struct TapHold<Content: View>: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             hold()
         })
-        .accessibilityAction(named: "Tuỳ chọn", hold)
+        .accessibilityAction(named: Text(L("Tuỳ chọn")), hold)
     }
 }
 
@@ -117,14 +117,15 @@ struct TapHold<Content: View>: View {
 func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppMenuSpec {
     let c = Category.get(e.c)
     let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
-    var items = [AppMenuItem(icon: "pencil", title: "Sửa khoản này", run: edit)]
+    if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }
+    var items = [AppMenuItem(icon: "pencil", title: L("Sửa khoản này"), run: edit)]
     if let r = store.rule(for: e) {
-        items.append(AppMenuItem(icon: "xmark.circle", title: "Bỏ lặp hằng tháng", subtitle: "Đang tự ghi vào ngày \(r.day) mỗi tháng") { store.stopRepeating(r) })
+        items.append(AppMenuItem(icon: "xmark.circle", title: L("Bỏ lặp hằng tháng"), subtitle: L("Đang tự ghi vào ngày %@ mỗi tháng", String(r.day))) { store.stopRepeating(r) })
     } else {
-        items.append(AppMenuItem(icon: "repeat", title: "Lặp hằng tháng",
-                                 subtitle: "Tự ghi vào ngày \(Calendar.current.component(.day, from: e.date)) mỗi tháng") { store.repeatMonthly(e) })
+        items.append(AppMenuItem(icon: "repeat", title: L("Lặp hằng tháng"),
+                                 subtitle: L("Tự ghi vào ngày %@ mỗi tháng", String(Calendar.current.component(.day, from: e.date)))) { store.repeatMonthly(e) })
     }
-    items.append(AppMenuItem(icon: "trash.fill", title: "Xoá", danger: true) { store.remove(id: e.id) })
+    items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
     return AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
                         .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                        title: "\(e.n?.isEmpty == false ? e.n! : c.name) · \(fmt(e.a))",

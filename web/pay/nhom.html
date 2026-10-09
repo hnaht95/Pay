@@ -7,87 +7,186 @@
 <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d10" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
+/* Cùng bảng màu, cỡ chữ, bo góc với app iPhone (Palette trong Category.swift) */
 :root {
-  --bg: #f4f5f8; --surface: #ffffff; --card: #eaecf1; --ink: #111114; --muted: #8a8d96;
-  --pill: rgba(0,0,0,.06); --cta: #111114; --cta-ink: #fff; --danger: #d92d20; --good: #2f7a43;
-  --hero: #dfe5ff;
+  --bg: #F4F5F8; --surface: #FFFFFF; --card: #EBEDF2; --pill: #E6E8EE; --ink: #111114; --muted: #8A8D96;
+  --cta: #111114; --cta-ink: #FFFFFF; --danger: #D92D20; --good: #DFF3E3; --good-ink: #2F7A43; --hero: #DFE5FF;
+  --an: #FFC9C1; --cafe: #F1DCC0; --di: #C9E3FF; --mua: #FFD3E6; --hd: #E2DBFF; --khac: #CFEEDD;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0d0d10; --surface: #17171b; --card: #1d1d22; --ink: #f5f5f7; --muted: #8e8f98;
-    --pill: rgba(255,255,255,.08); --cta: #fff; --cta-ink: #111114; --danger: #ff6b5e; --good: #8fdca3; --hero: #242b4d; }
+  :root { --bg: #0D0D10; --surface: #17171B; --card: #1D1D22; --pill: #26262C; --ink: #F5F5F7; --muted: #8E8F98;
+    --cta: #FFFFFF; --cta-ink: #111114; --danger: #FF6B5E; --good: #1F3A27; --good-ink: #8FDCA3; --hero: #242B4D; }
 }
-* { box-sizing: border-box; margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased; }
-main { max-width: 560px; margin: 0 auto; padding: 16px 16px 120px; }
-header { display: flex; align-items: center; gap: 8px; padding: 6px 0 14px; }
-header h1 { flex: 1; text-align: center; font-size: 19px; }
-.circle { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--pill); color: var(--ink);
-  font-size: 18px; font-weight: 700; cursor: pointer; display: grid; place-items: center; }
-.circle.ghost { visibility: hidden; }
-h2 { font-size: 21px; margin: 26px 0 12px; display: flex; justify-content: space-between; align-items: center; }
-h2 small { font-size: 15px; font-weight: 400; color: var(--muted); background: var(--pill); padding: 6px 14px; border-radius: 99px; }
-.card { background: var(--card); border-radius: 24px; padding: 14px; }
-.hero { background: var(--surface); border-radius: 32px; padding: 22px; }
-.hero .label { color: var(--muted); }
-.hero .big { font-size: 44px; font-weight: 800; letter-spacing: -1.5px; margin: 6px 0 14px; }
-.neg { color: var(--danger); } .pos { color: var(--good); } .mut { color: var(--muted); }
-.row { display: flex; align-items: center; gap: 12px; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { background: var(--bg); }
+body { color: var(--ink); font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+input { font: inherit; color: var(--ink); }
+main { max-width: 480px; margin: 0 auto; padding: 0 16px 140px; }
+
+/* Đầu trang */
+header { display: flex; align-items: center; gap: 8px; padding: calc(14px + env(safe-area-inset-top)) 0 14px; position: sticky; top: 0;
+  background: linear-gradient(var(--bg) 75%, transparent); z-index: 3; }
+header h1 { flex: 1; text-align: center; font-size: 19px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.circle { width: 42px; height: 42px; border-radius: 50%; background: var(--pill); display: grid; place-items: center; flex: none; position: relative; transition: transform .15s; }
+.circle:active, .press:active { transform: scale(.96); }
+.circle svg { width: 18px; height: 18px; }
+.circle.hide { visibility: hidden; }
+.badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--danger); color: #fff;
+  font-size: 12px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; }
+
+/* Khối */
+.sec { display: flex; align-items: center; justify-content: space-between; padding: 26px 0 12px; }
+.sec h2 { font-size: 21px; font-weight: 700; }
+.sec .tag { font-size: 15px; color: var(--muted); background: var(--pill); padding: 7px 14px; border-radius: 99px; }
+.hero { background: #fff; color: #111114; border-radius: 32px; padding: 22px; }
+.hero .label { color: #8A8D96; font-size: 16px; }
+.hero .big { font-size: 46px; font-weight: 800; letter-spacing: -1.5px; margin: 8px 0 16px; line-height: 1.05; }
+.hero .big.neg { color: #D92D20; }
+.row { display: flex; align-items: center; gap: 14px; }
 .grow { flex: 1; min-width: 0; }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: 14px; color: var(--muted); }
+.card { background: var(--card); border-radius: 24px; padding: 12px 16px 12px 12px; }
 .stack > * + * { margin-top: 10px; }
-.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #111114;
-  flex: none; background-size: cover; background-position: center; }
-.avs { display: flex; } .avs .av { width: 34px; height: 34px; margin-right: -9px; border: 2.5px solid var(--surface); font-size: 14px; }
-.btn { border: 0; border-radius: 99px; font: inherit; font-weight: 600; padding: 0 16px; height: 40px; cursor: pointer;
-  background: var(--pill); color: var(--ink); }
-.btn.primary { background: var(--cta); color: var(--cta-ink); }
-.btn.big { height: 60px; font-size: 19px; width: 100%; }
-.btn.danger { color: var(--danger); }
-.btn:disabled { opacity: .35; }
-.dock { position: fixed; left: 0; right: 0; bottom: 0; padding: 30px 16px calc(12px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--bg) 40%, transparent); }
-.dock > div { max-width: 528px; margin: 0 auto; }
-input, select { font: inherit; color: var(--ink); background: var(--card); border: 0; border-radius: 18px; padding: 15px 18px; width: 100%; }
-.field { margin-top: 14px; } .field > label { display: block; color: var(--muted); font-size: 15px; margin: 0 0 6px 4px; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { border: 0; border-radius: 99px; padding: 8px 14px; background: var(--pill); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
-.chip.on { background: var(--cta); color: var(--cta-ink); }
-.sheet { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: flex-end; justify-content: center; z-index: 5; }
-.sheet.open { display: flex; }
-.sheet > div { background: var(--surface); width: 100%; max-width: 560px; border-radius: 32px 32px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
-  max-height: 92vh; overflow: auto; }
-.center { text-align: center; padding: 40px 10px; }
-.toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); background: var(--cta); color: var(--cta-ink);
-  padding: 12px 20px; border-radius: 99px; display: none; z-index: 9; }
-#apple-sign-in-button, #apple-sign-out-button { display: inline-block; }
+.amt { font-size: 17px; font-weight: 700; white-space: nowrap; }
+.neg { color: var(--danger); } .pos { color: var(--good-ink); }
+
+/* Ảnh đại diện, biểu tượng danh mục */
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #111114; flex: none;
+  background-size: cover; background-position: center; font-size: 16px; }
+.avs { display: flex; align-items: center; }
+.avs .av { margin-right: -10px; box-shadow: 0 0 0 2.5px #fff; width: 36px; height: 36px; font-size: 15px; }
+.tile { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; flex: none; }
+.tile img { width: 28px; height: 28px; }
+
+/* Nút */
+.pillbtn { height: 38px; padding: 0 14px; border-radius: 99px; font-size: 15px; font-weight: 600; background: var(--cta); color: var(--cta-ink); white-space: nowrap; flex: none; transition: transform .15s; }
+.pillbtn.soft { background: var(--pill); color: var(--ink); }
+.pillbtn:active { transform: scale(.96); }
+.wide { display: flex; gap: 8px; margin-top: 12px; } .wide > * { flex: 1; height: 46px; font-size: 16px; }
+.cta { width: 100%; height: 64px; border-radius: 99px; background: var(--cta); color: var(--cta-ink); font-size: 19px; font-weight: 600; transition: transform .15s; }
+.cta:active { transform: scale(.98); } .cta:disabled { opacity: .35; }
+
+/* Nút nổi ở đáy, giống BigButton trong app */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; padding: 50px 16px calc(10px + env(safe-area-inset-bottom)); pointer-events: none; z-index: 4;
+  background: linear-gradient(to top, var(--bg) 30%, color-mix(in srgb, var(--bg) 60%, transparent) 60%, transparent); }
+.dock[hidden] { display: none; }
+.big { pointer-events: auto; max-width: 448px; margin: 0 auto; display: flex; align-items: center; gap: 10px; padding: 11px 25px 11px 11px;
+  border-radius: 99px; background: var(--cta); color: var(--cta-ink); width: 100%; box-shadow: 0 8px 24px rgba(0,0,0,.18); transition: transform .15s; }
+.big:active { transform: scale(.97); }
+.big .ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--cta-ink) 14%, transparent); }
+.big .ic svg { width: 24px; height: 24px; }
+.big span { flex: 1; text-align: center; font-size: 21px; font-weight: 600; }
+
+/* Thành viên cuộn ngang */
+.hscroll { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+.hscroll::-webkit-scrollbar { display: none; }
+.mem { width: 96px; flex: none; text-align: center; padding: 14px 6px; border-radius: 22px; background: var(--card); }
+.mem .av { width: 48px; height: 48px; margin: 0 auto 8px; font-size: 19px; }
+.mem b { display: block; font-size: 15px; } .mem small { font-size: 14px; font-weight: 500; }
+
+/* Bảng trượt từ dưới lên & bảng tuỳ chọn */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 8; display: none; }
+.scrim.open { display: block; animation: fade .2s; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--surface); border-radius: 32px 32px 0 0;
+  max-width: 520px; margin: 0 auto; padding: 8px 18px calc(16px + env(safe-area-inset-bottom)); max-height: 94vh; overflow: auto;
+  transform: translateY(105%); transition: transform .32s cubic-bezier(.2,.9,.3,1); }
+.sheet.open { transform: none; }
+.grab { width: 40px; height: 5px; border-radius: 3px; background: var(--pill); margin: 4px auto 10px; }
+.menu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.92); opacity: 0; pointer-events: none;
+  width: min(380px, calc(100vw - 48px)); background: var(--surface); border-radius: 32px; z-index: 9; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  transition: transform .25s cubic-bezier(.2,.9,.3,1.2), opacity .2s; }
+.menu.open { transform: translate(-50%, -50%); opacity: 1; pointer-events: auto; }
+.menu .head { padding: 18px; }
+.menu .items { padding: 0 8px 10px; }
+.mi { display: flex; align-items: center; gap: 14px; padding: 6px 10px; width: 100%; text-align: left; border-radius: 16px; }
+.mi:active { background: var(--pill); }
+.mi .ic { width: 40px; height: 40px; border-radius: 50%; background: var(--pill); display: grid; place-items: center; flex: none; }
+.mi.danger { color: var(--danger); } .mi.danger .ic { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.mi svg { width: 17px; height: 17px; }
+
+/* Nhập khoản chung (như màn hình nhập của app) */
+.lbl { font-size: 15px; color: var(--muted); margin: 22px 0 10px; display: flex; justify-content: space-between; align-items: baseline; }
+.lbl button { color: #2f6fe0; font-weight: 600; font-size: 15px; }
+.money { display: flex; align-items: baseline; border-bottom: 2px solid var(--ink); padding-bottom: 4px; }
+.money input { flex: 1; min-width: 0; border: 0; background: none; outline: 0; font-size: 46px; font-weight: 800; letter-spacing: -1.5px; }
+.money span { font-size: 22px; font-weight: 600; color: var(--muted); }
+.note { width: 100%; border: 0; outline: 0; background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 18px; padding: 15px 18px; font-size: 18px; margin-top: 16px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -18px; padding: 0 18px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { display: flex; align-items: center; gap: 8px; padding: 5px 14px 5px 5px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 5%, transparent);
+  font-size: 16px; font-weight: 500; white-space: nowrap; flex: none; }
+.chip .ci { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+.chip .ci img { width: 20px; height: 20px; }
+.chip.on { font-weight: 600; color: #111114; }
+.chip.on .ci { background: rgba(255,255,255,.7) !important; }
+.pchip { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 5%, transparent); flex: none; }
+.pchip.on { background: var(--cta); color: var(--cta-ink); }
+.pchip .av { width: 36px; height: 36px; font-size: 15px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid2 .pchip { text-align: left; }
+.grid2 .pchip small { display: block; font-size: 13px; opacity: .7; }
+.check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid currentColor; opacity: .5; flex: none; margin-left: auto; }
+.pchip.on .check { opacity: 1; background: currentColor; box-shadow: inset 0 0 0 3px var(--cta); }
+
+/* Thông báo nhỏ */
+.toast { position: fixed; left: 50%; bottom: calc(110px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0;
+  background: var(--cta); color: var(--cta-ink); border-radius: 99px; padding: 15px 22px 15px 20px; display: flex; gap: 12px; align-items: center;
+  font-weight: 500; z-index: 10; transition: .25s; pointer-events: none; box-shadow: 0 6px 16px rgba(0,0,0,.18); white-space: nowrap; }
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+.empty { color: var(--muted); text-align: center; padding: 24px; background: var(--card); border-radius: 24px; }
+.qr { width: 100%; max-width: 280px; display: block; margin: 8px auto; border-radius: 20px; background: #fff; }
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.fadein > * { animation: rise .3s both; }
+#apple-sign-in-button > div, #apple-sign-out-button > div { margin: 0 auto; }
 </style>
-<!-- CloudKit JS của Apple: đăng nhập Apple ID, đọc / ghi dữ liệu iCloud của nhóm -->
 <script src="config.js?v=2"></script>
 <script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js" async></script>
 </head>
 <body>
 <main>
   <header>
-    <button class="circle" id="back" title="Các nhóm">‹</button>
+    <button class="circle" id="back" aria-label="Quay lại"></button>
     <h1 id="title">Nhóm chung</h1>
-    <span id="apple-sign-out-button"></span>
+    <button class="circle hide" id="bell" aria-label="Thông báo"></button>
+    <button class="circle hide" id="more" aria-label="Tuỳ chọn"></button>
   </header>
-  <div id="view"><div class="center mut">Đang tải…</div></div>
+  <div id="view"></div>
 </main>
-<div class="dock" id="dock" hidden><div><button class="btn primary big" id="addBtn">+ Thêm khoản chung</button></div></div>
-<div class="sheet" id="sheet"><div id="sheetBody"></div></div>
+<div class="dock" id="dock" hidden><button class="big" id="addBtn"><div class="ic" id="addIc"></div><span>Thêm khoản chung</span></button></div>
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div class="menu" id="menu"></div>
 <div class="toast" id="toast"></div>
+<div id="apple-sign-out-button" hidden></div>
 
 <script>
-// ─── Cấu hình ──────────────────────────────────────────────────────────
-// API token tạo trong CloudKit Console › Tokens & Keys (loại API Token, Sign in Callback: postMessage,
-// Allowed Origins: https://hnaht95.github.io). Token web này được phép công khai: chỉ dùng được từ đúng trang này
-// và mỗi người vẫn phải đăng nhập Apple ID của chính họ.
-// API_TOKEN, CONTAINER nằm trong config.js (dùng chung với trang giới thiệu)
 const ENV = new URLSearchParams(location.search).get('env') === 'dev' ? 'development' : 'production';
 const PREFIX = 'nha-';
+
+// ─── Biểu tượng (nét giống SF Symbols) ─────────────────────────────────
+const I = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 12H7z"/></svg>',
+  qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM18 18h3v3"/></svg>',
+  bank: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 2 7v2h20V7zM4 10h3v8H4zm6.5 0h3v8h-3zM17 10h3v8h-3zM2 20h20v2H2z"/></svg>',
+  out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>',
+  person: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>',
+  group: '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><rect x="6.5" y="1.5" width="11" height="1.6" rx=".8" opacity=".85"/><rect x="5" y="4.2" width="14" height="1.8" rx=".9" opacity=".85"/><rect x="3.5" y="7" width="17" height="15" rx="4"/><circle cx="9" cy="12.5" r="2" fill="var(--gi)"/><circle cx="15" cy="12" r="2.3" fill="var(--gi)"/><path d="M5.6 19.6c.4-1.9 1.8-3 3.4-3s2.7.8 3.1 2.2c.6-1.8 2-2.8 3.9-2.8 1.8 0 3.1 1.1 3.5 3.6z" fill="var(--gi)"/></svg>',
+};
 
 // ─── Cách tính (giống app iPhone, lấy từ Tab lib/settle.ts) ────────────
 function stableHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0; return h; }
@@ -130,12 +229,18 @@ const $ = id => document.getElementById(id);
 const fmt = n => Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TONES = ['#FFE1B3','#D6F5C9','#C8F0F0','#D7E0FF','#F3D6FF','#FFD6D6','#FFF2B8','#E4E4E8'];
-const CATS = { an: ['🍜', 'Ăn uống'], cafe: ['☕', 'Cafe'], di: ['🛵', 'Đi lại'], mua: ['🛍️', 'Mua sắm'], hd: ['🧾', 'Hoá đơn'], khac: ['📌', 'Khác'] };
-function avatar(m, cls = '') {
+const CATS = { an: 'Ăn uống', cafe: 'Cafe', di: 'Đi lại', mua: 'Mua sắm', hd: 'Hoá đơn', khac: 'Khác' };
+const catIcon = k => `<img src="cat/${CATS[k] ? k : 'khac'}.svg" alt="">`;
+const catColor = k => `var(--${CATS[k] ? k : 'khac'})`;
+const BANKS = { '970436': 'Vietcombank', '970418': 'BIDV', '970415': 'VietinBank', '970405': 'Agribank', '970422': 'MBBank', '970407': 'Techcombank',
+  '970416': 'ACB', '970432': 'VPBank', '970423': 'TPBank', '970403': 'Sacombank', '970437': 'HDBank', '970441': 'VIB', '970448': 'OCB',
+  '970443': 'SHB', '970431': 'Eximbank', '970426': 'MSB', '970454': 'VietCapitalBank', '963388': 'Timo', '546034': 'CAKE', '970449': 'LPBank' };
+function avatar(m, size) {
   const name = m?.name || '?', id = m?.id || '?';
   const init = (name.trim().split(/\s+/).pop() || '?')[0].toUpperCase();
-  const bg = m?.photo ? `background-image:url('${m.photo}')` : `background:${TONES[stableHash(id) % TONES.length]}`;
-  return `<div class="av ${cls}" style="${bg}">${m?.photo ? '' : esc(init)}</div>`;
+  const st = (size ? `width:${size}px;height:${size}px;font-size:${size * .42}px;` : '') +
+    (m?.photo ? `background-image:url('${m.photo}')` : `background-color:${TONES[stableHash(id) % TONES.length]}`);
+  return `<div class="av" style="${st}">${m?.photo ? '' : esc(init)}</div>`;
 }
 function day(t) {
   const d = new Date(t), n = new Date();
@@ -145,16 +250,32 @@ function day(t) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 let toastTimer;
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 3000); }
+function toast(msg) {
+  const t = $('toast'); t.innerHTML = `<span style="width:18px;height:18px;display:grid">${I.check}</span>${esc(msg)}`;
+  t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Bảng trượt và bảng tuỳ chọn (thay hộp thoại của trình duyệt, giống bảng nhấn giữ trong app)
+function openSheet(html, after) { $('sheetBody').innerHTML = html; $('scrim').classList.add('open'); $('sheet').classList.add('open'); after?.(); }
+function closeAll() { $('sheet').classList.remove('open'); $('menu').classList.remove('open'); $('scrim').classList.remove('open'); }
+$('scrim').onclick = closeAll;
+function openMenu({ icon, title, sub, items }) {
+  $('menu').innerHTML = `<div class="head row">${icon}<div class="grow"><div class="ell" style="font-size:19px;font-weight:700">${esc(title)}</div>${sub ? `<div class="sub ell" style="font-size:15px">${esc(sub)}</div>` : ''}</div></div>
+    <div class="items">${items.map((it, i) => `<button class="mi ${it.danger ? 'danger' : ''}" data-mi="${i}"><div class="ic">${it.icon}</div>
+      <div class="grow"><div style="font-weight:500">${esc(it.title)}</div>${it.sub ? `<div class="sub">${esc(it.sub)}</div>` : ''}</div></button>`).join('')}</div>`;
+  $('menu').querySelectorAll('[data-mi]').forEach(b => b.onclick = () => { closeAll(); items[+b.dataset.mi].run(); });
+  $('scrim').classList.add('open'); $('menu').classList.add('open');
+}
+const confirmMenu = (o) => new Promise(res => openMenu({ ...o, items: [{ ...o.yes, run: () => res(true) }, { icon: I.x, title: 'Huỷ', run: () => res(false) }] }));
 
 // ─── Trạng thái ────────────────────────────────────────────────────────
-let container, me = null;      // me: userRecordName của Apple ID đang đăng nhập
+let container, me = null;      // me: mã người dùng iCloud của Apple ID đang đăng nhập
 let groups = [];               // { zoneID, scope, name, members, spends, settles, records, meId }
 let current = null;            // zoneName đang mở
-
 const db = scope => scope === 'shared' ? container.sharedCloudDatabase : container.privateCloudDatabase;
 const cur = () => groups.find(g => g.zoneID.zoneName === current);
 const memberName = (g, id) => (g.members.find(m => m.id === id) || {}).name || 'Người đã xoá';
+const member = (g, id) => g.members.find(m => m.id === id);
 
 function parseGroup(g, records) {
   g.records = {}; g.members = []; g.spends = []; g.settles = [];
@@ -175,7 +296,6 @@ function parseGroup(g, records) {
   g.meId = localStorage.getItem('house.me.' + g.zoneID.zoneName);
   if (!g.members.some(m => m.id === g.meId)) g.meId = (g.members.find(m => m.user === me) || {}).id || null;
 }
-
 async function fetchGroup(g) {
   let records = [], syncToken, more = true;
   while (more) {
@@ -186,7 +306,6 @@ async function fetchGroup(g) {
   }
   parseGroup(g, records);
 }
-
 async function loadAll() {
   const next = [];
   for (const scope of ['private', 'shared']) {
@@ -199,7 +318,6 @@ async function loadAll() {
   if (current && !cur()) current = null;
   render();
 }
-
 async function save(g, recs) {
   const r = await db(g.scope).saveRecords(recs, { zoneID: g.zoneID });
   if (r.hasErrors) { toast(r.errors[0].reason || 'Không lưu được'); throw r.errors[0]; }
@@ -210,52 +328,72 @@ const newName = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + ''
 
 // ─── Giao diện ─────────────────────────────────────────────────────────
 function render() {
-  $('back').classList.toggle('ghost', !current);
   const g = cur();
+  $('back').innerHTML = g ? I.back : I.down;
+  $('back').classList.toggle('hide', !g);
   $('title').textContent = g ? (g.name || 'Nhóm chung') : 'Nhóm chung';
-  $('dock').hidden = !(g && g.meId);
-  if (!g) return renderList();
-  if (!g.meId) return renderPickMe(g);
-  renderGroup(g);
+  const inGroup = !!(g && g.meId);
+  $('bell').classList.toggle('hide', !inGroup);
+  $('more').classList.toggle('hide', !me);
+  const pend = inGroup ? pending(g).length : 0;
+  $('bell').innerHTML = I.bell + (pend ? `<span class="badge">${pend}</span>` : '');
+  $('dock').hidden = !inGroup;
+  const v = $('view'); v.className = 'fadein';
+  if (!g) renderList(); else if (!g.meId) renderPickMe(g); else renderGroup(g);
+}
+const pending = g => g.settles.filter(s => (s.to === g.meId && s.status === 'wait') || (s.from === g.meId && s.status !== 'ok'));
+
+function groupIcon(id, size = 56) {
+  const bg = TONES[stableHash(id) % TONES.length];
+  return `<div class="tile" style="--gi:${bg};width:${size}px;height:${size}px;border-radius:${size * .32}px;background:${bg};color:#111114">${I.group}</div>`;
 }
 
 function renderList() {
   if (!groups.length) {
-    $('view').innerHTML = `<div class="hero stack"><div style="font-size:24px;font-weight:800">Sổ chi tiêu chung</div>
-      <div class="mut">Chưa có nhóm nào. Nhờ người trong nhóm gửi lời mời (tạo trong app Pay trên iPhone), mở lời mời là vào được nhóm.</div>
-      <div class="field"><label>Hoặc dán link lời mời vào đây</label><input id="inv" placeholder="https://www.icloud.com/share/…"></div>
-      <button class="btn primary big" id="invBtn">Vào nhóm</button></div>`;
+    $('view').innerHTML = `<div class="hero">
+      <div class="avs" style="margin-bottom:14px">${['Bố', 'Mẹ', 'Anh', 'Em'].map((n, i) => avatar({ id: 'demo' + i, name: n }, 52)).join('')}</div>
+      <div style="font-size:26px;font-weight:800">Sổ chi tiêu chung</div>
+      <div style="color:#8A8D96;margin-top:8px">Chưa có nhóm nào. Nhờ người trong nhóm gửi lời mời từ app Pay trên iPhone, mở lời mời là vào nhóm.</div></div>
+      <div class="lbl">Hoặc dán link lời mời</div>
+      <input class="note" style="margin:0" id="inv" placeholder="https://www.icloud.com/share/…">
+      <button class="cta" style="margin-top:14px" id="invBtn">Vào nhóm</button>`;
     $('invBtn').onclick = () => acceptLink($('inv').value);
     return;
   }
-  $('view').innerHTML = `<div class="stack">${groups.map((g, i) => {
+  $('view').innerHTML = `<div class="stack" style="padding-top:4px">${groups.map((g, i) => {
     const n = g.meId ? (balances(g.spends, g.settles)[g.meId] || 0) : 0;
-    const pend = g.settles.filter(s => s.to === g.meId && s.status === 'wait').length;
-    return `<div class="card row" data-i="${i}" style="cursor:pointer">
-      <div class="av" style="border-radius:18px;width:56px;height:56px;background:${TONES[stableHash(g.zoneID.zoneName) % TONES.length]};font-size:24px">👥</div>
-      <div class="grow"><div class="ell" style="font-weight:600;font-size:18px">${esc(g.name || 'Nhóm chung')}${pend ? ` <span class="neg">●${pend}</span>` : ''}</div>
-        <div class="mut">${g.members.length} người</div></div>
-      <div style="text-align:right"><div class="mut" style="font-size:13px">${n > 0 ? 'Được nhận' : n < 0 ? 'Còn phải trả' : 'Đã cân bằng'}</div>
-        ${n ? `<div class="${n < 0 ? 'neg' : 'pos'}" style="font-weight:700">${fmt(n)}</div>` : ''}</div></div>`;
+    const pend = pending(g).length;
+    return `<button class="card row press" data-i="${i}" style="width:100%;text-align:left;border-radius:28px;position:relative">
+      ${groupIcon(g.zoneID.zoneName)}
+      ${pend ? `<span class="badge" style="top:6px;left:56px;right:auto">${pend}</span>` : ''}
+      <div class="grow"><div class="ell" style="font-weight:600;font-size:18px">${esc(g.name || 'Nhóm chung')}</div>
+        <div class="avs" style="margin-top:4px">${g.members.slice(0, 5).map(m => avatar(m, 22)).join('')}<span class="sub" style="margin-left:16px">${g.members.length} người</span></div></div>
+      <div style="text-align:right"><div class="sub" style="font-size:13px">${n > 0 ? 'Được nhận' : n < 0 ? 'Còn phải trả' : 'Đã cân bằng'}</div>
+        ${n ? `<div class="amt ${n < 0 ? 'neg' : 'pos'}">${fmt(n)}</div>` : ''}</div></button>`;
   }).join('')}</div>`;
-  document.querySelectorAll('[data-i]').forEach(el => el.onclick = () => { current = groups[+el.dataset.i].zoneID.zoneName; render(); });
+  document.querySelectorAll('[data-i]').forEach(el => el.onclick = () => { current = groups[+el.dataset.i].zoneID.zoneName; render(); scrollTo(0, 0); });
 }
 
 function renderPickMe(g) {
-  $('view').innerHTML = `<div style="font-size:26px;font-weight:800">Bạn là ai trong nhóm?</div>
-    <div class="mut" style="margin:4px 0 18px">Chỉ để biết phần nào là của bạn trên máy này.</div>
-    <div class="stack">${g.members.map(m => `<button class="card row" style="width:100%;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit" data-m="${m.id}">${avatar(m)}<b>${esc(m.name)}</b></button>`).join('')}</div>
-    <div class="field"><label>Chưa có tên bạn?</label><input id="newMe" placeholder="Tên của bạn"></div>
-    <button class="btn primary big" style="margin-top:12px" id="addMe">Thêm tôi vào nhóm</button>`;
+  $('view').innerHTML = `<div style="font-size:26px;font-weight:800;padding-top:10px">Bạn là ai trong nhóm?</div>
+    <div class="sub" style="font-size:16px;margin:4px 0 20px">Chỉ để biết phần nào là của bạn trên máy này.</div>
+    <div class="grid2">${g.members.map(m => `<button class="press" style="background:var(--card);border-radius:24px;padding:20px 8px;text-align:center" data-m="${m.id}">
+      ${avatar(m, 56).replace('class="av"', 'class="av" style="margin:0 auto 10px;')}<b class="ell" style="display:block">${esc(m.name)}</b></button>`).join('')}
+      <button class="press" style="background:var(--card);border-radius:24px;padding:20px 8px" id="addMe">
+        <div class="circle" style="width:56px;height:56px;margin:0 auto;background:var(--surface)">${I.plus}</div></button></div>`;
   document.querySelectorAll('[data-m]').forEach(el => el.onclick = () => claim(g, el.dataset.m));
-  $('addMe').onclick = async () => {
-    const n = $('newMe').value.trim(); if (!n) return;
-    const id = newName();
-    await save(g, [{ recordName: id, recordType: 'Member', fields: { name: field(n), user: field(me) } }]);
-    claim(g, id);
-  };
+  $('addMe').onclick = () => openSheet(`<div style="font-size:21px;font-weight:700">Thêm tôi vào nhóm</div>
+      <div class="lbl">Tên của bạn</div><input class="note" style="margin:0" id="newMe" placeholder="Ví dụ: Minh">
+      <button class="cta" style="margin-top:18px" id="saveMe">Thêm</button>`, () => {
+    $('newMe').focus();
+    $('saveMe').onclick = async () => {
+      const n = $('newMe').value.trim(); if (!n) return;
+      const id = newName(); closeAll();
+      await save(g, [{ recordName: id, recordType: 'Member', fields: { name: field(n), user: field(me) } }]);
+      claim(g, id);
+    };
+  });
 }
-
 async function claim(g, id) {
   localStorage.setItem('house.me.' + g.zoneID.zoneName, id);
   g.meId = id;
@@ -268,76 +406,143 @@ async function claim(g, id) {
 
 function renderGroup(g) {
   const net = balances(g.spends, g.settles), mine = net[g.meId] || 0, tr = transfers(net);
-  const name = id => id === g.meId ? 'Bạn' : memberName(g, id);
-  const incoming = g.settles.filter(s => s.to === g.meId && s.status === 'wait');
-  const mineOut = g.settles.filter(s => s.from === g.meId && s.status !== 'ok');
-  const member = id => g.members.find(m => m.id === id);
+  const nm = id => id === g.meId ? 'Bạn' : memberName(g, id);
+  const nmTo = id => id === g.meId ? 'bạn' : memberName(g, id);
+  const meM = member(g, g.meId);
   let h = `<div class="hero"><div class="label">${mine > 0 ? 'Cả nhóm còn nợ bạn' : mine < 0 ? 'Bạn còn phải trả' : 'Bạn đã cân bằng'}</div>
     <div class="big ${mine < 0 ? 'neg' : ''}">${fmt(mine)}</div>
-    <div class="avs">${g.members.slice(0, 6).map(m => avatar(m)).join('')}</div></div>`;
-  if (incoming.length || mineOut.length) {
-    h += `<h2>Cần xác nhận</h2><div class="stack">`;
-    for (const s of incoming) h += `<div class="card" style="background:var(--hero)"><div class="row">${avatar(member(s.from))}
-      <div class="grow"><div style="font-weight:600">${esc(memberName(g, s.from))} báo đã chuyển cho bạn</div><div style="font-size:20px;font-weight:700">${fmt(s.amount)}</div></div></div>
-      <div class="row" style="margin-top:12px"><button class="btn grow" data-no="${s.id}">Chưa nhận được</button><button class="btn primary grow" data-yes="${s.id}">Đã nhận</button></div></div>`;
-    for (const s of mineOut) h += `<div class="card row">${avatar(member(s.to))}<div class="grow">
-      <div style="font-weight:600">${s.status === 'no' ? esc(memberName(g, s.to)) + ' chưa nhận được' : 'Chờ ' + esc(memberName(g, s.to)) + ' xác nhận'}</div>
-      <div class="${s.status === 'no' ? 'neg' : ''}" style="font-weight:700">${fmt(s.amount)}</div></div>
-      ${s.status === 'no' ? `<button class="btn" data-del="${s.id}">Bỏ</button>` : '⏳'}</div>`;
+    <div class="avs">${g.members.slice(0, 6).map(m => avatar(m)).join('')}${g.members.length > 6 ? `<span style="margin-left:18px;color:#8A8D96;font-weight:600">+${g.members.length - 6}</span>` : ''}</div></div>`;
+  if (meM && !meM.acct) h += `<button class="card row press" id="addBank" style="width:100%;text-align:left;margin-top:12px;padding:14px">
+    <div class="circle">${I.bank}</div><div class="grow"><div style="font-weight:600">Thêm tài khoản nhận tiền</div>
+    <div class="sub">Mọi người chuyển tiền cho bạn bằng mã QR có sẵn số tiền.</div></div><span class="sub">›</span></button>`;
+
+  const pend = pending(g);
+  if (pend.length) {
+    h += `<div class="sec"><h2>Cần xác nhận</h2></div><div class="stack">`;
+    for (const s of pend) {
+      const incoming = s.to === g.meId;
+      if (incoming) h += `<div class="card" style="background:var(--hero);padding:14px"><div class="row">${avatar(member(g, s.from), 44)}
+        <div class="grow"><div class="ell" style="font-weight:600;font-size:16px">${esc(memberName(g, s.from))} báo đã chuyển cho bạn</div>
+        <div style="font-size:20px;font-weight:700">${fmt(s.amount)}</div></div></div>
+        <div class="wide"><button class="pillbtn soft" data-no="${s.id}">Chưa nhận được</button><button class="pillbtn" data-yes="${s.id}">Đã nhận</button></div></div>`;
+      else h += `<div class="card" style="padding:14px"><div class="row">${avatar(member(g, s.to), 44)}<div class="grow">
+        <div class="ell" style="font-weight:600;font-size:16px">${s.status === 'no' ? esc(memberName(g, s.to)) + ' chưa nhận được' : 'Chờ ' + esc(memberName(g, s.to)) + ' xác nhận'}</div>
+        <div style="font-size:20px;font-weight:700" class="${s.status === 'no' ? 'neg' : ''}">${fmt(s.amount)}</div></div>
+        ${s.status === 'wait' ? `<span style="width:20px;color:orange">${I.clock}</span>` : ''}</div>
+        ${s.status === 'no' ? `<div class="sub" style="margin-top:10px">Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại.</div>
+          <div class="wide"><button class="pillbtn soft" data-del="${s.id}">Bỏ</button><button class="pillbtn" data-again="${s.id}">Chuyển lại</button></div>` : ''}</div>`;
+    }
     h += `</div>`;
   }
-  h += `<h2>Ai chuyển cho ai ${tr.length ? `<small>${tr.length} lần</small>` : ''}</h2><div class="stack">`;
-  if (!tr.length) h += `<div class="card mut">✓ Mọi người đã cân bằng, không ai nợ ai.</div>`;
+
+  h += `<div class="sec"><h2>Ai chuyển cho ai</h2>${tr.length ? `<span class="tag">${tr.length} lần</span>` : ''}</div><div class="stack">`;
+  if (!tr.length) h += `<div class="card row" style="padding:18px"><span style="width:26px;color:#34c759">${I.check}</span><span class="sub" style="font-size:16px">Mọi người đã cân bằng, không ai nợ ai.</span></div>`;
   tr.forEach((t, i) => {
-    const act = t.from === g.meId ? `<button class="btn primary" data-pay="${i}">Đã chuyển</button>` : t.to === g.meId ? `<button class="btn primary" data-recv="${i}">Đã nhận</button>` : '';
-    const to = member(t.to);
-    const bank = t.from === g.meId && to?.acct ? `<div class="mut" style="font-size:13px">Chuyển tới ${esc(to.acct)}</div>` : '';
-    h += `<div class="card row">${avatar(member(t.from))}<span class="mut">→</span>${avatar(to)}
-      <div class="grow"><div class="ell" style="font-weight:600">${esc(name(t.from))} trả ${esc(t.to === g.meId ? 'bạn' : memberName(g, t.to))}</div>
-      <div style="font-weight:700">${fmt(t.amount)}</div>${bank}</div>${act}</div>`;
+    const mineRow = t.from === g.meId || t.to === g.meId;
+    const btn = !mineRow ? '' : t.from === g.meId
+      ? `<button class="pillbtn" data-pay="${i}">${member(g, t.to)?.acct ? 'Trả ngay' : 'Đã chuyển'}</button>`
+      : `<button class="pillbtn" data-recv="${i}">Đã nhận</button>`;
+    h += `<div class="card row" style="padding:12px 14px 12px 12px;gap:10px">
+      <div class="row" style="gap:4px">${avatar(member(g, t.from))}<span class="sub">${I.arrow}</span>${avatar(member(g, t.to))}</div>
+      <div class="grow"><div class="ell" style="font-weight:600;font-size:16px">${t.from === g.meId ? 'Bạn trả ' + esc(memberName(g, t.to)) : t.to === g.meId ? esc(memberName(g, t.from)) + ' trả bạn' : esc(memberName(g, t.from)) + ' trả ' + esc(memberName(g, t.to))}</div>
+      <div style="font-weight:700">${fmt(t.amount)}</div></div>${btn}</div>`;
   });
-  h += `</div><h2>Thành viên <small>${g.members.length} người</small></h2><div class="chips">`;
-  for (const m of g.members) { const v = net[m.id] || 0;
-    h += `<div class="card" style="text-align:center;width:96px">${avatar(m).replace('class="av', 'style="margin:0 auto" class="av')}
-      <div class="ell" style="font-weight:600;margin-top:6px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</div>
-      <div class="${v < 0 ? 'neg' : v > 0 ? 'pos' : 'mut'}" style="font-size:14px">${v ? (v > 0 ? '+' : '−') + fmt(v) : '0'}</div></div>`; }
-  h += `</div><h2>Khoản chung</h2><div class="stack">`;
+  h += `</div>`;
+
+  h += `<div class="sec"><h2>Thành viên</h2><span class="tag">${g.members.length} người</span></div><div class="hscroll">`;
+  for (const m of g.members) {
+    const v = net[m.id] || 0;
+    h += `<button class="mem press" data-mem="${m.id}">${avatar(m, 48)}<b class="ell">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b>
+      <small class="${v < 0 ? 'neg' : v > 0 ? 'pos' : 'sub'}">${v ? (v > 0 ? '+' : '−') + fmt(v) : '0'}</small></button>`;
+  }
+  h += `<button class="mem press" id="addMember" style="display:grid;place-items:center"><div class="circle" style="width:48px;height:48px;background:var(--surface)">${I.plus}</div></button></div>`;
+
+  const month = new Date(); const monthSum = g.spends.filter(e => { const d = new Date(e.date); return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear(); }).reduce((a, e) => a + e.amount, 0);
+  h += `<div class="sec"><h2>Khoản chung</h2>${monthSum ? `<span class="tag">Tháng ${month.getMonth() + 1}: ${fmt(monthSum)}</span>` : ''}</div><div class="stack">`;
   const items = [...g.spends.map(e => ({ t: e.date, html: spendRow(g, e) })), ...g.settles.map(s => ({ t: s.date, html: settleRow(g, s) }))].sort((a, b) => b.t - a.t);
-  h += items.length ? items.map(x => x.html).join('') : `<div class="card mut">Chưa có khoản chung nào.</div>`;
+  h += items.length ? items.map(x => x.html).join('') : `<div class="empty">Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhóm.</div>`;
   h += `</div>`;
   $('view').innerHTML = h;
+
+  $('addBank')?.addEventListener('click', () => editMember(g, meM));
   document.querySelectorAll('[data-yes]').forEach(b => b.onclick = () => respond(g, b.dataset.yes, 'ok'));
   document.querySelectorAll('[data-no]').forEach(b => b.onclick = () => respond(g, b.dataset.no, 'no'));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => del(g, b.dataset.del));
-  document.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => settle(g, tr[+b.dataset.pay], 'wait'));
+  document.querySelectorAll('[data-again]').forEach(b => b.onclick = async () => {
+    const s = g.settles.find(x => x.id === b.dataset.again); await del(g, s.id); payFlow(g, { from: s.from, to: s.to, amount: s.amount });
+  });
+  document.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => payFlow(g, tr[+b.dataset.pay]));
   document.querySelectorAll('[data-recv]').forEach(b => b.onclick = () => settle(g, tr[+b.dataset.recv], 'ok'));
-  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { if (confirm('Xoá khoản này cho cả nhóm?')) del(g, b.dataset.rm); });
+  document.querySelectorAll('[data-mem]').forEach(b => b.onclick = () => { const m = member(g, b.dataset.mem); if (m) editMember(g, m); });
+  $('addMember').onclick = () => openSheet(`<div style="font-size:21px;font-weight:700">Thêm người vào nhóm</div>
+      <div class="sub" style="font-size:15px;margin-top:4px">Thêm được cả người không dùng Pay, bạn ghi giúp phần của họ.</div>
+      <div class="lbl">Tên</div><input class="note" style="margin:0" id="memName" placeholder="Ví dụ: Lan">
+      <button class="cta" style="margin-top:18px" id="saveMem">Thêm</button>`, () => {
+    $('memName').focus();
+    $('saveMem').onclick = async () => { const n = $('memName').value.trim(); if (!n) return; closeAll();
+      await save(g, [{ recordName: newName(), recordType: 'Member', fields: { name: field(n) } }]); toast('Đã thêm ' + n); };
+  });
+  document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => {
+    const e = g.spends.find(x => x.id === b.dataset.sp);
+    openMenu({ icon: `<div class="tile" style="background:${catColor(e.cat)}">${catIcon(e.cat)}</div>`, title: `${e.note || CATS[e.cat] || 'Khác'} · ${fmt(e.amount)}`,
+      sub: `${nm(e.payer)} ứng · chia ${new Set(e.shares).size} người · ${day(e.date)}`,
+      items: [{ icon: I.trash, title: 'Xoá khoản này', sub: 'Cả nhóm sẽ không thấy khoản này nữa', danger: true, run: () => del(g, e.id) }] });
+  });
+  document.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+    const s = g.settles.find(x => x.id === b.dataset.st);
+    openMenu({ icon: `<div class="tile" style="background:var(--good);color:var(--good-ink)"><span style="width:22px">${I.check}</span></div>`,
+      title: `${nm(s.from)} chuyển ${nmTo(s.to)} · ${fmt(s.amount)}`, sub: day(s.date),
+      items: [{ icon: I.trash, title: 'Xoá lần trả này', sub: 'Số nợ sẽ tính lại như chưa trả', danger: true, run: () => del(g, s.id) }] });
+  });
 }
 
 function spendRow(g, e) {
-  const [icon, cname] = CATS[e.cat] || ['📌', 'Khác'];
   const part = e.shares.includes(g.meId) ? splitExpense(e.amount, e.shares, e.id).get(g.meId) : 0;
-  return `<div class="card row"><div class="av" style="border-radius:16px;width:52px;height:52px;background:var(--surface);font-size:24px">${icon}</div>
-    <div class="grow"><div class="ell" style="font-weight:600">${esc(e.note || cname)}</div>
-    <div class="mut ell" style="font-size:14px">${esc(e.payer === g.meId ? 'Bạn' : memberName(g, e.payer))} ứng · chia ${new Set(e.shares).size} người · ${day(e.date)}</div></div>
-    <div style="text-align:right"><div style="font-weight:700">${fmt(e.amount)}</div>${part ? `<div class="mut" style="font-size:13px">bạn ${fmt(part)}</div>` : ''}</div>
-    <button class="circle" style="width:32px;height:32px;font-size:14px" data-rm="${e.id}" title="Xoá">✕</button></div>`;
+  return `<button class="card row press" data-sp="${e.id}" style="width:100%;text-align:left">
+    <div class="tile" style="background:${catColor(e.cat)}">${catIcon(e.cat)}</div>
+    <div class="grow"><div class="ell" style="font-weight:600">${esc(e.note || CATS[e.cat] || 'Khác')}</div>
+    <div class="sub ell">${esc(e.payer === g.meId ? 'Bạn' : memberName(g, e.payer))} ứng · chia ${new Set(e.shares).size} người · ${day(e.date)}</div></div>
+    <div style="text-align:right"><div class="amt">${fmt(e.amount)}</div>${part ? `<div class="sub" style="font-size:13px">bạn ${fmt(part)}</div>` : ''}</div></button>`;
 }
 function settleRow(g, s) {
-  const [ic, note, cls] = s.status === 'wait' ? ['⏳', 'Chờ xác nhận', ''] : s.status === 'no' ? ['✕', 'Chưa nhận được', 'neg'] : ['✓', 'Đã xác nhận', 'pos'];
-  return `<div class="card row"><div class="av ${cls}" style="border-radius:16px;width:52px;height:52px;background:var(--surface);font-size:20px">${ic}</div>
+  const [ic, note, color] = s.status === 'wait' ? [I.clock, 'Chờ xác nhận', '#FF9500'] : s.status === 'no' ? [I.x, 'Chưa nhận được', 'var(--danger)'] : [I.check, 'Đã xác nhận', 'var(--good-ink)'];
+  return `<button class="card row press" data-st="${s.id}" style="width:100%;text-align:left">
+    <div class="tile" style="background:color-mix(in srgb, ${color} 15%, transparent);color:${color}"><span style="width:22px;display:grid">${ic}</span></div>
     <div class="grow"><div class="ell" style="font-weight:600">${esc(s.from === g.meId ? 'Bạn' : memberName(g, s.from))} chuyển ${esc(s.to === g.meId ? 'bạn' : memberName(g, s.to))}</div>
-    <div class="mut" style="font-size:14px">${note} · ${day(s.date)}</div></div><div class="${cls}" style="font-weight:700">${fmt(s.amount)}</div></div>`;
+    <div class="sub">${note} · ${day(s.date)}</div></div>
+    <div class="amt" style="color:${s.status === 'no' ? 'var(--muted)' : color};${s.status === 'no' ? 'text-decoration:line-through' : ''}">${fmt(s.amount)}</div></button>`;
 }
 
+// Trả tiền: có tài khoản người nhận thì hiện mã VietQR có sẵn số tiền (quét bằng app ngân hàng), rồi báo đã chuyển
+function payFlow(g, t) {
+  const to = member(g, t.to);
+  if (!to?.acct || !to?.bin) return askPaid(g, t);
+  const info = encodeURIComponent('Pay ' + (g.name || 'Nhom chung'));
+  const qr = `https://img.vietqr.io/image/${to.bin}-${to.acct}-compact2.png?amount=${t.amount}&addInfo=${info}&accountName=${encodeURIComponent(to.name)}`;
+  openSheet(`<div style="font-size:21px;font-weight:700">Chuyển cho ${esc(to.name)}</div>
+    <div class="sub" style="font-size:15px;margin-top:4px">Quét mã bằng app ngân hàng, số tiền và nội dung đã điền sẵn.</div>
+    <img class="qr" src="${qr}" alt="Mã VietQR">
+    <div class="card" style="margin-top:6px"><div class="row" style="justify-content:space-between"><span class="sub">Ngân hàng</span><b>${esc(BANKS[to.bin] || to.bin)}</b></div>
+      <div class="row" style="justify-content:space-between;margin-top:8px"><span class="sub">Số tài khoản</span><b id="acctCopy" style="cursor:pointer">${esc(to.acct)} ⧉</b></div>
+      <div class="row" style="justify-content:space-between;margin-top:8px"><span class="sub">Số tiền</span><b>${fmt(t.amount)}đ</b></div></div>
+    <button class="cta" style="margin-top:16px" id="paidBtn">Tôi đã chuyển</button>`, () => {
+    $('acctCopy').onclick = () => { navigator.clipboard?.writeText(to.acct); toast('Đã chép số tài khoản'); };
+    $('paidBtn').onclick = () => { closeAll(); settle(g, t, 'wait'); };
+  });
+}
+async function askPaid(g, t) {
+  const ok = await confirmMenu({ icon: avatar(member(g, t.to), 56), title: `Bạn trả ${memberName(g, t.to)} · ${fmt(t.amount)}`,
+    sub: `${memberName(g, t.to)} sẽ nhận thông báo để xác nhận`, yes: { icon: I.check, title: 'Đã chuyển tiền' } });
+  if (ok) settle(g, t, 'wait');
+}
 async function settle(g, t, status) {
-  if (status === 'wait' && !confirm(`Đã chuyển ${fmt(t.amount)}đ cho ${memberName(g, t.to)}? Người nhận sẽ xác nhận.`)) return;
   await save(g, [{ recordName: newName(), recordType: 'Settle', fields: { from: field(t.from), to: field(t.to), amount: field(t.amount), date: field(Date.now()), status: field(status) } }]);
   toast(status === 'wait' ? 'Đã báo, chờ xác nhận' : 'Đã ghi nhận');
 }
 async function respond(g, id, status) {
   const r = g.records[id];
   await save(g, [{ recordName: id, recordType: 'Settle', recordChangeTag: r.recordChangeTag, fields: { status: field(status) } }]);
+  toast(status === 'ok' ? 'Đã xác nhận' : 'Đã báo chưa nhận được');
 }
 async function del(g, id) {
   const r = await db(g.scope).deleteRecords([{ recordName: id }], { zoneID: g.zoneID });
@@ -345,33 +550,89 @@ async function del(g, id) {
   await fetchGroup(g); render();
 }
 
+// Sửa thành viên: tên, tài khoản nhận tiền
+function editMember(g, m) {
+  openSheet(`<div style="text-align:center">${avatar(m, 88).replace('class="av"', 'class="av" style="margin:6px auto 8px;')}<div style="font-size:21px;font-weight:700">${esc(m.id === g.meId ? 'Bạn' : m.name)}</div></div>
+    <div class="lbl">Tên</div><input class="note" style="margin:0" id="mName" value="${esc(m.name)}">
+    <div class="lbl">Ngân hàng nhận tiền</div><select class="note" style="margin:0;appearance:none" id="mBank"><option value="">Chưa chọn</option>
+      ${Object.entries(BANKS).sort((a, b) => a[1].localeCompare(b[1])).map(([k, v]) => `<option value="${k}" ${k === m.bin ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <div class="lbl">Số tài khoản</div><input class="note" style="margin:0" id="mAcct" inputmode="numeric" value="${esc(m.acct || '')}" placeholder="Ví dụ: 0123456789">
+    <div class="sub" style="margin-top:8px">Ai nợ người này bấm Trả ngay là có mã QR với sẵn số tiền.</div>
+    <button class="cta" style="margin-top:18px" id="saveM">Lưu</button>`, () => {
+    $('saveM').onclick = async () => {
+      const r = g.records[m.id]; closeAll();
+      await save(g, [{ recordName: m.id, recordType: 'Member', recordChangeTag: r?.recordChangeTag, fields: {
+        name: field($('mName').value.trim() || m.name), bin: field($('mBank').value || null), acct: field($('mAcct').value.replace(/\D/g, '') || null) } }]);
+      toast('Đã lưu');
+    };
+  });
+}
+
 // ─── Thêm khoản chung ──────────────────────────────────────────────────
 function openAdd() {
   const g = cur(); if (!g) return;
-  let payer = g.meId, shares = new Set(g.members.map(m => m.id)), cat = 'an';
-  const draw = () => {
-    const amt = +($('amt')?.value || '').replace(/\D/g, '') || 0;
+  let amt = 0, note = '', cat = 'an', payer = g.meId, shares = new Set(g.members.map(m => m.id));
+  const guess = s => { const t = s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+    const kw = { an: ['an', 'com', 'pho', 'bun', 'lau', 'cho', 'nuong', 'banh'], cafe: ['cafe', 'ca phe', 'tra sua', 'coffee'], di: ['grab', 'xang', 'taxi', 've', 'xe'],
+      mua: ['shopee', 'sieu thi', 'mua', 'lazada'], hd: ['dien', 'nuoc', 'internet', 'wifi', 'tien nha', 'gas'] };
+    for (const [k, ws] of Object.entries(kw)) if (ws.some(w => (' ' + t + ' ').includes(' ' + w + ' '))) return k; return null; };
+  const body = () => {
     const parts = splitExpense(amt, [...shares]);
-    $('sheetBody').innerHTML = `<div class="row"><b class="grow" style="font-size:21px">Khoản chung</b><button class="circle" id="close">✕</button></div>
-      <div class="field"><label>Số tiền</label><input id="amt" inputmode="numeric" placeholder="0" value="${amt ? fmt(amt) : ''}" style="font-size:28px;font-weight:700"></div>
-      <div class="field"><label>Ghi chú</label><input id="note" placeholder="Ví dụ: đi chợ" value="${esc($('note')?.value || '')}"></div>
-      <div class="field"><label>Danh mục</label><div class="chips">${Object.entries(CATS).map(([k, [i, n]]) => `<button class="chip ${k === cat ? 'on' : ''}" data-cat="${k}">${i} ${n}</button>`).join('')}</div></div>
-      <div class="field"><label>Ai ứng tiền</label><div class="chips">${g.members.map(m => `<button class="chip ${m.id === payer ? 'on' : ''}" data-payer="${m.id}">${esc(m.id === g.meId ? 'Bạn' : m.name)}</button>`).join('')}</div></div>
-      <div class="field"><label>Chia đều cho</label><div class="chips">${g.members.map(m => `<button class="chip ${shares.has(m.id) ? 'on' : ''}" data-share="${m.id}">${esc(m.id === g.meId ? 'Bạn' : m.name)}${shares.has(m.id) && amt ? ' · ' + fmt(parts.get(m.id)) : ''}</button>`).join('')}</div></div>
-      <button class="btn primary big" style="margin-top:20px" id="saveSpend" ${amt && shares.size && payer ? '' : 'disabled'}>Lưu</button>`;
-    $('close').onclick = () => $('sheet').classList.remove('open');
-    $('amt').oninput = () => { const p = $('amt').selectionStart; draw(); $('amt').focus(); };
-    document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { cat = b.dataset.cat; draw(); });
-    document.querySelectorAll('[data-payer]').forEach(b => b.onclick = () => { payer = b.dataset.payer; draw(); });
-    document.querySelectorAll('[data-share]').forEach(b => b.onclick = () => { shares.has(b.dataset.share) ? shares.delete(b.dataset.share) : shares.add(b.dataset.share); draw(); });
+    return `<div class="row"><div class="grow" style="font-size:21px;font-weight:700">Khoản chung</div><button class="circle" id="close">${I.x}</button></div>
+      <div class="lbl">Số tiền</div>
+      <div class="money"><input id="amt" inputmode="numeric" placeholder="0" value="${amt ? fmt(amt) : ''}"><span>đ</span></div>
+      <input class="note" id="note" placeholder="Ghi chú, ví dụ: đi chợ" value="${esc(note)}">
+      <div style="margin-top:12px" class="chips">${Object.keys(CATS).map(k => `<button class="chip ${k === cat ? 'on' : ''}" data-cat="${k}" style="${k === cat ? `background:${catColor(k)}` : ''}">
+        <span class="ci" style="background:${catColor(k)}">${catIcon(k)}</span>${CATS[k]}</button>`).join('')}</div>
+      <div class="lbl">Ai ứng tiền</div>
+      <div class="chips">${g.members.map(m => `<button class="pchip ${m.id === payer ? 'on' : ''}" data-payer="${m.id}">${avatar(m, 36)}<b style="font-size:16px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b></button>`).join('')}</div>
+      <div class="lbl">Chia đều cho <button id="allBtn">${shares.size === g.members.length ? 'Bỏ chọn' : 'Cả nhóm'}</button></div>
+      <div class="grid2">${g.members.map(m => { const on = shares.has(m.id); return `<button class="pchip ${on ? 'on' : ''}" data-share="${m.id}">${avatar(m, 36)}
+        <span class="grow"><b class="ell" style="display:block;font-size:16px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b>${on && amt ? `<small>${fmt(parts.get(m.id))}</small>` : ''}</span><span class="check"></span></button>`; }).join('')}</div>
+      <button class="cta" style="margin-top:22px" id="saveSpend" ${amt && shares.size && payer ? '' : 'disabled'}>Lưu</button>`;
+  };
+  const wire = () => {
+    $('close').onclick = closeAll;
+    const a = $('amt');
+    a.oninput = () => { amt = +a.value.replace(/\D/g, '').slice(0, 12) || 0; a.value = amt ? fmt(amt) : ''; refresh(false); };
+    $('note').oninput = e => { note = e.target.value; const k = guess(note); if (k && k !== cat) { cat = k; refresh(false); } };
+    document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { cat = b.dataset.cat; refresh(false); });
+    document.querySelectorAll('[data-payer]').forEach(b => b.onclick = () => { payer = b.dataset.payer; refresh(false); });
+    document.querySelectorAll('[data-share]').forEach(b => b.onclick = () => { const id = b.dataset.share; shares.has(id) ? shares.delete(id) : shares.add(id); refresh(false); });
+    $('allBtn').onclick = () => { shares = shares.size === g.members.length ? new Set() : new Set(g.members.map(m => m.id)); refresh(false); };
     $('saveSpend').onclick = async () => {
       $('saveSpend').disabled = true;
-      await save(g, [{ recordName: newName(), recordType: 'Spend', fields: { amount: field(amt), note: field($('note').value.trim()), payer: field(payer),
+      await save(g, [{ recordName: newName(), recordType: 'Spend', fields: { amount: field(amt), note: field(note.trim()), payer: field(payer),
         shares: field([...shares]), date: field(Date.now()), cat: field(cat) } }]);
-      $('sheet').classList.remove('open'); toast('Đã thêm khoản chung');
+      closeAll(); toast('Đã thêm khoản chung');
     };
   };
-  $('sheetBody').innerHTML = ''; draw(); $('sheet').classList.add('open'); $('amt').focus();
+  // Vẽ lại mà giữ nguyên ô đang gõ (không mất con trỏ)
+  const refresh = (first) => {
+    const focus = document.activeElement?.id, pos = document.activeElement?.selectionStart;
+    $('sheetBody').innerHTML = body(); wire();
+    if (focus && $(focus)) { $(focus).focus(); try { const el = $(focus); const p = focus === 'amt' ? el.value.length : pos; el.setSelectionRange(p, p); } catch {} }
+  };
+  openSheet('', () => { refresh(true); $('amt').focus(); });
+}
+
+// ─── Thông báo ─────────────────────────────────────────────────────────
+function openInbox() {
+  const g = cur(); if (!g) return;
+  const name = id => memberName(g, id);
+  const acts = [
+    ...g.spends.filter(e => e.payer !== g.meId).map(e => { const p = e.shares.includes(g.meId) ? splitExpense(e.amount, e.shares, e.id).get(g.meId) : 0;
+      return { t: e.date, who: e.payer, text: `${name(e.payer)} thêm ${e.note ? '“' + e.note + '”' : 'một khoản'} ${fmt(e.amount)}đ${p ? ', phần bạn ' + fmt(p) + 'đ' : ''}` }; }),
+    ...g.settles.filter(s => s.from === g.meId || s.to === g.meId).map(s => {
+      const out = s.from === g.meId;
+      const text = out ? (s.status === 'wait' ? `Đã báo chuyển ${fmt(s.amount)}đ cho ${name(s.to)}, chờ xác nhận` : s.status === 'no' ? `${name(s.to)} chưa nhận được ${fmt(s.amount)}đ bạn chuyển` : `${name(s.to)} đã nhận ${fmt(s.amount)}đ của bạn`)
+        : (s.status === 'wait' ? `${name(s.from)} báo đã chuyển cho bạn ${fmt(s.amount)}đ` : s.status === 'no' ? `Bạn báo chưa nhận được ${fmt(s.amount)}đ từ ${name(s.from)}` : `Bạn đã nhận ${fmt(s.amount)}đ từ ${name(s.from)}`);
+      return { t: s.date, who: out ? s.to : s.from, text }; }),
+  ].sort((a, b) => b.t - a.t).slice(0, 30);
+  openSheet(`<div class="row"><div class="grow" style="font-size:21px;font-weight:700">Thông báo</div><button class="circle" id="close">${I.x}</button></div>
+    <div class="lbl" style="font-size:19px;color:var(--ink);font-weight:700">Gần đây</div>
+    ${acts.length ? acts.map(a => `<div class="row" style="align-items:flex-start;padding:8px 0">${avatar(member(g, a.who))}<div class="grow"><div>${esc(a.text)}</div><div class="sub">${day(a.t)}</div></div></div>`).join('') : '<div class="sub" style="padding:20px 0">Chưa có gì mới.</div>'}`,
+    () => $('close').onclick = closeAll);
 }
 
 // ─── Lời mời ───────────────────────────────────────────────────────────
@@ -386,7 +647,7 @@ async function acceptLink(text) {
   const guid = shortGUIDFrom(text);
   if (!guid) return toast('Link lời mời không đúng');
   const r = await container.acceptShares([guid]).catch(e => ({ hasErrors: true, errors: [e] }));
-  if (r?.hasErrors) return toast('Không vào được nhóm: ' + (r.errors[0]?.reason || r.errors[0]?.message || ''));
+  if (r?.hasErrors) return toast('Không vào được nhóm');
   toast('Đã vào nhóm');
   await loadAll();
   const zid = r?.results?.[0]?.rootRecord?.zoneID?.zoneName || r?.results?.[0]?.zoneID?.zoneName;
@@ -400,29 +661,36 @@ function pendingInvite() {
 }
 
 // ─── Khởi động ─────────────────────────────────────────────────────────
-$('back').onclick = () => { current = null; render(); };
+$('back').onclick = () => { current = null; render(); scrollTo(0, 0); };
+$('addIc').innerHTML = I.plus;
 $('addBtn').onclick = openAdd;
-$('sheet').onclick = e => { if (e.target === $('sheet')) $('sheet').classList.remove('open'); };
+$('bell').onclick = openInbox;
+$('more').innerHTML = I.more;
+$('more').onclick = () => openMenu({ icon: `<div class="circle" style="width:56px;height:56px">${I.person}</div>`, title: 'Apple ID',
+  sub: 'Đang đăng nhập', items: [{ icon: I.out, title: 'Đăng xuất', danger: true, run: () => $('apple-sign-out-button').querySelector('div')?.click() }] });
+render();
+$('view').innerHTML = '<div class="empty" style="margin-top:20px">Đang tải…</div>';
 
 function showSignIn() {
-  $('view').innerHTML = `<div class="hero center stack"><div style="font-size:48px">👥</div>
-    <div style="font-size:24px;font-weight:800">Nhóm chung của Pay</div>
-    <div class="mut">Đăng nhập Apple ID để xem sổ chung, thêm khoản và xác nhận đã trả. Chưa có Apple ID thì tạo miễn phí ở appleid.apple.com, không cần iPhone.</div>
-    <div id="apple-sign-in-button" style="margin-top:16px"></div></div>`;
-  $('dock').hidden = true;
+  $('dock').hidden = true; $('more').classList.add('hide');
+  $('view').innerHTML = `<div class="hero" style="text-align:center;padding:30px 22px">
+    <div class="avs" style="justify-content:center;margin-bottom:16px">${['Bố', 'Mẹ', 'Anh', 'Em'].map((n, i) => avatar({ id: 'demo' + i, name: n }, 52)).join('')}</div>
+    <div style="font-size:26px;font-weight:800">Nhóm chung của Pay</div>
+    <div style="color:#8A8D96;margin:8px 0 22px">Đăng nhập Apple ID để xem sổ chung, thêm khoản và xác nhận đã trả. Chưa có Apple ID thì tạo miễn phí ở appleid.apple.com, không cần iPhone.</div>
+    <div id="apple-sign-in-button"></div></div>`;
 }
 
 window.addEventListener('cloudkitloaded', async () => {
   CloudKit.configure({ containers: [{ containerIdentifier: CONTAINER, environment: ENV,
-    apiTokenAuth: { apiToken: API_TOKEN, persist: true, signInButton: { id: 'apple-sign-in-button', theme: 'black' }, signOutButton: { id: 'apple-sign-out-button', theme: 'white' } } }] });
+    apiTokenAuth: { apiToken: API_TOKEN, persist: true, signInButton: { id: 'apple-sign-in-button', theme: 'black' }, signOutButton: { id: 'apple-sign-out-button', theme: 'black' } } }] });
   container = CloudKit.getDefaultContainer();
   const invite = pendingInvite();
   const start = async user => {
     me = user.userRecordName;
     if (invite) await acceptLink(invite); else await loadAll();
-    container.whenUserSignsOut().then(() => { me = null; groups = []; current = null; showSignIn(); container.whenUserSignsIn().then(start); });
+    container.whenUserSignsOut().then(() => { me = null; groups = []; current = null; render(); showSignIn(); container.whenUserSignsIn().then(start); });
   };
-  const user = await container.setUpAuth().catch(e => { $('view').innerHTML = `<div class="center neg">Không kết nối được iCloud: ${esc(e.message || e)}</div>`; });
+  const user = await container.setUpAuth().catch(e => { $('view').innerHTML = `<div class="empty neg">Không kết nối được iCloud: ${esc(e.message || e)}</div>`; });
   if (user) start(user); else if (user === null) { showSignIn(); container.whenUserSignsIn().then(start); }
 });
 // Tự cập nhật khi quay lại trang (người khác vừa thêm / xác nhận)

@@ -54,3 +54,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+
+Biểu tượng Cài đặt (ios/Pay/Assets.xcassets/icon-settings.imageset) là bánh răng "gear" của Font Awesome Free 7
+(lấy theo bản vẽ trong app Peek): https://fontawesome.com — biểu tượng theo giấy phép CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/).

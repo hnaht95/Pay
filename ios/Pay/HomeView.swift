@@ -136,7 +136,7 @@ struct HomeView: View {
             Spacer()
             headerButton("person.2.crop.square.stack.fill", "Nhóm chung") { showHouse = true }
             headerButton("icon-dashboard", "Thống kê", asset: true) { showStats = true }
-            headerButton("gearshape.fill", "Cài đặt") { showSettings = true }
+            headerButton("icon-settings", "Cài đặt", asset: true) { showSettings = true }
         }
         .padding(.top, 8)
     }
@@ -151,7 +151,8 @@ struct HomeView: View {
             (asset ? Image(symbol) : Image(systemName: symbol))
                 .resizable().scaledToFit()
                 .fontWeight(.semibold)
-                .frame(width: 22, height: 22)   // mọi biểu tượng vừa trong cùng ô nên to bằng nhau
+                // Cùng chiều cao hình: icon vẽ sẵn đã cắt sát biên; SF Symbols có lề trong nên phóng thêm cho bằng
+                .frame(height: asset ? 20 : 21.5)
                 .frame(width: Self.headerSize, height: Self.headerSize)   // không nền, nhưng vùng chạm vẫn 42×42
                 .contentShape(Rectangle())
         }

@@ -110,7 +110,6 @@ struct VoiceEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var mic = VoiceListener()
     @State private var saved: Expense?
-    @State private var heard = ""
     @State private var notUnderstood = false
     @State private var autoClose: Task<Void, Never>?
     /// Bấm "Nhập tay": đóng bảng này và mở màn hình nhập.
@@ -143,7 +142,6 @@ struct VoiceEntryView: View {
     }
 
     private func handle(_ said: String) {
-        heard = said
         guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else { notUnderstood = true; return }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -175,7 +173,7 @@ struct VoiceEntryView: View {
         if let e = saved { return "Đã ghi \(fmt(e.a))đ · \(Category.get(e.c).name)" }
         if notUnderstood { return "Chưa nghe rõ số tiền" }
         switch mic.phase {
-        case .listening: return mic.text.isEmpty ? "Đang nghe…" : mic.text
+        case .listening: return mic.text.isEmpty ? "Đang nghe…" : understood(mic.text)
         case .denied: return "Cần quyền micro và nhận giọng nói"
         case .failed(let why): return why
         case .idle: return "Đang bật micro…"
@@ -183,13 +181,19 @@ struct VoiceEntryView: View {
     }
 
     private var detail: String {
-        if saved != nil { return "Đã nghe: \"\(heard)\"" }
+        if let e = saved { return e.n ?? "" }   // chỉ hiện ghi chú (vd "tiền nhà"), không hiện chữ thô của Siri
         if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
         switch mic.phase {
         case .listening: return mic.text.isEmpty ? "Nói ví dụ: \"35k cafe\", \"1tr2 tiền nhà\"" : "Ngừng nói là tự ghi"
         case .denied: return "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói."
         default: return ""
         }
+    }
+
+    /// Hiện điều app hiểu được thay cho chữ thô của Siri ("1.000.005" -> "1.500.000đ"); chưa ra số thì hiện nguyên câu.
+    private func understood(_ said: String) -> String {
+        guard let q = QuickParse.spoken(said) else { return said }
+        return "\(fmt(q.amount))đ" + (q.note.isEmpty ? "" : " · \(q.note)")
     }
 
     @ViewBuilder private var buttons: some View {

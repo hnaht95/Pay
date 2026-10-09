@@ -518,11 +518,11 @@ struct ToastView: View {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 18))
                 Text(t.message).font(.system(size: 17, weight: .medium)).lineLimit(1)
                 if let undo = t.undo {
-                    // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 40)
+                    // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     Button { undo(); store.toast = nil } label: {
                         Label("Hoàn tác", systemImage: "arrow.uturn.backward")
                             .font(.system(size: 16, weight: .semibold))
-                            .padding(.horizontal, 16).frame(height: 40)
+                            .padding(.horizontal, 18).frame(height: 48)
                             .background(Palette.ctaInk.opacity(0.14), in: Capsule())
                             .contentShape(Capsule())
                     }

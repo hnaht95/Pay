@@ -13,6 +13,7 @@ struct EntryView: View {
     /// Mở từ ô danh mục thì không tính (chọn trước khi gõ, chưa phải đổi so với app đoán)
     @State private var chosen = false
     @State private var note = ""
+    @State private var addingCat = false
     @State private var ready = false
     @FocusState private var noteFocused: Bool
 
@@ -54,6 +55,10 @@ struct EntryView: View {
         .padding(.horizontal, 18).padding(.bottom, 8)
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
+        .sheet(isPresented: $addingCat) {
+            CategoryEditor { k in cat = k; catPicked = true; chosen = true }
+                .environmentObject(store)
+        }
     }
 
     // MARK: Phần đầu
@@ -114,6 +119,15 @@ struct EntryView: View {
                         }
                         .id(c.k)
                     }
+                    // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
+                    Button { addingCat = true } label: {
+                        Label("Mới", systemImage: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .padding(.horizontal, 16).frame(height: 48)
+                            .foregroundStyle(Color.primary)
+                            .background(Color.primary.opacity(0.05), in: Capsule())
+                    }
+                    .id("new")
                 }
                 .padding(.horizontal, 18)
             }

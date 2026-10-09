@@ -32,6 +32,7 @@ struct HomeView: View {
     @State private var now = Date()
     /// Các khoản "Chi lại" đang hiện; giữ nguyên thứ tự khi đang dùng để chạm hai lần liền không trúng khoản khác
     @State private var again: [Store.Frequent] = []
+    @State private var addingCat = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -75,6 +76,7 @@ struct HomeView: View {
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
+        .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store) }
         .fullScreenCover(isPresented: $listening) {
             VoiceEntryView(onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
@@ -276,6 +278,20 @@ struct HomeView: View {
                 }
                 .buttonStyle(Pressable())
             }
+            // Ô cuối: tạo danh mục riêng
+            Button { addingCat = true } label: {
+                VStack(spacing: 10) {
+                    Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
+                        .frame(width: 52, height: 52).background(Palette.pill, in: Circle())
+                    Text("Thêm danh mục").font(.system(size: 16, weight: .medium)).foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, minHeight: 140)
+                .background(RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
+                .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            }
+            .buttonStyle(Pressable())
         }
     }
 

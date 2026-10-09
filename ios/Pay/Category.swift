@@ -6,9 +6,17 @@ struct Category: Identifiable, Hashable {
     let name: String
     let color: Color
     let kw: [String]
+    /// Màu biểu đồ của danh mục tự tạo (danh mục có sẵn dùng bảng màu cố định bên dưới)
+    var customChart: Color? = nil
     var id: String { k }
 
-    static let all: [Category] = [
+    /// Danh mục tự tạo đang dùng, Store cập nhật mỗi khi đổi (cả khi máy khác thêm qua iCloud)
+    nonisolated(unsafe) static var custom: [Category] = []
+
+    /// Có sẵn, rồi tự tạo, "Khác" luôn ở cuối
+    static var all: [Category] { Array(builtin.dropLast()) + custom + [builtin[builtin.count - 1]] }
+
+    static let builtin: [Category] = [
         Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa"]),
         Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la"]),
         Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot"]),
@@ -22,7 +30,8 @@ struct Category: Identifiable, Hashable {
     /// Màu đậm dùng cho biểu đồ (màu pastel ở trên quá nhạt để phân biệt). Cùng tông với màu pastel,
     /// cố định theo danh mục; đã kiểm tra phân biệt được cả khi mù màu, ở chế độ sáng lẫn tối.
     var chart: Color {
-        switch k {
+        if let customChart { return customChart }
+        return switch k {
         case "an": Color(light: 0xE34948, dark: 0xE34948)
         case "cafe": Color(light: 0xEDA100, dark: 0xC98500)
         case "di": Color(light: 0x2A78D6, dark: 0x3987E5)
@@ -58,6 +67,22 @@ struct CategoryIcon: View {
             Text(c.icon).font(.system(size: size * 0.85))
         }
     }
+}
+
+/// Màu cho danh mục tự tạo: nền pastel (ô, chip) và màu đậm cùng tông cho biểu đồ.
+enum CategoryTone {
+    static let all: [(bg: UInt32, chart: UInt32)] = [
+        (0xFFE1B3, 0xE08A00),   // cam
+        (0xD6F5C9, 0x3E9B2F),   // lá
+        (0xC8F0F0, 0x1C9A9A),   // ngọc
+        (0xD7E0FF, 0x4560D8),   // xanh dương
+        (0xF3D6FF, 0xA33FCC),   // tím
+        (0xFFD6D6, 0xD23C3C),   // đỏ
+        (0xFFF2B8, 0xB59200),   // vàng
+        (0xE4E4E8, 0x6B6B78),   // xám
+    ]
+    static func bg(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].bg) }
+    static func chart(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].chart) }
 }
 
 /// Bỏ dấu tiếng Việt, chữ thường: "Phở Bò" -> "pho bo"

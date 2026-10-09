@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var budgetDraft: Int?
     @State private var typingBudget = false
     @State private var budgetText = ""
+    /// Sửa / thêm danh mục tự tạo (nil k = thêm mới)
+    @State private var editingCat: CatEdit?
 
     var body: some View {
         NavigationStack {
@@ -21,6 +23,7 @@ struct SettingsView: View {
                     .listRowBackground(Color.clear)
 
                 budgetSection
+                categorySection
                 recurringSection
                 cloudSection
                 bankSection
@@ -70,7 +73,37 @@ struct SettingsView: View {
         } message: {
             Text("Số tiền tiêu mỗi tháng. Để trống là bỏ ngân sách.")
         }
+        .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store) }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
+    }
+
+    // MARK: Danh mục tự tạo
+
+    private var categorySection: some View {
+        let list = store.cats.values.filter(\.on).sorted { $0.u < $1.u }
+        return Section {
+            ForEach(list, id: \.k) { c in
+                Button { editingCat = CatEdit(cat: c) } label: {
+                    HStack(spacing: 12) {
+                        Text(c.icon).font(.system(size: 18))
+                            .frame(width: 34, height: 34).background(CategoryTone.bg(c.tone), in: Circle())
+                        Text(c.name).foregroundStyle(.primary).lineLimit(1)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
+                    }
+                }
+                .tint(.primary)   // tên chữ thường, không xanh như liên kết
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) { store.removeCategory(c.k) } label: { Image(systemName: "trash.fill") }
+                }
+            }
+            Button { editingCat = CatEdit(cat: nil) } label: { row("Thêm danh mục", "plus", .orange) }
+        } header: {
+            Text("Danh mục")
+        } footer: {
+            Text(list.isEmpty ? "Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng (Thú cưng, Con nhỏ, Gym…)."
+                              : "Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác.")
+        }
     }
 
     // MARK: Tổng quan
@@ -563,6 +596,117 @@ struct SliderGestures: UIViewRepresentable {
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
             g is UIPanGestureRecognizer && other.view is UIScrollView
         }
+    }
+}
+
+struct CatEdit: Identifiable {
+    let cat: CustomCat?
+    var id: String { cat?.k ?? "new" }
+}
+
+/// Thêm / sửa danh mục tự tạo: tên, biểu tượng, màu.
+struct CategoryEditor: View {
+    @EnvironmentObject var store: Store
+    @Environment(\.dismiss) private var dismiss
+    var editing: CustomCat? = nil
+    /// Thêm xong: trả mã danh mục mới (để màn hình nhập chọn luôn)
+    var onAdd: (String) -> Void = { _ in }
+
+    @State private var name = ""
+    @State private var icon = "🏠"
+    @State private var tone = 0
+    @FocusState private var nameFocused: Bool
+
+    static let emojis = ["🏠", "🐶", "👶", "🏋️", "🎮", "🎬", "📚", "🎓", "💊", "🏥", "💇", "🧴",
+                         "🎁", "✈️", "🚗", "⛽️", "🍺", "🎵", "⚽️", "💡", "🛠️", "🌱", "❤️", "💼"]
+
+    private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
+    /// Trùng tên danh mục đang có (không tính chính nó)
+    private var duplicate: Bool {
+        let k = strip(trimmed)
+        return !k.isEmpty && Category.all.contains { strip($0.name) == k && $0.k != editing?.k }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 14) {
+                        Text(icon).font(.system(size: 28))
+                            .frame(width: 56, height: 56).background(.white, in: Circle())
+                        Text(trimmed.isEmpty ? "Tên danh mục" : trimmed)
+                            .font(.system(size: 20, weight: .semibold)).lineLimit(1)
+                            .opacity(trimmed.isEmpty ? 0.4 : 1)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(Color(hex: 0x111114))
+                    .padding(16)
+                    .background(CategoryTone.bg(tone), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    TextField("Ví dụ: Thú cưng", text: $name)
+                        .focused($nameFocused)
+                        .submitLabel(.done)
+                } header: {
+                    Text("Tên")
+                } footer: {
+                    if duplicate { Text("Đã có danh mục tên này.").foregroundStyle(.red) }
+                }
+
+                Section("Biểu tượng") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
+                        ForEach(Self.emojis, id: \.self) { e in
+                            Button { icon = e } label: {
+                                Text(e).font(.system(size: 26))
+                                    .frame(maxWidth: .infinity, minHeight: 46)
+                                    .background(icon == e ? CategoryTone.bg(tone) : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Section("Màu") {
+                    HStack(spacing: 0) {
+                        ForEach(CategoryTone.all.indices, id: \.self) { i in
+                            Button { tone = i } label: {
+                                Circle().fill(CategoryTone.bg(i))
+                                    .frame(width: 32, height: 32)
+                                    .overlay(Circle().strokeBorder(Color.primary.opacity(tone == i ? 0.8 : 0.08), lineWidth: tone == i ? 2.5 : 1))
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Màu \(i + 1)")
+                        }
+                    }
+                }
+            }
+            .navigationTitle(editing == nil ? "Danh mục mới" : "Sửa danh mục")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Huỷ") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Lưu") { save() }.disabled(trimmed.isEmpty || duplicate)
+                }
+            }
+            .onAppear {
+                if let e = editing { name = e.name; icon = e.icon; tone = e.tone }
+                else { tone = store.cats.count % CategoryTone.all.count; nameFocused = true }
+            }
+        }
+    }
+
+    private func save() {
+        if let e = editing {
+            store.updateCategory(e.k, name: trimmed, icon: icon, tone: tone)
+        } else {
+            onAdd(store.addCategory(name: trimmed, icon: icon, tone: tone))
+        }
+        dismiss()
     }
 }
 

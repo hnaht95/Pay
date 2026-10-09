@@ -23,6 +23,21 @@ struct Memo: Codable, Hashable {
     var u: Double? = nil
 }
 
+/// Danh mục người dùng tự tạo. Không xoá hẳn (on = false) để xoá cũng đồng bộ được sang máy khác.
+struct CustomCat: Codable, Hashable {
+    var k: String
+    var name: String
+    var icon: String     // emoji
+    var tone: Int        // chỉ số trong CategoryTone
+    var on: Bool
+    var u: Double
+
+    var category: Category {
+        Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },
+                 customChart: CategoryTone.chart(tone))
+    }
+}
+
 /// Khoản định kỳ: app tự ghi mỗi tháng vào ngày `day` (tiền nhà, điện, internet…).
 struct Rule: Codable, Hashable, Identifiable {
     var id: String
@@ -42,10 +57,11 @@ struct Backup: Codable {
     var memo: [String: Memo]?
     var deleted: [String: Double]? = nil   // id -> lúc xoá (ms), để xoá cũng đồng bộ sang máy khác
     var rules: [String: Rule]? = nil       // khoản định kỳ
+    var cats: [String: CustomCat]? = nil   // danh mục tự tạo
 
     func same(as o: Backup) -> Bool {
         Set(items) == Set(o.items) && (memo ?? [:]) == (o.memo ?? [:]) && (deleted ?? [:]) == (o.deleted ?? [:])
-            && (rules ?? [:]) == (o.rules ?? [:])
+            && (rules ?? [:]) == (o.rules ?? [:]) && (cats ?? [:]) == (o.cats ?? [:])
     }
 
     /// Gộp hai bản (máy này + iCloud). Bản sửa sau thắng; khoản đã xoá bị bỏ trừ khi được sửa/khôi phục sau lúc xoá.
@@ -78,7 +94,12 @@ struct Backup: Codable {
             if let old = rules[k], !wins(r, over: old) { continue }
             rules[k] = r
         }
-        return Backup(items: items, memo: memo, deleted: deleted, rules: rules)
+        var cats = a.cats ?? [:]
+        for (k, c) in b.cats ?? [:] {
+            if let old = cats[k], old.u > c.u || (old.u == c.u && "\(old.on)\(old.name)" >= "\(c.on)\(c.name)") { continue }
+            cats[k] = c
+        }
+        return Backup(items: items, memo: memo, deleted: deleted, rules: rules, cats: cats)
     }
 
     private static func wins(_ x: Expense, over y: Expense) -> Bool {
@@ -135,6 +156,10 @@ final class Store: ObservableObject {
     private var deleted: [String: Double] = [:]
     /// Khoản định kỳ theo mã
     @Published private(set) var rules: [String: Rule] = [:]
+    /// Danh mục tự tạo theo mã
+    @Published private(set) var cats: [String: CustomCat] = [:] {
+        didSet { Category.custom = cats.values.filter(\.on).sorted { $0.u < $1.u }.map(\.category) }
+    }
     private let cloud = Cloud()
     @Published private(set) var cloudState: CloudState = .connecting
     @Published var cloudOn: Bool = UserDefaults.standard.object(forKey: "cloudSync") as? Bool ?? true {
@@ -178,7 +203,7 @@ final class Store: ObservableObject {
         await cloud.pull()
     }
 
-    private var snapshot: Backup { Backup(items: items, memo: memo, deleted: deleted, rules: rules) }
+    private var snapshot: Backup { Backup(items: items, memo: memo, deleted: deleted, rules: rules, cats: cats) }
     private var now: Double { Date().timeIntervalSince1970 * 1000 }
 
     private func apply(_ b: Backup) {
@@ -186,6 +211,7 @@ final class Store: ObservableObject {
         memo = b.memo ?? [:]
         deleted = b.deleted ?? [:]
         rules = b.rules ?? [:]
+        cats = b.cats ?? [:]
     }
 
     /// Có bản mới trên iCloud (từ máy khác): gộp vào máy này, máy này có gì mới hơn thì đẩy ngược lên.
@@ -329,7 +355,7 @@ final class Store: ObservableObject {
 
     func exportJSON() -> URL? {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).json")
-        guard let data = try? JSONEncoder().encode(Backup(items: items, memo: memo, rules: rules)), (try? data.write(to: url)) != nil else { return nil }
+        guard let data = try? JSONEncoder().encode(Backup(items: items, memo: memo, rules: rules, cats: cats)), (try? data.write(to: url)) != nil else { return nil }
         return url
     }
 
@@ -369,6 +395,7 @@ final class Store: ObservableObject {
             r.u = t
             rules[k] = r
         }
+        for (k, c) in b.cats ?? [:] where c.on && cats[k]?.on != true { var c = c; c.u = t; cats[k] = c }
         runRecurring()
         persist()
         show("Đã khôi phục \(add.count) khoản")
@@ -377,7 +404,7 @@ final class Store: ObservableObject {
     // MARK: Tự học danh mục
 
     /// Ghi chú chuẩn hoá để so khớp: "Phúc Long  (Q1)" -> "phuc long q1"
-    static func noteKey(_ s: String) -> String {
+    nonisolated static func noteKey(_ s: String) -> String {
         strip(s).split(whereSeparator: { !$0.isLetter && !$0.isNumber }).joined(separator: " ")
     }
 
@@ -397,6 +424,38 @@ final class Store: ObservableObject {
         let k = Self.noteKey(note)
         guard !k.isEmpty, guessCategory(note) != cat else { return }
         remember("note:" + k, Memo(c: cat, n: nil))
+    }
+
+    // MARK: Danh mục tự tạo
+
+    /// Thêm danh mục mới, trả về mã để chọn luôn.
+    @discardableResult
+    func addCategory(name: String, icon: String, tone: Int) -> String {
+        let k = "u-" + UUID().uuidString.prefix(8).lowercased()
+        cats[k] = CustomCat(k: k, name: name, icon: icon, tone: tone, on: true, u: now)
+        persist()
+        return k
+    }
+
+    func updateCategory(_ k: String, name: String, icon: String, tone: Int) {
+        guard var c = cats[k] else { return }
+        c.name = name; c.icon = icon; c.tone = tone; c.u = now
+        cats[k] = c
+        persist()
+    }
+
+    /// Xoá danh mục tự tạo: các khoản đã ghi hiện là "Khác"; khôi phục được bằng cách tạo lại cùng tên thì không, nên có Hoàn tác.
+    func removeCategory(_ k: String) {
+        guard var c = cats[k], c.on else { return }
+        c.on = false; c.u = now
+        cats[k] = c
+        persist()
+        show("Đã xoá danh mục \(c.name)") { [weak self] in
+            guard let self, var c = self.cats[k] else { return }
+            c.on = true; c.u = self.now
+            self.cats[k] = c
+            self.persist()
+        }
     }
 
     // MARK: Chi lại một chạm

@@ -655,9 +655,10 @@ async function acceptLink(text) {
   render();
 }
 function pendingInvite() {
-  const p = new URLSearchParams(location.search);
-  for (const [k, v] of p) if (k !== 'env') { const g = shortGUIDFrom(v) || (v.length >= 10 ? v : null); if (g) return g; }
-  return shortGUIDFrom(location.hash.slice(1));
+  // iCloud gắn mã lời mời vào cuối địa chỉ Sharing Fallback; không rõ dạng nên lấy chuỗi mã cuối cùng trong phần ?… và #…
+  const tail = decodeURIComponent(location.search + location.hash).replace(/[?&]env=dev/, '');
+  const m = tail.match(/share\/([0-9A-Za-z_-]{10,})/) || tail.match(/([0-9A-Za-z_-]{10,})(?!.*[0-9A-Za-z_-]{10,})/);
+  return m ? m[1] : null;
 }
 
 // ─── Khởi động ─────────────────────────────────────────────────────────

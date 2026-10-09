@@ -514,17 +514,25 @@ struct ToastView: View {
 
     var body: some View {
         if let t = store.toast {
-            HStack(spacing: 18) {
-                Text(t.message).font(.system(size: 17, weight: .medium))
+            HStack(spacing: 14) {
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 18))
+                Text(t.message).font(.system(size: 17, weight: .medium)).lineLimit(1)
                 if let undo = t.undo {
+                    // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 40)
                     Button { undo(); store.toast = nil } label: {
-                        Text("Hoàn tác").font(.system(size: 17, weight: .bold)).underline()
+                        Label("Hoàn tác", systemImage: "arrow.uturn.backward")
+                            .font(.system(size: 16, weight: .semibold))
+                            .padding(.horizontal, 16).frame(height: 40)
+                            .background(Palette.ctaInk.opacity(0.14), in: Capsule())
+                            .contentShape(Capsule())
                     }
+                    .buttonStyle(Pressable())
                 }
             }
             .foregroundStyle(Palette.ctaInk)
-            .padding(.leading, 24).padding(.trailing, 18).padding(.vertical, 15)
+            .padding(.leading, 20).padding(.trailing, t.undo == nil ? 22 : 7).padding(.vertical, t.undo == nil ? 15 : 7)
             .background(Palette.cta, in: Capsule())
+            .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .task(id: t.id) {
                 try? await Task.sleep(for: .seconds(5))

@@ -8,6 +8,15 @@ import UIKit
 struct HouseMember: Identifiable, Hashable {
     let id: String
     var name: String
+    /// Tài khoản nhận tiền (mã BIN ngân hàng + số tài khoản), để người khác bấm "Trả ngay"
+    var bin: String? = nil
+    var acct: String? = nil
+    /// Apple ID (mã người dùng iCloud) đã nhận thành viên này là mình: mở máy khác tự biết "tôi là ai"
+    var user: String? = nil
+    /// Ảnh đại diện (JPEG nhỏ) mỗi người tự chọn; lưu trong nhóm nên cả nhà cùng thấy
+    var photo: Data? = nil
+
+    var hasBank: Bool { bin != nil && !(acct ?? "").isEmpty }
 }
 
 /// Một khoản chi chung: ai ứng tiền, chia cho những ai.
@@ -138,7 +147,7 @@ final class House: ObservableObject {
         let now = Date()
         func ago(_ d: Double) -> Date { now.addingTimeInterval(-d * 86_400) }
         name = "Nhà mình"; isOwner = true
-        members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan"),
+        members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan", bin: "970416", acct: "123456789"),
                    HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà")]
         spends = [
             HouseSpend(id: "e1", amount: 420_000, note: "Đi chợ cuối tuần", payer: "a", shares: ["a", "b", "c", "d"], date: ago(0.2), cat: "an"),
@@ -147,7 +156,7 @@ final class House: ObservableObject {
             HouseSpend(id: "e4", amount: 250_000, note: "Internet", payer: "a", shares: ["a", "b", "c", "d"], date: ago(8), cat: "hd"),
         ]
         settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1))]
-        if me == nil { me = "a" }
+        if me == nil { me = "c" }
         phase = .ready
     }
 
@@ -199,6 +208,10 @@ final class House: ObservableObject {
         records = all
         rebuild()
         me = UserDefaults.standard.string(forKey: "house.me.\(zone.zoneName)").flatMap { id in members.contains { $0.id == id } ? id : nil }
+        // Máy mới / cài lại: nhận ra mình qua Apple ID đã gắn với thành viên
+        if me == nil, let u = try? await container.userRecordID().recordName {
+            me = members.first { $0.user == u }?.id
+        }
     }
 
     private func rebuild() {
@@ -206,7 +219,10 @@ final class House: ObservableObject {
         for r in records.values {
             let id = r.recordID.recordName
             switch r.recordType {
-            case "Member": ms.append(HouseMember(id: id, name: r["name"] as? String ?? ""))
+            case "Member":
+                ms.append(HouseMember(id: id, name: r["name"] as? String ?? "", bin: r["bin"] as? String,
+                                      acct: r["acct"] as? String, user: r["user"] as? String,
+                                      photo: (r["photo"] as? CKAsset)?.fileURL.flatMap { try? Data(contentsOf: $0) }))
             case "Spend":
                 sp.append(HouseSpend(id: id, amount: (r["amount"] as? Int64).map(Int.init) ?? 0, note: r["note"] as? String ?? "",
                                      payer: r["payer"] as? String ?? "", shares: r["shares"] as? [String] ?? [],
@@ -305,10 +321,51 @@ final class House: ObservableObject {
         return await run([r]) ? r.recordID.recordName : nil
     }
 
-    func renameMember(_ id: String, _ n: String) async {
+    /// Sửa tên và tài khoản nhận tiền của một thành viên.
+    /// photo: nil = giữ nguyên, Data rỗng = bỏ ảnh
+    func updateMember(_ id: String, name n: String, bin: String?, acct: String?, photo: Data? = nil) async {
+        if demo {
+            if let i = members.firstIndex(where: { $0.id == id }) {
+                members[i].name = n; members[i].bin = bin; members[i].acct = acct
+                if let photo { members[i].photo = photo.isEmpty ? nil : photo }
+            }
+            return
+        }
         guard let r = record(id) else { return }
-        r["name"] = n
+        r["name"] = n; r["bin"] = bin; r["acct"] = acct
+        if let photo {
+            if photo.isEmpty { r["photo"] = nil } else {
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent("avatar-\(id).jpg")
+                try? photo.write(to: url)
+                r["photo"] = CKAsset(fileURL: url)
+            }
+        }
         _ = await run([r])
+    }
+
+    /// "Tôi là người này": nhớ trên máy và gắn Apple ID vào thành viên, lần sau máy khác tự nhận ra.
+    func claim(_ id: String) async {
+        me = id
+        if demo { return }
+        guard let r = record(id), let u = try? await container.userRecordID().recordName, r["user"] as? String != u else { return }
+        r["user"] = u
+        _ = await run([r])
+    }
+
+    // MARK: Trả ngay qua app ngân hàng
+
+    /// Lần trả đang chờ: đã mở app ngân hàng, quay lại Pay thì hỏi "đã chuyển xong chưa"
+    @Published var pendingPay: HouseTransfer?
+
+    /// Mở app ngân hàng đã chọn trong Cài đặt với sẵn người nhận, số tiền, nội dung.
+    func payNow(_ t: HouseTransfer, app: BankApp) async {
+        guard let to = members.first(where: { $0.id == t.to }), let bin = to.bin, let acct = to.acct else { return }
+        let qr = VietQR(raw: "", bin: bin, acct: acct, amount: t.amount, name: strip(to.name).uppercased(),
+                        purpose: "Pay " + strip(name.isEmpty ? "Nha chung" : name))
+        // App chỉ mở được (không điền sẵn): chép số tài khoản để dán
+        if !app.fill { UIPasteboard.general.string = acct }
+        pendingPay = t
+        await BankLauncher.open(app, qr: qr, amount: t.amount)
     }
 
     @discardableResult

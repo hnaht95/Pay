@@ -162,11 +162,11 @@ struct HomeView: View {
             Text("Hôm nay đã chi").font(.system(size: 16)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(fmt(store.total(on: now)))
-                    .font(.system(size: 60, weight: .bold)).kerning(-2)
+                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
                     .minimumScaleFactor(0.5).lineLimit(1)
-                Text("đ").font(.system(size: 30, weight: .semibold)).foregroundStyle(.secondary)
+                Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }
-            .padding(.top, 10).padding(.bottom, 14)
+            .padding(.top, 8).padding(.bottom, 14)
             HStack {
                 Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))đ")
                     .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
@@ -267,8 +267,8 @@ struct HomeView: View {
                                 .frame(width: 30, height: 30).background(.white.opacity(0.6), in: Circle())
                         }
                         Spacer(minLength: 14)
-                        Text(c.name).font(.system(size: 17, weight: .medium)).opacity(0.7)
-                        Text("\(fmt(perCat[c.k] ?? 0))đ").font(.system(size: 22, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+                        Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
+                        Text("\(fmt(perCat[c.k] ?? 0))đ").font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
                     }
                     .foregroundStyle(Color(hex: 0x111114))
                     .padding(16)

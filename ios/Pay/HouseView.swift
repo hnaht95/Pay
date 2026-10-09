@@ -298,17 +298,15 @@ struct HouseView: View {
                 .buttonStyle(Pressable())
             }
             Button { claimAfterAdd = true; addingMember = true } label: {
-                VStack(spacing: 10) {
-                    Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                        .frame(width: 56, height: 56).background(Palette.pill, in: Circle())
-                    Text("Tôi chưa có").font(.system(size: 17, weight: .medium)).foregroundStyle(.secondary)
-                }
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity).padding(.vertical, 20)
+                Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
+                    .frame(width: 56, height: 56).background(Palette.pill, in: Circle())
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity).padding(.vertical, 20)
                 .background(RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
             }
             .buttonStyle(Pressable())
+            .accessibilityLabel("Thêm tôi vào nhóm")
         }
         .padding(.top, 20)
     }
@@ -459,19 +457,17 @@ struct HouseView: View {
                     .onTapGesture { editingMember = m }
                 }
                 Button { addingMember = true } label: {
-                    VStack(spacing: 8) {
-                        Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                            .frame(width: 48, height: 48).background(Palette.pill, in: Circle())
-                        Text("Thêm").font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
-                        Text(" ").font(.system(size: 14))
-                    }
-                    .foregroundStyle(.primary)
-                    .frame(width: 96).padding(.vertical, 14)
+                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                        .frame(width: 48, height: 48).background(Palette.pill, in: Circle())
+                        .foregroundStyle(.primary)
+                        .frame(width: 96).frame(maxHeight: .infinity)
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
                 }
                 .buttonStyle(Pressable())
+                .accessibilityLabel("Thêm người")
             }
+            .fixedSize(horizontal: false, vertical: true)   // ô dấu + cao bằng các ô thành viên
             .padding(.horizontal, 16)
         }
         .padding(.horizontal, -16)

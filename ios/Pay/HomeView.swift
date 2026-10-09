@@ -298,18 +298,17 @@ struct HomeView: View {
             }
             // Ô cuối: tạo danh mục riêng
             Button { addingCat = true } label: {
-                VStack(spacing: 10) {
-                    Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                        .frame(width: 52, height: 52).background(Palette.pill, in: Circle())
-                    Text("Thêm danh mục").font(.system(size: 16, weight: .medium)).foregroundStyle(.secondary)
-                }
-                .foregroundStyle(.primary)
+                // Chỉ dấu + ở giữa ô, không chữ
+                Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
+                    .frame(width: 52, height: 52).background(Palette.pill, in: Circle())
+                    .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, minHeight: 140)
                 .background(RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
                 .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
             .buttonStyle(Pressable())
+            .accessibilityLabel("Thêm danh mục")
         }
     }
 

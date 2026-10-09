@@ -44,7 +44,7 @@ struct HistoryView: View {
 
     private func grouped() -> [(Date, [Expense])] {
         let cal = Calendar.current
-        let dict = Dictionary(grouping: store.sorted.prefix(500)) { cal.startOfDay(for: $0.date) }
+        let dict = Dictionary(grouping: store.items) { cal.startOfDay(for: $0.date) }
         return dict.keys.sorted(by: >).map { ($0, dict[$0]!.sorted { $0.t > $1.t }) }
     }
 

@@ -211,16 +211,19 @@ struct StatsView: View {
 
     // MARK: Hạn mức tháng
 
-    private func limitCard(_ items: [Expense]) -> some View {
+    /// Hạn mức của tháng đang xem (mức đặt cho tháng đó). Tháng cũ chưa từng đặt thì ẩn hẳn thẻ.
+    @ViewBuilder private func limitCard(_ items: [Expense]) -> some View {
         let spent = sum(items)
-        return card {
+        let limit = store.budget(for: month)
+        if limit != nil || isRunning {
+        card {
             Text("Hạn mức chi tháng").font(.system(size: 17, weight: .semibold))
-            if store.budget > 0 {
-                let ratio = min(Double(spent) / Double(store.budget), 1)
+            if let limit {
+                let ratio = min(Double(spent) / Double(limit), 1)
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Hatch.gray)
-                        Capsule().fill(spent > store.budget ? Color(hex: 0xD92D20) : Self.orange)
+                        Capsule().fill(spent > limit ? Color(hex: 0xD92D20) : Self.orange)
                             .frame(width: max(12, g.size.width * ratio))
                     }
                 }
@@ -229,12 +232,13 @@ struct StatsView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("\(fmt(spent))đ").font(.system(size: 16, weight: .semibold))
                     Spacer()
-                    Text("/ \(fmt(store.budget))đ").font(.system(size: 14)).foregroundStyle(.secondary)
+                    Text("/ \(fmt(limit))đ").font(.system(size: 14)).foregroundStyle(.secondary)
                 }
                 .padding(.top, 6)
             } else {
                 Text("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.").font(.system(size: 14)).foregroundStyle(.secondary)
             }
+        }
         }
     }
 

@@ -98,8 +98,14 @@ final class Store: ObservableObject {
     @Published var toast: Toast?
     /// Ngân sách tháng (đồng), 0 = không đặt.
     @Published var budget: Int = UserDefaults.standard.integer(forKey: "budget") {
-        didSet { UserDefaults.standard.set(budget, forKey: "budget"); refreshWidget() }
+        didSet {
+            UserDefaults.standard.set(budget, forKey: "budget")
+            rememberBudget()
+            refreshWidget()
+        }
     }
+    /// Mức ngân sách theo tháng đặt ("2026-10" -> 8.000.000), để xem tháng cũ không bị so với mức hiện tại
+    private var budgetHistory: [String: Int] = UserDefaults.standard.dictionary(forKey: "budgetHistory") as? [String: Int] ?? [:]
     private var deleted: [String: Double] = [:]
     private let cloud = Cloud()
     @Published private(set) var cloudState: CloudState = .connecting
@@ -120,6 +126,7 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: fileURL), let b = try? JSONDecoder().decode(Backup.self, from: data) {
             apply(b)
         }
+        if budget > 0 && budgetHistory.isEmpty { rememberBudget() }   // máy đã đặt ngân sách từ trước khi có ghi nhớ theo tháng
         refreshWidget()
         cloud.onSynced = { [weak self] in self?.cloudState = .on(last: Date()) }
         Task { await applyCloud() }
@@ -196,9 +203,28 @@ final class Store: ObservableObject {
         return items.last
     }
 
-    /// Tình hình ngân sách tháng này, nil nếu chưa đặt.
+    /// Tình hình ngân sách của tháng chứa `day`, nil nếu tháng đó chưa đặt.
     func budgetStatus(_ day: Date = Date()) -> BudgetStatus? {
-        budget > 0 ? BudgetStatus(budget: budget, spent: monthItems(day).reduce(0) { $0 + $1.a }) : nil
+        budget(for: day).map { BudgetStatus(budget: $0, spent: monthItems(day).reduce(0) { $0 + $1.a }) }
+    }
+
+    /// Ngân sách áp dụng cho tháng chứa `day`: tháng này là mức đang đặt; tháng cũ là mức đặt gần nhất tính đến tháng đó.
+    /// Tháng cũ trước lần đặt đầu tiên thì nil (không so).
+    func budget(for day: Date) -> Int? {
+        let key = Self.monthKey(day)
+        if key >= Self.monthKey(Date()) { return budget > 0 ? budget : nil }
+        guard let k = budgetHistory.keys.filter({ $0 <= key }).max(), let v = budgetHistory[k], v > 0 else { return nil }
+        return v
+    }
+
+    private func rememberBudget() {
+        budgetHistory[Self.monthKey(Date())] = budget
+        UserDefaults.standard.set(budgetHistory, forKey: "budgetHistory")
+    }
+
+    private static func monthKey(_ d: Date) -> String {
+        let c = Calendar.current.dateComponents([.year, .month], from: d)
+        return String(format: "%04d-%02d", c.year!, c.month!)
     }
 
     func update(_ e: Expense) {
@@ -290,7 +316,15 @@ final class Store: ObservableObject {
             show("File sao lưu không hợp lệ"); return
         }
         let ids = Set(items.map(\.id))
-        let add = b.items.filter { !ids.contains($0.id) && $0.a > 0 }
+        let t = now
+        // Khoản được khôi phục mang dấu sửa mới và bỏ dấu xoá cũ (vd sau "Xoá tất cả"),
+        // nếu không lần gộp iCloud kế tiếp sẽ xoá chúng lần nữa
+        let add = b.items.filter { !ids.contains($0.id) && $0.a > 0 }.map { e -> Expense in
+            var e = e
+            e.u = t
+            return e
+        }
+        for e in add { deleted[e.id] = nil }
         items += add
         memo = (b.memo ?? [:]).merging(memo) { _, mine in mine }
         persist()

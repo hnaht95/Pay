@@ -44,15 +44,12 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } }
             }
         }
-        .onAppear { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
+        .task(id: store.items) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result { store.importBackup(from: url) }
         }
         .confirmationDialog("Xoá tất cả khoản chi?", isPresented: $confirmErase, titleVisibility: .visible) {
-            Button("Xoá tất cả", role: .destructive) {
-                store.eraseAll()
-                jsonURL = store.exportJSON(); csvURL = store.exportCSV()
-            }
+            Button("Xoá tất cả", role: .destructive) { store.eraseAll() }
         } message: {
             Text(store.cloudOn ? "Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá. Nên sao lưu trước." : "Không hoàn tác được. Nên sao lưu trước.")
         }

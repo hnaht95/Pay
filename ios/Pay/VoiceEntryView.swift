@@ -2,6 +2,13 @@ import AVFoundation
 import Speech
 import SwiftUI
 
+/// Độ to micro (0…1), tách riêng khỏi VoiceListener: cập nhật theo nhịp âm thanh (~43 lần/giây)
+/// nên chỉ sóng âm theo dõi, cả thẻ không phải vẽ lại.
+@MainActor
+final class MicLevel: ObservableObject {
+    @Published var value: CGFloat = 0
+}
+
 /// Nghe giọng nói tiếng Việt, ngừng nói ~1,4 giây thì tự kết thúc và trả về câu đã nghe.
 @MainActor
 final class VoiceListener: ObservableObject {
@@ -9,21 +16,25 @@ final class VoiceListener: ObservableObject {
 
     @Published var text = ""
     @Published var phase: Phase = .idle
-    /// Độ to của giọng lúc này (0…1) để vẽ sóng âm
-    @Published var level: CGFloat = 0
+    let meter = MicLevel()
     var onFinish: ((String) -> Void)?
 
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var silence: Task<Void, Never>?
+    private var starting = false
 
     func start() async {
+        // Bấm "Nói lại" liên tiếp: không bật micro hai lần (installTap lần hai làm app văng)
+        guard !starting, phase != .listening else { return }
+        starting = true
+        defer { starting = false }
         text = ""
         #if DEBUG
         // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
         if let demo = UserDefaults.standard.string(forKey: "voiceDemo") {
-            phase = .listening; text = demo; level = 0.7
+            phase = .listening; text = demo; meter.value = 0.7
             return
         }
         #endif
@@ -58,7 +69,9 @@ final class VoiceListener: ObservableObject {
                 phase = .failed("Không dùng được micro lúc này. Thử lại, hoặc quét QR.")
                 return
             }
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            input.removeTap(onBus: 0)   // phòng còn tap cũ
+            let meter = meter
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 req.append(buffer)
                 // Độ to (RMS) đổi sang thang 0…1 cho sóng âm. Micro ở chế độ đo (không tự khuếch đại) nên giọng thường
                 // chỉ khoảng -40…-25 dB: lấy dải -55…-25 dB và nâng phần giữa (mũ 0,7) để nói nhỏ vẫn thấy rõ
@@ -68,7 +81,7 @@ final class VoiceListener: ObservableObject {
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
                 let v = CGFloat(pow(min(max((db + 55) / 30, 0), 1), 0.7))
-                Task { @MainActor in self?.level = v }
+                Task { @MainActor in meter.value = v }
             }
             engine.prepare()
             try engine.start()
@@ -105,7 +118,7 @@ final class VoiceListener: ObservableObject {
 
     func finish() {
         guard phase == .listening else { return }
-        level = 0
+        meter.value = 0
         stop()
         phase = .idle
         onFinish?(text)
@@ -113,10 +126,8 @@ final class VoiceListener: ObservableObject {
 
     func stop() {
         silence?.cancel()
-        if engine.isRunning {
-            engine.stop()
-            engine.inputNode.removeTap(onBus: 0)
-        }
+        if engine.isRunning { engine.stop() }
+        engine.inputNode.removeTap(onBus: 0)   // gỡ cả khi engine chưa chạy được (vd micro đang bận)
         request?.endAudio()
         task?.cancel()
         task = nil
@@ -168,7 +179,7 @@ struct VoiceEntryView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             amountBlock
-            if mic.phase == .listening { Waveform(level: mic.level).frame(height: 56) }
+            if mic.phase == .listening { Waveform(meter: mic.meter).frame(height: 56) }
             buttons
         }
         .padding(22)
@@ -317,9 +328,10 @@ struct VoiceEntryView: View {
 
 /// Sóng âm: độ cao chung theo độ to thật của giọng; hình dáng (giữa cao, rung nhẹ) là trang trí.
 private struct Waveform: View {
-    let level: CGFloat
+    @ObservedObject var meter: MicLevel
 
     var body: some View {
+        let level = meter.value
         TimelineView(.animation) { t in
             let time = t.date.timeIntervalSinceReferenceDate
             HStack(alignment: .center, spacing: 4) {

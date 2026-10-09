@@ -33,11 +33,16 @@ enum QuickParse {
     // MARK: Giọng nói
 
     /// Câu nói (Siri / nhận dạng giọng nói) -> số tiền + ghi chú. Hiểu cả số bằng chữ và kiểu nói tắt:
-    /// "ba mươi lăm nghìn cà phê", "ba lăm cafe", "hai trăm rưỡi", "một triệu hai", "nửa triệu", "2 lít", "3 củ".
+    /// "ba mươi lăm nghìn cà phê", "ba lăm cafe", "hai trăm rưỡi", "một triệu hai", "nửa triệu", "3 củ".
     /// Không có đơn vị và số dưới 1.000 thì hiểu là nghìn ("35 cafe" = 35.000đ).
     static func spoken(_ text: String) -> (amount: Int, note: String)? {
         let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
-        let toks = words.map { tok(strip($0).trimmingCharacters(in: .punctuationCharacters)) }
+        // Siri luôn viết có dấu, nên so khớp theo chữ có dấu để chữ thường không bị hiểu là số:
+        // "tháng sau" ≠ sáu, "máy bay" ≠ bảy, "tôi/tối" ≠ tỷ, "làm" ≠ lăm. Câu gõ không dấu mới so theo chữ không dấu.
+        let accented = text.lowercased() != strip(text)
+        let toks = words.map { w in
+            tok(w.lowercased().precomposedStringWithCanonicalMapping.trimmingCharacters(in: .punctuationCharacters), accented: accented)
+        }
 
         // Tìm các cụm số liền nhau; chọn cụm "chắc chắn" nhất (có đơn vị / hàng chục trăm / số ≥ 10), rồi lớn nhất
         var best: (range: Range<Int>, value: Double, strong: Bool)?
@@ -45,12 +50,12 @@ enum QuickParse {
         while i < toks.count {
             guard let t = toks[i], t.canStart else { i += 1; continue }
             var j = i + 1
-            while j < toks.count, let u = toks[j] {
+            while j < toks.count, let u = toks[j], !breaks(toks[j - 1]!, u) {
                 j += 1
                 if case .end = u { break }
             }
             let run = toks[i..<j].compactMap { $0 }
-            let v = value(run)
+            let v = isLoneWord(run) ? 0 : value(run)
             let strong = run.contains { $0.isStrong }
             if v > 0, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
                 best = (i..<j, v, strong)
@@ -65,48 +70,89 @@ enum QuickParse {
     }
 
     private enum Tok {
-        case num(Double), tens, hundreds, linh, scale(Double), half, halfPrefix, end, full(Double)
+        /// word: chữ số viết bằng chữ ("ba"); tail: lăm/nhăm/mốt/tư — chỉ đứng sau hàng chục ("ba lăm", "hai mốt")
+        case num(Double, word: Bool, tail: Bool)
+        /// lead: được đứng đầu cụm ("triệu hai"); tiếng lóng / viết tắt ("củ", "k") phải có số đứng trước
+        case scale(Double, lead: Bool)
+        case tens, hundreds, linh, half, halfPrefix, end, full(Double)
 
         var canStart: Bool {
-            // "triệu hai", "trăm hai", "chục rưỡi": cụm số có thể mở đầu bằng đơn vị (ngầm hiểu là một)
-            switch self { case .num, .full, .halfPrefix, .tens, .hundreds, .scale: true; default: false }
+            switch self {
+            case .num, .full, .halfPrefix, .tens, .hundreds: true
+            case .scale(_, let lead): lead
+            default: false
+            }
         }
         var isStrong: Bool {
             switch self {
             case .scale, .full, .hundreds, .tens: true
-            case .num(let v): v >= 10
+            case .num(let v, _, _): v >= 10
             default: false
             }
         }
     }
 
-    private static let digitWords: [String: Double] = [
-        "khong": 0, "mot": 1, "hai": 2, "ba": 3, "bon": 4, "tu": 4, "nam": 5, "lam": 5, "nham": 5,
-        "sau": 6, "bay": 7, "tam": 8, "chin": 9,
+    /// Chữ số viết bằng chữ (có dấu) -> (giá trị, là dạng chỉ đứng sau hàng chục).
+    private static let digitWords: [String: (Double, Bool)] = [
+        "không": (0, false), "một": (1, false), "mốt": (1, true), "hai": (2, false), "ba": (3, false),
+        "bốn": (4, false), "tư": (4, true), "năm": (5, false), "lăm": (5, true), "nhăm": (5, true),
+        "sáu": (6, false), "bảy": (7, false), "bẩy": (7, false), "tám": (8, false), "chín": (9, false),
+    ]
+    private static let numberWords: [String: Tok] = [
+        "mười": .tens, "mươi": .tens, "chục": .tens, "trăm": .hundreds, "linh": .linh, "lẻ": .linh,
+        "nghìn": .scale(1e3, lead: true), "ngàn": .scale(1e3, lead: true), "k": .scale(1e3, lead: false),
+        "triệu": .scale(1e6, lead: true), "tr": .scale(1e6, lead: false), "củ": .scale(1e6, lead: false),
+        "tỷ": .scale(1e9, lead: true), "tỉ": .scale(1e9, lead: true),
+        "rưỡi": .half, "nửa": .halfPrefix, "đồng": .end, "đ": .end, "₫": .end, "vnđ": .end, "vnd": .end,
+    ]
+    /// Câu gõ không dấu.
+    private static let plainDigitWords: [String: (Double, Bool)] = [
+        "khong": (0, false), "mot": (1, false), "hai": (2, false), "ba": (3, false), "bon": (4, false), "tu": (4, true),
+        "nam": (5, false), "lam": (5, true), "sau": (6, false), "bay": (7, false), "tam": (8, false), "chin": (9, false),
+    ]
+    private static let plainNumberWords: [String: Tok] = [
+        "muoi": .tens, "chuc": .tens, "tram": .hundreds, "linh": .linh, "le": .linh,
+        "nghin": .scale(1e3, lead: true), "ngan": .scale(1e3, lead: true), "k": .scale(1e3, lead: false),
+        "trieu": .scale(1e6, lead: true), "tr": .scale(1e6, lead: false), "cu": .scale(1e6, lead: false),
+        "ty": .scale(1e9, lead: true), "ruoi": .half, "nua": .halfPrefix, "dong": .end, "d": .end, "vnd": .end,
     ]
 
-    private static func tok(_ k: String) -> Tok? {
-        if let d = digitWords[k] { return .num(d) }
-        switch k {
-        case "muoi", "chuc": return .tens
-        case "tram": return .hundreds
-        case "linh", "le": return .linh
-        case "nghin", "ngan", "k", "canh": return .scale(1e3)     // cành: tiếng lóng = nghìn
-        case "trieu", "tr", "cu": return .scale(1e6)
-        case "ty", "toi": return .scale(1e9)                   // tỏi: tiếng lóng = tỷ
-        case "lit", "xi": return .scale(1e5)        // tiếng lóng: 1 lít / 1 xị = 100 nghìn
-        case "ruoi": return .half
-        case "nua": return .halfPrefix
-        case "dong", "d", "vnd": return .end
-        default: break
+    private static func tok(_ w: String, accented: Bool) -> Tok? {
+        if let (v, tail) = (accented ? digitWords : plainDigitWords)[w] { return .num(v, word: true, tail: tail) }
+        if let t = (accented ? numberWords : plainNumberWords)[w] { return t }
+        // Số viết bằng chữ số, có thể dính ký hiệu tiền: "35.000", "35.000đ", "35.000₫", "1,5"
+        let n = w.replacing(#/(đ|₫|vnđ|vnd)$/#, with: "")
+        if n.wholeMatch(of: #/[0-9]{1,3}(?:[.,][0-9]{3})+/#) != nil {
+            return .num(siriShorthand(Double(n.filter { $0.isASCII && $0.isNumber })!), word: false, tail: false)
         }
-        if k.wholeMatch(of: #/\d{1,3}(?:[.,]\d{3})+/#) != nil { return .num(siriShorthand(Double(k.filter(\.isNumber))!)) }
-        if let m = k.wholeMatch(of: #/(\d+)(?:[.,](\d+))?/#) {
+        if let m = n.wholeMatch(of: #/([0-9]+)(?:[.,]([0-9]+))?/#) {
             let v = Double(String(m.1) + (m.2.map { "." + $0 } ?? ""))!
-            return .num(m.2 == nil ? siriShorthand(v) : v)
+            return .num(m.2 == nil ? siriShorthand(v) : v, word: false, tail: false)
         }
-        if k.contains(where: \.isLetter), let a = amount(k) { return .full(Double(a)) }   // "35k", "1tr2"
+        if w.contains(where: \.isLetter), let a = amount(w) { return .full(Double(a)) }   // "35k", "1tr2"
         return nil
+    }
+
+    /// Hai từ liền nhau không thuộc cùng một số thì cụm số dừng trước từ sau:
+    /// "tháng tư 500", "máy bay 2", "năm 2 triệu", "cho ba 200" là chữ thường đứng cạnh số tiền.
+    private static func breaks(_ a: Tok, _ b: Tok) -> Bool {
+        switch (a, b) {
+        case let (.num(x, aWord, _), .num(y, _, bTail)):
+            if aWord && x < 10 && bTail { return false }        // "ba lăm" = 35, "hai mốt" = 21, "bốn tư" = 44
+            if !aWord && x >= 1000 && y < 10 && x.truncatingRemainder(dividingBy: impliedScale(x)) == 0 { return false }   // Siri: "1.000.000 2"
+            return true
+        case (.num, .full): return true                        // "ba 35k"
+        default: return false
+        }
+    }
+
+    /// Một chữ số đứng một mình ("ba", "năm", "tư", "nửa") gần như luôn là chữ thường, không phải số tiền.
+    private static func isLoneWord(_ run: [Tok]) -> Bool {
+        guard run.count == 1 else { return false }
+        switch run[0] {
+        case .num(_, true, _), .halfPrefix: return true
+        default: return false
+        }
     }
 
     /// Siri hiểu "mười triệu hai" theo nghĩa đen và viết "10.000.002". Số tròn triệu/nghìn cộng 1–9 đồng
@@ -138,7 +184,7 @@ enum QuickParse {
 
         loop: for t in toks {
             switch t {
-            case .num(let v):
+            case .num(let v, _, _):
                 if let p = pending, last == .num, p < 10, v < 10, pendingAfter != .hundreds, pendingAfter != .linh {
                     group += p * 10 + v          // "ba lăm" = 35
                     pending = nil; last = .tens
@@ -159,7 +205,7 @@ enum QuickParse {
                 group += (pending ?? 1) * 100; pending = nil; last = .hundreds
             case .linh:
                 last = .linh
-            case .scale(let s):
+            case .scale(let s, _):
                 let g = flush()
                 total += (g == 0 ? 1 : g) * s
                 group = 0; pending = nil; last = .scale; lastScale = s

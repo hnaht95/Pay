@@ -27,9 +27,13 @@ struct HomeView: View {
     @State private var showStats = false
     @State private var listening = false
     @State private var scanned: String?
+    /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
+    /// mở lại sáng hôm sau vẫn hiện số của hôm qua
+    @State private var now = Date()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        let now = Date()
+        let now = self.now
         ZStack(alignment: .bottom) {
             Palette.bg.ignoresSafeArea()
 
@@ -75,6 +79,8 @@ struct HomeView: View {
             })
             .environmentObject(store)
         }
+        .onChange(of: scenePhase) { _, p in if p == .active { self.now = Date() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in self.now = Date() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
             quick.pending = nil
@@ -225,7 +231,7 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
-                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true) }
+                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true, now: now) }
                         .buttonStyle(Pressable())
                         .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
@@ -294,6 +300,7 @@ struct ExpenseRow: View {
     static let rowHeight: CGFloat = 90
     let e: Expense
     var showDay = false
+    var now = Date()
 
     var body: some View {
         let c = Category.get(e.c)
@@ -318,7 +325,7 @@ struct ExpenseRow: View {
         var parts: [String] = []
         if showDay {
             let cal = Calendar.current
-            if cal.isDateInToday(e.date) { parts.append("Hôm nay") }
+            if cal.isDate(e.date, inSameDayAs: now) { parts.append("Hôm nay") }
             else { let d = cal.dateComponents([.day, .month], from: e.date); parts.append("\(d.day!)/\(d.month!)") }
         }
         parts.append(tf.string(from: e.date))

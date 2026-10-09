@@ -1,4 +1,5 @@
 import PhotosUI
+import UserNotifications
 import SwiftUI
 
 /// Ảnh đại diện tròn: chữ cái đầu của tên gọi (chữ cuối trong tên), màu riêng theo người.
@@ -37,6 +38,8 @@ struct HouseView: View {
     /// Thêm người từ màn "Bạn là ai": thêm xong nhận luôn là mình
     @State private var claimAfterAdd = false
     @State private var editingMember: HouseMember?
+    @State private var showInbox = false
+    @State private var notifyOn: Bool?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -138,6 +141,22 @@ struct HouseView: View {
             Text(house.phase == .ready && !house.name.isEmpty ? house.name : "Nhà chung")
                 .font(.system(size: 19, weight: .bold)).lineLimit(1)
             Spacer()
+            if house.phase == .ready && house.me != nil {
+                // Chuông: việc cần mình xác nhận + hoạt động gần đây
+                Button { showInbox = true } label: {
+                    Image(systemName: "bell.fill").font(.system(size: 17, weight: .semibold))
+                        .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+                        .overlay(alignment: .topTrailing) {
+                            if !pending.isEmpty {
+                                Text("\(pending.count)").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+                                    .frame(minWidth: 20, minHeight: 20).background(Palette.danger, in: Circle())
+                                    .offset(x: 4, y: -4)
+                            }
+                        }
+                }
+                .foregroundStyle(.primary)
+                .accessibilityLabel(pending.isEmpty ? "Thông báo" : "Thông báo, \(pending.count) việc cần xác nhận")
+            }
             if house.phase == .ready {
                 Menu {
                     Button(house.isOwner ? "Mời thành viên" : "Người trong nhóm", systemImage: "person.badge.plus") { invite() }
@@ -153,6 +172,7 @@ struct HouseView: View {
             }
         }
         .padding(.top, 14).padding(.bottom, 14)
+        .sheet(isPresented: $showInbox) { inbox }
     }
 
     private func circleButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
@@ -529,9 +549,105 @@ struct HouseView: View {
     }
 
     /// Lần trả cần mình làm gì: xác nhận đã nhận, chờ người kia xác nhận, hoặc bị báo chưa nhận được.
-    @ViewBuilder private var pendingSection: some View {
+    /// Lần trả cần mình để ý: có người báo đã chuyển cho mình, hoặc mình chuyển mà đang chờ / bị báo chưa nhận.
+    private var pending: [HouseSettle] {
         let me = house.me
-        let mine = house.settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok") }
+        return house.settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok") }
+    }
+
+    // MARK: Thông báo
+
+    private var inbox: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    if notifyOn == false {
+                        Button {
+                            if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "bell.slash.fill").font(.system(size: 18)).foregroundStyle(.orange)
+                                    .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Đang tắt thông báo").font(.system(size: 16, weight: .semibold))
+                                    Text("Bật để biết ngay khi có người báo đã chuyển tiền.").font(.system(size: 14)).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                Text("Bật").font(.system(size: 15, weight: .semibold))
+                            }
+                            .foregroundStyle(.primary).padding(14)
+                            .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        }
+                        .buttonStyle(Pressable())
+                    }
+                    if !pending.isEmpty {
+                        Text("Cần xác nhận").font(.system(size: 21, weight: .bold)).padding(.top, 8)
+                        ForEach(pending) { pendingCard($0) }
+                    }
+                    Text("Gần đây").font(.system(size: 21, weight: .bold)).padding(.top, 16)
+                    let recent = activity
+                    if recent.isEmpty {
+                        Text("Chưa có gì mới.").font(.system(size: 16)).foregroundStyle(.secondary).padding(.vertical, 20)
+                    }
+                    ForEach(recent, id: \.id) { a in
+                        HStack(alignment: .top, spacing: 12) {
+                            HouseAvatar(id: a.who, name: house.memberName(a.who), size: 40)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(a.text).font(.system(size: 16)).fixedSize(horizontal: false, vertical: true)
+                                Text(ago(a.date)).font(.system(size: 13)).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 6)
+                    }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 30)
+            }
+            .background(Palette.bg)
+            .navigationTitle("Thông báo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Xong") { showInbox = false } } }
+            .task {
+                let s = await UNUserNotificationCenter.current().notificationSettings()
+                notifyOn = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
+            }
+        }
+    }
+
+    private struct Activity { let id: String; let who: String; let text: String; let date: Date }
+
+    /// Khoản chung người khác vừa thêm và các lần trả liên quan tới mình, mới nhất trước.
+    private var activity: [Activity] {
+        let me = house.me, name = house.memberName
+        var out: [Activity] = []
+        for e in house.spends where e.payer != me {
+            let part = me.flatMap { e.shares.contains($0) ? Settle.split(e.amount, e.shares, seed: e.id)[$0] : nil }
+            out.append(Activity(id: e.id, who: e.payer, text: "\(name(e.payer)) thêm \(e.note.isEmpty ? "một khoản" : "\"\(e.note)\"") \(fmt(e.amount))đ"
+                                + (part.map { ", phần bạn \(fmt($0))đ" } ?? ""), date: e.date))
+        }
+        for s in house.settles where s.from == me || s.to == me {
+            let other = s.from == me ? s.to : s.from
+            let text: String = switch (s.from == me, s.status) {
+            case (true, "wait"): "Đã báo chuyển \(fmt(s.amount))đ cho \(name(s.to)), chờ xác nhận"
+            case (true, "no"): "\(name(s.to)) chưa nhận được \(fmt(s.amount))đ bạn chuyển"
+            case (true, _): "\(name(s.to)) đã nhận \(fmt(s.amount))đ của bạn"
+            case (false, "wait"): "\(name(s.from)) báo đã chuyển cho bạn \(fmt(s.amount))đ"
+            case (false, "no"): "Bạn báo chưa nhận được \(fmt(s.amount))đ từ \(name(s.from))"
+            case (false, _): "Bạn đã nhận \(fmt(s.amount))đ từ \(name(s.from))"
+            }
+            out.append(Activity(id: s.id, who: other, text: text, date: s.date))
+        }
+        return Array(out.sorted { $0.date > $1.date }.prefix(30))
+    }
+
+    private func ago(_ d: Date) -> String {
+        let f = RelativeDateTimeFormatter()
+        f.locale = Locale(identifier: "vi_VN")
+        return f.localizedString(for: d, relativeTo: Date())
+    }
+
+    @ViewBuilder private var pendingSection: some View {
+        let mine = pending
         if !mine.isEmpty {
             sectionTitle("Cần xác nhận")
             VStack(spacing: 10) {

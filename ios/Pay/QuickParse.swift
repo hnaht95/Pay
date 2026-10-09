@@ -104,6 +104,9 @@ enum QuickParse {
         return nil
     }
 
+    /// Đơn vị khi đọc thành lời: từ 1 triệu trở lên là "triệu", còn lại là "nghìn".
+    private static func impliedScale(_ x: Double) -> Double { x >= 1e6 ? 1e6 : 1e3 }
+
     /// Đọc một cụm số tiếng Việt thành giá trị.
     private static func value(_ toks: [Tok]) -> Double {
         enum Last { case none, num, tens, hundreds, linh, scale }
@@ -123,6 +126,12 @@ enum QuickParse {
                 if let p = pending, last == .num, p < 10, v < 10, pendingAfter != .hundreds, pendingAfter != .linh {
                     group += p * 10 + v          // "ba lăm" = 35
                     pending = nil; last = .tens
+                } else if let p = pending, last == .num, p >= 1000, v < 10, p.truncatingRemainder(dividingBy: impliedScale(p)) == 0 {
+                    // Siri hay viết "1 triệu 2" thành "1.000.000 2": số tròn nghìn/triệu + một chữ số = nói tắt
+                    // -> 1.200.000; "10.000 5" (mười nghìn năm) -> 10.500
+                    total += group + p; group = 0
+                    lastScale = impliedScale(p)
+                    pending = v; pendingAfter = .scale; last = .num
                 } else {
                     if pending != nil { group = flush() }
                     pending = v; pendingAfter = last; last = .num

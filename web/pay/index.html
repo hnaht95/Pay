@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pay · Ghi chi tiêu tối giản</title>
+<meta name="description" content="Pay: ghi chi tiêu bằng giọng nói, quét VietQR, chia tiền nhóm chung. Đồng bộ iCloud, không quảng cáo.">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d10" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:title" content="Pay · Ghi chi tiêu tối giản">
+<meta property="og:description" content="Nói “35k cà phê” là ghi. Quét VietQR là trả. Chia tiền cả nhà, ai nợ ai tự tính.">
+<style>
+:root {
+  --bg: #f4f5f8; --surface: #ffffff; --card: #eaecf1; --ink: #111114; --muted: #6e717b;
+  --pill: rgba(0,0,0,.06); --cta: #111114; --cta-ink: #fff;
+  --an: #FFC9C1; --cafe: #F1DCC0; --di: #C9E3FF; --mua: #FFD3E6; --hd: #E2DBFF; --khac: #CFEEDD;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d0d10; --surface: #17171b; --card: #1d1d22; --ink: #f5f5f7; --muted: #9a9ca5;
+    --pill: rgba(255,255,255,.08); --cta: #fff; --cta-ink: #111114; }
+}
+* { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--ink); font: 17px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+nav { display: flex; align-items: center; gap: 12px; padding: 18px 0; }
+nav .logo { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 800; flex: 1; color: inherit; text-decoration: none; }
+nav .logo img { width: 36px; height: 36px; border-radius: 10px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 99px; font: inherit;
+  font-weight: 600; padding: 0 22px; height: 52px; cursor: pointer; text-decoration: none; background: var(--pill); color: var(--ink); }
+.btn.primary { background: var(--cta); color: var(--cta-ink); }
+.btn.small { height: 42px; padding: 0 18px; font-size: 15px; }
+.hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding: 40px 0 70px; }
+.hero h1 { font-size: clamp(40px, 6vw, 64px); line-height: 1.05; letter-spacing: -2px; font-weight: 800; }
+.hero p { color: var(--muted); font-size: 19px; margin: 18px 0 28px; max-width: 30em; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.note { color: var(--muted); font-size: 14px; margin-top: 14px; }
+#signin { min-height: 52px; display: flex; align-items: center; }
+.phone { background: var(--surface); border-radius: 44px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.12); max-width: 360px; justify-self: center; width: 100%; }
+.phone .label { color: var(--muted); font-size: 15px; display: flex; justify-content: space-between; }
+.phone .big { font-size: 44px; font-weight: 800; letter-spacing: -1.5px; margin: 4px 0 14px; }
+.bar { height: 10px; border-radius: 99px; background: var(--pill); overflow: hidden; } .bar i { display: block; height: 100%; width: 38%; background: #2e9e4f; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.tile { border-radius: 22px; padding: 14px; color: #111114; } .tile b { display: block; font-size: 18px; } .tile span { font-size: 26px; }
+section { padding: 60px 0; }
+section h2 { font-size: clamp(30px, 4vw, 42px); letter-spacing: -1px; line-height: 1.1; margin-bottom: 14px; }
+section .lead { color: var(--muted); font-size: 18px; max-width: 34em; margin-bottom: 30px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.feat { background: var(--surface); border-radius: 28px; padding: 24px; }
+.feat .ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; margin-bottom: 14px; }
+.feat h3 { font-size: 19px; margin-bottom: 6px; } .feat p { color: var(--muted); font-size: 16px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.card { background: var(--surface); border-radius: 28px; padding: 18px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #111114; flex: none; }
+.grow { flex: 1; } .muted { color: var(--muted); font-size: 14px; }
+.pill { background: var(--cta); color: var(--cta-ink); border-radius: 99px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--pill); margin-top: 20px; }
+@media (max-width: 820px) {
+  .hero, .split { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr; } .hero { padding-top: 10px; }
+}
+</style>
+<script src="config.js"></script>
+<script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js" async></script>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="logo" href="#"><img src="icon-180.png" alt="">Pay</a>
+    <a class="btn small" href="#nhom">Nhóm chung</a>
+    <a class="btn small primary" id="navOpen" href="nhom.html" hidden>Mở Nhóm chung</a>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>Ghi chi tiêu<br>trong một giây.</h1>
+      <p>Nói “35k cà phê” là ghi. Quét VietQR là trả. Chia tiền cả nhà, ai nợ ai Pay tự tính. Dữ liệu nằm trong iCloud của bạn, không quảng cáo.</p>
+      <div class="cta">
+        <div id="signin"><span class="muted">Đang tải đăng nhập…</span></div>
+      </div>
+      <div class="note" id="signinNote">Đăng nhập bằng Apple ID để dùng Nhóm chung trên web, kể cả máy Android hay Windows.</div>
+    </div>
+    <div class="phone" aria-hidden="true">
+      <div class="label"><span>Hôm nay đã chi</span><span>T6, 9/10</span></div>
+      <div class="big">210.000</div>
+      <div class="bar"><i></i></div>
+      <div class="label" style="margin-top:8px"><b style="color:var(--ink)">Còn 5.745.000</b><span>249.000/ngày</span></div>
+      <div class="tiles">
+        <div class="tile" style="background:var(--an)"><span>🍜</span><b>Ăn uống</b>45.000</div>
+        <div class="tile" style="background:var(--cafe)"><span>☕</span><b>Cafe</b>165.000</div>
+        <div class="tile" style="background:var(--di)"><span>🛵</span><b>Đi lại</b>0</div>
+        <div class="tile" style="background:var(--hd)"><span>🧾</span><b>Hoá đơn</b>0</div>
+      </div>
+    </div>
+  </header>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>Nhanh hơn mở app ngân hàng</h2>
+    <p class="lead">Mọi thứ thiết kế để ghi xong trước khi kịp quên.</p>
+    <div class="grid">
+      <div class="feat"><div class="ic" style="background:var(--an)">🎙️</div><h3>Nói là ghi</h3><p>Nhấn nút Tác vụ hoặc widget, nói “một triệu hai tiền nhà”. Pay hiểu cách đọc tiền của người Việt.</p></div>
+      <div class="feat"><div class="ic" style="background:var(--di)">📷</div><h3>Quét VietQR</h3><p>Quét mã khi trả tiền: Pay ghi khoản chi rồi mở app ngân hàng với sẵn người nhận và số tiền.</p></div>
+      <div class="feat"><div class="ic" style="background:var(--cafe)">⚡</div><h3>Chi lại một chạm</h3><p>Khoản hay chi hiện sẵn ở màn hình chính. Cà phê sáng nay? Chạm một cái là xong.</p></div>
+      <div class="feat"><div class="ic" style="background:var(--hd)">🔁</div><h3>Khoản định kỳ</h3><p>Tiền nhà, điện, internet tự ghi đúng ngày mỗi tháng.</p></div>
+      <div class="feat"><div class="ic" style="background:var(--mua)">🎯</div><h3>Ngân sách tháng</h3><p>Biết còn bao nhiêu và mỗi ngày nên tiêu tối đa bao nhiêu, ngay trên màn hình chính và widget.</p></div>
+      <div class="feat"><div class="ic" style="background:var(--khac)">☁️</div><h3>Đồng bộ iCloud</h3><p>Dữ liệu nằm trong iCloud của bạn, tự đồng bộ giữa các máy. Không tài khoản riêng, không quảng cáo.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="nhom">
+  <div class="wrap split">
+    <div>
+      <h2>Nhóm chung:<br>ai nợ ai, Pay tính.</h2>
+      <p class="lead">Nhà chung, phòng trọ, chuyến đi. Ai ứng tiền thì ghi, Pay gộp lại thành ít lần chuyển nhất. Bấm “Trả ngay” là mở app ngân hàng điền sẵn; người nhận xác nhận là xong.</p>
+      <div class="cta"><a class="btn primary" href="nhom.html">Mở Nhóm chung trên web</a></div>
+      <div class="note">Trên web cần Apple ID (tạo miễn phí, không cần iPhone).</div>
+    </div>
+    <div class="card" aria-hidden="true">
+      <div class="row"><div class="av" style="background:#C8F0F0">H</div><span class="muted">→</span><div class="av" style="background:#D6F5C9">L</div>
+        <div class="grow"><b>Hà trả Lan</b><div>382.500</div></div></div>
+      <div class="row"><div class="av" style="background:#D7E0FF">M</div><span class="muted">→</span><div class="av" style="background:#D6F5C9">L</div>
+        <div class="grow"><b>Bạn trả Lan</b><div>95.000</div></div><span class="pill">Trả ngay</span></div>
+      <div class="row"><div class="av" style="background:#D7E0FF">M</div><span class="muted">→</span><div class="av" style="background:#FFE1B3">T</div>
+        <div class="grow"><b>Bạn trả Thành</b><div>87.500</div></div><span class="pill">Đã chuyển</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <footer>Pay · Ghi chi tiêu tối giản cho iPhone. Hiện đang thử nghiệm qua TestFlight.</footer>
+</div>
+
+<script>
+// Đăng nhập Apple ID ngay trên trang giới thiệu; xong thì vào thẳng Nhóm chung
+window.addEventListener('cloudkitloaded', async () => {
+  try {
+    CloudKit.configure({ containers: [{ containerIdentifier: CONTAINER, environment: 'production',
+      apiTokenAuth: { apiToken: API_TOKEN, persist: true, signInButton: { id: 'signin', theme: 'black' } } }] });
+    const c = CloudKit.getDefaultContainer();
+    const user = await c.setUpAuth();
+    if (user) {
+      document.getElementById('signin').innerHTML = '<a class="btn primary" href="nhom.html">Mở Nhóm chung</a>';
+      document.getElementById('signinNote').textContent = 'Đã đăng nhập Apple ID.';
+      document.getElementById('navOpen').hidden = false;
+    } else {
+      c.whenUserSignsIn().then(() => location.href = 'nhom.html');
+    }
+  } catch (e) {
+    document.getElementById('signin').innerHTML = '<a class="btn primary" href="nhom.html">Mở Nhóm chung</a>';
+  }
+});
+</script>
+</body>
+</html>

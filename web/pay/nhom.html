@@ -64,6 +64,7 @@ input, select { font: inherit; color: var(--ink); background: var(--card); borde
 #apple-sign-in-button, #apple-sign-out-button { display: inline-block; }
 </style>
 <!-- CloudKit JS của Apple: đăng nhập Apple ID, đọc / ghi dữ liệu iCloud của nhóm -->
+<script src="config.js"></script>
 <script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js" async></script>
 </head>
 <body>
@@ -84,8 +85,7 @@ input, select { font: inherit; color: var(--ink); background: var(--card); borde
 // API token tạo trong CloudKit Console › Tokens & Keys (loại API Token, Sign in Callback: postMessage,
 // Allowed Origins: https://hnaht95.github.io). Token web này được phép công khai: chỉ dùng được từ đúng trang này
 // và mỗi người vẫn phải đăng nhập Apple ID của chính họ.
-const API_TOKEN = 'DAN_API_TOKEN_VAO_DAY';
-const CONTAINER = 'iCloud.com.hnaht95.sochipay';
+// API_TOKEN, CONTAINER nằm trong config.js (dùng chung với trang giới thiệu)
 const ENV = new URLSearchParams(location.search).get('env') === 'dev' ? 'development' : 'production';
 const PREFIX = 'nha-';
 

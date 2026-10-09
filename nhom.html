@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pay · Nhóm chung</title>
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d10" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.svg">
+<style>
+:root {
+  --bg: #f4f5f8; --surface: #ffffff; --card: #eaecf1; --ink: #111114; --muted: #8a8d96;
+  --pill: rgba(0,0,0,.06); --cta: #111114; --cta-ink: #fff; --danger: #d92d20; --good: #2f7a43;
+  --hero: #dfe5ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d0d10; --surface: #17171b; --card: #1d1d22; --ink: #f5f5f7; --muted: #8e8f98;
+    --pill: rgba(255,255,255,.08); --cta: #fff; --cta-ink: #111114; --danger: #ff6b5e; --good: #8fdca3; --hero: #242b4d; }
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; }
+main { max-width: 560px; margin: 0 auto; padding: 16px 16px 120px; }
+header { display: flex; align-items: center; gap: 8px; padding: 6px 0 14px; }
+header h1 { flex: 1; text-align: center; font-size: 19px; }
+.circle { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--pill); color: var(--ink);
+  font-size: 18px; font-weight: 700; cursor: pointer; display: grid; place-items: center; }
+.circle.ghost { visibility: hidden; }
+h2 { font-size: 21px; margin: 26px 0 12px; display: flex; justify-content: space-between; align-items: center; }
+h2 small { font-size: 15px; font-weight: 400; color: var(--muted); background: var(--pill); padding: 6px 14px; border-radius: 99px; }
+.card { background: var(--card); border-radius: 24px; padding: 14px; }
+.hero { background: var(--surface); border-radius: 32px; padding: 22px; }
+.hero .label { color: var(--muted); }
+.hero .big { font-size: 44px; font-weight: 800; letter-spacing: -1.5px; margin: 6px 0 14px; }
+.neg { color: var(--danger); } .pos { color: var(--good); } .mut { color: var(--muted); }
+.row { display: flex; align-items: center; gap: 12px; }
+.grow { flex: 1; min-width: 0; }
+.ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stack > * + * { margin-top: 10px; }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #111114;
+  flex: none; background-size: cover; background-position: center; }
+.avs { display: flex; } .avs .av { width: 34px; height: 34px; margin-right: -9px; border: 2.5px solid var(--surface); font-size: 14px; }
+.btn { border: 0; border-radius: 99px; font: inherit; font-weight: 600; padding: 0 16px; height: 40px; cursor: pointer;
+  background: var(--pill); color: var(--ink); }
+.btn.primary { background: var(--cta); color: var(--cta-ink); }
+.btn.big { height: 60px; font-size: 19px; width: 100%; }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .35; }
+.dock { position: fixed; left: 0; right: 0; bottom: 0; padding: 30px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 40%, transparent); }
+.dock > div { max-width: 528px; margin: 0 auto; }
+input, select { font: inherit; color: var(--ink); background: var(--card); border: 0; border-radius: 18px; padding: 15px 18px; width: 100%; }
+.field { margin-top: 14px; } .field > label { display: block; color: var(--muted); font-size: 15px; margin: 0 0 6px 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 0; border-radius: 99px; padding: 8px 14px; background: var(--pill); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
+.chip.on { background: var(--cta); color: var(--cta-ink); }
+.sheet { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: flex-end; justify-content: center; z-index: 5; }
+.sheet.open { display: flex; }
+.sheet > div { background: var(--surface); width: 100%; max-width: 560px; border-radius: 32px 32px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  max-height: 92vh; overflow: auto; }
+.center { text-align: center; padding: 40px 10px; }
+.toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); background: var(--cta); color: var(--cta-ink);
+  padding: 12px 20px; border-radius: 99px; display: none; z-index: 9; }
+#apple-sign-in-button, #apple-sign-out-button { display: inline-block; }
+</style>
+<!-- CloudKit JS của Apple: đăng nhập Apple ID, đọc / ghi dữ liệu iCloud của nhóm -->
+<script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js" async></script>
+</head>
+<body>
+<main>
+  <header>
+    <button class="circle" id="back" title="Các nhóm">‹</button>
+    <h1 id="title">Nhóm chung</h1>
+    <span id="apple-sign-out-button"></span>
+  </header>
+  <div id="view"><div class="center mut">Đang tải…</div></div>
+</main>
+<div class="dock" id="dock" hidden><div><button class="btn primary big" id="addBtn">+ Thêm khoản chung</button></div></div>
+<div class="sheet" id="sheet"><div id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Cấu hình ──────────────────────────────────────────────────────────
+// API token tạo trong CloudKit Console › Tokens & Keys (loại API Token, Sign in Callback: postMessage,
+// Allowed Origins: https://hnaht95.github.io). Token web này được phép công khai: chỉ dùng được từ đúng trang này
+// và mỗi người vẫn phải đăng nhập Apple ID của chính họ.
+const API_TOKEN = 'DAN_API_TOKEN_VAO_DAY';
+const CONTAINER = 'iCloud.com.hnaht95.sochipay';
+const ENV = new URLSearchParams(location.search).get('env') === 'dev' ? 'development' : 'production';
+const PREFIX = 'nha-';
+
+// ─── Cách tính (giống app iPhone, lấy từ Tab lib/settle.ts) ────────────
+function stableHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0; return h; }
+function splitExpense(amount, shareIds, seed = '') {
+  const out = new Map(), ids = [...new Set(shareIds)].sort(), n = ids.length;
+  if (!n || !amount) return out;
+  const base = Math.trunc(amount / n), rem = amount - base * n;
+  ids.forEach(id => out.set(id, base));
+  const off = stableHash(seed) % n;
+  for (let k = 0; k < rem; k++) { const id = ids[(off + k) % n]; out.set(id, out.get(id) + 1); }
+  return out;
+}
+function balances(spends, settles) {
+  const net = {};
+  for (const e of spends) {
+    net[e.payer] = (net[e.payer] || 0) + e.amount;
+    for (const [id, p] of splitExpense(e.amount, e.shares, e.id)) net[id] = (net[id] || 0) - p;
+  }
+  for (const s of settles) if (s.status !== 'no') { net[s.from] = (net[s.from] || 0) + s.amount; net[s.to] = (net[s.to] || 0) - s.amount; }
+  return net;
+}
+function transfers(net) {
+  const desc = (a, b) => b.amt - a.amt || (a.id < b.id ? -1 : 1);
+  const d = Object.entries(net).filter(([, v]) => v < 0).map(([id, v]) => ({ id, amt: -v })).sort(desc);
+  const c = Object.entries(net).filter(([, v]) => v > 0).map(([id, v]) => ({ id, amt: v })).sort(desc);
+  const out = [];
+  for (const x of d) { if (!x.amt) continue; const y = c.find(z => z.amt === x.amt); if (y) { out.push({ from: x.id, to: y.id, amount: x.amt }); x.amt = 0; y.amt = 0; } }
+  const dl = d.filter(x => x.amt > 0).sort(desc), cl = c.filter(x => x.amt > 0).sort(desc);
+  let i = 0, j = 0;
+  while (i < dl.length && j < cl.length) {
+    const a = Math.min(dl[i].amt, cl[j].amt);
+    if (a > 0) { out.push({ from: dl[i].id, to: cl[j].id, amount: a }); dl[i].amt -= a; cl[j].amt -= a; }
+    if (!dl[i].amt) i++; if (!cl[j].amt) j++;
+  }
+  return out.sort((a, b) => b.amount - a.amount);
+}
+
+// ─── Tiện ích ──────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = n => Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TONES = ['#FFE1B3','#D6F5C9','#C8F0F0','#D7E0FF','#F3D6FF','#FFD6D6','#FFF2B8','#E4E4E8'];
+const CATS = { an: ['🍜', 'Ăn uống'], cafe: ['☕', 'Cafe'], di: ['🛵', 'Đi lại'], mua: ['🛍️', 'Mua sắm'], hd: ['🧾', 'Hoá đơn'], khac: ['📌', 'Khác'] };
+function avatar(m, cls = '') {
+  const name = m?.name || '?', id = m?.id || '?';
+  const init = (name.trim().split(/\s+/).pop() || '?')[0].toUpperCase();
+  const bg = m?.photo ? `background-image:url('${m.photo}')` : `background:${TONES[stableHash(id) % TONES.length]}`;
+  return `<div class="av ${cls}" style="${bg}">${m?.photo ? '' : esc(init)}</div>`;
+}
+function day(t) {
+  const d = new Date(t), n = new Date();
+  if (d.toDateString() === n.toDateString()) return 'Hôm nay';
+  const y = new Date(n); y.setDate(n.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Hôm qua';
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', 3000); }
+
+// ─── Trạng thái ────────────────────────────────────────────────────────
+let container, me = null;      // me: userRecordName của Apple ID đang đăng nhập
+let groups = [];               // { zoneID, scope, name, members, spends, settles, records, meId }
+let current = null;            // zoneName đang mở
+
+const db = scope => scope === 'shared' ? container.sharedCloudDatabase : container.privateCloudDatabase;
+const cur = () => groups.find(g => g.zoneID.zoneName === current);
+const memberName = (g, id) => (g.members.find(m => m.id === id) || {}).name || 'Người đã xoá';
+
+function parseGroup(g, records) {
+  g.records = {}; g.members = []; g.spends = []; g.settles = [];
+  for (const r of records) {
+    if (r.deleted) continue;
+    g.records[r.recordName] = r;
+    const f = k => r.fields?.[k]?.value;
+    switch (r.recordType) {
+      case 'Info': g.name = f('name') || g.name; break;
+      case 'Member': g.members.push({ id: r.recordName, name: f('name') || '', bin: f('bin'), acct: f('acct'), user: f('user'), photo: f('photo')?.downloadURL }); break;
+      case 'Spend': g.spends.push({ id: r.recordName, amount: f('amount') || 0, note: f('note') || '', payer: f('payer') || '', shares: f('shares') || [], date: f('date') || r.created?.timestamp, cat: f('cat') || 'khac' }); break;
+      case 'Settle': g.settles.push({ id: r.recordName, from: f('from'), to: f('to'), amount: f('amount') || 0, date: f('date') || 0, status: f('status') || 'ok' }); break;
+    }
+  }
+  g.members.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  g.spends.sort((a, b) => b.date - a.date);
+  g.settles.sort((a, b) => b.date - a.date);
+  g.meId = localStorage.getItem('house.me.' + g.zoneID.zoneName);
+  if (!g.members.some(m => m.id === g.meId)) g.meId = (g.members.find(m => m.user === me) || {}).id || null;
+}
+
+async function fetchGroup(g) {
+  let records = [], syncToken, more = true;
+  while (more) {
+    const r = await db(g.scope).fetchRecordZoneChanges({ zoneID: g.zoneID, syncToken });
+    if (r.hasErrors) throw r.errors[0];
+    const z = r.zones[0];
+    records = records.concat(z.records); syncToken = z.syncToken; more = z.moreComing;
+  }
+  parseGroup(g, records);
+}
+
+async function loadAll() {
+  const next = [];
+  for (const scope of ['private', 'shared']) {
+    const r = await db(scope).fetchAllRecordZones();
+    if (r.hasErrors) continue;
+    for (const z of r.zones) if (z.zoneID.zoneName.startsWith(PREFIX)) next.push({ zoneID: z.zoneID, scope, name: '', members: [], spends: [], settles: [] });
+  }
+  await Promise.all(next.map(g => fetchGroup(g).catch(() => {})));
+  groups = next.sort((a, b) => ((b.spends[0]?.date || 0) - (a.spends[0]?.date || 0)));
+  if (current && !cur()) current = null;
+  render();
+}
+
+async function save(g, recs) {
+  const r = await db(g.scope).saveRecords(recs, { zoneID: g.zoneID });
+  if (r.hasErrors) { toast(r.errors[0].reason || 'Không lưu được'); throw r.errors[0]; }
+  await fetchGroup(g); render();
+}
+const field = v => ({ value: v });
+const newName = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random()).toUpperCase();
+
+// ─── Giao diện ─────────────────────────────────────────────────────────
+function render() {
+  $('back').classList.toggle('ghost', !current);
+  const g = cur();
+  $('title').textContent = g ? (g.name || 'Nhóm chung') : 'Nhóm chung';
+  $('dock').hidden = !(g && g.meId);
+  if (!g) return renderList();
+  if (!g.meId) return renderPickMe(g);
+  renderGroup(g);
+}
+
+function renderList() {
+  if (!groups.length) {
+    $('view').innerHTML = `<div class="hero stack"><div style="font-size:24px;font-weight:800">Sổ chi tiêu chung</div>
+      <div class="mut">Chưa có nhóm nào. Nhờ người trong nhóm gửi lời mời (tạo trong app Pay trên iPhone), mở lời mời là vào được nhóm.</div>
+      <div class="field"><label>Hoặc dán link lời mời vào đây</label><input id="inv" placeholder="https://www.icloud.com/share/…"></div>
+      <button class="btn primary big" id="invBtn">Vào nhóm</button></div>`;
+    $('invBtn').onclick = () => acceptLink($('inv').value);
+    return;
+  }
+  $('view').innerHTML = `<div class="stack">${groups.map((g, i) => {
+    const n = g.meId ? (balances(g.spends, g.settles)[g.meId] || 0) : 0;
+    const pend = g.settles.filter(s => s.to === g.meId && s.status === 'wait').length;
+    return `<div class="card row" data-i="${i}" style="cursor:pointer">
+      <div class="av" style="border-radius:18px;width:56px;height:56px;background:${TONES[stableHash(g.zoneID.zoneName) % TONES.length]};font-size:24px">👥</div>
+      <div class="grow"><div class="ell" style="font-weight:600;font-size:18px">${esc(g.name || 'Nhóm chung')}${pend ? ` <span class="neg">●${pend}</span>` : ''}</div>
+        <div class="mut">${g.members.length} người</div></div>
+      <div style="text-align:right"><div class="mut" style="font-size:13px">${n > 0 ? 'Được nhận' : n < 0 ? 'Còn phải trả' : 'Đã cân bằng'}</div>
+        ${n ? `<div class="${n < 0 ? 'neg' : 'pos'}" style="font-weight:700">${fmt(n)}</div>` : ''}</div></div>`;
+  }).join('')}</div>`;
+  document.querySelectorAll('[data-i]').forEach(el => el.onclick = () => { current = groups[+el.dataset.i].zoneID.zoneName; render(); });
+}
+
+function renderPickMe(g) {
+  $('view').innerHTML = `<div style="font-size:26px;font-weight:800">Bạn là ai trong nhóm?</div>
+    <div class="mut" style="margin:4px 0 18px">Chỉ để biết phần nào là của bạn trên máy này.</div>
+    <div class="stack">${g.members.map(m => `<button class="card row" style="width:100%;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit" data-m="${m.id}">${avatar(m)}<b>${esc(m.name)}</b></button>`).join('')}</div>
+    <div class="field"><label>Chưa có tên bạn?</label><input id="newMe" placeholder="Tên của bạn"></div>
+    <button class="btn primary big" style="margin-top:12px" id="addMe">Thêm tôi vào nhóm</button>`;
+  document.querySelectorAll('[data-m]').forEach(el => el.onclick = () => claim(g, el.dataset.m));
+  $('addMe').onclick = async () => {
+    const n = $('newMe').value.trim(); if (!n) return;
+    const id = newName();
+    await save(g, [{ recordName: id, recordType: 'Member', fields: { name: field(n), user: field(me) } }]);
+    claim(g, id);
+  };
+}
+
+async function claim(g, id) {
+  localStorage.setItem('house.me.' + g.zoneID.zoneName, id);
+  g.meId = id;
+  const r = g.records[id];
+  if (r && r.fields?.user?.value !== me) {
+    try { await save(g, [{ recordName: id, recordType: 'Member', recordChangeTag: r.recordChangeTag, fields: { user: field(me) } }]); } catch {}
+  }
+  render();
+}
+
+function renderGroup(g) {
+  const net = balances(g.spends, g.settles), mine = net[g.meId] || 0, tr = transfers(net);
+  const name = id => id === g.meId ? 'Bạn' : memberName(g, id);
+  const incoming = g.settles.filter(s => s.to === g.meId && s.status === 'wait');
+  const mineOut = g.settles.filter(s => s.from === g.meId && s.status !== 'ok');
+  const member = id => g.members.find(m => m.id === id);
+  let h = `<div class="hero"><div class="label">${mine > 0 ? 'Cả nhóm còn nợ bạn' : mine < 0 ? 'Bạn còn phải trả' : 'Bạn đã cân bằng'}</div>
+    <div class="big ${mine < 0 ? 'neg' : ''}">${fmt(mine)}</div>
+    <div class="avs">${g.members.slice(0, 6).map(m => avatar(m)).join('')}</div></div>`;
+  if (incoming.length || mineOut.length) {
+    h += `<h2>Cần xác nhận</h2><div class="stack">`;
+    for (const s of incoming) h += `<div class="card" style="background:var(--hero)"><div class="row">${avatar(member(s.from))}
+      <div class="grow"><div style="font-weight:600">${esc(memberName(g, s.from))} báo đã chuyển cho bạn</div><div style="font-size:20px;font-weight:700">${fmt(s.amount)}</div></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn grow" data-no="${s.id}">Chưa nhận được</button><button class="btn primary grow" data-yes="${s.id}">Đã nhận</button></div></div>`;
+    for (const s of mineOut) h += `<div class="card row">${avatar(member(s.to))}<div class="grow">
+      <div style="font-weight:600">${s.status === 'no' ? esc(memberName(g, s.to)) + ' chưa nhận được' : 'Chờ ' + esc(memberName(g, s.to)) + ' xác nhận'}</div>
+      <div class="${s.status === 'no' ? 'neg' : ''}" style="font-weight:700">${fmt(s.amount)}</div></div>
+      ${s.status === 'no' ? `<button class="btn" data-del="${s.id}">Bỏ</button>` : '⏳'}</div>`;
+    h += `</div>`;
+  }
+  h += `<h2>Ai chuyển cho ai ${tr.length ? `<small>${tr.length} lần</small>` : ''}</h2><div class="stack">`;
+  if (!tr.length) h += `<div class="card mut">✓ Mọi người đã cân bằng, không ai nợ ai.</div>`;
+  tr.forEach((t, i) => {
+    const act = t.from === g.meId ? `<button class="btn primary" data-pay="${i}">Đã chuyển</button>` : t.to === g.meId ? `<button class="btn primary" data-recv="${i}">Đã nhận</button>` : '';
+    const to = member(t.to);
+    const bank = t.from === g.meId && to?.acct ? `<div class="mut" style="font-size:13px">Chuyển tới ${esc(to.acct)}</div>` : '';
+    h += `<div class="card row">${avatar(member(t.from))}<span class="mut">→</span>${avatar(to)}
+      <div class="grow"><div class="ell" style="font-weight:600">${esc(name(t.from))} trả ${esc(t.to === g.meId ? 'bạn' : memberName(g, t.to))}</div>
+      <div style="font-weight:700">${fmt(t.amount)}</div>${bank}</div>${act}</div>`;
+  });
+  h += `</div><h2>Thành viên <small>${g.members.length} người</small></h2><div class="chips">`;
+  for (const m of g.members) { const v = net[m.id] || 0;
+    h += `<div class="card" style="text-align:center;width:96px">${avatar(m).replace('class="av', 'style="margin:0 auto" class="av')}
+      <div class="ell" style="font-weight:600;margin-top:6px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</div>
+      <div class="${v < 0 ? 'neg' : v > 0 ? 'pos' : 'mut'}" style="font-size:14px">${v ? (v > 0 ? '+' : '−') + fmt(v) : '0'}</div></div>`; }
+  h += `</div><h2>Khoản chung</h2><div class="stack">`;
+  const items = [...g.spends.map(e => ({ t: e.date, html: spendRow(g, e) })), ...g.settles.map(s => ({ t: s.date, html: settleRow(g, s) }))].sort((a, b) => b.t - a.t);
+  h += items.length ? items.map(x => x.html).join('') : `<div class="card mut">Chưa có khoản chung nào.</div>`;
+  h += `</div>`;
+  $('view').innerHTML = h;
+  document.querySelectorAll('[data-yes]').forEach(b => b.onclick = () => respond(g, b.dataset.yes, 'ok'));
+  document.querySelectorAll('[data-no]').forEach(b => b.onclick = () => respond(g, b.dataset.no, 'no'));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => del(g, b.dataset.del));
+  document.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => settle(g, tr[+b.dataset.pay], 'wait'));
+  document.querySelectorAll('[data-recv]').forEach(b => b.onclick = () => settle(g, tr[+b.dataset.recv], 'ok'));
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { if (confirm('Xoá khoản này cho cả nhóm?')) del(g, b.dataset.rm); });
+}
+
+function spendRow(g, e) {
+  const [icon, cname] = CATS[e.cat] || ['📌', 'Khác'];
+  const part = e.shares.includes(g.meId) ? splitExpense(e.amount, e.shares, e.id).get(g.meId) : 0;
+  return `<div class="card row"><div class="av" style="border-radius:16px;width:52px;height:52px;background:var(--surface);font-size:24px">${icon}</div>
+    <div class="grow"><div class="ell" style="font-weight:600">${esc(e.note || cname)}</div>
+    <div class="mut ell" style="font-size:14px">${esc(e.payer === g.meId ? 'Bạn' : memberName(g, e.payer))} ứng · chia ${new Set(e.shares).size} người · ${day(e.date)}</div></div>
+    <div style="text-align:right"><div style="font-weight:700">${fmt(e.amount)}</div>${part ? `<div class="mut" style="font-size:13px">bạn ${fmt(part)}</div>` : ''}</div>
+    <button class="circle" style="width:32px;height:32px;font-size:14px" data-rm="${e.id}" title="Xoá">✕</button></div>`;
+}
+function settleRow(g, s) {
+  const [ic, note, cls] = s.status === 'wait' ? ['⏳', 'Chờ xác nhận', ''] : s.status === 'no' ? ['✕', 'Chưa nhận được', 'neg'] : ['✓', 'Đã xác nhận', 'pos'];
+  return `<div class="card row"><div class="av ${cls}" style="border-radius:16px;width:52px;height:52px;background:var(--surface);font-size:20px">${ic}</div>
+    <div class="grow"><div class="ell" style="font-weight:600">${esc(s.from === g.meId ? 'Bạn' : memberName(g, s.from))} chuyển ${esc(s.to === g.meId ? 'bạn' : memberName(g, s.to))}</div>
+    <div class="mut" style="font-size:14px">${note} · ${day(s.date)}</div></div><div class="${cls}" style="font-weight:700">${fmt(s.amount)}</div></div>`;
+}
+
+async function settle(g, t, status) {
+  if (status === 'wait' && !confirm(`Đã chuyển ${fmt(t.amount)}đ cho ${memberName(g, t.to)}? Người nhận sẽ xác nhận.`)) return;
+  await save(g, [{ recordName: newName(), recordType: 'Settle', fields: { from: field(t.from), to: field(t.to), amount: field(t.amount), date: field(Date.now()), status: field(status) } }]);
+  toast(status === 'wait' ? 'Đã báo, chờ xác nhận' : 'Đã ghi nhận');
+}
+async function respond(g, id, status) {
+  const r = g.records[id];
+  await save(g, [{ recordName: id, recordType: 'Settle', recordChangeTag: r.recordChangeTag, fields: { status: field(status) } }]);
+}
+async function del(g, id) {
+  const r = await db(g.scope).deleteRecords([{ recordName: id }], { zoneID: g.zoneID });
+  if (r.hasErrors) return toast('Không xoá được');
+  await fetchGroup(g); render();
+}
+
+// ─── Thêm khoản chung ──────────────────────────────────────────────────
+function openAdd() {
+  const g = cur(); if (!g) return;
+  let payer = g.meId, shares = new Set(g.members.map(m => m.id)), cat = 'an';
+  const draw = () => {
+    const amt = +($('amt')?.value || '').replace(/\D/g, '') || 0;
+    const parts = splitExpense(amt, [...shares]);
+    $('sheetBody').innerHTML = `<div class="row"><b class="grow" style="font-size:21px">Khoản chung</b><button class="circle" id="close">✕</button></div>
+      <div class="field"><label>Số tiền</label><input id="amt" inputmode="numeric" placeholder="0" value="${amt ? fmt(amt) : ''}" style="font-size:28px;font-weight:700"></div>
+      <div class="field"><label>Ghi chú</label><input id="note" placeholder="Ví dụ: đi chợ" value="${esc($('note')?.value || '')}"></div>
+      <div class="field"><label>Danh mục</label><div class="chips">${Object.entries(CATS).map(([k, [i, n]]) => `<button class="chip ${k === cat ? 'on' : ''}" data-cat="${k}">${i} ${n}</button>`).join('')}</div></div>
+      <div class="field"><label>Ai ứng tiền</label><div class="chips">${g.members.map(m => `<button class="chip ${m.id === payer ? 'on' : ''}" data-payer="${m.id}">${esc(m.id === g.meId ? 'Bạn' : m.name)}</button>`).join('')}</div></div>
+      <div class="field"><label>Chia đều cho</label><div class="chips">${g.members.map(m => `<button class="chip ${shares.has(m.id) ? 'on' : ''}" data-share="${m.id}">${esc(m.id === g.meId ? 'Bạn' : m.name)}${shares.has(m.id) && amt ? ' · ' + fmt(parts.get(m.id)) : ''}</button>`).join('')}</div></div>
+      <button class="btn primary big" style="margin-top:20px" id="saveSpend" ${amt && shares.size && payer ? '' : 'disabled'}>Lưu</button>`;
+    $('close').onclick = () => $('sheet').classList.remove('open');
+    $('amt').oninput = () => { const p = $('amt').selectionStart; draw(); $('amt').focus(); };
+    document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { cat = b.dataset.cat; draw(); });
+    document.querySelectorAll('[data-payer]').forEach(b => b.onclick = () => { payer = b.dataset.payer; draw(); });
+    document.querySelectorAll('[data-share]').forEach(b => b.onclick = () => { shares.has(b.dataset.share) ? shares.delete(b.dataset.share) : shares.add(b.dataset.share); draw(); });
+    $('saveSpend').onclick = async () => {
+      $('saveSpend').disabled = true;
+      await save(g, [{ recordName: newName(), recordType: 'Spend', fields: { amount: field(amt), note: field($('note').value.trim()), payer: field(payer),
+        shares: field([...shares]), date: field(Date.now()), cat: field(cat) } }]);
+      $('sheet').classList.remove('open'); toast('Đã thêm khoản chung');
+    };
+  };
+  $('sheetBody').innerHTML = ''; draw(); $('sheet').classList.add('open'); $('amt').focus();
+}
+
+// ─── Lời mời ───────────────────────────────────────────────────────────
+// Link mời dạng https://www.icloud.com/share/<mã>#Tên; mở trên máy không có Pay thì iCloud chuyển sang trang này kèm mã
+function shortGUIDFrom(text) {
+  const m = String(text || '').match(/share\/([0-9A-Za-z_-]{10,})/);
+  if (m) return m[1];
+  const t = String(text || '').trim();
+  return /^[0-9A-Za-z_-]{10,}$/.test(t) ? t : null;
+}
+async function acceptLink(text) {
+  const guid = shortGUIDFrom(text);
+  if (!guid) return toast('Link lời mời không đúng');
+  const r = await container.acceptShares([guid]).catch(e => ({ hasErrors: true, errors: [e] }));
+  if (r?.hasErrors) return toast('Không vào được nhóm: ' + (r.errors[0]?.reason || r.errors[0]?.message || ''));
+  toast('Đã vào nhóm');
+  await loadAll();
+  const zid = r?.results?.[0]?.rootRecord?.zoneID?.zoneName || r?.results?.[0]?.zoneID?.zoneName;
+  current = groups.find(g => g.zoneID.zoneName === zid)?.zoneID.zoneName || groups[0]?.zoneID.zoneName || null;
+  render();
+}
+function pendingInvite() {
+  const p = new URLSearchParams(location.search);
+  for (const [k, v] of p) if (k !== 'env') { const g = shortGUIDFrom(v) || (v.length >= 10 ? v : null); if (g) return g; }
+  return shortGUIDFrom(location.hash.slice(1));
+}
+
+// ─── Khởi động ─────────────────────────────────────────────────────────
+$('back').onclick = () => { current = null; render(); };
+$('addBtn').onclick = openAdd;
+$('sheet').onclick = e => { if (e.target === $('sheet')) $('sheet').classList.remove('open'); };
+
+function showSignIn() {
+  $('view').innerHTML = `<div class="hero center stack"><div style="font-size:48px">👥</div>
+    <div style="font-size:24px;font-weight:800">Nhóm chung của Pay</div>
+    <div class="mut">Đăng nhập Apple ID để xem sổ chung, thêm khoản và xác nhận đã trả. Chưa có Apple ID thì tạo miễn phí ở appleid.apple.com, không cần iPhone.</div>
+    <div id="apple-sign-in-button" style="margin-top:16px"></div></div>`;
+  $('dock').hidden = true;
+}
+
+window.addEventListener('cloudkitloaded', async () => {
+  CloudKit.configure({ containers: [{ containerIdentifier: CONTAINER, environment: ENV,
+    apiTokenAuth: { apiToken: API_TOKEN, persist: true, signInButton: { id: 'apple-sign-in-button', theme: 'black' }, signOutButton: { id: 'apple-sign-out-button', theme: 'white' } } }] });
+  container = CloudKit.getDefaultContainer();
+  const invite = pendingInvite();
+  const start = async user => {
+    me = user.userRecordName;
+    if (invite) await acceptLink(invite); else await loadAll();
+    container.whenUserSignsOut().then(() => { me = null; groups = []; current = null; showSignIn(); container.whenUserSignsIn().then(start); });
+  };
+  const user = await container.setUpAuth().catch(e => { $('view').innerHTML = `<div class="center neg">Không kết nối được iCloud: ${esc(e.message || e)}</div>`; });
+  if (user) start(user); else if (user === null) { showSignIn(); container.whenUserSignsIn().then(start); }
+});
+// Tự cập nhật khi quay lại trang (người khác vừa thêm / xác nhận)
+document.addEventListener('visibilitychange', () => { if (!document.hidden && me) loadAll(); });
+</script>
+</body>
+</html>

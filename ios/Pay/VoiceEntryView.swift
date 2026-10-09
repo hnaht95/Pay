@@ -144,6 +144,8 @@ struct VoiceEntryView: View {
     @StateObject private var mic = VoiceListener()
     @State private var saved: Expense?
     @State private var notUnderstood = false
+    /// Vừa bấm Hoàn tác: khoản vừa ghi đã xoá
+    @State private var undone = false
     @State private var autoClose: Task<Void, Never>?
     @State private var shown = false
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
@@ -196,6 +198,9 @@ struct VoiceEntryView: View {
             } else if mic.phase == .listening {
                 PulseDot()
                 Text("Đang nghe").foregroundStyle(.secondary)
+            } else if undone {
+                Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary)
+                Text("Đã hoàn tác, chưa ghi gì").foregroundStyle(.secondary)
             } else if notUnderstood {
                 Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange)
                 Text("Chưa nghe rõ số tiền").foregroundStyle(.secondary)
@@ -216,8 +221,9 @@ struct VoiceEntryView: View {
 
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
     @ViewBuilder private var amountBlock: some View {
+        // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
         let live = saved.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? QuickParse.spoken(mic.text).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
+            ?? (undone ? nil : QuickParse.spoken(mic.text)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(live.map { fmt($0.amount) } ?? "0")
@@ -249,6 +255,7 @@ struct VoiceEntryView: View {
     }
 
     private var hint: String {
+        if undone { return "Bấm Nói lại để nói khoản khác." }
         if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
         if mic.phase == .listening { return mic.text.isEmpty ? "Nói ví dụ: \"ba lăm nghìn cà phê\"" : mic.text }
         if mic.phase == .denied { return "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói." }
@@ -268,6 +275,8 @@ struct VoiceEntryView: View {
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 10) {
             if let e = saved {
+                // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
+                pill("Hoàn tác", primary: false) { undo(e) }
                 pill("Sửa", primary: false) { autoClose?.cancel(); dismiss(); onEdit(e) }
                 pill("Xong", primary: true) { autoClose?.cancel(); dismiss() }
             } else if mic.phase == .listening {
@@ -279,7 +288,7 @@ struct VoiceEntryView: View {
                 pill("Mở Cài đặt", primary: true) {
                     if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
                 }
-            } else if notUnderstood || mic.phase != .idle {
+            } else if notUnderstood || undone || mic.phase != .idle {
                 pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
                 pill("Nói lại", primary: true) { retry() }
             }
@@ -299,23 +308,32 @@ struct VoiceEntryView: View {
     // MARK: Xử lý
 
     private func handle(_ said: String) {
-        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else {
+        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true, toast: false) else {
             notUnderstood = true
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
             return
         }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        // Để 3 giây cho kịp nhìn số tiền rồi tự đóng; bấm Sửa / Xong thì đóng ngay
+        // Để 5 giây cho kịp nhìn số tiền và bấm Hoàn tác rồi tự đóng; bấm Sửa / Xong thì đóng ngay
         autoClose = Task {
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
             dismiss()
         }
     }
 
+    /// Xoá khoản vừa ghi, thẻ vẫn mở để nói lại hoặc quét QR
+    private func undo(_ e: Expense) {
+        autoClose?.cancel()
+        store.remove(id: e.id, toast: false)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.snappy) { saved = nil; undone = true }
+    }
+
     private func retry() {
         notUnderstood = false
+        undone = false
         Task { await mic.start() }
     }
 

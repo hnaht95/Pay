@@ -8,6 +8,10 @@ struct SettingsView: View {
     @State private var syncing = false
     @State private var jsonURL: URL?
     @State private var csvURL: URL?
+    /// Số đang kéo trên thanh ngân sách (chưa lưu), để dòng "Còn ..." bên dưới chạy theo
+    @State private var budgetDraft: Int?
+    @State private var typingBudget = false
+    @State private var budgetText = ""
 
     var body: some View {
         NavigationStack {
@@ -56,6 +60,16 @@ struct SettingsView: View {
             Text((store.cloudOn ? "Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá." : "Không hoàn tác được.")
                  + (store.rules.values.contains(where: \.on) ? " Khoản định kỳ cũng dừng tự ghi." : "") + " Nên sao lưu trước.")
         }
+        .alert("Ngân sách tháng", isPresented: $typingBudget) {
+            TextField("Ví dụ 8.000.000", text: $budgetText).keyboardType(.numberPad)
+            Button("Huỷ", role: .cancel) {}
+            Button("Lưu") {
+                let digits = budgetText.filter(\.isNumber)
+                if digits.isEmpty { store.budget = 0 } else if let v = Int(digits.prefix(12)) { store.budget = v }
+            }
+        } message: {
+            Text("Số tiền tiêu mỗi tháng. Để trống là bỏ ngân sách.")
+        }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
     }
 
@@ -87,40 +101,35 @@ struct SettingsView: View {
 
     private var budgetSection: some View {
         Section {
-            HStack {
-                icon("chart.pie.fill", .pink)
-                Text("Ngân sách tháng").lineLimit(1).layoutPriority(1).padding(.leading, 8)
-                Spacer(minLength: 8)
-                TextField("Chưa đặt", value: budgetValue, format: .number.locale(Locale(identifier: "vi_VN")))
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(minWidth: 60, maxWidth: 130)
-                Text("đ").foregroundStyle(.secondary)
+            BudgetSlider(value: store.budget, draft: $budgetDraft, commit: { store.budget = $0 }) {
+                budgetText = store.budget > 0 ? fmt(store.budget) : ""
+                typingBudget = true
             }
-            HStack(spacing: 8) {
-                ForEach([3, 5, 8, 10, 15], id: \.self) { tr in
-                    Button("\(tr)tr") { store.budget = tr * 1_000_000 }
-                        .font(.system(size: 15, weight: .medium))
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(store.budget == tr * 1_000_000 ? Color.pink.opacity(0.2) : Color.primary.opacity(0.06), in: Capsule())
-                        .buttonStyle(.plain)
-                }
-                Spacer(minLength: 0)
-                if store.budget > 0 {
-                    Button("Bỏ") { store.budget = 0 }.font(.system(size: 15)).foregroundStyle(.red).buttonStyle(.plain)
-                }
-            }
-            if let b = store.budgetStatus() {
-                VStack(alignment: .leading, spacing: 6) {
-                    BudgetBar(s: b)
-                    Text("\(b.label) · đã dùng \(Int((b.ratio * 100).rounded()))%").font(.system(size: 14)).foregroundStyle(b.color)
-                }
-                .padding(.vertical, 4)
-            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         } header: {
             Text("Ngân sách")
         } footer: {
-            Text("Màn hình chính và widget hiện số còn lại và mức nên tiêu mỗi ngày. Dùng từ 80% thì chuyển màu cam, vượt thì màu đỏ.")
+            budgetFooter
+        }
+    }
+
+    /// Còn / vượt bao nhiêu theo mức đang kéo, rồi cách dùng thanh kéo.
+    private var budgetFooter: some View {
+        let v = budgetDraft ?? store.budget
+        let s = BudgetStatus(budget: v, spent: store.monthItems(Date()).reduce(0) { $0 + $1.a })
+        return VStack(alignment: .leading, spacing: 6) {
+            if v > 0 {
+                // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
+                HStack(spacing: 4) {
+                    if s.level == .over { Image(systemName: "exclamationmark.triangle.fill") }
+                    Text("\(s.label) · đã dùng \(Int((s.ratio * 100).rounded()))%")
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(s.level == .over ? Palette.danger : .primary)
+            }
+            Text(v > 0 ? "Kéo để chỉnh, chạm để nhập số chính xác. Kéo hết sang trái là bỏ ngân sách."
+                       : "Kéo sang phải để đặt ngân sách tháng, hoặc chạm để nhập số. Màn hình chính và widget sẽ hiện số còn lại và mức nên tiêu mỗi ngày.")
         }
     }
 
@@ -161,11 +170,6 @@ struct SettingsView: View {
                 Text("Tới ngày là app tự ghi (khi mở app). Tháng nào đã tự ghi tay khoản giống hệt thì bỏ qua. Vuốt sang trái để bỏ lặp.")
             }
         }
-    }
-
-    /// 0 hiện là ô trống "Chưa đặt".
-    private var budgetValue: Binding<Int?> {
-        Binding(get: { store.budget > 0 ? store.budget : nil }, set: { store.budget = max($0 ?? 0, 0) })
     }
 
     // MARK: iCloud
@@ -301,6 +305,188 @@ struct SettingsView: View {
         let f = DateFormatter()
         f.dateFormat = Calendar.current.isDateInToday(d) ? "'lúc' HH:mm" : "dd/MM 'lúc' HH:mm"
         return f.string(from: d)
+    }
+}
+
+// MARK: Thanh kéo ngân sách
+
+/// Thanh kéo kiểu app Peek / thanh âm lượng: khối sáng bo tròn có tay nắm ở đầu, chữ nằm trong khối, số tiền ở cuối thanh.
+/// Kéo ngang ở đâu trên thanh cũng được, khối chạy theo ngón tay (không nhảy tới chỗ chạm). Chạm để nhập số chính xác.
+struct BudgetSlider: View {
+    /// Ngân sách đang đặt (đồng), 0 = chưa đặt
+    let value: Int
+    /// Số đang kéo, chỉ lưu khi buông tay
+    @Binding var draft: Int?
+    let commit: (Int) -> Void
+    let tap: () -> Void
+
+    /// Vị trí (0...1) lúc bắt đầu kéo
+    @State private var start: Double?
+    /// Kéo quá đầu / cuối thanh: thanh giãn ra một chút về phía đang kéo rồi bật lại khi buông
+    @State private var stretch: CGFloat = 0
+    @State private var width: CGFloat = 1
+    @State private var labelWidth: CGFloat = 80
+    @State private var valueWidth: CGFloat = 50
+
+    /// Các mức kéo được: 0 (chưa đặt), mỗi nấc 500 nghìn đến 10 triệu, rồi mỗi nấc 1 triệu đến 30 triệu.
+    /// Nửa trái thanh dành cho 0–10 triệu cho dễ chỉnh mức hay dùng.
+    static let levels: [Int] = Array(stride(from: 0, through: 10_000_000, by: 500_000))
+        + Array(stride(from: 11_000_000, through: 30_000_000, by: 1_000_000))
+    private static var last: Double { Double(levels.count - 1) }
+
+    /// Vị trí (0...1) của một số tiền trên thanh; số lẻ (nhập tay) nằm giữa hai nấc.
+    static func position(_ v: Int) -> Double {
+        let i = v <= 10_000_000 ? Double(v) / 500_000 : 20 + Double(v - 10_000_000) / 1_000_000
+        return min(max(i / last, 0), 1)
+    }
+
+    private static func level(at p: Double) -> Int { levels[Int((min(max(p, 0), 1) * last).rounded())] }
+
+    /// 8.000.000 -> "8tr", 8.500.000 -> "8,5tr", 7.250.000 -> "7,25tr", 500.000 -> "500k"
+    static func compact(_ v: Int) -> String {
+        if v < 1_000_000 { return v % 1000 == 0 ? "\(v / 1000)k" : "\(fmt(v))đ" }
+        var s = String(format: "%.2f", Double(v) / 1_000_000)
+        while s.hasSuffix("0") { s.removeLast() }
+        if s.hasSuffix(".") { s.removeLast() }
+        return s.replacingOccurrences(of: ".", with: ",") + "tr"
+    }
+
+    /// Khối tô: đen trên nền trắng (giao diện sáng), trắng ngà trên nền tối như Peek
+    private static let fillColor = Color(light: 0x111114, dark: 0xEBEBED)
+    private static let fillInk = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
+
+    private var shown: Int { draft ?? value }
+    /// Khối sáng ngắn nhất (mức 0): vừa chữ + tay nắm, như Peek
+    private var minFill: CGFloat { 18 + labelWidth + 16 + 4 + 12 }
+    /// Quãng đường khối sáng chạy được: ngón tay kéo bao nhiêu thì đầu khối đi bấy nhiêu
+    private var travel: CGFloat { max(width - minFill, 1) }
+
+    var body: some View {
+        let fill = minFill + travel * Self.position(shown)
+        // Số tiền nằm cuối thanh; khối sáng dài tới nơi thì số chui vào trong khối, ngay trước tay nắm
+        let inside = fill > width - 20 - valueWidth - 12
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        ZStack(alignment: .leading) {
+            shape.fill(Color(.secondarySystemGroupedBackground))
+            HStack(spacing: 0) {
+                Text("Mỗi tháng").fixedSize()
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { labelWidth = $0 }
+                Spacer(minLength: 16)
+                Capsule().frame(width: 4, height: 20).opacity(0.45)
+            }
+            .padding(.leading, 18).padding(.trailing, 12)
+            .frame(width: fill)
+            .frame(maxHeight: .infinity)
+            .background(Self.fillColor, in: shape)
+            .foregroundStyle(Self.fillInk)
+            Text(shown > 0 ? Self.compact(shown) : "Chưa đặt").fixedSize()
+                .monospacedDigit()
+                .foregroundStyle(inside ? AnyShapeStyle(Self.fillInk) : shown > 0 ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { valueWidth = $0 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, inside ? width - fill + 30 : 20)
+        }
+        .font(.system(size: 17, weight: .medium))
+        .frame(height: 52)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = max($0, 1) }
+        .overlay { HorizontalPan(changed: drag, tapped: tap) }
+        .scaleEffect(x: 1 + abs(stretch) / width, y: 1, anchor: stretch < 0 ? .trailing : .leading)
+        .scaleEffect(start != nil ? 1.02 : 1)
+        .animation(.spring(duration: 0.3), value: start != nil)
+        .animation(.snappy(duration: 0.2), value: inside)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Ngân sách tháng")
+        .accessibilityValue(shown > 0 ? "\(fmt(shown)) đồng" : "Chưa đặt")
+        .accessibilityAdjustableAction { dir in
+            let i = Int((Self.position(value) * Self.last).rounded()) + (dir == .increment ? 1 : -1)
+            commit(Self.levels[min(max(i, 0), Self.levels.count - 1)])
+        }
+        .accessibilityAction(named: "Nhập số chính xác", tap)
+    }
+
+    private func drag(_ dx: CGFloat, _ phase: HorizontalPan.Phase) {
+        if phase == .began { start = Self.position(shown) }
+        guard let start else { return }
+        if phase == .ended {
+            if let d = draft, d != value { commit(d) }
+            draft = nil
+            self.start = nil
+            withAnimation(.spring(duration: 0.4, bounce: 0.45)) { stretch = 0 }
+            return
+        }
+        let raw = start + Double(dx / travel)
+        let v = Self.level(at: raw)
+        if v != shown { tick(v) }
+        draft = v
+        // Quá đầu / cuối: giãn ra, càng kéo càng nặng tay
+        let over = CGFloat(raw - min(max(raw, 0), 1)) * travel
+        stretch = over == 0 ? 0 : (over < 0 ? -1 : 1) * 14 * (1 - exp(-abs(over) / 60))
+    }
+
+    /// Rung nhẹ ở các mốc tròn (mỗi 1 triệu, trên 10 triệu thì mỗi 5 triệu), rung mạnh hơn khi chạm đầu / cuối thanh.
+    private func tick(_ v: Int) {
+        if v == 0 || v == Self.levels.last {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        } else if v % (v <= 10_000_000 ? 1_000_000 : 5_000_000) == 0 {
+            UISelectionFeedbackGenerator().selectionChanged()
+        }
+    }
+}
+
+/// Lớp trong suốt phủ lên thanh kéo: nhận kéo ngang và chạm; kéo dọc thì nhường để trang Cài đặt vẫn cuộn được.
+struct HorizontalPan: UIViewRepresentable {
+    enum Phase { case began, changed, ended }
+    let changed: (CGFloat, Phase) -> Void
+    let tapped: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView()
+        v.backgroundColor = .clear
+        v.accessibilityElementsHidden = true   // VoiceOver dùng thanh kéo của SwiftUI (vuốt lên / xuống để chỉnh)
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.pan(_:)))
+        pan.delegate = context.coordinator
+        v.addGestureRecognizer(pan)
+        v.addGestureRecognizer(UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap)))
+        update(context.coordinator)
+        return v
+    }
+
+    func updateUIView(_ v: UIView, context: Context) { update(context.coordinator) }
+
+    private func update(_ c: Coordinator) {
+        c.changed = changed
+        c.tapped = tapped
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var changed: (CGFloat, Phase) -> Void = { _, _ in }
+        var tapped: () -> Void = {}
+
+        @objc func pan(_ g: UIPanGestureRecognizer) {
+            let dx = g.translation(in: g.view).x
+            switch g.state {
+            case .began: changed(dx, .began)
+            case .changed: changed(dx, .changed)
+            case .ended, .cancelled, .failed: changed(dx, .ended)
+            default: break
+            }
+        }
+
+        @objc func tap() { tapped() }
+
+        /// Chỉ nhận khi kéo ngang nhiều hơn dọc
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let pan = g as? UIPanGestureRecognizer else { return true }
+            let v = pan.velocity(in: pan.view)
+            return abs(v.x) > abs(v.y)
+        }
+
+        /// Trang cuộn đợi thanh kéo quyết định trước: kéo ngang thì thanh nhận, kéo dọc thì trang cuộn
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+            g is UIPanGestureRecognizer && other.view is UIScrollView
+        }
     }
 }
 

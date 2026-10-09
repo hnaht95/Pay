@@ -15,6 +15,11 @@ struct PayApp: App {
                 .environmentObject(quick)
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app
                 .onOpenURL { url in if let k = QuickKind(url: url) { quick.pending = k } }
+                .task {
+                    #if DEBUG
+                    FilmTouches.install()
+                    #endif
+                }
         }
     }
 }

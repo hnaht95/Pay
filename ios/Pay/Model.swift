@@ -190,6 +190,10 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: fileURL), let b = try? JSONDecoder().decode(Backup.self, from: data) {
             apply(b)
         }
+        #if DEBUG
+        // "-filmSeed YES": sáu tháng chi tiêu mẫu, không đồng bộ iCloud (để quay phim giới thiệu)
+        if UserDefaults.standard.bool(forKey: "filmSeed") { items = Self.filmSeed(); budget = 9_000_000; cloudOn = false; return }
+        #endif
         if budget > 0 && budgetHistory.isEmpty { rememberBudget() }   // máy đã đặt ngân sách từ trước khi có ghi nhớ theo tháng
         if runRecurring() { writeLocal() }   // ghi các khoản định kỳ đã tới hạn khi app tắt
         refreshWidget()
@@ -590,3 +594,40 @@ final class Store: ObservableObject {
         return f.string(from: Date())
     }
 }
+
+#if DEBUG
+extension Store {
+    /// Chi tiêu mẫu cố định cho phim giới thiệu: 5 tháng trước đủ các danh mục, tháng này tới hôm qua; hôm nay chưa ghi gì.
+    static func filmSeed() -> [Expense] {
+        var rng = SeedRandom(seed: 7)
+        let cal = Calendar.current, now = Date()
+        let today = cal.startOfDay(for: now)
+        let daily: [(String, String, ClosedRange<Int>)] = [
+            ("an", "ăn trưa", 45...45), ("cafe", "cà phê", 35...35), ("an", "ăn sáng", 30...30),
+            ("di", "grab", 30...90), ("an", "ăn tối", 60...180), ("cafe", "trà sữa", 35...60), ("mua", "đi chợ", 120...380)]
+        var out: [Expense] = []
+        func add(_ d: Date, _ c: String, _ n: String, _ a: Int) {
+            let t = d.timeIntervalSince1970 * 1000
+            out.append(Expense(id: "seed-\(out.count)", t: t, a: a, n: n, c: c, acct: nil, u: t))
+        }
+        for back in stride(from: 160, through: 1, by: -1) {
+            let day = cal.date(byAdding: .day, value: -back, to: today)!
+            for (i, item) in daily.enumerated() where rng.next() % 100 < [85, 70, 40, 35, 30, 20, 18][i] {
+                add(day.addingTimeInterval(Double(7 + i * 2) * 3600), item.0, item.1, Int(rng.next() % UInt64(item.2.count) + UInt64(item.2.lowerBound)) * 1000)
+            }
+            if cal.component(.day, from: day) == 5 {
+                add(day.addingTimeInterval(9 * 3600), "hd", "tiền nhà", 3_500_000)
+                add(day.addingTimeInterval(10 * 3600), "hd", "điện nước", Int(rng.next() % 300 + 450) * 1000)
+                add(day.addingTimeInterval(11 * 3600), "hd", "internet", 220_000)
+            }
+            if rng.next() % 100 < 6 { add(day.addingTimeInterval(20 * 3600), "mua", "shopee", Int(rng.next() % 600 + 150) * 1000) }
+        }
+        return out.sorted { $0.t > $1.t }
+    }
+}
+
+private struct SeedRandom {
+    var seed: UInt64
+    mutating func next() -> UInt64 { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return seed >> 33 }
+}
+#endif

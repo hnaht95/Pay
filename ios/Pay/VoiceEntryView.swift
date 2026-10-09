@@ -35,6 +35,23 @@ final class VoiceListener: ObservableObject {
         // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
         if let demo = UserDefaults.standard.string(forKey: "voiceDemo") {
             phase = .listening; text = demo; meter.value = 0.7
+            // Thêm "-voiceDemoPlay YES": hiện từng chữ như đang nói rồi tự ghi (để quay phim giới thiệu)
+            if UserDefaults.standard.bool(forKey: "voiceDemoPlay") {
+                text = ""
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(900))
+                    for w in demo.split(separator: " ") {
+                        text += (text.isEmpty ? "" : " ") + w
+                        meter.value = .random(in: 0.45...0.95)
+                        try? await Task.sleep(for: .milliseconds(380))
+                    }
+                    meter.value = 0.1
+                    try? await Task.sleep(for: .milliseconds(1100))
+                    guard phase == .listening else { return }
+                    meter.value = 0; phase = .idle
+                    onFinish?(text)
+                }
+            }
             return
         }
         #endif

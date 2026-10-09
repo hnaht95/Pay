@@ -6,6 +6,9 @@ struct Summary: Codable {
     var month: Int
     var count: Int
     var day: Date   // ngày tính số liệu, để widget tự về 0 khi sang ngày/tháng mới
+    var budget: Int? = nil   // ngân sách tháng, nil/0 = không đặt
+
+    var budgetStatus: BudgetStatus? { (budget ?? 0) > 0 ? BudgetStatus(budget: budget!, spent: month) : nil }
 
     static let group = "group.com.hnaht95.sochipay"
     private static var url: URL? {
@@ -29,7 +32,7 @@ struct Summary: Codable {
         let cal = Calendar.current
         if cal.isDate(day, inSameDayAs: date) { return self }
         let sameMonth = cal.isDate(day, equalTo: date, toGranularity: .month)
-        return Summary(today: 0, month: sameMonth ? month : 0, count: 0, day: date)
+        return Summary(today: 0, month: sameMonth ? month : 0, count: 0, day: date, budget: budget)
     }
 }
 

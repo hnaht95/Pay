@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct PayApp: App {
-    @StateObject private var store = Store()
+    @StateObject private var store = Store.shared
     @StateObject private var quick = QuickAction.shared
 
     var body: some Scene {
@@ -20,9 +20,35 @@ struct PayApp: App {
 /// Hiện "Quét QR" và "Ghi khoản chi" trong app Phím tắt, Siri và phần chọn Phím tắt cho nút Tác vụ.
 struct PayShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: VoiceIntent(), phrases: ["Nói để ghi bằng \(.applicationName)", "\(.applicationName) nghe ghi chi"],
+                    shortTitle: "Ghi bằng giọng nói", systemImageName: "mic.fill")
+        AppShortcut(intent: LogExpenseIntent(), phrases: ["Ghi chi tiêu bằng \(.applicationName)", "\(.applicationName) ghi chi tiêu", "Ghi \(.applicationName)"],
+                    shortTitle: "Ghi chi tiêu", systemImageName: "mic.fill")
         AppShortcut(intent: ScanIntent(), phrases: ["Quét QR bằng \(.applicationName)", "\(.applicationName) quét QR"],
                     shortTitle: "Quét QR", systemImageName: "qrcode.viewfinder")
         AppShortcut(intent: AddIntent(), phrases: ["Nhập chi tiêu bằng \(.applicationName)", "\(.applicationName) nhập khoản chi"],
                     shortTitle: "Nhập khoản chi", systemImageName: "plus")
+    }
+}
+
+/// Nói một câu là ghi luôn, không mở app: "Ghi chi tiêu bằng Pay" -> Siri hỏi -> "35k cafe".
+/// Gán vào nút Tác vụ: Cài đặt > Nút Tác vụ > Phím tắt > Pay > Ghi chi tiêu.
+struct LogExpenseIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ghi chi tiêu"
+    static let description = IntentDescription("Ghi nhanh một khoản chi bằng giọng nói hoặc gõ, ví dụ \"35k cafe\", không cần mở app.")
+
+    @Parameter(title: "Khoản chi", requestValueDialog: IntentDialog("Chi gì, bao nhiêu? Ví dụ: 35k cafe"))
+    var text: String
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let store = Store.shared
+        guard let e = store.quickAdd(text, spoken: true) else {
+            throw $text.needsValueError(IntentDialog("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe"))
+        }
+        var reply = "Đã ghi \(fmt(e.a))đ \(Category.get(e.c).name)."
+        if let b = store.budgetStatus() { reply += " \(b.label) trong tháng." }
+        else { reply += " Hôm nay đã chi \(fmt(store.total(on: Date())))đ." }
+        return .result(dialog: IntentDialog(stringLiteral: reply))
     }
 }

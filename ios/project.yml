@@ -7,6 +7,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: U5DGWB7A5X   # tài khoản nhà phát triển cá nhân (trả phí)
 targets:
   Pay:
     type: application
@@ -14,6 +15,10 @@ targets:
     sources: [Pay, Shared]
     dependencies:
       - target: PayWidget
+    attributes:
+      SystemCapabilities:
+        com.apple.iCloud: {enabled: 1}
+        com.apple.ApplicationGroups.iOS: {enabled: 1}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay
@@ -38,6 +43,8 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Pay dùng camera để quét mã QR thanh toán.
+        NSMicrophoneUsageDescription: Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
+        NSSpeechRecognitionUsageDescription: Pay chuyển giọng nói thành chữ để ghi khoản chi.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
@@ -86,6 +93,9 @@ targets:
     type: app-extension
     platform: iOS
     sources: [PayWidget, Shared]
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS: {enabled: 1}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hnaht95.sochipay.widget

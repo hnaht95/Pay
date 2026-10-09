@@ -24,17 +24,25 @@ struct HomeView: View {
     @State private var scanning = false
     @State private var showHistory = false
     @State private var showSettings = false
+    @State private var showStats = false
+    @State private var listening = false
     @State private var scanned: String?
+    /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
+    /// mở lại sáng hôm sau vẫn hiện số của hôm qua
+    @State private var now = Date()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        let now = Date()
+        let now = self.now
         ZStack(alignment: .bottom) {
             Palette.bg.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     header(now)
-                    hero(now).padding(.top, 14)
+                    Button { showStats = true } label: { hero(now) }
+                        .buttonStyle(Pressable())
+                        .padding(.top, 14)
 
                     sectionTitle("Danh mục") { Text("Tháng \(Calendar.current.component(.month, from: now))") }
                     tiles(now)
@@ -62,6 +70,17 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
+        .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
+        .fullScreenCover(isPresented: $listening) {
+            VoiceEntryView(onScan: {
+                Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
+            }, onEdit: { e in
+                Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
+            })
+            .environmentObject(store)
+        }
+        .onChange(of: scenePhase) { _, p in if p == .active { self.now = Date() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in self.now = Date() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
             quick.pending = nil
@@ -71,34 +90,49 @@ struct HomeView: View {
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
     private func run(_ k: QuickKind) async {
-        let busy = entry != nil || scanning || showHistory || showSettings
-        if k == .scan && scanning { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false
+        let busy = entry != nil || scanning || showHistory || showSettings || showStats || listening
+        if (k == .scan && scanning) || (k == .voice && listening) { return }
+        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; listening = false
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true
         case .add: entry = .new(cat: nil)
+        case .voice: listening = true
         }
     }
 
     // MARK: Các phần
 
     private func header(_ now: Date) -> some View {
-        HStack {
+        HStack(spacing: 8) {
             Text("Pay").font(.system(size: 28, weight: .bold))
             Spacer()
             Text(dayLabel(now))
-                .font(.system(size: 15)).foregroundStyle(.secondary)
-                .padding(.horizontal, 14).padding(.vertical, 8)
+                .font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .frame(height: Self.headerSize)
                 .background(Palette.pill, in: Capsule())
-            Button { showSettings = true } label: {
-                Image(systemName: "gearshape").font(.system(size: 18, weight: .medium))
-                    .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
-            }
-            .foregroundStyle(.primary)
-            .accessibilityLabel("Cài đặt")
+            headerButton("chart.bar.fill", "Thống kê") { showStats = true }
+            headerButton("gearshape.fill", "Cài đặt") { showSettings = true }
         }
         .padding(.top, 8)
+    }
+
+    /// Cao của mọi thứ trên thanh đầu trang: nhãn ngày và các nút tròn.
+    private static let headerSize: CGFloat = 42
+
+    /// Nút tròn trên thanh đầu trang: biểu tượng tô đặc, cùng kích thước.
+    private func headerButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Image(systemName: symbol)
+                .resizable().scaledToFit()
+                .fontWeight(.semibold)
+                .frame(width: 18, height: 18)   // mọi biểu tượng vừa trong cùng ô 18×18 nên to bằng nhau
+                .frame(width: Self.headerSize, height: Self.headerSize)
+                .background(Palette.pill, in: Circle())
+        }
+        .foregroundStyle(.primary)
+        .accessibilityLabel(label)
     }
 
     private func hero(_ now: Date) -> some View {
@@ -115,17 +149,35 @@ struct HomeView: View {
             .padding(.top, 10).padding(.bottom, 14)
             HStack {
                 Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))đ")
-                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(Palette.goodInk)
+                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Palette.good, in: Capsule())
+                    .background(Palette.pill, in: Capsule())
                     .lineLimit(1)
                 Spacer()
                 if n > 0 { Text("\(n) khoản").font(.system(size: 15)).foregroundStyle(.secondary) }
             }
+            if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.hero, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .environment(\.colorScheme, .light)   // thẻ luôn nền trắng chữ đen, kể cả chế độ tối (nổi trên nền đen)
+    }
+
+    /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
+    private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            BudgetBar(s: b, height: 10, track: Palette.pill)
+            HStack(spacing: 4) {
+                // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
+                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
+                Text(b.label).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
+                Spacer()
+                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))đ" : "~\(fmt(b.perDay(at: now)))đ/ngày")
+                    .font(.system(size: 15)).foregroundStyle(.secondary)
+            }
+            .lineLimit(1).minimumScaleFactor(0.8)
+        }
     }
 
     private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {
@@ -148,7 +200,7 @@ struct HomeView: View {
                 Button { entry = .new(cat: c.k) } label: {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(alignment: .top) {
-                            Text(c.icon).font(.system(size: 26))
+                            CategoryIcon(c: c, size: 30)
                                 .frame(width: 52, height: 52).background(.white, in: Circle())
                             Spacer()
                             Image(systemName: "plus").font(.system(size: 14, weight: .bold))
@@ -171,23 +223,30 @@ struct HomeView: View {
     @ViewBuilder private var recent: some View {
         let list = Array(store.sorted.prefix(5))
         if list.isEmpty {
-            Text("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Lưu** / bấm một danh mục ở trên.")
+            Text("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")
                 .font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else {
-            VStack(spacing: 10) {
+            // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
+            List {
                 ForEach(list) { e in
-                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true) }.buttonStyle(Pressable())
+                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true, now: now) }
+                        .buttonStyle(Pressable())
+                        .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
             }
+            .listStyle(.plain)
+            .scrollDisabled(true)
+            .scrollContentBackground(.hidden)
+            .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
         }
     }
 
-    /// iOS 26 tự làm mờ mép dưới (scroll edge effect) sau thanh nút, đúng kiểu app hệ thống.
+    /// iOS 26: chừa chỗ cho thanh nút bằng safeAreaBar (không cần đệm 120pt ở cuối nội dung).
     static var nativeEdge: Bool { if #available(iOS 26.0, *) { true } else { false } }
 
-    /// Lớp mờ dưới đáy cho iOS cũ hơn 26: mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
+    /// Lớp mờ dưới đáy (mọi phiên bản iOS): mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
     private var bottomBlur: some View {
         Color.clear
             .overlay(alignment: .bottom) {
@@ -222,14 +281,31 @@ struct HomeView: View {
 
 // MARK: Thành phần dùng chung
 
+extension View {
+    /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (vuốt hết cỡ là xoá; chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
+    func expenseSwipe(delete: @escaping () -> Void) -> some View {
+        self
+            .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
+                Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel("Xoá")
+            }
+    }
+}
+
 struct ExpenseRow: View {
+    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 80pt: biểu tượng 56 + lề 2×12).
+    static let rowHeight: CGFloat = 90
     let e: Expense
     var showDay = false
+    var now = Date()
 
     var body: some View {
         let c = Category.get(e.c)
         HStack(spacing: 14) {
-            Text(c.icon).font(.system(size: 26))
+            CategoryIcon(c: c, size: 30)
                 .frame(width: 56, height: 56)
                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
@@ -249,7 +325,7 @@ struct ExpenseRow: View {
         var parts: [String] = []
         if showDay {
             let cal = Calendar.current
-            if cal.isDateInToday(e.date) { parts.append("Hôm nay") }
+            if cal.isDate(e.date, inSameDayAs: now) { parts.append("Hôm nay") }
             else { let d = cal.dateComponents([.day, .month], from: e.date); parts.append("\(d.day!)/\(d.month!)") }
         }
         parts.append(tf.string(from: e.date))
@@ -292,7 +368,9 @@ extension View {
     /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
     @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B) -> some View {
         if #available(iOS 26.0, *) {
-            safeAreaBar(edge: .bottom) { dock }
+            // Mép mờ của hệ thống quá nhẹ trên máy thật, nên phủ thêm lớp mờ tự làm phía dưới thanh nút
+            overlay(alignment: .bottom) { fallbackBlur }
+                .safeAreaBar(edge: .bottom) { dock }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock } }

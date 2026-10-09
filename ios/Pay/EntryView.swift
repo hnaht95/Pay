@@ -101,7 +101,7 @@ struct EntryView: View {
                             let on = cat == c.k
                             // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
                             HStack(spacing: 8) {
-                                Text(c.icon).font(.system(size: 18)).frame(width: 36, height: 36)
+                                CategoryIcon(c: c, size: 22).frame(width: 36, height: 36)
                                     .background(on ? Color.white.opacity(0.7) : c.color, in: Circle())
                                 Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
                             }

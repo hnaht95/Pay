@@ -217,7 +217,7 @@ struct VoiceEntryView: View {
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
     @ViewBuilder private var amountBlock: some View {
         let live = saved.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? QuickParse.spoken(mic.text).map { (amount: $0.amount, note: $0.note, cat: Category.guess($0.note)) }
+            ?? QuickParse.spoken(mic.text).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(live.map { fmt($0.amount) } ?? "0")

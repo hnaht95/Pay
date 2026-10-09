@@ -17,6 +17,7 @@ struct SettingsView: View {
                     .listRowBackground(Color.clear)
 
                 budgetSection
+                recurringSection
                 cloudSection
                 bankSection
 
@@ -44,14 +45,16 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Xong") { dismiss() } }
             }
         }
-        .task(id: store.items) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
+        // File sao lưu có cả khoản định kỳ và danh mục đã học: đổi gì cũng làm lại
+        .task(id: [store.items.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result { store.importBackup(from: url) }
         }
         .confirmationDialog("Xoá tất cả khoản chi?", isPresented: $confirmErase, titleVisibility: .visible) {
             Button("Xoá tất cả", role: .destructive) { store.eraseAll() }
         } message: {
-            Text(store.cloudOn ? "Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá. Nên sao lưu trước." : "Không hoàn tác được. Nên sao lưu trước.")
+            Text((store.cloudOn ? "Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá." : "Không hoàn tác được.")
+                 + (store.rules.values.contains(where: \.on) ? " Khoản định kỳ cũng dừng tự ghi." : "") + " Nên sao lưu trước.")
         }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
     }
@@ -118,6 +121,45 @@ struct SettingsView: View {
             Text("Ngân sách")
         } footer: {
             Text("Màn hình chính và widget hiện số còn lại và mức nên tiêu mỗi ngày. Dùng từ 80% thì chuyển màu cam, vượt thì màu đỏ.")
+        }
+    }
+
+    // MARK: Khoản định kỳ
+
+    private var recurringSection: some View {
+        let list = store.rules.values.filter(\.on).sorted { ($0.day, $0.minute, $0.id) < ($1.day, $1.minute, $1.id) }
+        return Section {
+            if list.isEmpty {
+                Label {
+                    Text("Nhấn giữ một khoản chi (tiền nhà, điện, internet…) và chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")
+                        .font(.system(size: 15)).foregroundStyle(.secondary)
+                } icon: {
+                    icon("repeat", .purple)
+                }
+            }
+            ForEach(list) { r in
+                let c = Category.get(r.c)
+                HStack(spacing: 12) {
+                    CategoryIcon(c: c, size: 20)
+                        .frame(width: 34, height: 34)
+                        .background(c.color, in: Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(r.n?.isEmpty == false ? r.n! : c.name).lineLimit(1)
+                        Text("Ngày \(r.day) hằng tháng").font(.system(size: 14)).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text("\(fmt(r.a))đ").fontWeight(.semibold).lineLimit(1)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) { store.stopRepeating(r) } label: { Text("Bỏ lặp") }
+                }
+            }
+        } header: {
+            Text("Khoản định kỳ")
+        } footer: {
+            if !list.isEmpty {
+                Text("Tới ngày là app tự ghi (khi mở app). Tháng nào đã tự ghi tay khoản giống hệt thì bỏ qua. Vuốt sang trái để bỏ lặp.")
+            }
         }
     }
 
@@ -269,11 +311,19 @@ struct QuickAccessHelp: View {
             Section {
                 step(1, "Ở màn hình chính, chạm và giữ vào chỗ trống đến khi biểu tượng rung.")
                 step(2, "Bấm Sửa › Thêm tiện ích, tìm \"Pay\".")
-                step(3, "Chọn cỡ nhỏ (chạm là quét QR) hoặc cỡ vừa (có nút Quét QR và Nhập).")
+                step(3, "Chọn \"Chi tiêu hôm nay\" (cỡ vừa có nút Quét QR, Nói, Nhập) hoặc \"Nói để ghi\" (chạm là nghe luôn).")
             } header: {
                 Label("Widget màn hình chính", systemImage: "square.grid.2x2.fill")
+            }
+
+            Section {
+                step(1, "Chạm và giữ màn hình khoá, bấm Tuỳ chỉnh › Màn hình khoá.")
+                step(2, "Bấm vùng widget dưới đồng hồ, chọn Pay › \"Nói để ghi\" (nút micro tròn).")
+                step(3, "iOS 18 trở lên: bấm nút ở góc dưới (đèn pin, camera), đổi thành \"Pay: Ghi bằng giọng nói\".")
+            } header: {
+                Label("Màn hình khoá: nút micro", systemImage: "lock.fill")
             } footer: {
-                Text("Màn hình khoá cũng có widget: số đã chi hôm nay, hoặc nút tròn quét QR.")
+                Text("Chạm nút micro, mở khoá xong là Pay nghe luôn. Màn hình khoá cũng có nút quét QR và số đã chi hôm nay.")
             }
 
             Section {

@@ -30,6 +30,8 @@ struct HomeView: View {
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
     /// mở lại sáng hôm sau vẫn hiện số của hôm qua
     @State private var now = Date()
+    /// Các khoản "Chi lại" đang hiện; giữ nguyên thứ tự khi đang dùng để chạm hai lần liền không trúng khoản khác
+    @State private var again: [Store.Frequent] = []
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -43,6 +45,8 @@ struct HomeView: View {
                     Button { showStats = true } label: { hero(now) }
                         .buttonStyle(Pressable())
                         .padding(.top, 14)
+
+                    againSection
 
                     sectionTitle("Danh mục") { Text("Tháng \(Calendar.current.component(.month, from: now))") }
                     tiles(now)
@@ -79,13 +83,29 @@ struct HomeView: View {
             })
             .environmentObject(store)
         }
-        .onChange(of: scenePhase) { _, p in if p == .active { self.now = Date() } }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in self.now = Date() }
+        .onChange(of: scenePhase) { _, p in if p == .active { wake() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in wake() }
+        .onAppear { again = store.frequent() }
+        .onChange(of: store.items) { refreshAgain() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
             quick.pending = nil
             Task { await run(k) }
         }
+    }
+
+    /// App quay lại / qua nửa đêm: cập nhật "hôm nay", ghi khoản định kỳ vừa tới hạn, xếp lại "Chi lại".
+    private func wake() {
+        now = Date()
+        store.catchUpRecurring()
+        again = store.frequent()
+    }
+
+    /// Có khoản mới / xoá: thêm bớt "Chi lại" nhưng không đảo chỗ các khoản đang hiện.
+    private func refreshAgain() {
+        let fresh = store.frequent()
+        let keep = again.filter { a in fresh.contains { $0.id == a.id } }
+        again = keep + fresh.filter { f in !keep.contains { $0.id == f.id } }
     }
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
@@ -192,6 +212,46 @@ struct HomeView: View {
         .padding(.top, 26).padding(.bottom, 12)
     }
 
+    /// Chi lại một chạm: những khoản hay chi, chạm là ghi luôn (có Hoàn tác ở dưới).
+    @ViewBuilder private var againSection: some View {
+        if !again.isEmpty {
+            sectionTitle("Chi lại") { Text("Chạm là ghi") }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(again) { f in
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            store.add(amount: f.amount, note: f.note, cat: f.cat)
+                        } label: { againChip(f) }
+                        .buttonStyle(Pressable())
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.horizontal, -16)
+        }
+    }
+
+    private func againChip(_ f: Store.Frequent) -> some View {
+        let c = Category.get(f.cat)
+        let name = f.note.isEmpty ? c.name : f.note
+        return HStack(spacing: 10) {
+            CategoryIcon(c: c, size: 24)
+                .frame(width: 44, height: 44)
+                .background(c.color, in: Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                Text("\(fmt(f.amount))đ").font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+            }
+        }
+        .padding(.leading, 8).padding(.trailing, 18).padding(.vertical, 8)
+        .frame(maxWidth: 220, alignment: .leading)
+        .background(Palette.card, in: Capsule())
+        .foregroundStyle(.primary)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Ghi lại \(name), \(fmt(f.amount)) đồng")
+    }
+
     private func tiles(_ now: Date) -> some View {
         var perCat: [String: Int] = [:]
         for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a }
@@ -231,8 +291,9 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
-                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true, now: now) }
+                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil) }
                         .buttonStyle(Pressable())
+                        .expenseMenu(e, store: store) { entry = .edit(e) }
                         .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
             }
@@ -295,12 +356,37 @@ extension View {
     }
 }
 
+extension View {
+    /// Nhấn giữ một khoản: Sửa, Lặp hằng tháng (tiền nhà, điện, internet…) / Bỏ lặp, Xoá.
+    func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> some View {
+        self
+            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .contextMenu {
+                Button("Sửa", systemImage: "pencil", action: edit)
+                if let r = store.rule(for: e) {
+                    Button { store.stopRepeating(r) } label: {
+                        Label("Bỏ lặp hằng tháng", systemImage: "xmark.circle")
+                        Text("Đang tự ghi vào ngày \(r.day) mỗi tháng")
+                    }
+                } else {
+                    Button { store.repeatMonthly(e) } label: {
+                        Label("Lặp hằng tháng", systemImage: "repeat")
+                        Text("Tự ghi vào ngày \(Calendar.current.component(.day, from: e.date)) mỗi tháng")
+                    }
+                }
+                Button("Xoá", systemImage: "trash", role: .destructive) { store.remove(id: e.id) }
+            }
+    }
+}
+
 struct ExpenseRow: View {
     /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 80pt: biểu tượng 56 + lề 2×12).
     static let rowHeight: CGFloat = 90
     let e: Expense
     var showDay = false
     var now = Date()
+    /// Khoản định kỳ (app tự ghi hằng tháng): hiện biểu tượng lặp
+    var repeats = false
 
     var body: some View {
         let c = Category.get(e.c)
@@ -309,7 +395,13 @@ struct ExpenseRow: View {
                 .frame(width: 56, height: 56)
                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text((e.n?.isEmpty == false ? e.n! : c.name)).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text((e.n?.isEmpty == false ? e.n! : c.name)).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                    if repeats {
+                        Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
+                            .accessibilityLabel("Hằng tháng")
+                    }
+                }
                 Text(sub(c)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)

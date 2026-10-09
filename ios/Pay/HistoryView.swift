@@ -17,8 +17,9 @@ struct HistoryView: View {
                 ForEach(groups, id: \.0) { day, list in
                     Section {
                         ForEach(list) { e in
-                            Button { editing = .edit(e) } label: { ExpenseRow(e: e) }
+                            Button { editing = .edit(e) } label: { ExpenseRow(e: e, repeats: store.rule(for: e) != nil) }
                                 .buttonStyle(Pressable())
+                                .expenseMenu(e, store: store) { editing = .edit(e) }
                                 .expenseSwipe(delete: { store.remove(id: e.id) })
                         }
                     } header: {

@@ -72,7 +72,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; border-top:
   <nav>
     <a class="logo" href="#"><img src="icon-180.png" alt="">Pay</a>
     <a class="btn small" href="#nhom">Nhóm chung</a>
-    <a class="btn small primary" id="navOpen" href="nhom.html" hidden>Mở Nhóm chung</a>
+    <a class="btn small primary" id="navOpen" href="group" hidden>Mở Nhóm chung</a>
   </nav>
 
   <header class="hero">
@@ -119,7 +119,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; border-top:
     <div>
       <h2>Nhóm chung:<br>ai nợ ai, Pay tính.</h2>
       <p class="lead">Nhà chung, phòng trọ, chuyến đi. Ai ứng tiền thì ghi, Pay gộp lại thành ít lần chuyển nhất. Bấm “Trả ngay” là mở app ngân hàng điền sẵn; người nhận xác nhận là xong.</p>
-      <div class="cta"><a class="btn primary" href="nhom.html">Mở Nhóm chung trên web</a></div>
+      <div class="cta"><a class="btn primary" href="group">Mở Nhóm chung trên web</a></div>
       <div class="note">Trên web cần Apple ID (tạo miễn phí, không cần iPhone).</div>
     </div>
     <div class="card" aria-hidden="true">
@@ -147,14 +147,14 @@ window.addEventListener('cloudkitloaded', async () => {
     const c = CloudKit.getDefaultContainer();
     const user = await c.setUpAuth();
     if (user) {
-      document.getElementById('signin').innerHTML = '<a class="btn primary" href="nhom.html">Mở Nhóm chung</a>';
+      document.getElementById('signin').innerHTML = '<a class="btn primary" href="group">Mở Nhóm chung</a>';
       document.getElementById('signinNote').textContent = 'Đã đăng nhập Apple ID.';
       document.getElementById('navOpen').hidden = false;
     } else {
-      c.whenUserSignsIn().then(() => location.href = 'nhom.html');
+      c.whenUserSignsIn().then(() => location.href = 'group');
     }
   } catch (e) {
-    document.getElementById('signin').innerHTML = '<a class="btn primary" href="nhom.html">Mở Nhóm chung</a>';
+    document.getElementById('signin').innerHTML = '<a class="btn primary" href="group">Mở Nhóm chung</a>';
   }
 });
 </script>

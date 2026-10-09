@@ -442,7 +442,7 @@ struct BigButton: View {
             HStack(spacing: 10) {
                 Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                     .frame(width: 56, height: 56)
-                    .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
+                    .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
                 if primary { Spacer(minLength: 0) }
                 Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
                     // Chữ được ưu tiên chỗ trước hai khoảng trống hai bên: không thì khi bật Chữ đậm (Trợ năng)

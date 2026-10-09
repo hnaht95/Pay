@@ -158,9 +158,9 @@ struct VoiceEntryView: View {
             Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
                 .onTapGesture { close() }
             if shown {
-                // Cách đáy màn hình bằng lề hai bên (12pt), bỏ khoảng an toàn của vạch Home
+                // Nâng lên khỏi đáy để thẻ không dính vào góc bo màn hình và các ô phía sau
                 card
-                    .padding(.horizontal, 12).padding(.bottom, 12)
+                    .padding(.horizontal, 12).padding(.bottom, 34)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -186,7 +186,9 @@ struct VoiceEntryView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))   // ôm theo góc bo màn hình
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
+        // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
+        .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
     }
 

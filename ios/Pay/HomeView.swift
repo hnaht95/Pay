@@ -35,6 +35,9 @@ struct HomeView: View {
     @State private var again: [Store.Frequent] = []
     @State private var addingCat = false
     @State private var editingCat: CatEdit?
+    /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
+    @State private var menuCat: Category?
+    @State private var pressingCat: String?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -66,6 +69,8 @@ struct HomeView: View {
 
             ToastView()
                 .padding(.bottom, 108)
+
+            if let c = menuCat { categoryMenu(c).zIndex(2) }
         }
         .fullScreenCover(item: $entry) { EntryView(mode: $0) }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
@@ -267,52 +272,106 @@ struct HomeView: View {
         for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a }
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(Category.all) { c in
-                Button { entry = .new(cat: c.k) } label: {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(alignment: .top) {
-                            CategoryIcon(c: c, size: 30)
-                                .frame(width: 52, height: 52).background(.white, in: Circle())
-                            Spacer()
-                            Image(systemName: "plus").font(.system(size: 14, weight: .bold))
-                                .frame(width: 30, height: 30).background(.white.opacity(0.6), in: Circle())
-                        }
-                        Spacer(minLength: 14)
-                        Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
-                        Text(fmt(perCat[c.k] ?? 0)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
-                    }
-                    .foregroundStyle(Color(hex: 0x111114))
-                    .padding(16)
-                    .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
-                    .background(c.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                }
-                .buttonStyle(Pressable())
-                // Nhấn giữ: đổi biểu tượng, màu, tên (cả danh mục có sẵn)
-                .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .contextMenu {
-                    Button("Sửa danh mục", systemImage: "paintpalette") { editingCat = CatEdit.of(c.k, store: store) }
-                    if Category.isBuiltin(c.k) {
-                        if store.cats[c.k]?.on == true {
-                            Button("Về mặc định", systemImage: "arrow.uturn.backward") { store.resetCategory(c.k) }
-                        }
-                    } else {
-                        Button("Xoá danh mục", systemImage: "trash", role: .destructive) { store.removeCategory(c.k) }
-                    }
-                }
+                // Chạm: nhập khoản mới; nhấn giữ: bảng tuỳ chọn tự vẽ (thay menu mặc định của iOS)
+                tile(c, total: perCat[c.k] ?? 0)
+                    .scaleEffect(pressingCat == c.k ? 0.95 : 1)
+                    .animation(.easeOut(duration: 0.18), value: pressingCat)
+                    .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .onTapGesture { entry = .new(cat: c.k) }
+                    .onLongPressGesture(minimumDuration: 0.35) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        withAnimation(.spring(duration: 0.32, bounce: 0.25)) { menuCat = c }
+                    } onPressingChanged: { pressingCat = $0 ? c.k : nil }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction(named: "Sửa danh mục") { editingCat = CatEdit.of(c.k, store: store) }
             }
             // Ô cuối: tạo danh mục riêng
             Button { addingCat = true } label: {
                 // Chỉ dấu + ở giữa ô, không chữ
                 Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                    .frame(width: 52, height: 52).background(Palette.pill, in: Circle())
+                    .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
                     .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, minHeight: 140)
-                .background(RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
+                .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
             .buttonStyle(Pressable())
             .accessibilityLabel("Thêm danh mục")
         }
+    }
+
+    private func tile(_ c: Category, total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                CategoryIcon(c: c, size: 30)
+                    .frame(width: 52, height: 52).background(.white, in: Circle())
+                Spacer()
+                Image(systemName: "plus").font(.system(size: 14, weight: .bold))
+                    .frame(width: 30, height: 30).background(.white.opacity(0.6), in: Circle())
+            }
+            Spacer(minLength: 14)
+            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
+            Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+        }
+        .foregroundStyle(Color(hex: 0x111114))
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
+        .background(c.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    /// Bảng tuỳ chọn khi nhấn giữ một danh mục: cùng kiểu thẻ của app, nền mờ phía sau chạm là đóng.
+    private func categoryMenu(_ c: Category) -> some View {
+        let close = { withAnimation(.easeOut(duration: 0.2)) { menuCat = nil } }
+        let month = store.monthItems(now).filter { $0.c == c.k }
+        return ZStack {
+            Color.black.opacity(0.3).ignoresSafeArea().onTapGesture(perform: close)
+            VStack(spacing: 0) {
+                HStack(spacing: 14) {
+                    CategoryIcon(c: c, size: 30)
+                        .frame(width: 56, height: 56).background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(c.name).font(.system(size: 19, weight: .bold)).lineLimit(1)
+                        Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month.reduce(0) { $0 + $1.a })) · \(month.count) khoản")
+                            .font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(18)
+                VStack(spacing: 4) {
+                    menuRow("plus", "Nhập khoản \(c.name)") { close(); entry = .new(cat: c.k) }
+                    menuRow("paintpalette.fill", "Đổi biểu tượng, màu, tên") { close(); editingCat = CatEdit.of(c.k, store: store) }
+                    if Category.isBuiltin(c.k) {
+                        if store.cats[c.k]?.on == true {
+                            menuRow("arrow.uturn.backward", "Về mặc định") { close(); store.resetCategory(c.k) }
+                        }
+                    } else {
+                        menuRow("trash.fill", "Xoá danh mục", danger: true) { close(); store.removeCategory(c.k) }
+                    }
+                }
+                .padding(.horizontal, 8).padding(.bottom, 10)
+            }
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .shadow(color: .black.opacity(0.2), radius: 30, y: 10)
+            .padding(.horizontal, 24)
+            .transition(.scale(scale: 0.9).combined(with: .opacity))
+        }
+    }
+
+    private func menuRow(_ icon: String, _ title: String, danger: Bool = false, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            HStack(spacing: 14) {
+                Image(systemName: icon).font(.system(size: 16, weight: .semibold))
+                    .frame(width: 40, height: 40)
+                    .background(danger ? Palette.danger.opacity(0.12) : Palette.pill, in: Circle())
+                Text(title).font(.system(size: 17, weight: .medium)).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(danger ? Palette.danger : .primary)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(Pressable())
     }
 
     @ViewBuilder private var recent: some View {

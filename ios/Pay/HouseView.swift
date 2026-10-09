@@ -303,11 +303,10 @@ struct HouseView: View {
             ForEach(active) { groupCard($0) }
             Button { groupName = ""; creating = true } label: {
                 Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                    .frame(width: 52, height: 52).background(Palette.pill, in: Circle())
+                    .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, minHeight: 96)
-                    .background(RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
+                    .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                     .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
             .buttonStyle(Pressable())
@@ -402,11 +401,10 @@ struct HouseView: View {
             }
             Button { claimAfterAdd = true; addingMember = true } label: {
                 Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                    .frame(width: 56, height: 56).background(Palette.pill, in: Circle())
+                    .frame(width: 56, height: 56).background(Palette.surface, in: Circle())
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity).padding(.vertical, 20)
-                .background(RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
+                .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
             .buttonStyle(Pressable())
             .accessibilityLabel("Thêm tôi vào nhóm")
@@ -561,11 +559,10 @@ struct HouseView: View {
                 }
                 Button { addingMember = true } label: {
                     Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                        .frame(width: 48, height: 48).background(Palette.pill, in: Circle())
+                        .frame(width: 48, height: 48).background(Palette.surface, in: Circle())
                         .foregroundStyle(.primary)
                         .frame(width: 96).frame(maxHeight: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
+                    .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 .buttonStyle(Pressable())
                 .accessibilityLabel("Thêm người")

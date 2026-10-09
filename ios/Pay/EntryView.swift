@@ -9,7 +9,11 @@ struct EntryView: View {
     @State private var digits = ""
     @State private var cat: String?
     @State private var catPicked = false
+    /// Người dùng tự bấm đổi danh mục: lưu xong thì nhớ danh mục này cho ghi chú.
+    /// Mở từ ô danh mục thì không tính (chọn trước khi gõ, chưa phải đổi so với app đoán)
+    @State private var chosen = false
     @State private var note = ""
+    @State private var addingCat = false
     @State private var ready = false
     @FocusState private var noteFocused: Bool
 
@@ -41,7 +45,7 @@ struct EntryView: View {
                 .padding(.top, 12)
                 .onChange(of: note) { _, v in
                     guard !catPicked else { return }
-                    let g = Category.guess(v)
+                    let g = store.guessCategory(v)
                     if g != "khac" { cat = g }
                 }
 
@@ -51,6 +55,10 @@ struct EntryView: View {
         .padding(.horizontal, 18).padding(.bottom, 8)
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
+        .sheet(isPresented: $addingCat) {
+            CategoryEditor { k in cat = k; catPicked = true; chosen = true }
+                .environmentObject(store)
+        }
     }
 
     // MARK: Phần đầu
@@ -97,7 +105,7 @@ struct EntryView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Category.all) { c in
-                        Button { cat = c.k; catPicked = true } label: {
+                        Button { cat = c.k; catPicked = true; chosen = true } label: {
                             let on = cat == c.k
                             // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
                             HStack(spacing: 8) {
@@ -111,6 +119,15 @@ struct EntryView: View {
                         }
                         .id(c.k)
                     }
+                    // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
+                    Button { addingCat = true } label: {
+                        Label("Mới", systemImage: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .padding(.horizontal, 16).frame(height: 48)
+                            .foregroundStyle(Color.primary)
+                            .background(Color.primary.opacity(0.05), in: Capsule())
+                    }
+                    .id("new")
                 }
                 .padding(.horizontal, 18)
             }
@@ -161,7 +178,7 @@ struct EntryView: View {
         VStack(spacing: 8) {
             switch mode {
             case .new, .raw:
-                primary("Lưu") { store.add(amount: amount, note: trimmed, cat: finalCat); dismiss() }
+                primary("Lưu") { learn(); store.add(amount: amount, note: trimmed, cat: finalCat); dismiss() }
             case .scan(let q):
                 let app = store.bankApp
                 primary("Lưu & mở \(app.name)") {
@@ -178,7 +195,7 @@ struct EntryView: View {
             case .edit(var e):
                 primary("Lưu thay đổi") {
                     e.a = amount; e.n = trimmed; e.c = finalCat
-                    store.update(e); dismiss()
+                    learn(); store.update(e); dismiss()
                 }
                 Button(role: .destructive) { store.remove(id: e.id); dismiss() } label: {
                     Text("Xoá khoản này").font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 46)
@@ -215,9 +232,15 @@ struct EntryView: View {
     // MARK: Lưu
 
     private var trimmed: String { note.trimmingCharacters(in: .whitespaces) }
-    private var finalCat: String { cat ?? Category.guess(trimmed) }
+    private var finalCat: String { cat ?? store.guessCategory(trimmed) }
+
+    /// Tự học: lần sau gõ / nói / quét đúng tên này thì app chọn sẵn danh mục người dùng đã chọn.
+    private func learn() {
+        if chosen { store.learnCategory(trimmed, finalCat) }
+    }
 
     private func saveScan(_ q: VietQR) {
+        learn()
         let key = q.memoKey
         let old = key.flatMap { store.memo[$0] }
         let name = !trimmed.isEmpty ? trimmed : (!q.name.isEmpty ? q.name : "\(q.bank) \(q.acct ?? "")")
@@ -237,7 +260,7 @@ struct EntryView: View {
             let m = q.memoKey.flatMap { store.memo[$0] }
             note = m?.n ?? (!q.name.isEmpty ? q.name : q.purpose)
             if let a = q.amount, a > 0 { digits = String(a) }
-            cat = m?.c ?? Category.guess(note)
+            cat = m?.c ?? store.guessCategory(note)
             catPicked = m?.c != nil
         case .edit(let e):
             digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true

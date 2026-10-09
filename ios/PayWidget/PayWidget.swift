@@ -6,6 +6,7 @@ import WidgetKit
 struct PayWidgets: WidgetBundle {
     var body: some Widget {
         SpendWidget()
+        VoiceWidget()
         if #available(iOS 18.0, *) {
             VoiceControl()
             ScanControl()
@@ -43,7 +44,7 @@ struct SpendWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "SpendWidget", provider: SpendProvider()) { SpendView(e: $0) }
             .configurationDisplayName("Chi tiêu hôm nay")
-            .description("Xem nhanh số đã chi, chạm để quét QR hoặc nhập khoản mới.")
+            .description("Xem nhanh số đã chi, chạm để quét QR, nói hoặc nhập khoản mới.")
             .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }
@@ -68,9 +69,12 @@ struct SpendView: View {
         case .systemMedium:
             HStack(spacing: 14) {
                 totals.frame(maxWidth: .infinity, alignment: .leading)
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     action("Quét QR", "qrcode.viewfinder", .scan, primary: true)
-                    action("Nhập", "plus", .add, primary: false)
+                    HStack(spacing: 8) {
+                        iconAction("mic.fill", .voice, "Nói để ghi")
+                        iconAction("plus", .add, "Nhập")
+                    }
                 }
                 .frame(width: 118)
             }
@@ -94,11 +98,12 @@ struct SpendView: View {
             VStack(alignment: .leading, spacing: 0) {
                 totals
                 Spacer(minLength: 6)
+                // Màu chữ đặt trước nền: nền .primary lấy theo màu chữ bên ngoài nó
                 Label("Quét QR", systemImage: "qrcode.viewfinder")
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(scheme == .dark ? .black : .white)
                     .padding(.horizontal, 12).padding(.vertical, 7)
                     .background(.primary, in: Capsule())
-                    .foregroundStyle(scheme == .dark ? .black : .white)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .widgetURL(QuickKind.scan.url)
@@ -125,14 +130,75 @@ struct SpendView: View {
         }
     }
 
+    private func iconAction(_ icon: String, _ k: QuickKind, _ label: String) -> some View {
+        Link(destination: k.url) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .foregroundStyle(.primary)
+        }
+        .accessibilityLabel(label)
+    }
+
     private func action(_ title: String, _ icon: String, _ k: QuickKind, primary: Bool) -> some View {
         Link(destination: k.url) {
             Label(title, systemImage: icon)
                 .font(.system(size: 15, weight: .semibold))
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .foregroundStyle(primary ? (scheme == .dark ? Color.black : Color.white) : Color.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(primary ? AnyShapeStyle(.primary) : AnyShapeStyle(.background.opacity(0.6)),
                             in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .foregroundStyle(primary ? (scheme == .dark ? Color.black : Color.white) : Color.primary)
+        }
+    }
+}
+
+// MARK: Nút micro: chạm là mở Pay và nghe luôn (màn hình chính + màn hình khoá)
+
+struct VoiceWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "VoiceWidget", provider: SpendProvider()) { VoiceView(e: $0) }
+            .configurationDisplayName("Nói để ghi")
+            .description("Chạm là Pay nghe luôn, nói \"35k cafe\" là ghi.")
+            .supportedFamilies([.systemSmall, .accessoryCircular])
+    }
+}
+
+struct VoiceView: View {
+    let e: SpendEntry
+    @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        content
+            .widgetURL(QuickKind.voice.url)
+            .containerBackground(for: .widget) {
+                if family == .systemSmall { scheme == .dark ? heroDark : hero } else { Color.clear }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
+        if family == .accessoryCircular {
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
+            }
+            .accessibilityLabel("Nói để ghi")
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(scheme == .dark ? Color.black : Color.white)
+                    .frame(width: 60, height: 60)
+                    .background(.primary, in: Circle())
+                Spacer(minLength: 6)
+                Text("Nói để ghi").font(.system(size: 18, weight: .bold))
+                Text("Hôm nay \(fmt(e.s.today))đ")
+                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .minimumScaleFactor(0.7).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
     }
 }

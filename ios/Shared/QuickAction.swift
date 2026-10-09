@@ -17,6 +17,8 @@ enum QuickKind: String {
 final class QuickAction: ObservableObject {
     static let shared = QuickAction()
     @Published var pending: QuickKind?
+    /// Vừa nhận lời mời vào Nhà chung: mở màn hình nhóm
+    @Published var openHouse = false
 }
 
 /// Mở app và vào thẳng màn hình quét QR. Dùng cho nút Tác vụ, Trung tâm điều khiển, Phím tắt và Siri.

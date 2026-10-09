@@ -9,6 +9,8 @@ final class VoiceListener: ObservableObject {
 
     @Published var text = ""
     @Published var phase: Phase = .idle
+    /// Độ to của giọng (0…1) để vẽ sóng âm
+    @Published var level: CGFloat = 0
     var onFinish: ((String) -> Void)?
 
     private let engine = AVAudioEngine()
@@ -18,6 +20,13 @@ final class VoiceListener: ObservableObject {
 
     func start() async {
         text = ""
+        #if DEBUG
+        // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
+        if let demo = UserDefaults.standard.string(forKey: "voiceDemo") {
+            phase = .listening; text = demo; level = 0.6
+            return
+        }
+        #endif
         let speechOK = await withCheckedContinuation { c in
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0 == .authorized) }
         }
@@ -49,7 +58,17 @@ final class VoiceListener: ObservableObject {
                 phase = .failed("Không dùng được micro lúc này. Thử lại, hoặc nhập tay.")
                 return
             }
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in req.append(buffer) }
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+                req.append(buffer)
+                // Độ to (RMS) đổi sang thang 0…1 cho sóng âm
+                guard let ch = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
+                let n = Int(buffer.frameLength)
+                var sum: Float = 0
+                for i in 0..<n { sum += ch[i] * ch[i] }
+                let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
+                let v = CGFloat(min(max((db + 50) / 40, 0), 1))
+                Task { @MainActor in self?.level = v }
+            }
             engine.prepare()
             try engine.start()
             phase = .listening
@@ -85,6 +104,7 @@ final class VoiceListener: ObservableObject {
 
     func finish() {
         guard phase == .listening else { return }
+        level = 0
         stop()
         phase = .idle
         onFinish?(text)
@@ -104,7 +124,8 @@ final class VoiceListener: ObservableObject {
     }
 }
 
-/// Bảng "đang nghe": mở từ nút Tác vụ / Trung tâm điều khiển, nói "35k cafe" là ghi.
+/// Thẻ "đang nghe" nổi ở đáy màn hình: nói "35k cafe" là ghi.
+/// Mở bằng fullScreenCover nền trong suốt; nền tối phía sau chạm vào là huỷ.
 struct VoiceEntryView: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
@@ -112,37 +133,163 @@ struct VoiceEntryView: View {
     @State private var saved: Expense?
     @State private var notUnderstood = false
     @State private var autoClose: Task<Void, Never>?
-    /// Bấm "Nhập tay": đóng bảng này và mở màn hình nhập.
+    @State private var shown = false
+    /// Bấm "Nhập tay": đóng thẻ này và mở màn hình nhập.
     var onTypeInstead: () -> Void
-    /// Bấm "Sửa" sau khi ghi: đóng bảng này và mở khoản vừa ghi để sửa.
+    /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
     var onEdit: (Expense) -> Void = { _ in }
 
     var body: some View {
-        VStack(spacing: 18) {
-            HStack {
-                Spacer()
-                Button("Huỷ") { mic.stop(); dismiss() }.font(.system(size: 17))
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
+                .onTapGesture { close() }
+            if shown {
+                card
+                    .padding(.horizontal, 12).padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            Spacer(minLength: 0)
-            icon
-            Text(title).font(.system(size: 20, weight: .semibold)).multilineTextAlignment(.center)
-            Text(detail).font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                .lineLimit(3).frame(minHeight: 48)
-            Spacer(minLength: 0)
-            buttons
         }
-        .padding(24)
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: shown)
+        .presentationBackground(.clear)
         .task {
+            shown = true
             mic.onFinish = { said in handle(said) }
             await mic.start()
         }
         .onDisappear { mic.stop() }
     }
 
+    // MARK: Thẻ
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            header
+            amountBlock
+            if mic.phase == .listening { Waveform(level: mic.level).frame(height: 44) }
+            buttons
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            if saved != nil {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text("Đã ghi").foregroundStyle(.secondary)
+            } else if mic.phase == .listening {
+                PulseDot()
+                Text("Đang nghe").foregroundStyle(.secondary)
+            } else if notUnderstood {
+                Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange)
+                Text("Chưa nghe rõ số tiền").foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "mic.fill").foregroundStyle(.secondary)
+                Text(statusText).foregroundStyle(.secondary).lineLimit(2)
+            }
+            Spacer()
+            Button { close() } label: {
+                Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
+                    .frame(width: 30, height: 30).background(Palette.pill, in: Circle())
+            }
+            .foregroundStyle(.primary)
+            .accessibilityLabel("Đóng")
+        }
+        .font(.system(size: 15, weight: .medium))
+    }
+
+    /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
+    @ViewBuilder private var amountBlock: some View {
+        let live = saved.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
+            ?? QuickParse.spoken(mic.text).map { (amount: $0.amount, note: $0.note, cat: Category.guess($0.note)) }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(live.map { fmt($0.amount) } ?? "0")
+                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
+                    .foregroundStyle(live == nil ? Color.secondary.opacity(0.5) : .primary)
+                    .contentTransition(.numericText())
+                    .minimumScaleFactor(0.5).lineLimit(1)
+                Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
+            }
+            .animation(.snappy, value: live?.amount)
+            if let l = live {
+                let c = Category.get(l.cat)
+                HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        CategoryIcon(c: c, size: 18)
+                        Text(c.name).font(.system(size: 14, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(c.color, in: Capsule())
+                    .foregroundStyle(.black)
+                    if !l.note.isEmpty {
+                        Text(l.note).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+            } else {
+                Text(hint).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(2)
+            }
+        }
+    }
+
+    private var hint: String {
+        if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
+        if mic.phase == .listening { return mic.text.isEmpty ? "Nói ví dụ: \"ba lăm nghìn cà phê\"" : mic.text }
+        if mic.phase == .denied { return "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói." }
+        return ""
+    }
+
+    private var statusText: String {
+        switch mic.phase {
+        case .denied: return "Cần quyền micro"
+        case .failed(let why): return why
+        default: return "Đang bật micro…"
+        }
+    }
+
+    // MARK: Nút
+
+    @ViewBuilder private var buttons: some View {
+        HStack(spacing: 10) {
+            if let e = saved {
+                pill("Sửa", primary: false) { autoClose?.cancel(); dismiss(); onEdit(e) }
+                pill("Xong", primary: true) { autoClose?.cancel(); dismiss() }
+            } else if mic.phase == .listening {
+                pill("Nhập tay", primary: false) { mic.stop(); dismiss(); onTypeInstead() }
+                pill("Xong", primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
+                    .disabled(mic.text.isEmpty).opacity(mic.text.isEmpty ? 0.4 : 1)
+            } else if mic.phase == .denied {
+                pill("Nhập tay", primary: false) { dismiss(); onTypeInstead() }
+                pill("Mở Cài đặt", primary: true) {
+                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                }
+            } else if notUnderstood || mic.phase != .idle {
+                pill("Nhập tay", primary: false) { mic.stop(); dismiss(); onTypeInstead() }
+                pill("Nói lại", primary: true) { retry() }
+            }
+        }
+    }
+
+    private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Text(title).font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .foregroundStyle(primary ? Palette.ctaInk : .primary)
+                .background(primary ? Palette.cta : Palette.pill, in: Capsule())
+        }
+        .buttonStyle(Pressable())
+    }
+
+    // MARK: Xử lý
+
     private func handle(_ said: String) {
-        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else { notUnderstood = true; return }
+        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else {
+            notUnderstood = true
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            return
+        }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         // Để 3 giây cho kịp nhìn số tiền rồi tự đóng; bấm Sửa / Xong thì đóng ngay
@@ -158,79 +305,42 @@ struct VoiceEntryView: View {
         Task { await mic.start() }
     }
 
-    @ViewBuilder private var icon: some View {
-        let listening = mic.phase == .listening
-        Image(systemName: saved != nil ? "checkmark" : (notUnderstood ? "questionmark" : "mic.fill"))
-            .font(.system(size: 34, weight: .semibold))
-            .foregroundStyle(saved != nil ? .white : Palette.ctaInk)
-            .frame(width: 88, height: 88)
-            .background(saved != nil ? Color.green : Palette.cta, in: Circle())
-            .overlay(Circle().stroke(Palette.cta.opacity(0.25), lineWidth: 10).scaleEffect(listening ? 1.25 : 1).opacity(listening ? 1 : 0))
-            .animation(listening ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: listening)
+    private func close() {
+        autoClose?.cancel()
+        mic.stop()
+        dismiss()
     }
+}
 
-    private var title: String {
-        if let e = saved { return "Đã ghi \(fmt(e.a))đ · \(Category.get(e.c).name)" }
-        if notUnderstood { return "Chưa nghe rõ số tiền" }
-        switch mic.phase {
-        case .listening: return mic.text.isEmpty ? "Đang nghe…" : understood(mic.text)
-        case .denied: return "Cần quyền micro và nhận giọng nói"
-        case .failed(let why): return why
-        case .idle: return "Đang bật micro…"
-        }
-    }
+/// Sóng âm: các thanh nhảy theo độ to của giọng, thanh giữa cao hơn thanh hai bên.
+private struct Waveform: View {
+    let level: CGFloat
 
-    private var detail: String {
-        if let e = saved { return e.n ?? "" }   // chỉ hiện ghi chú (vd "tiền nhà"), không hiện chữ thô của Siri
-        if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
-        switch mic.phase {
-        case .listening: return mic.text.isEmpty ? "Nói ví dụ: \"35k cafe\", \"1tr2 tiền nhà\"" : "Ngừng nói là tự ghi"
-        case .denied: return "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói."
-        default: return ""
-        }
-    }
-
-    /// Hiện điều app hiểu được thay cho chữ thô của Siri ("1.000.005" -> "1.500.000đ"); chưa ra số thì hiện nguyên câu.
-    private func understood(_ said: String) -> String {
-        guard let q = QuickParse.spoken(said) else { return said }
-        return "\(fmt(q.amount))đ" + (q.note.isEmpty ? "" : " · \(q.note)")
-    }
-
-    @ViewBuilder private var buttons: some View {
-        if let e = saved {
-            // Hoàn tác đã có ở thông báo ngoài màn hình chính, ở đây chỉ Sửa / Xong
-            HStack(spacing: 12) {
-                pill("Sửa", primary: false) {
-                    autoClose?.cancel()
-                    dismiss()
-                    onEdit(e)
-                }
-                pill("Xong", primary: true) {
-                    autoClose?.cancel()
-                    dismiss()
+    var body: some View {
+        TimelineView(.animation) { t in
+            let time = t.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .center, spacing: 4) {
+                ForEach(0..<28, id: \.self) { i in
+                    let center = 1 - abs(CGFloat(i) - 13.5) / 14          // giữa cao, hai bên thấp
+                    let wobble = (sin(time * 9 + Double(i) * 0.7) + 1) / 2  // dao động nhẹ cho tự nhiên
+                    let h = 0.12 + level * center * (0.55 + 0.45 * CGFloat(wobble))
+                    Capsule().fill(Palette.cta.opacity(0.85))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: max(4, 44 * min(h, 1)))
                 }
             }
-        } else if mic.phase != .listening {
-            HStack(spacing: 12) {
-                if mic.phase == .denied {
-                    pill("Mở Cài đặt", primary: true) {
-                        if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
-                    }
-                } else if notUnderstood || mic.phase != .idle {
-                    pill("Nói lại", primary: true) { retry() }
-                }
-                pill("Nhập tay", primary: false) { mic.stop(); dismiss(); onTypeInstead() }
-            }
+            .animation(.easeOut(duration: 0.12), value: level)
         }
     }
+}
 
-    private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
-        Button(action: run) {
-            Text(title).font(.system(size: 17, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .foregroundStyle(primary ? Palette.ctaInk : .primary)
-                .background(primary ? Palette.cta : Palette.pill, in: Capsule())
-        }
-        .buttonStyle(Pressable())
+/// Chấm đỏ nhấp nháy cạnh chữ "Đang nghe".
+private struct PulseDot: View {
+    @State private var on = false
+
+    var body: some View {
+        Circle().fill(Color.red).frame(width: 9, height: 9)
+            .opacity(on ? 1 : 0.35)
+            .onAppear { withAnimation(.easeInOut(duration: 0.7).repeatForever()) { on = true } }
     }
 }

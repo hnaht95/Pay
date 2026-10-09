@@ -67,7 +67,7 @@ struct HomeView: View {
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
-        .sheet(isPresented: $listening) {
+        .fullScreenCover(isPresented: $listening) {
             VoiceEntryView(onTypeInstead: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .new(cat: nil) }
             }, onEdit: { e in

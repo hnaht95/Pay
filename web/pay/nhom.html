@@ -44,8 +44,8 @@ header h1 { flex: 1; text-align: center; font-size: 19px; font-weight: 700; whit
 .sec .tag { font-size: 15px; color: var(--muted); background: var(--pill); padding: 7px 14px; border-radius: 99px; }
 .hero { background: #fff; color: #111114; border-radius: 32px; padding: 22px; }
 .hero .label { color: #8A8D96; font-size: 16px; }
-.hero .big { font-size: 46px; font-weight: 800; letter-spacing: -1.5px; margin: 8px 0 16px; line-height: 1.05; }
-.hero .big.neg { color: #D92D20; }
+.hero .num { font-size: 46px; font-weight: 800; letter-spacing: -1.5px; margin: 8px 0 16px; line-height: 1.05; }
+.hero .num.neg { color: #D92D20; }
 .row { display: flex; align-items: center; gap: 14px; }
 .grow { flex: 1; min-width: 0; }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -59,7 +59,7 @@ header h1 { flex: 1; text-align: center; font-size: 19px; font-weight: 700; whit
 .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #111114; flex: none;
   background-size: cover; background-position: center; font-size: 16px; }
 .avs { display: flex; align-items: center; }
-.avs .av { margin-right: -10px; box-shadow: 0 0 0 2.5px #fff; width: 36px; height: 36px; font-size: 15px; }
+.avs .av { margin-right: -8px; box-shadow: 0 0 0 2.5px #fff; width: 36px; height: 36px; font-size: 15px; }
 .tile { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; flex: none; }
 .tile img { width: 28px; height: 28px; }
 
@@ -410,7 +410,7 @@ function renderGroup(g) {
   const nmTo = id => id === g.meId ? 'bạn' : memberName(g, id);
   const meM = member(g, g.meId);
   let h = `<div class="hero"><div class="label">${mine > 0 ? 'Cả nhóm còn nợ bạn' : mine < 0 ? 'Bạn còn phải trả' : 'Bạn đã cân bằng'}</div>
-    <div class="big ${mine < 0 ? 'neg' : ''}">${fmt(mine)}</div>
+    <div class="num ${mine < 0 ? 'neg' : ''}">${fmt(mine)}</div>
     <div class="avs">${g.members.slice(0, 6).map(m => avatar(m)).join('')}${g.members.length > 6 ? `<span style="margin-left:18px;color:#8A8D96;font-weight:600">+${g.members.length - 6}</span>` : ''}</div></div>`;
   if (meM && !meM.acct) h += `<button class="card row press" id="addBank" style="width:100%;text-align:left;margin-top:12px;padding:14px">
     <div class="circle">${I.bank}</div><div class="grow"><div style="font-weight:600">Thêm tài khoản nhận tiền</div>

@@ -32,9 +32,16 @@ struct CustomCat: Codable, Hashable {
     var on: Bool
     var u: Double
 
+    /// tone < 0: giữ màu gốc của danh mục có sẵn
     var category: Category {
-        Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },
-                 customChart: CategoryTone.chart(tone))
+        if let base = Category.builtin.first(where: { $0.k == k }) {
+            // Danh mục có sẵn đã chỉnh: giữ từ khoá gốc, thêm tên mới làm từ khoá
+            let kw = base.kw + [Store.noteKey(name)].filter { !$0.isEmpty && !base.kw.contains($0) }
+            return Category(k: k, icon: icon, name: name, color: tone < 0 ? base.color : CategoryTone.bg(tone),
+                            art: base.art && icon == base.icon, kw: kw, customChart: tone < 0 ? nil : CategoryTone.chart(tone))
+        }
+        return Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },
+                        customChart: CategoryTone.chart(tone))
     }
 }
 
@@ -158,7 +165,11 @@ final class Store: ObservableObject {
     @Published private(set) var rules: [String: Rule] = [:]
     /// Danh mục tự tạo theo mã
     @Published private(set) var cats: [String: CustomCat] = [:] {
-        didSet { Category.custom = cats.values.filter(\.on).sorted { $0.u < $1.u }.map(\.category) }
+        didSet {
+            let on = cats.values.filter(\.on)
+            Category.custom = on.filter { !Category.isBuiltin($0.k) }.sorted { $0.u < $1.u }.map(\.category)
+            Category.edited = Dictionary(uniqueKeysWithValues: on.filter { Category.isBuiltin($0.k) }.map { ($0.k, $0.category) })
+        }
     }
     private let cloud = Cloud()
     @Published private(set) var cloudState: CloudState = .connecting
@@ -437,16 +448,25 @@ final class Store: ObservableObject {
         return k
     }
 
+    /// Sửa danh mục; danh mục có sẵn thì lưu thành bản chỉnh (đổi lại được về mặc định).
     func updateCategory(_ k: String, name: String, icon: String, tone: Int) {
-        guard var c = cats[k] else { return }
-        c.name = name; c.icon = icon; c.tone = tone; c.u = now
+        var c = cats[k] ?? CustomCat(k: k, name: name, icon: icon, tone: tone, on: true, u: now)
+        c.name = name; c.icon = icon; c.tone = tone; c.on = true; c.u = now
+        cats[k] = c
+        persist()
+    }
+
+    /// Danh mục có sẵn về lại tên, biểu tượng, màu gốc.
+    func resetCategory(_ k: String) {
+        guard var c = cats[k], c.on else { return }
+        c.on = false; c.u = now
         cats[k] = c
         persist()
     }
 
     /// Xoá danh mục tự tạo: các khoản đã ghi hiện là "Khác"; khôi phục được bằng cách tạo lại cùng tên thì không, nên có Hoàn tác.
     func removeCategory(_ k: String) {
-        guard var c = cats[k], c.on else { return }
+        guard !Category.isBuiltin(k), var c = cats[k], c.on else { return }
         c.on = false; c.u = now
         cats[k] = c
         persist()

@@ -5,6 +5,8 @@ struct Category: Identifiable, Hashable {
     let icon: String
     let name: String
     let color: Color
+    /// Dùng hình vẽ phẳng trong Assets ("cat-<k>"); đổi sang emoji khác thì không
+    var art = false
     let kw: [String]
     /// Màu biểu đồ của danh mục tự tạo (danh mục có sẵn dùng bảng màu cố định bên dưới)
     var customChart: Color? = nil
@@ -12,20 +14,27 @@ struct Category: Identifiable, Hashable {
 
     /// Danh mục tự tạo đang dùng, Store cập nhật mỗi khi đổi (cả khi máy khác thêm qua iCloud)
     nonisolated(unsafe) static var custom: [Category] = []
+    /// Danh mục có sẵn sau khi người dùng đổi biểu tượng / màu / tên
+    nonisolated(unsafe) static var edited: [String: Category] = [:]
 
-    /// Có sẵn, rồi tự tạo, "Khác" luôn ở cuối
-    static var all: [Category] { Array(builtin.dropLast()) + custom + [builtin[builtin.count - 1]] }
+    /// Có sẵn (đã áp chỉnh sửa), rồi tự tạo, "Khác" luôn ở cuối
+    static var all: [Category] {
+        let base = builtin.map { edited[$0.k] ?? $0 }
+        return Array(base.dropLast()) + custom + [base[base.count - 1]]
+    }
 
     static let builtin: [Category] = [
-        Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa"]),
-        Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la"]),
-        Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot"]),
-        Category(k: "mua", icon: "🛍️", name: "Mua sắm", color: Color(hex: 0xFFD3E6), kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "cho"]),
-        Category(k: "hd", icon: "🧾", name: "Hoá đơn", color: Color(hex: 0xE2DBFF), kw: ["dien", "tien nuoc", "internet", "wifi", "mang", "4g", "5g", "dien thoai", "nap tien", "tien nha", "thue nha", "phong", "hoc phi", "evn", "viettel", "vnpt", "fpt", "mobifone", "vinaphone", "netflix", "spotify", "youtube", "icloud", "bao hiem", "chung cu", "phi dich vu"]),
-        Category(k: "khac", icon: "📌", name: "Khác", color: Color(hex: 0xCFEEDD), kw: []),
+        Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), art: true, kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa"]),
+        Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), art: true, kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la"]),
+        Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), art: true, kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot"]),
+        Category(k: "mua", icon: "🛍️", name: "Mua sắm", color: Color(hex: 0xFFD3E6), art: true, kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "cho"]),
+        Category(k: "hd", icon: "🧾", name: "Hoá đơn", color: Color(hex: 0xE2DBFF), art: true, kw: ["dien", "tien nuoc", "internet", "wifi", "mang", "4g", "5g", "dien thoai", "nap tien", "tien nha", "thue nha", "phong", "hoc phi", "evn", "viettel", "vnpt", "fpt", "mobifone", "vinaphone", "netflix", "spotify", "youtube", "icloud", "bao hiem", "chung cu", "phi dich vu"]),
+        Category(k: "khac", icon: "📌", name: "Khác", color: Color(hex: 0xCFEEDD), art: true, kw: []),
     ]
 
     static func get(_ k: String?) -> Category { all.first { $0.k == k } ?? all.last! }
+
+    static func isBuiltin(_ k: String) -> Bool { builtin.contains { $0.k == k } }
 
     /// Màu đậm dùng cho biểu đồ (màu pastel ở trên quá nhạt để phân biệt). Cùng tông với màu pastel,
     /// cố định theo danh mục; đã kiểm tra phân biệt được cả khi mù màu, ở chế độ sáng lẫn tối.
@@ -61,7 +70,7 @@ struct CategoryIcon: View {
     var size: CGFloat = 28
 
     var body: some View {
-        if UIImage(named: "cat-\(c.k)") != nil {
+        if c.art, UIImage(named: "cat-\(c.k)") != nil {
             Image("cat-\(c.k)").resizable().scaledToFit().frame(width: size, height: size)
         } else {
             Text(c.icon).font(.system(size: size * 0.85))

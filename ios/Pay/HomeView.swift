@@ -33,6 +33,7 @@ struct HomeView: View {
     /// Các khoản "Chi lại" đang hiện; giữ nguyên thứ tự khi đang dùng để chạm hai lần liền không trúng khoản khác
     @State private var again: [Store.Frequent] = []
     @State private var addingCat = false
+    @State private var editingCat: CatEdit?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -77,6 +78,7 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store) }
+        .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store) }
         .fullScreenCover(isPresented: $listening) {
             VoiceEntryView(onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
@@ -277,6 +279,18 @@ struct HomeView: View {
                     .background(c.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                 }
                 .buttonStyle(Pressable())
+                // Nhấn giữ: đổi biểu tượng, màu, tên (cả danh mục có sẵn)
+                .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .contextMenu {
+                    Button("Sửa danh mục", systemImage: "paintpalette") { editingCat = CatEdit.of(c.k, store: store) }
+                    if Category.isBuiltin(c.k) {
+                        if store.cats[c.k]?.on == true {
+                            Button("Về mặc định", systemImage: "arrow.uturn.backward") { store.resetCategory(c.k) }
+                        }
+                    } else {
+                        Button("Xoá danh mục", systemImage: "trash", role: .destructive) { store.removeCategory(c.k) }
+                    }
+                }
             }
             // Ô cuối: tạo danh mục riêng
             Button { addingCat = true } label: {

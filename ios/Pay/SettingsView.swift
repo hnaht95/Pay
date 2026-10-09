@@ -80,7 +80,7 @@ struct SettingsView: View {
     // MARK: Danh mục tự tạo
 
     private var categorySection: some View {
-        let list = store.cats.values.filter(\.on).sorted { $0.u < $1.u }
+        let list = store.cats.values.filter { $0.on && !Category.isBuiltin($0.k) }.sorted { $0.u < $1.u }
         return Section {
             ForEach(list, id: \.k) { c in
                 Button { editingCat = CatEdit(cat: c) } label: {
@@ -101,8 +101,9 @@ struct SettingsView: View {
         } header: {
             Text("Danh mục")
         } footer: {
-            Text(list.isEmpty ? "Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng như Thú cưng, Con nhỏ, Gym."
-                              : "Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác.")
+            Text((list.isEmpty ? "Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng như Thú cưng, Con nhỏ, Gym."
+                               : "Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác.")
+                 + " Muốn đổi biểu tượng, màu của danh mục có sẵn thì nhấn giữ ô danh mục ở màn hình chính.")
         }
     }
 
@@ -602,6 +603,13 @@ struct SliderGestures: UIViewRepresentable {
 struct CatEdit: Identifiable {
     let cat: CustomCat?
     var id: String { cat?.k ?? "new" }
+
+    /// Sửa một danh mục bất kỳ (có sẵn hoặc tự tạo) theo mã
+    @MainActor static func of(_ k: String, store: Store) -> CatEdit {
+        if let c = store.cats[k], c.on { return CatEdit(cat: c) }
+        let c = Category.get(k)
+        return CatEdit(cat: CustomCat(k: k, name: c.name, icon: c.icon, tone: -1, on: true, u: 0))
+    }
 }
 
 /// Thêm / sửa danh mục tự tạo: tên, biểu tượng, màu.
@@ -622,6 +630,9 @@ struct CategoryEditor: View {
                          "🎁", "✈️", "🚗", "⛽️", "🍺", "🎵", "⚽️", "💡", "🛠️", "🌱", "❤️", "💼"]
 
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
+    /// Đang sửa danh mục có sẵn (Ăn uống, Cafe…): không xoá được, có "Về mặc định"
+    private var builtin: Category? { editing.flatMap { e in Category.builtin.first { $0.k == e.k } } }
+    private var previewColor: Color { tone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(tone) }
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)
@@ -633,7 +644,10 @@ struct CategoryEditor: View {
             Form {
                 Section {
                     HStack(spacing: 14) {
-                        Text(icon).font(.system(size: 28))
+                        Group {
+                            // Danh mục có sẵn chưa đổi biểu tượng: hiện đúng hình vẽ phẳng như ở màn hình chính
+                            if let b = builtin, icon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(icon).font(.system(size: 28)) }
+                        }
                             .frame(width: 56, height: 56).background(.white, in: Circle())
                         Text(trimmed.isEmpty ? "Tên danh mục" : trimmed)
                             .font(.system(size: 20, weight: .semibold)).lineLimit(1)
@@ -642,7 +656,7 @@ struct CategoryEditor: View {
                     }
                     .foregroundStyle(Color(hex: 0x111114))
                     .padding(16)
-                    .background(CategoryTone.bg(tone), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .background(previewColor, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                 }
@@ -675,7 +689,7 @@ struct CategoryEditor: View {
                             Button { icon = e } label: {
                                 Text(e).font(.system(size: 26))
                                     .frame(maxWidth: .infinity, minHeight: 46)
-                                    .background(icon == e ? CategoryTone.bg(tone) : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .background(icon == e ? previewColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
@@ -689,9 +703,10 @@ struct CategoryEditor: View {
 
                 Section("Màu") {
                     HStack(spacing: 0) {
-                        ForEach(CategoryTone.all.indices, id: \.self) { i in
+                        // Danh mục có sẵn: ô đầu là màu gốc
+                        ForEach((builtin == nil ? 0 : -1)..<CategoryTone.all.count, id: \.self) { i in
                             Button { tone = i } label: {
-                                Circle().fill(CategoryTone.bg(i))
+                                Circle().fill(i < 0 ? builtin!.color : CategoryTone.bg(i))
                                     .frame(width: 32, height: 32)
                                     .overlay(Circle().strokeBorder(Color.primary.opacity(tone == i ? 0.8 : 0.08), lineWidth: tone == i ? 2.5 : 1))
                                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -708,6 +723,14 @@ struct CategoryEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Huỷ") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Lưu") { save() }.disabled(trimmed.isEmpty || duplicate)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if let b = builtin, store.cats[b.k]?.on == true {
+                    Button("Về mặc định") { store.resetCategory(b.k); dismiss() }
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .padding(.horizontal, 16).padding(.bottom, 8)
                 }
             }
             .onAppear {

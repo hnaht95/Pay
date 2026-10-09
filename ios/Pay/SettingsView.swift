@@ -616,6 +616,7 @@ struct CategoryEditor: View {
     @State private var icon = "🏠"
     @State private var tone = 0
     @FocusState private var nameFocused: Bool
+    @State private var pickingEmoji = false
 
     static let emojis = ["🏠", "🐶", "👶", "🏋️", "🎮", "🎬", "📚", "🎓", "💊", "🏥", "💇", "🧴",
                          "🎁", "✈️", "🚗", "⛽️", "🍺", "🎵", "⚽️", "💡", "🛠️", "🌱", "❤️", "💼"]
@@ -656,7 +657,19 @@ struct CategoryEditor: View {
                     if duplicate { Text("Đã có danh mục tên này.").foregroundStyle(.red) }
                 }
 
-                Section("Biểu tượng") {
+                Section {
+                    // Mở bàn phím Emoji của iOS: chọn được mọi biểu tượng, có cả ô tìm kiếm
+                    Button { pickingEmoji = true } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "face.smiling").font(.system(size: 18, weight: .semibold))
+                                .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
+                            Text("Tất cả biểu tượng").foregroundStyle(.primary)
+                            Spacer()
+                            if !Self.emojis.contains(icon) { Text(icon).font(.system(size: 24)) }
+                        }
+                    }
+                    .tint(.primary)
+                    .background(EmojiField(isOn: $pickingEmoji) { icon = $0 }.frame(width: 1, height: 1).opacity(0.01))
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                         ForEach(Self.emojis, id: \.self) { e in
                             Button { icon = e } label: {
@@ -668,6 +681,10 @@ struct CategoryEditor: View {
                         }
                     }
                     .padding(.vertical, 4)
+                } header: {
+                    Text("Biểu tượng")
+                } footer: {
+                    Text("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS.")
                 }
 
                 Section("Màu") {
@@ -707,6 +724,52 @@ struct CategoryEditor: View {
             onAdd(store.addCategory(name: trimmed, icon: icon, tone: tone))
         }
         dismiss()
+    }
+}
+
+/// Ô nhập ẩn chỉ để bật bàn phím Emoji của iOS; chọn một biểu tượng là trả về rồi đóng bàn phím.
+struct EmojiField: UIViewRepresentable {
+    @Binding var isOn: Bool
+    let picked: (String) -> Void
+
+    final class Field: UITextField {
+        // Mở thẳng bàn phím Emoji thay vì bàn phím chữ
+        override var textInputMode: UITextInputMode? {
+            UITextInputMode.activeInputModes.first { $0.primaryLanguage == "emoji" } ?? super.textInputMode
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> Field {
+        let f = Field()
+        f.delegate = context.coordinator
+        f.tintColor = .clear
+        f.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        return f
+    }
+
+    func updateUIView(_ f: Field, context: Context) {
+        context.coordinator.parent = self
+        if isOn && !f.isFirstResponder { DispatchQueue.main.async { f.becomeFirstResponder() } }
+        if !isOn && f.isFirstResponder { DispatchQueue.main.async { f.resignFirstResponder() } }
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: EmojiField
+        init(_ p: EmojiField) { parent = p }
+
+        @objc func changed(_ f: UITextField) {
+            // Lấy biểu tượng vừa chọn (một ký tự hiển thị, kể cả emoji ghép nhiều mã)
+            guard let last = f.text?.last, last.unicodeScalars.contains(where: { $0.properties.isEmojiPresentation || $0.properties.isEmoji && $0.value > 0x238C }) else {
+                f.text = ""; return
+            }
+            parent.picked(String(last))
+            f.text = ""
+            parent.isOn = false
+        }
+
+        func textFieldDidEndEditing(_ f: UITextField) { if parent.isOn { parent.isOn = false } }
     }
 }
 

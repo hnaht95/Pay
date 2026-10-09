@@ -141,6 +141,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; border-top:
 // Đăng nhập Apple ID ngay trên trang giới thiệu; xong thì vào thẳng Nhóm chung
 window.addEventListener('cloudkitloaded', async () => {
   try {
+    document.getElementById('signin').innerHTML = '';   // bỏ chữ "Đang tải", chừa chỗ cho nút đăng nhập của Apple
     CloudKit.configure({ containers: [{ containerIdentifier: CONTAINER, environment: 'production',
       apiTokenAuth: { apiToken: API_TOKEN, persist: true, signInButton: { id: 'signin', theme: 'black' } } }] });
     const c = CloudKit.getDefaultContainer();

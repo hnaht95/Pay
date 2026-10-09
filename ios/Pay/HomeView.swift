@@ -220,10 +220,10 @@ struct HomeView: View {
         }
     }
 
-    /// iOS 26 tự làm mờ mép dưới (scroll edge effect) sau thanh nút, đúng kiểu app hệ thống.
+    /// iOS 26: chừa chỗ cho thanh nút bằng safeAreaBar (không cần đệm 120pt ở cuối nội dung).
     static var nativeEdge: Bool { if #available(iOS 26.0, *) { true } else { false } }
 
-    /// Lớp mờ dưới đáy cho iOS cũ hơn 26: mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
+    /// Lớp mờ dưới đáy (mọi phiên bản iOS): mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
     private var bottomBlur: some View {
         Color.clear
             .overlay(alignment: .bottom) {
@@ -328,7 +328,9 @@ extension View {
     /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
     @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B) -> some View {
         if #available(iOS 26.0, *) {
-            safeAreaBar(edge: .bottom) { dock }
+            // Mép mờ của hệ thống quá nhẹ trên máy thật, nên phủ thêm lớp mờ tự làm phía dưới thanh nút
+            overlay(alignment: .bottom) { fallbackBlur }
+                .safeAreaBar(edge: .bottom) { dock }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock } }

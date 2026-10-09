@@ -36,8 +36,7 @@ struct HomeView: View {
     @State private var addingCat = false
     @State private var editingCat: CatEdit?
     /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
-    @State private var menuCat: Category?
-    @State private var pressingCat: String?
+    @State private var menu: AppMenuSpec?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -69,9 +68,8 @@ struct HomeView: View {
 
             ToastView()
                 .padding(.bottom, 108)
-
-            if let c = menuCat { categoryMenu(c).zIndex(2) }
         }
+        .appMenu($menu)
         .fullScreenCover(item: $entry) { EntryView(mode: $0) }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }
@@ -273,18 +271,9 @@ struct HomeView: View {
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(Category.all) { c in
                 // Chạm: nhập khoản mới; nhấn giữ: bảng tuỳ chọn tự vẽ (thay menu mặc định của iOS)
-                tile(c, total: perCat[c.k] ?? 0)
-                    .scaleEffect(pressingCat == c.k ? 0.95 : 1)
-                    .animation(.easeOut(duration: 0.18), value: pressingCat)
-                    .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .onTapGesture { entry = .new(cat: c.k) }
-                    .onLongPressGesture(minimumDuration: 0.35) {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        withAnimation(.spring(duration: 0.32, bounce: 0.25)) { menuCat = c }
-                    } onPressingChanged: { pressingCat = $0 ? c.k : nil }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityAction(named: "Sửa danh mục") { editingCat = CatEdit.of(c.k, store: store) }
+                TapHold(tap: { entry = .new(cat: c.k) }, hold: { menu = categoryMenu(c) }) {
+                    tile(c, total: perCat[c.k] ?? 0)
+                }
             }
             // Ô cuối: tạo danh mục riêng
             Button { addingCat = true } label: {
@@ -320,58 +309,23 @@ struct HomeView: View {
         .background(c.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
-    /// Bảng tuỳ chọn khi nhấn giữ một danh mục: cùng kiểu thẻ của app, nền mờ phía sau chạm là đóng.
-    private func categoryMenu(_ c: Category) -> some View {
-        let close = { withAnimation(.easeOut(duration: 0.2)) { menuCat = nil } }
+    /// Bảng nhấn giữ của một danh mục
+    private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { $0.c == c.k }
-        return ZStack {
-            Color.black.opacity(0.3).ignoresSafeArea().onTapGesture(perform: close)
-            VStack(spacing: 0) {
-                HStack(spacing: 14) {
-                    CategoryIcon(c: c, size: 30)
-                        .frame(width: 56, height: 56).background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(c.name).font(.system(size: 19, weight: .bold)).lineLimit(1)
-                        Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month.reduce(0) { $0 + $1.a })) · \(month.count) khoản")
-                            .font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(18)
-                VStack(spacing: 4) {
-                    menuRow("plus", "Nhập khoản \(c.name)") { close(); entry = .new(cat: c.k) }
-                    menuRow("paintpalette.fill", "Đổi biểu tượng, màu, tên") { close(); editingCat = CatEdit.of(c.k, store: store) }
-                    if Category.isBuiltin(c.k) {
-                        if store.cats[c.k]?.on == true {
-                            menuRow("arrow.uturn.backward", "Về mặc định") { close(); store.resetCategory(c.k) }
-                        }
-                    } else {
-                        menuRow("trash.fill", "Xoá danh mục", danger: true) { close(); store.removeCategory(c.k) }
-                    }
-                }
-                .padding(.horizontal, 8).padding(.bottom, 10)
-            }
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .shadow(color: .black.opacity(0.2), radius: 30, y: 10)
-            .padding(.horizontal, 24)
-            .transition(.scale(scale: 0.9).combined(with: .opacity))
+        var items = [
+            AppMenuItem(icon: "plus", title: "Nhập khoản \(c.name)") { entry = .new(cat: c.k) },
+            AppMenuItem(icon: "paintpalette.fill", title: "Đổi biểu tượng, màu, tên") { editingCat = CatEdit.of(c.k, store: store) },
+        ]
+        if Category.isBuiltin(c.k) {
+            if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: "Về mặc định") { store.resetCategory(c.k) }) }
+        } else {
+            items.append(AppMenuItem(icon: "trash.fill", title: "Xoá danh mục", danger: true) { store.removeCategory(c.k) })
         }
-    }
-
-    private func menuRow(_ icon: String, _ title: String, danger: Bool = false, _ run: @escaping () -> Void) -> some View {
-        Button(action: run) {
-            HStack(spacing: 14) {
-                Image(systemName: icon).font(.system(size: 16, weight: .semibold))
-                    .frame(width: 40, height: 40)
-                    .background(danger ? Palette.danger.opacity(0.12) : Palette.pill, in: Circle())
-                Text(title).font(.system(size: 17, weight: .medium)).lineLimit(1)
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(danger ? Palette.danger : .primary)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(Pressable())
+        return AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
+                            .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+                           title: c.name,
+                           subtitle: "Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month.reduce(0) { $0 + $1.a })) · \(month.count) khoản",
+                           items: items)
     }
 
     @ViewBuilder private var recent: some View {
@@ -385,10 +339,10 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
-                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil) }
-                        .buttonStyle(Pressable())
-                        .expenseMenu(e, store: store) { entry = .edit(e) }
-                        .expenseSwipe(delete: { store.remove(id: e.id) })
+                    TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .edit(e) } }) {
+                        ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
+                    }
+                    .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
             }
             .listStyle(.plain)
@@ -449,29 +403,6 @@ extension View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
                 Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel("Xoá")
-            }
-    }
-}
-
-extension View {
-    /// Nhấn giữ một khoản: Sửa, Lặp hằng tháng (tiền nhà, điện, internet…) / Bỏ lặp, Xoá.
-    func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> some View {
-        self
-            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .contextMenu {
-                Button("Sửa", systemImage: "pencil", action: edit)
-                if let r = store.rule(for: e) {
-                    Button { store.stopRepeating(r) } label: {
-                        Label("Bỏ lặp hằng tháng", systemImage: "xmark.circle")
-                        Text("Đang tự ghi vào ngày \(r.day) mỗi tháng")
-                    }
-                } else {
-                    Button { store.repeatMonthly(e) } label: {
-                        Label("Lặp hằng tháng", systemImage: "repeat")
-                        Text("Tự ghi vào ngày \(Calendar.current.component(.day, from: e.date)) mỗi tháng")
-                    }
-                }
-                Button("Xoá", systemImage: "trash", role: .destructive) { store.remove(id: e.id) }
             }
     }
 }

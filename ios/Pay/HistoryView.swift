@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct HistoryView: View {
     @EnvironmentObject var store: Store
     @State private var editing: EntryMode?
+    @State private var menu: AppMenuSpec?
 
     var body: some View {
         NavigationStack {
@@ -17,10 +18,10 @@ struct HistoryView: View {
                 ForEach(groups, id: \.0) { day, list in
                     Section {
                         ForEach(list) { e in
-                            Button { editing = .edit(e) } label: { ExpenseRow(e: e, repeats: store.rule(for: e) != nil) }
-                                .buttonStyle(Pressable())
-                                .expenseMenu(e, store: store) { editing = .edit(e) }
-                                .expenseSwipe(delete: { store.remove(id: e.id) })
+                            TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .edit(e) } }) {
+                                ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
+                            }
+                            .expenseSwipe(delete: { store.remove(id: e.id) })
                         }
                     } header: {
                         HStack {
@@ -41,6 +42,7 @@ struct HistoryView: View {
         }
         .fullScreenCover(item: $editing) { EntryView(mode: $0).environmentObject(store) }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
+        .appMenu($menu)
     }
 
     private func grouped() -> [(Date, [Expense])] {

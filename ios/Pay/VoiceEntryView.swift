@@ -239,16 +239,38 @@ struct VoiceEntryView: View {
             .animation(.snappy, value: live?.amount)
             if let l = live {
                 let c = Category.get(l.cat)
-                HStack(spacing: 8) {
-                    HStack(spacing: 6) {
-                        CategoryIcon(c: c, size: 18)
-                        Text(c.name).font(.system(size: 14, weight: .semibold))
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            CategoryIcon(c: c, size: 18)
+                            Text(c.name).font(.system(size: 14, weight: .semibold))
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(c.color, in: Capsule())
+                        .foregroundStyle(.black)
+                        if !l.note.isEmpty {
+                            Text(l.note).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(c.color, in: Capsule())
-                    .foregroundStyle(.black)
-                    if !l.note.isEmpty {
-                        Text(l.note).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                    // Câu nhắc tới nhiều danh mục ("mua cát cho mèo"): hiện các danh mục còn lại, chạm là đổi
+                    let others = Category.matches(l.note).filter { $0 != l.cat }.prefix(3)
+                    if !others.isEmpty {
+                        HStack(spacing: 6) {
+                            Text("Hay là").font(.system(size: 14)).foregroundStyle(.secondary)
+                            ForEach(Array(others), id: \.self) { k in
+                                let o = Category.get(k)
+                                Button { switchCategory(to: k) } label: {
+                                    HStack(spacing: 5) {
+                                        CategoryIcon(c: o, size: 16)
+                                        Text(o.name).font(.system(size: 14, weight: .medium))
+                                    }
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(Palette.pill, in: Capsule())
+                                    .foregroundStyle(.primary)
+                                }
+                                .buttonStyle(Pressable())
+                            }
+                        }
                     }
                 }
             } else {
@@ -332,6 +354,20 @@ struct VoiceEntryView: View {
         store.remove(id: e.id, toast: false)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         withAnimation(.snappy) { saved = nil; undone = true }
+    }
+
+    /// Chọn danh mục khác trong số được nhắc tới: đổi luôn khoản vừa ghi (hoặc khoản đang nghe) và nhớ cho lần sau.
+    private func switchCategory(to k: String) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        if var e = saved {
+            autoClose?.cancel()
+            e.c = k
+            store.update(e)
+            store.learnCategory(e.n ?? "", k)
+            withAnimation(.snappy) { saved = e }
+        } else if let q = QuickParse.spoken(mic.text) {
+            store.learnCategory(q.note, k)
+        }
     }
 
     private func retry() {

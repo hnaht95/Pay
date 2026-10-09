@@ -42,6 +42,7 @@ struct HouseView: View {
     /// Đang tạo nhóm mới (từ danh sách nhóm)
     @State private var creating = false
     @State private var showArchived = false
+    @State private var menu: AppMenuSpec?
     @State private var notifyOn: Bool?
     @Environment(\.scenePhase) private var scenePhase
 
@@ -103,7 +104,8 @@ struct HouseView: View {
             }
         }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store) }
-        .onDisappear { house.open(nil) }   // mở lại thì về danh sách nhóm
+        .onDisappear { house.open(nil) }
+        .appMenu($menu)   // mở lại thì về danh sách nhóm
         // Trả qua app ngân hàng xong quay lại Pay: hỏi đã chuyển xong chưa
         .onChange(of: scenePhase) { _, p in
             if p == .active, let t = house.pendingPay { house.pendingPay = nil; paying = t }
@@ -332,13 +334,9 @@ struct HouseView: View {
     private func groupCard(_ g: HouseGroup) -> some View {
         let net = g.myNet
         let pend = g.pending.count
-        return Button { withAnimation(.snappy) { house.open(g.id) } } label: {
+        return TapHold(tap: { withAnimation(.snappy) { house.open(g.id) } }, hold: { menu = groupMenu(g) }) {
             HStack(spacing: 14) {
-                Image(systemName: "person.2.crop.square.stack.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(Color(hex: 0x111114))
-                    .frame(width: 56, height: 56)
-                    .background(CategoryTone.bg(house.tone(g.id)), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                groupIcon(g.id)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(g.name.isEmpty ? "Nhóm chung" : g.name).font(.system(size: 18, weight: .semibold)).lineLimit(1)
                     HStack(spacing: -6) {
@@ -370,15 +368,25 @@ struct HouseView: View {
                 }
             }
         }
-        .buttonStyle(Pressable())
-        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .contextMenu {
-            if house.archived.contains(g.id) {
-                Button("Bỏ lưu trữ", systemImage: "tray.and.arrow.up") { house.setArchived(g.id, false) }
-            } else {
-                Button("Lưu trữ", systemImage: "archivebox") { house.setArchived(g.id, true) }
-            }
-        }
+    }
+
+    private func groupIcon(_ id: String, size: CGFloat = 56) -> some View {
+        Image(systemName: "person.2.crop.square.stack.fill")
+            .font(.system(size: size * 0.43))
+            .foregroundStyle(Color(hex: 0x111114))
+            .frame(width: size, height: size)
+            .background(CategoryTone.bg(house.tone(id)), in: RoundedRectangle(cornerRadius: size * 0.32, style: .continuous))
+    }
+
+    private func groupMenu(_ g: HouseGroup) -> AppMenuSpec {
+        let archived = house.archived.contains(g.id)
+        return AppMenuSpec(icon: AnyView(groupIcon(g.id)), title: g.name.isEmpty ? "Nhóm chung" : g.name,
+                           subtitle: "\(g.members.count) người · \(g.spends.count) khoản chung", items: [
+            AppMenuItem(icon: "arrow.right", title: "Mở nhóm") { house.open(g.id) },
+            AppMenuItem(icon: "person.badge.plus", title: g.isOwner ? "Mời thành viên" : "Người trong nhóm") { house.open(g.id); invite() },
+            archived ? AppMenuItem(icon: "tray.and.arrow.up", title: "Bỏ lưu trữ") { house.setArchived(g.id, false) }
+                     : AppMenuItem(icon: "archivebox", title: "Lưu trữ", subtitle: "Ẩn khỏi danh sách, chỉ trên máy này") { house.setArchived(g.id, true) },
+        ])
     }
 
     // MARK: Chọn "tôi là ai"
@@ -530,11 +538,20 @@ struct HouseView: View {
                 .foregroundStyle(Palette.ctaInk)
                 .background(Palette.cta, in: Capsule())
                 .buttonStyle(Pressable())
-                .contextMenu { if canPay { Button("Đã chuyển bằng cách khác", systemImage: "checkmark") { paying = t } } }
+
             }
         }
         .padding(12).padding(.trailing, 2)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onHold {
+            guard t.from == house.me else { return }
+            menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: to, size: 56)), title: "Bạn trả \(to) · \(fmt(t.amount))",
+                               subtitle: house.members.first { $0.id == t.to }?.hasBank == true ? "Đã có tài khoản nhận tiền" : "Chưa có tài khoản nhận tiền",
+                               items: [
+                AppMenuItem(icon: "building.columns.fill", title: "Trả qua app ngân hàng") { Task { await house.payNow(t, app: store.bankApp) } },
+                AppMenuItem(icon: "checkmark", title: "Đã chuyển bằng cách khác", subtitle: "Tiền mặt, ví điện tử…") { paying = t },
+            ].filter { $0.icon != "building.columns.fill" || house.members.first { $0.id == t.to }?.hasBank == true })
+        }
     }
 
     private func members(_ net: [String: Int]) -> some View {
@@ -610,9 +627,15 @@ struct HouseView: View {
         }
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .contextMenu {
-            Button("Xoá khoản này", systemImage: "trash", role: .destructive) { Task { await house.delete(e.id) } }
+        .onHold {
+            let c = Category.get(e.cat)
+            menu = AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
+                                .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+                               title: "\(e.note.isEmpty ? c.name : e.note) · \(fmt(e.amount))",
+                               subtitle: "\(house.memberName(e.payer)) ứng · chia \(Set(e.shares).count) người · \(day(e.date))",
+                               items: [AppMenuItem(icon: "trash.fill", title: "Xoá khoản này", subtitle: "Cả nhóm sẽ không thấy khoản này nữa", danger: true) {
+                                   Task { await house.delete(e.id) }
+                               }])
         }
     }
 
@@ -638,9 +661,13 @@ struct HouseView: View {
         }
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .contextMenu {
-            Button("Xoá lần trả này", systemImage: "trash", role: .destructive) { Task { await house.delete(s.id) } }
+        .onHold {
+            menu = AppMenuSpec(icon: AnyView(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(tint)
+                                .frame(width: 56, height: 56).background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+                               title: "\(from) chuyển \(to) · \(fmt(s.amount))", subtitle: "\(note) · \(day(s.date))",
+                               items: [AppMenuItem(icon: "trash.fill", title: "Xoá lần trả này", subtitle: "Số nợ sẽ tính lại như chưa trả", danger: true) {
+                                   Task { await house.delete(s.id) }
+                               }])
         }
     }
 

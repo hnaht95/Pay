@@ -13,6 +13,7 @@
 		1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5CCA8FB4425669D725FC11F /* Assets.xcassets */; };
 		28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
+		5626AC98D4DD6974E16F3E44 /* AppMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DE5AB7A1379185BA286D6A /* AppMenu.swift */; };
 		5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5F00314D0B8638AAA8CF56 /* EntryView.swift */; };
 		79B85BA7716448436AB6F746 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED087675452679C35387B98C /* Model.swift */; };
 		91C3E24BBC0387D5264FA56D /* PayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C52368CCF0CD05A29F53F06A /* PayWidget.swift */; };
@@ -75,6 +76,7 @@
 		8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
 		92009F79708552562ABFB7E1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9C5F00314D0B8638AAA8CF56 /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
+		A0DE5AB7A1379185BA286D6A /* AppMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMenu.swift; sourceTree = "<group>"; };
 		A2852463900AD9FAE95133FC /* Pay.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C495C9B5ABDB2E162467B1A8 /* PayWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PayWidget.entitlements; sourceTree = "<group>"; };
 		C52368CCF0CD05A29F53F06A /* PayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayWidget.swift; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 		6273C088F9EFFD1209B844BC /* Pay */ = {
 			isa = PBXGroup;
 			children = (
+				A0DE5AB7A1379185BA286D6A /* AppMenu.swift */,
 				C5CCA8FB4425669D725FC11F /* Assets.xcassets */,
 				670B9C247A53BD43509CC680 /* BankData.swift */,
 				12AB5AFA5A99EE9F7A62F93F /* Category.swift */,
@@ -251,6 +254,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5626AC98D4DD6974E16F3E44 /* AppMenu.swift in Sources */,
 				BCCC32A2A03A84C57664153D /* BankData.swift in Sources */,
 				A545C30BDF4D6CF5519EA278 /* Budget.swift in Sources */,
 				E14979FF90B5058C781A6727 /* Category.swift in Sources */,

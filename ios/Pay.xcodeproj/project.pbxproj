@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		01E0A28C224E7B027FF43876 /* Cloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58FCDD317DCE4C3F8181526 /* Cloud.swift */; };
+		052439094B3F36CF156D14A1 /* House.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0931645A127E5C8DFC720589 /* House.swift */; };
 		1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D89B234044050006AE979177 /* StatsView.swift */; };
 		1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5CCA8FB4425669D725FC11F /* Assets.xcassets */; };
 		28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
@@ -29,6 +30,7 @@
 		E1C3818D189576DA486E6398 /* Summary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F129DFA9AABEFF1CFB450789 /* Summary.swift */; };
 		E1C4BAAEA60CC5544DE0C0EF /* VietQR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6710F63C94C742F268FE2D19 /* VietQR.swift */; };
 		F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44363C52BE264A2C9A5D3E8D /* QuickAction.swift */; };
+		F46263D2A70AF19D5FC69B3A /* HouseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9A02E66795259132018E66 /* HouseView.swift */; };
 		FF57A27DDE16FAD031AE7639 /* Summary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F129DFA9AABEFF1CFB450789 /* Summary.swift */; };
 /* End PBXBuildFile section */
 
@@ -57,12 +59,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0931645A127E5C8DFC720589 /* House.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = House.swift; sourceTree = "<group>"; };
 		0ED480E454B97B65E2A4153C /* Budget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Budget.swift; sourceTree = "<group>"; };
 		12AB5AFA5A99EE9F7A62F93F /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		1A44344E8096362017AC591B /* QuickParse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickParse.swift; sourceTree = "<group>"; };
 		323469640D98E325EFD569FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		44363C52BE264A2C9A5D3E8D /* QuickAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAction.swift; sourceTree = "<group>"; };
 		51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		5B9A02E66795259132018E66 /* HouseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseView.swift; sourceTree = "<group>"; };
 		5CA7538B886B5157A6125740 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		5EC9417995E09D8907ED785B /* PayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayApp.swift; sourceTree = "<group>"; };
 		670B9C247A53BD43509CC680 /* BankData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankData.swift; sourceTree = "<group>"; };
@@ -95,6 +99,8 @@
 				9C5F00314D0B8638AAA8CF56 /* EntryView.swift */,
 				5CA7538B886B5157A6125740 /* HistoryView.swift */,
 				51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */,
+				0931645A127E5C8DFC720589 /* House.swift */,
+				5B9A02E66795259132018E66 /* HouseView.swift */,
 				323469640D98E325EFD569FA /* Info.plist */,
 				ED087675452679C35387B98C /* Model.swift */,
 				FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */,
@@ -205,7 +211,7 @@
 					2CA39577F5A44AC9D635F905 = {
 						DevelopmentTeam = U5DGWB7A5X;
 						ProvisioningStyle = Automatic;
-						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
+						SystemCapabilities = "[\"com.apple.iCloud\": [\"enabled\": 1], \"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
 					};
 				};
 			};
@@ -252,6 +258,8 @@
 				5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */,
 				DE8ACBD25F257AE1FDA5E3F2 /* HistoryView.swift in Sources */,
 				B7BB8FBA27616CC043B35EEC /* HomeView.swift in Sources */,
+				052439094B3F36CF156D14A1 /* House.swift in Sources */,
+				F46263D2A70AF19D5FC69B3A /* HouseView.swift in Sources */,
 				79B85BA7716448436AB6F746 /* Model.swift in Sources */,
 				40405BB47395FF979965CD24 /* PayApp.swift in Sources */,
 				F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */,

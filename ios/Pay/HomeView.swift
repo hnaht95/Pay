@@ -25,6 +25,7 @@ struct HomeView: View {
     @State private var showHistory = false
     @State private var showSettings = false
     @State private var showStats = false
+    @State private var showHouse = false
     @State private var listening = false
     @State private var scanned: String?
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
@@ -77,6 +78,8 @@ struct HomeView: View {
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
+        .sheet(isPresented: $showHouse) { HouseView().environmentObject(store) }
+        .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store) }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store) }
         .fullScreenCover(isPresented: $listening) {
@@ -114,9 +117,9 @@ struct HomeView: View {
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
     private func run(_ k: QuickKind) async {
-        let busy = entry != nil || scanning || showHistory || showSettings || showStats || listening
+        let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || listening
         if (k == .scan && scanning) || (k == .voice && listening) { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; listening = false
+        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true
@@ -136,6 +139,7 @@ struct HomeView: View {
                 .padding(.horizontal, 14)
                 .frame(height: Self.headerSize)
                 .background(Palette.pill, in: Capsule())
+            headerButton("person.2.fill", "Nhà chung") { showHouse = true }
             headerButton("chart.bar.fill", "Thống kê") { showStats = true }
             headerButton("gearshape.fill", "Cài đặt") { showSettings = true }
         }

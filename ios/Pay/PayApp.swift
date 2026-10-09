@@ -5,6 +5,8 @@ import SwiftUI
 struct PayApp: App {
     @StateObject private var store = Store.shared
     @StateObject private var quick = QuickAction.shared
+    /// Nhận lời mời vào Nhà chung (iOS gọi qua scene delegate)
+    @UIApplicationDelegateAdaptor(PayAppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {

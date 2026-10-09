@@ -33,7 +33,7 @@ final class VoiceListener: ObservableObject {
         let micOK = await AVAudioApplication.requestRecordPermission()
         guard speechOK, micOK else { phase = .denied; return }
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "vi-VN")), recognizer.isAvailable else {
-            phase = .failed("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc nhập tay.")
+            phase = .failed("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR.")
             return
         }
         do {
@@ -55,7 +55,7 @@ final class VoiceListener: ObservableObject {
             // Không có micro dùng được (vd máy ảo, micro đang bị app khác chiếm): báo lỗi thay vì để app văng
             guard format.sampleRate > 0, format.channelCount > 0 else {
                 stop()
-                phase = .failed("Không dùng được micro lúc này. Thử lại, hoặc nhập tay.")
+                phase = .failed("Không dùng được micro lúc này. Thử lại, hoặc quét QR.")
                 return
             }
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
@@ -135,8 +135,8 @@ struct VoiceEntryView: View {
     @State private var notUnderstood = false
     @State private var autoClose: Task<Void, Never>?
     @State private var shown = false
-    /// Bấm "Nhập tay": đóng thẻ này và mở màn hình nhập.
-    var onTypeInstead: () -> Void
+    /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
+    var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
     var onEdit: (Expense) -> Void = { _ in }
 
@@ -260,16 +260,16 @@ struct VoiceEntryView: View {
                 pill("Sửa", primary: false) { autoClose?.cancel(); dismiss(); onEdit(e) }
                 pill("Xong", primary: true) { autoClose?.cancel(); dismiss() }
             } else if mic.phase == .listening {
-                pill("Nhập tay", primary: false) { mic.stop(); dismiss(); onTypeInstead() }
+                pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
                 pill("Xong", primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
                     .disabled(mic.text.isEmpty).opacity(mic.text.isEmpty ? 0.4 : 1)
             } else if mic.phase == .denied {
-                pill("Nhập tay", primary: false) { dismiss(); onTypeInstead() }
+                pill("Quét QR", primary: false) { dismiss(); onScan() }
                 pill("Mở Cài đặt", primary: true) {
                     if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
                 }
             } else if notUnderstood || mic.phase != .idle {
-                pill("Nhập tay", primary: false) { mic.stop(); dismiss(); onTypeInstead() }
+                pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
                 pill("Nói lại", primary: true) { retry() }
             }
         }

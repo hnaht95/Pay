@@ -68,8 +68,8 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .fullScreenCover(isPresented: $listening) {
-            VoiceEntryView(onTypeInstead: {
-                Task { try? await Task.sleep(for: .milliseconds(450)); entry = .new(cat: nil) }
+            VoiceEntryView(onScan: {
+                Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
             }, onEdit: { e in
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
             })

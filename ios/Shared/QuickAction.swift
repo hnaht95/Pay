@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Việc cần làm ngay khi app được mở từ widget, nút Tác vụ hoặc Phím tắt.
 enum QuickKind: String {
-    case scan, add
+    case scan, add, voice
 
     init?(url: URL) {
         guard url.scheme == "sochipay", let k = url.host.flatMap(QuickKind.init(rawValue:)) else { return nil }
@@ -29,6 +29,19 @@ struct ScanIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         QuickAction.shared.pending = .scan
+        return .result()
+    }
+}
+
+/// Mở Pay và nghe luôn: nói "35k cafe" là ghi. Gán cho nút Tác vụ qua nút điều khiển "Pay: Ghi bằng giọng nói".
+struct VoiceIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ghi bằng giọng nói"
+    static let description = IntentDescription("Mở Pay, nghe bạn nói khoản chi (ví dụ \"35k cafe\") rồi tự ghi.")
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        QuickAction.shared.pending = .voice
         return .result()
     }
 }

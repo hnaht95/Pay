@@ -43,6 +43,8 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Pay dùng camera để quét mã QR thanh toán.
+        NSMicrophoneUsageDescription: Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
+        NSSpeechRecognitionUsageDescription: Pay chuyển giọng nói thành chữ để ghi khoản chi.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false

@@ -6,7 +6,10 @@ import WidgetKit
 struct PayWidgets: WidgetBundle {
     var body: some Widget {
         SpendWidget()
-        if #available(iOS 18.0, *) { ScanControl() }
+        if #available(iOS 18.0, *) {
+            VoiceControl()
+            ScanControl()
+        }
     }
 }
 
@@ -135,6 +138,19 @@ struct SpendView: View {
 }
 
 // MARK: Nút trong Trung tâm điều khiển — gán được cho nút Tác vụ (iOS 18+)
+
+@available(iOS 18.0, *)
+struct VoiceControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "VoiceControl") {
+            ControlWidgetButton(action: VoiceIntent()) {
+                Label("Ghi bằng giọng nói", systemImage: "mic.fill")
+            }
+        }
+        .displayName("Pay: Ghi bằng giọng nói")
+        .description("Mở Pay và nghe luôn, nói \"35k cafe\" là ghi.")
+    }
+}
 
 @available(iOS 18.0, *)
 struct ScanControl: ControlWidget {

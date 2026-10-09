@@ -280,13 +280,13 @@ struct QuickAccessHelp: View {
             }
 
             Section {
-                step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Phím tắt.")
-                step(2, "Bấm Chọn phím tắt › Pay › Ghi chi tiêu.")
-                step(3, "Nhấn giữ nút Tác vụ, nói \"35k cafe\" là ghi xong, không cần mở app.")
+                step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Điều khiển.")
+                step(2, "Bấm Chọn điều khiển, tìm \"Pay: Ghi bằng giọng nói\".")
+                step(3, "Nhấn giữ nút Tác vụ: Pay mở và nghe luôn. Nói \"35k cafe\", ngừng nói là tự ghi.")
             } header: {
                 Label("Nút Tác vụ: ghi bằng giọng nói", systemImage: "mic.fill")
             } footer: {
-                Text("Cần iPhone 15 Pro trở lên. Nói được nhiều kiểu: \"35 nghìn cà phê\", \"1tr2 tiền nhà\", \"grab 52k\". Danh mục tự đoán theo ghi chú.")
+                Text("Cần iPhone 15 Pro trở lên, iOS 18 trở lên. Nói được nhiều kiểu: \"35 nghìn cà phê\", \"1tr2 tiền nhà\", \"grab 52k\". Danh mục tự đoán theo ghi chú.")
             }
 
             Section {

@@ -20,6 +20,8 @@ struct PayApp: App {
 /// Hiện "Quét QR" và "Ghi khoản chi" trong app Phím tắt, Siri và phần chọn Phím tắt cho nút Tác vụ.
 struct PayShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: VoiceIntent(), phrases: ["Nói để ghi bằng \(.applicationName)", "\(.applicationName) nghe ghi chi"],
+                    shortTitle: "Ghi bằng giọng nói", systemImageName: "mic.fill")
         AppShortcut(intent: LogExpenseIntent(), phrases: ["Ghi chi tiêu bằng \(.applicationName)", "\(.applicationName) ghi chi tiêu", "Ghi \(.applicationName)"],
                     shortTitle: "Ghi chi tiêu", systemImageName: "mic.fill")
         AppShortcut(intent: ScanIntent(), phrases: ["Quét QR bằng \(.applicationName)", "\(.applicationName) quét QR"],

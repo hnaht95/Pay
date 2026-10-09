@@ -18,6 +18,7 @@
 		9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E141264B0193BD7C93AC85D7 /* SettingsView.swift */; };
 		9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */; };
 		A545C30BDF4D6CF5519EA278 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
+		ABAF7C9D3EFFBE9F9E02D294 /* VoiceEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */; };
 		ACA5747DA4A0AE572D34F222 /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44363C52BE264A2C9A5D3E8D /* QuickAction.swift */; };
 		AE1526A32B9A892E36FFC96F /* PayWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA4B5C6B3F3A1E13827F11A9 /* PayWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A44344E8096362017AC591B /* QuickParse.swift */; };
@@ -66,6 +67,7 @@
 		5EC9417995E09D8907ED785B /* PayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayApp.swift; sourceTree = "<group>"; };
 		670B9C247A53BD43509CC680 /* BankData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankData.swift; sourceTree = "<group>"; };
 		6710F63C94C742F268FE2D19 /* VietQR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VietQR.swift; sourceTree = "<group>"; };
+		7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEntryView.swift; sourceTree = "<group>"; };
 		8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
 		92009F79708552562ABFB7E1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9C5F00314D0B8638AAA8CF56 /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 				E141264B0193BD7C93AC85D7 /* SettingsView.swift */,
 				D89B234044050006AE979177 /* StatsView.swift */,
 				6710F63C94C742F268FE2D19 /* VietQR.swift */,
+				7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */,
 			);
 			path = Pay;
 			sourceTree = "<group>";
@@ -258,6 +261,7 @@
 				1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */,
 				E1C3818D189576DA486E6398 /* Summary.swift in Sources */,
 				E1C4BAAEA60CC5544DE0C0EF /* VietQR.swift in Sources */,
+				ABAF7C9D3EFFBE9F9E02D294 /* VoiceEntryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

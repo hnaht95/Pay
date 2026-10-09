@@ -702,19 +702,18 @@ struct CategoryEditor: View {
                 }
 
                 Section("Màu") {
-                    HStack(spacing: 0) {
-                        // Danh mục có sẵn: ô đầu là màu gốc
-                        ForEach((builtin == nil ? 0 : -1)..<CategoryTone.all.count, id: \.self) { i in
-                            Button { tone = i } label: {
-                                Circle().fill(i < 0 ? builtin!.color : CategoryTone.bg(i))
-                                    .frame(width: 32, height: 32)
-                                    .overlay(Circle().strokeBorder(Color.primary.opacity(tone == i ? 0.8 : 0.08), lineWidth: tone == i ? 2.5 : 1))
-                                    .frame(maxWidth: .infinity, minHeight: 44)
+                    if let b = builtin {
+                        Button { tone = -1 } label: {
+                            HStack(spacing: 12) {
+                                swatch(b.color, on: tone < 0)
+                                Text("Màu gốc").foregroundStyle(.primary)
+                                Spacer()
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Màu \(i + 1)")
                         }
+                        .buttonStyle(.plain)
                     }
+                    swatchRow(CategoryTone.light)
+                    swatchRow(CategoryTone.strong)
                 }
             }
             .navigationTitle(editing == nil ? "Danh mục mới" : "Sửa danh mục")
@@ -738,6 +737,22 @@ struct CategoryEditor: View {
                 else { tone = store.cats.count % CategoryTone.all.count; nameFocused = true }
             }
         }
+    }
+
+    private func swatchRow(_ r: Range<Int>) -> some View {
+        HStack(spacing: 0) {
+            ForEach(r, id: \.self) { i in
+                Button { tone = i } label: { swatch(CategoryTone.bg(i), on: tone == i).frame(maxWidth: .infinity, minHeight: 44) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Màu \(i + 1)")
+            }
+        }
+    }
+
+    private func swatch(_ c: Color, on: Bool) -> some View {
+        Circle().fill(c)
+            .frame(width: 32, height: 32)
+            .overlay(Circle().strokeBorder(Color.primary.opacity(on ? 0.8 : 0.08), lineWidth: on ? 2.5 : 1))
     }
 
     private func save() {

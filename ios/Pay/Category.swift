@@ -89,7 +89,18 @@ enum CategoryTone {
         (0xFFD6D6, 0xD23C3C),   // đỏ
         (0xFFF2B8, 0xB59200),   // vàng
         (0xE4E4E8, 0x6B6B78),   // xám
+        // Đậm: vẫn đủ sáng để chữ đen trên ô đọc rõ
+        (0xFFA94D, 0xC96A00),   // cam
+        (0x7ED957, 0x2E8B1F),   // lá
+        (0x4FD1C5, 0x158A80),   // ngọc
+        (0x7F9CFF, 0x2F4FD0),   // xanh dương
+        (0xB993FF, 0x7A3FD6),   // tím
+        (0xFF7A7A, 0xC42F2F),   // đỏ
+        (0xFFD43B, 0xA88400),   // vàng
+        (0xFF8CC6, 0xC2387E),   // hồng
     ]
+    /// 8 màu đầu là nhạt, 8 màu sau là đậm
+    static let light = 0..<8, strong = 8..<16
     static func bg(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].bg) }
     static func chart(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].chart) }
 }

@@ -153,6 +153,7 @@ struct HomeView: View {
                 .fontWeight(.semibold)
                 // Cùng chiều cao hình: icon vẽ sẵn đã cắt sát biên; SF Symbols có lề trong nên phóng thêm cho bằng
                 .frame(height: asset ? 20 : 21.5)
+                .offset(y: asset ? 0 : 0.7)   // cùng đường đáy với hai icon kia
                 .frame(width: Self.headerSize, height: Self.headerSize)   // không nền, nhưng vùng chạm vẫn 42×42
                 .contentShape(Rectangle())
         }

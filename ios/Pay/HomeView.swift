@@ -134,12 +134,7 @@ struct HomeView: View {
         HStack(spacing: 8) {
             Text("Pay").font(.system(size: 28, weight: .bold))
             Spacer()
-            Text(dayLabel(now))
-                .font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .frame(height: Self.headerSize)
-                .background(Palette.pill, in: Capsule())
-            headerButton("person.2.fill", "Nhà chung") { showHouse = true }
+            headerButton("person.2.crop.square.stack.fill", "Nhóm chung") { showHouse = true }
             headerButton("chart.bar.fill", "Thống kê") { showStats = true }
             headerButton("gearshape.fill", "Cài đặt") { showSettings = true }
         }
@@ -167,7 +162,12 @@ struct HomeView: View {
         let month = store.monthItems(now).reduce(0) { $0 + $1.a }
         let n = store.count(on: now)
         return VStack(alignment: .leading, spacing: 0) {
-            Text("Hôm nay đã chi").font(.system(size: 16)).foregroundStyle(.secondary)
+            HStack {
+                Text("Hôm nay đã chi")
+                Spacer()
+                Text(dayLabel(now))
+            }
+            .font(.system(size: 16)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(fmt(store.total(on: now)))
                     .font(.system(size: 46, weight: .bold)).kerning(-1.5)

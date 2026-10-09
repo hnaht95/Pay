@@ -28,7 +28,7 @@ struct HouseView: View {
     @ObservedObject private var house = House.shared
     @Environment(\.dismiss) private var dismiss
     @State private var adding = false
-    @State private var groupName = "Nhà mình"
+    @State private var groupName = ""
     @State private var myName = ""
     @State private var newMember = ""
     @State private var addingMember = false
@@ -39,6 +39,9 @@ struct HouseView: View {
     @State private var claimAfterAdd = false
     @State private var editingMember: HouseMember?
     @State private var showInbox = false
+    /// Đang tạo nhóm mới (từ danh sách nhóm)
+    @State private var creating = false
+    @State private var showArchived = false
     @State private var notifyOn: Bool?
     @Environment(\.scenePhase) private var scenePhase
 
@@ -100,6 +103,7 @@ struct HouseView: View {
             }
         }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store) }
+        .onDisappear { house.open(nil) }   // mở lại thì về danh sách nhóm
         // Trả qua app ngân hàng xong quay lại Pay: hỏi đã chuyển xong chưa
         .onChange(of: scenePhase) { _, p in
             if p == .active, let t = house.pendingPay { house.pendingPay = nil; paying = t }
@@ -110,8 +114,10 @@ struct HouseView: View {
     }
 
     /// Nút "Thêm khoản chung" nổi ở đáy (chỉ khi đã vào nhóm)
+    private var inGroup: Bool { house.phase == .ready && house.current != nil && !creating }
+
     @ViewBuilder private var dock: some View {
-        if house.phase == .ready && house.me != nil {
+        if inGroup && house.me != nil {
             GlassGroup {
                 BigButton(title: "Thêm khoản chung", icon: "plus", primary: true) { adding = true }
             }
@@ -136,12 +142,18 @@ struct HouseView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            circleButton("chevron.down", "Đóng") { dismiss() }
+            if inGroup {
+                circleButton("chevron.left", "Các nhóm") { withAnimation(.snappy) { house.open(nil) } }
+            } else if creating && !house.groups.isEmpty {
+                circleButton("chevron.left", "Các nhóm") { withAnimation(.snappy) { creating = false } }
+            } else {
+                circleButton("chevron.down", "Đóng") { dismiss() }
+            }
             Spacer()
-            Text(house.phase == .ready && !house.name.isEmpty ? house.name : "Nhà chung")
+            Text(inGroup && !house.name.isEmpty ? house.name : creating ? "Nhóm mới" : "Nhóm chung")
                 .font(.system(size: 19, weight: .bold)).lineLimit(1)
             Spacer()
-            if house.phase == .ready && house.me != nil {
+            if inGroup && house.me != nil {
                 // Chuông: việc cần mình xác nhận + hoạt động gần đây
                 Button { showInbox = true } label: {
                     Image(systemName: "bell.fill").font(.system(size: 17, weight: .semibold))
@@ -157,7 +169,7 @@ struct HouseView: View {
                 .foregroundStyle(.primary)
                 .accessibilityLabel(pending.isEmpty ? "Thông báo" : "Thông báo, \(pending.count) việc cần xác nhận")
             }
-            if house.phase == .ready {
+            if inGroup {
                 Menu {
                     Button(house.isOwner ? "Mời thành viên" : "Người trong nhóm", systemImage: "person.badge.plus") { invite() }
                     Button("Thêm người", systemImage: "plus") { addingMember = true }
@@ -202,14 +214,14 @@ struct HouseView: View {
         case .loading:
             ProgressView().frame(maxWidth: .infinity).padding(.top, 120)
         case .noAccount:
-            message("icloud.slash", "Chưa đăng nhập iCloud", "Nhà chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt của iPhone rồi mở lại.")
+            message("icloud.slash", "Chưa đăng nhập iCloud", "Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt của iPhone rồi mở lại.")
         case .failed(let why):
             message("exclamationmark.triangle", "Chưa tải được nhóm", why)
             primaryButton("Thử lại") { Task { await house.load() } }.padding(.top, 16)
-        case .none:
-            createForm
         case .ready:
-            if house.me == nil { pickMe } else { ready }
+            if creating || house.groups.isEmpty { createForm }
+            else if house.current == nil { groupList }
+            else if house.me == nil { pickMe } else { ready }
         }
     }
 
@@ -253,8 +265,8 @@ struct HouseView: View {
                     HouseAvatar(id: "demo\(i)", name: n, size: 52).overlay(Circle().stroke(Palette.surface, lineWidth: 3))
                 }
             }
-            Text("Sổ chi tiêu chung của cả nhà").font(.system(size: 26, weight: .bold))
-            Text("Ai đi chợ, trả điện nước thì ghi vào đây. Cuối tháng Pay tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất.")
+            Text("Sổ chi tiêu chung").font(.system(size: 26, weight: .bold))
+            Text("Cho nhà chung, phòng trọ, chuyến đi… Ai ứng tiền thì ghi vào đây, Pay tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất.")
                 .font(.system(size: 16)).foregroundStyle(.secondary)
         }
         .padding(22)
@@ -262,13 +274,16 @@ struct HouseView: View {
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
 
         VStack(spacing: 14) {
-            field("Tên nhóm", $groupName)
+            field("Tên nhóm, ví dụ: Nhà mình, Đi Đà Lạt", $groupName)
             field("Tên của bạn", $myName)
         }
         .padding(.top, 20)
 
         primaryButton("Tạo nhóm") {
-            Task { await house.create(name: groupName.trimmingCharacters(in: .whitespaces), me: myName.trimmingCharacters(in: .whitespaces)) }
+            Task {
+                await house.create(name: groupName.trimmingCharacters(in: .whitespaces), me: myName.trimmingCharacters(in: .whitespaces))
+                creating = false
+            }
         }
         .disabled(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty)
         .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
@@ -277,6 +292,94 @@ struct HouseView: View {
         Text("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Pay và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi.")
             .font(.system(size: 14)).foregroundStyle(.secondary)
             .padding(.top, 12).padding(.horizontal, 4)
+    }
+
+    // MARK: Danh sách nhóm
+
+    @ViewBuilder private var groupList: some View {
+        let active = house.groups.filter { !house.archived.contains($0.id) }
+        let old = house.groups.filter { house.archived.contains($0.id) }
+        VStack(spacing: 10) {
+            ForEach(active) { groupCard($0) }
+            Button { groupName = ""; creating = true } label: {
+                Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
+                    .frame(width: 52, height: 52).background(Palette.pill, in: Circle())
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: 96)
+                    .background(RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])))
+                    .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            }
+            .buttonStyle(Pressable())
+            .accessibilityLabel("Tạo nhóm mới")
+        }
+        if !old.isEmpty {
+            Button { withAnimation(.snappy) { showArchived.toggle() } } label: {
+                HStack {
+                    Text("Đã lưu trữ").font(.system(size: 21, weight: .bold))
+                    Text("\(old.count)").font(.system(size: 15)).foregroundStyle(.secondary)
+                    Spacer()
+                    Image(systemName: showArchived ? "chevron.up" : "chevron.down").font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.primary)
+            }
+            .padding(.top, 26).padding(.bottom, 12)
+            if showArchived {
+                VStack(spacing: 10) { ForEach(old) { groupCard($0).opacity(0.6) } }
+            }
+        }
+    }
+
+    private func groupCard(_ g: HouseGroup) -> some View {
+        let net = g.myNet
+        let pend = g.pending.count
+        return Button { withAnimation(.snappy) { house.open(g.id) } } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "person.2.crop.square.stack.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(Color(hex: 0x111114))
+                    .frame(width: 56, height: 56)
+                    .background(CategoryTone.bg(house.tone(g.id)), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(g.name.isEmpty ? "Nhóm chung" : g.name).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                    HStack(spacing: -6) {
+                        ForEach(g.members.prefix(5)) { m in
+                            HouseAvatar(id: m.id, name: m.name, size: 22).overlay(Circle().stroke(Palette.card, lineWidth: 1.5))
+                        }
+                        Text("  \(g.members.count) người").font(.system(size: 14)).foregroundStyle(.secondary)
+                            .lineLimit(1).fixedSize()
+                    }
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(net > 0 ? "Được nhận" : net < 0 ? "Còn phải trả" : "Đã cân bằng")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                    if net != 0 {
+                        Text(fmt(abs(net))).font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(net < 0 ? Palette.danger : Palette.goodInk).lineLimit(1)
+                    }
+                }
+            }
+            .foregroundStyle(.primary)
+            .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(alignment: .topLeading) {
+                if pend > 0 {
+                    Text("\(pend)").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+                        .frame(minWidth: 20, minHeight: 20).background(Palette.danger, in: Circle())
+                        .offset(x: 56, y: 6)
+                }
+            }
+        }
+        .buttonStyle(Pressable())
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .contextMenu {
+            if house.archived.contains(g.id) {
+                Button("Bỏ lưu trữ", systemImage: "tray.and.arrow.up") { house.setArchived(g.id, false) }
+            } else {
+                Button("Lưu trữ", systemImage: "archivebox") { house.setArchived(g.id, true) }
+            }
+        }
     }
 
     // MARK: Chọn "tôi là ai"

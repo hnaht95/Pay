@@ -111,31 +111,43 @@ enum Settle {
 
 // MARK: Lưu trên iCloud (CloudKit, chia sẻ cả vùng dữ liệu cho người được mời)
 
-/// Một nhóm = một vùng dữ liệu (zone) trong iCloud của người tạo, chia sẻ bằng CKShare cho cả vùng.
-/// Người được mời thấy vùng đó trong cơ sở dữ liệu "được chia sẻ" của họ; ai cũng thêm / sửa / xoá được.
+/// Một nhóm chung: một vùng dữ liệu (zone) trong iCloud của người tạo, chia sẻ bằng CKShare cho cả vùng.
+struct HouseGroup: Identifiable {
+    var id: String { zone.zoneName }
+    let zone: CKRecordZone.ID
+    let scope: CKDatabase.Scope
+    var isOwner: Bool
+    var name = ""
+    var members: [HouseMember] = []
+    var spends: [HouseSpend] = []
+    var settles: [HouseSettle] = []
+    var me: String?
+    var records: [CKRecord.ID: CKRecord] = [:]
+
+    /// > 0: nhóm còn nợ mình; < 0: mình còn phải trả
+    var myNet: Int { me.map { Settle.balances(spends, settles)[$0] ?? 0 } ?? 0 }
+    /// Lần trả cần mình để ý (xác nhận, chờ, bị báo chưa nhận)
+    var pending: [HouseSettle] { settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok") } }
+    var lastActivity: Date { max(spends.first?.date ?? .distantPast, settles.first?.date ?? .distantPast) }
+}
+
+/// Người tạo nhóm có vùng dữ liệu trong iCloud của mình; người được mời thấy vùng đó trong cơ sở dữ liệu "được chia sẻ".
+/// Ai trong nhóm cũng thêm / sửa / xoá được. Có thể ở nhiều nhóm cùng lúc (nhà, phòng trọ, chuyến đi…).
 @MainActor
 final class House: ObservableObject {
     static let shared = House()
 
-    enum Phase: Equatable { case loading, none, ready, noAccount, failed(String) }
+    enum Phase: Equatable { case loading, ready, noAccount, failed(String) }
 
     @Published private(set) var phase: Phase = .loading
-    @Published private(set) var name = ""
-    @Published private(set) var members: [HouseMember] = []
-    @Published private(set) var spends: [HouseSpend] = []
-    @Published private(set) var settles: [HouseSettle] = []
-    @Published private(set) var isOwner = false
+    @Published private(set) var groups: [HouseGroup] = []
+    /// Nhóm đang mở; nil = đang xem danh sách nhóm
+    @Published var currentID: String?
     @Published private(set) var busy = false
-    /// Thành viên là chính mình (mỗi máy tự chọn, nhớ theo nhóm)
-    @Published var me: String? {
-        didSet { if let zone { UserDefaults.standard.set(me, forKey: "house.me.\(zone.zoneName)") } }
-    }
+    /// Nhóm đã lưu trữ (xong việc, ẩn khỏi danh sách chính) — chỉ trên máy này
+    @Published private(set) var archived: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "house.archived") ?? [])
 
     private let container = CKContainer(identifier: "iCloud.com.hnaht95.sochipay")
-    private var zone: CKRecordZone.ID?
-    private var scope: CKDatabase.Scope = .private
-    private var db: CKDatabase { container.database(with: scope) }
-    private var records: [CKRecord.ID: CKRecord] = [:]
     private static let zonePrefix = "nha-"
 
     /// Bản Debug chạy với "-houseDemo YES": dữ liệu mẫu, không cần iCloud, sửa gì cũng chỉ trên máy (để xem giao diện trên máy ảo)
@@ -147,21 +159,58 @@ final class House: ObservableObject {
         #endif
     }
 
+    // MARK: Nhóm đang mở
+
+    private var cur: Int? { currentID.flatMap { id in groups.firstIndex { $0.id == id } } }
+    var current: HouseGroup? { cur.map { groups[$0] } }
+    var name: String { current?.name ?? "" }
+    var members: [HouseMember] { current?.members ?? [] }
+    var spends: [HouseSpend] { current?.spends ?? [] }
+    var settles: [HouseSettle] { current?.settles ?? [] }
+    var isOwner: Bool { current?.isOwner ?? false }
+    /// Thành viên là chính mình trong nhóm đang mở (mỗi máy tự chọn, nhớ theo nhóm)
+    var me: String? {
+        get { current?.me }
+        set {
+            guard let i = cur else { return }
+            groups[i].me = newValue
+            UserDefaults.standard.set(newValue, forKey: "house.me.\(groups[i].id)")
+        }
+    }
+    private var zone: CKRecordZone.ID? { current?.zone }
+    private var db: CKDatabase { container.database(with: current?.scope ?? .private) }
+
+    func open(_ id: String?) { currentID = id }
+
+    func setArchived(_ id: String, _ on: Bool) {
+        if on { archived.insert(id) } else { archived.remove(id) }
+        UserDefaults.standard.set(Array(archived), forKey: "house.archived")
+    }
+
+    /// Tổng việc cần xác nhận ở mọi nhóm (số trên nút nhóm ở màn hình chính)
+    var pendingTotal: Int { groups.reduce(0) { $0 + $1.pending.count } }
+
     private func loadDemo() {
         let now = Date()
         func ago(_ d: Double) -> Date { now.addingTimeInterval(-d * 86_400) }
-        name = "Nhà mình"; isOwner = true
-        members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan", bin: "970416", acct: "123456789"),
-                   HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà")]
-        spends = [
+        var home = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo1"), scope: .private, isOwner: true, name: "Nhà mình")
+        home.members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan", bin: "970416", acct: "123456789"),
+                        HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà")]
+        home.spends = [
             HouseSpend(id: "e1", amount: 420_000, note: "Đi chợ cuối tuần", payer: "a", shares: ["a", "b", "c", "d"], date: ago(0.2), cat: "an"),
             HouseSpend(id: "e2", amount: 860_000, note: "Tiền điện tháng 9", payer: "b", shares: ["a", "b", "c", "d"], date: ago(2), cat: "hd"),
             HouseSpend(id: "e3", amount: 300_000, note: "Lẩu tối thứ 6", payer: "c", shares: ["a", "c", "d"], date: ago(4), cat: "an"),
             HouseSpend(id: "e4", amount: 250_000, note: "Internet", payer: "a", shares: ["a", "b", "c", "d"], date: ago(8), cat: "hd"),
         ]
-        settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1)),
-                   HouseSettle(id: "s2", from: "a", to: "c", amount: 50_000, date: ago(0.1), status: "wait")]
-        if me == nil { me = "c" }
+        home.settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1)),
+                        HouseSettle(id: "s2", from: "a", to: "c", amount: 50_000, date: ago(0.1), status: "wait")]
+        home.me = "c"
+        var trip = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo2"), scope: .shared, isOwner: false, name: "Đi Đà Lạt")
+        trip.members = [HouseMember(id: "c", name: "Minh"), HouseMember(id: "x", name: "Khoa"), HouseMember(id: "y", name: "Vy")]
+        trip.spends = [HouseSpend(id: "t1", amount: 1_800_000, note: "Homestay 2 đêm", payer: "c", shares: ["c", "x", "y"], date: ago(12), cat: "di"),
+                       HouseSpend(id: "t2", amount: 450_000, note: "Lẩu gà lá é", payer: "x", shares: ["c", "x", "y"], date: ago(11), cat: "an")]
+        trip.me = "c"
+        groups = [home, trip]
         phase = .ready
     }
 
@@ -175,55 +224,62 @@ final class House: ObservableObject {
 
     // MARK: Tải
 
-    /// Tìm nhóm: trước trong vùng mình tạo, không có thì trong các vùng người khác chia sẻ cho mình.
+    /// Tải mọi nhóm: vùng mình tạo và vùng người khác chia sẻ cho mình.
     func load() async {
-        if demo { if phase != .ready { loadDemo() }; return }
+        if demo { if groups.isEmpty { loadDemo() }; return }
         if phase != .ready { phase = .loading }
         do {
             guard try await container.accountStatus() == .available else { phase = .noAccount; return }
-            if zone == nil {
-                if let z = try await container.privateCloudDatabase.allRecordZones().first(where: { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) }) {
-                    zone = z.zoneID; scope = .private; isOwner = true
-                } else if let z = try await container.sharedCloudDatabase.allRecordZones().first(where: { $0.zoneID.zoneName.hasPrefix(Self.zonePrefix) }) {
-                    zone = z.zoneID; scope = .shared; isOwner = false
+            var found: [(CKRecordZone.ID, CKDatabase.Scope)] = []
+            for scope in [CKDatabase.Scope.private, .shared] {
+                for z in try await container.database(with: scope).allRecordZones() where z.zoneID.zoneName.hasPrefix(Self.zonePrefix) {
+                    found.append((z.zoneID, scope))
                 }
             }
-            guard zone != nil else { phase = .none; return }
-            try await fetchAll()
+            var next: [HouseGroup] = []
+            for (zid, scope) in found {
+                var g = groups.first { $0.id == zid.zoneName } ?? HouseGroup(zone: zid, scope: scope, isOwner: scope == .private)
+                if let fresh = try? await fetch(g) { g = fresh }
+                next.append(g)
+            }
+            groups = next.sorted { $0.lastActivity > $1.lastActivity }
+            if let id = currentID, !groups.contains(where: { $0.id == id }) { currentID = nil }
             phase = .ready
-            await enableNotifications()
-        } catch let e as CKError where e.code == .zoneNotFound || e.code == .userDeletedZone || e.code == .notAuthenticated {
-            reset()
-            phase = e.code == .notAuthenticated ? .noAccount : .none
+            for i in groups.indices { notifyChanges(i) }
+            if !groups.isEmpty { await enableNotifications() }
+        } catch let e as CKError where e.code == .notAuthenticated {
+            phase = .noAccount
         } catch {
             phase = phase == .ready ? .ready : .failed(Self.describe(error))
         }
     }
 
-    private func fetchAll() async throws {
-        guard let zone else { return }
+    /// Đọc toàn bộ một nhóm và nhận ra "tôi là ai" trong nhóm đó.
+    private func fetch(_ group: HouseGroup) async throws -> HouseGroup {
+        var g = group
+        let db = container.database(with: g.scope)
         var all: [CKRecord.ID: CKRecord] = [:]
         var token: CKServerChangeToken?
         var more = true
         while more {
-            let r = try await db.recordZoneChanges(inZoneWith: zone, since: token)
+            let r = try await db.recordZoneChanges(inZoneWith: g.zone, since: token)
             for (id, res) in r.modificationResultsByID { if case .success(let m) = res { all[id] = m.record } }
             token = r.changeToken
             more = r.moreComing
         }
-        records = all
-        rebuild()
-        me = UserDefaults.standard.string(forKey: "house.me.\(zone.zoneName)").flatMap { id in members.contains { $0.id == id } ? id : nil }
+        g.records = all
+        Self.rebuild(&g)
+        g.me = UserDefaults.standard.string(forKey: "house.me.\(g.id)").flatMap { id in g.members.contains { $0.id == id } ? id : nil }
         // Máy mới / cài lại: nhận ra mình qua Apple ID đã gắn với thành viên
-        if me == nil, let u = try? await container.userRecordID().recordName {
-            me = members.first { $0.user == u }?.id
+        if g.me == nil, let u = try? await container.userRecordID().recordName {
+            g.me = g.members.first { $0.user == u }?.id
         }
-        notifyChanges()
+        return g
     }
 
-    private func rebuild() {
+    private static func rebuild(_ g: inout HouseGroup) {
         var ms: [HouseMember] = [], sp: [HouseSpend] = [], st: [HouseSettle] = []
-        for r in records.values {
+        for r in g.records.values {
             let id = r.recordID.recordName
             switch r.recordType {
             case "Member":
@@ -238,51 +294,50 @@ final class House: ObservableObject {
                 st.append(HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
                                       amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
                                       status: r["status"] as? String ?? "ok"))
-            case "Info": name = r["name"] as? String ?? name
+            case "Info": g.name = r["name"] as? String ?? g.name
             default: break
             }
         }
-        members = ms.sorted { ($0.name.lowercased(), $0.id) < ($1.name.lowercased(), $1.id) }
-        spends = sp.sorted { $0.date > $1.date }
-        settles = st.sorted { $0.date > $1.date }
-    }
-
-    private func reset() {
-        zone = nil; records = [:]; members = []; spends = []; settles = []; name = ""; me = nil; isOwner = false
+        g.members = ms.sorted { ($0.name.lowercased(), $0.id) < ($1.name.lowercased(), $1.id) }
+        g.spends = sp.sorted { $0.date > $1.date }
+        g.settles = st.sorted { $0.date > $1.date }
     }
 
     // MARK: Tạo / tham gia / rời nhóm
 
-    /// Tạo nhóm mới với chính mình là thành viên đầu tiên.
+    /// Tạo nhóm mới với chính mình là thành viên đầu tiên, rồi mở nhóm đó.
     func create(name groupName: String, me myName: String) async {
-        if demo { loadDemo(); name = groupName; members[0].name = myName; return }
+        if demo {
+            var g = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-" + UUID().uuidString.prefix(6)), scope: .private, isOwner: true, name: groupName)
+            g.members = [HouseMember(id: "me", name: myName)]; g.me = "me"
+            groups.insert(g, at: 0); currentID = g.id
+            return
+        }
         busy = true; defer { busy = false }
         do {
             let z = CKRecordZone(zoneName: Self.zonePrefix + UUID().uuidString.prefix(8).lowercased())
             _ = try await container.privateCloudDatabase.modifyRecordZones(saving: [z], deleting: [])
-            zone = z.zoneID; scope = .private; isOwner = true
+            groups.insert(HouseGroup(zone: z.zoneID, scope: .private, isOwner: true, name: groupName), at: 0)
+            currentID = z.zoneID.zoneName
             let info = CKRecord(recordType: "Info", recordID: CKRecord.ID(recordName: "info", zoneID: z.zoneID))
             info["name"] = groupName
             let m = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: z.zoneID))
             m["name"] = myName
             try await save([info, m])
-            name = groupName
             me = m.recordID.recordName
             phase = .ready
+            await enableNotifications()
         } catch {
             phase = .failed(Self.describe(error))
         }
     }
 
-    /// Người được mời bấm vào link: nhận lời mời rồi mở nhóm.
+    /// Người được mời bấm vào link: nhận lời mời rồi mở đúng nhóm đó.
     func accept(_ metadata: CKShare.Metadata) async {
-        phase = .loading
         do {
             _ = try await container.accept(metadata)
-            reset()
-            zone = metadata.share.recordID.zoneID; scope = .shared; isOwner = false
-            try await fetchAll()
-            phase = .ready
+            await load()
+            currentID = metadata.share.recordID.zoneID.zoneName
             QuickAction.shared.openHouse = true
         } catch {
             phase = .failed(Self.describe(error))
@@ -291,27 +346,26 @@ final class House: ObservableObject {
 
     /// Chủ nhóm: xoá cả nhóm. Người được mời: rời nhóm (dữ liệu vẫn còn ở chủ nhóm).
     func leave() async {
-        if demo { members = []; spends = []; settles = []; me = nil; phase = .none; return }
-        guard let zone else { return }
+        guard let g = current else { return }
+        if demo { groups.removeAll { $0.id == g.id }; currentID = nil; return }
         busy = true; defer { busy = false }
         do {
-            if isOwner { _ = try await container.privateCloudDatabase.modifyRecordZones(saving: [], deleting: [zone]) }
-            else { _ = try await container.sharedCloudDatabase.modifyRecordZones(saving: [], deleting: [zone]) }
-            UserDefaults.standard.removeObject(forKey: "house.me.\(zone.zoneName)")
-            reset()
-            phase = .none
+            _ = try await container.database(with: g.scope).modifyRecordZones(saving: [], deleting: [g.zone])
+            UserDefaults.standard.removeObject(forKey: "house.me.\(g.id)")
+            groups.removeAll { $0.id == g.id }
+            currentID = nil
         } catch {
             phase = .failed(Self.describe(error))
         }
     }
 
-    /// Lời mời của cả nhóm (tạo nếu chưa có), để mở bảng chia sẻ của iOS.
+    /// Lời mời của nhóm đang mở (tạo nếu chưa có), để mở bảng chia sẻ của iOS.
     func share() async throws -> CKShare {
         guard let zone else { throw CKError(.zoneNotFound) }
         let shareID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zone)
         if let s = try? await db.record(for: shareID) as? CKShare { return s }
         let s = CKShare(recordZoneID: zone)
-        s[CKShare.SystemFieldKey.title] = name.isEmpty ? "Nhà chung" : name
+        s[CKShare.SystemFieldKey.title] = name.isEmpty ? "Nhóm chung" : name
         s.publicPermission = .none
         try await save([s])
         return s
@@ -319,10 +373,10 @@ final class House: ObservableObject {
 
     var cloud: CKContainer { container }
 
-    // MARK: Sửa dữ liệu
+    // MARK: Sửa dữ liệu (nhóm đang mở)
 
     func addMember(_ n: String) async -> String? {
-        if demo { let id = UUID().uuidString; members.append(HouseMember(id: id, name: n)); return id }
+        if demo, let i = cur { let id = UUID().uuidString; groups[i].members.append(HouseMember(id: id, name: n)); return id }
         guard let zone else { return nil }
         let r = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["name"] = n
@@ -332,10 +386,10 @@ final class House: ObservableObject {
     /// Sửa tên và tài khoản nhận tiền của một thành viên.
     /// photo: nil = giữ nguyên, Data rỗng = bỏ ảnh
     func updateMember(_ id: String, name n: String, bin: String?, acct: String?, photo: Data? = nil) async {
-        if demo {
-            if let i = members.firstIndex(where: { $0.id == id }) {
-                members[i].name = n; members[i].bin = bin; members[i].acct = acct
-                if let photo { members[i].photo = photo.isEmpty ? nil : photo }
+        if demo, let g = cur {
+            if let i = groups[g].members.firstIndex(where: { $0.id == id }) {
+                groups[g].members[i].name = n; groups[g].members[i].bin = bin; groups[g].members[i].acct = acct
+                if let photo { groups[g].members[i].photo = photo.isEmpty ? nil : photo }
             }
             return
         }
@@ -369,7 +423,7 @@ final class House: ObservableObject {
     func payNow(_ t: HouseTransfer, app: BankApp) async {
         guard let to = members.first(where: { $0.id == t.to }), let bin = to.bin, let acct = to.acct else { return }
         let qr = VietQR(raw: "", bin: bin, acct: acct, amount: t.amount, name: strip(to.name).uppercased(),
-                        purpose: "Pay " + strip(name.isEmpty ? "Nha chung" : name))
+                        purpose: "Pay " + strip(name.isEmpty ? "Nhom chung" : name))
         // App chỉ mở được (không điền sẵn): chép số tài khoản để dán
         if !app.fill { UIPasteboard.general.string = acct }
         pendingPay = t
@@ -378,8 +432,8 @@ final class House: ObservableObject {
 
     @discardableResult
     func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String) async -> Bool {
-        if demo {
-            spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)
+        if demo, let i = cur {
+            groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)
             return true
         }
         guard let zone else { return false }
@@ -391,7 +445,10 @@ final class House: ObservableObject {
     /// Ghi một lần trả. Người trả báo thì chờ người nhận xác nhận; người nhận tự bấm "Đã nhận" thì xong luôn.
     func settle(_ t: HouseTransfer) async {
         let status = t.from == me && t.to != me ? "wait" : "ok"
-        if demo { settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date(), status: status), at: 0); return }
+        if demo, let i = cur {
+            groups[i].settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date(), status: status), at: 0)
+            return
+        }
         guard let zone else { return }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date(); r["status"] = status
@@ -401,15 +458,16 @@ final class House: ObservableObject {
     /// Người nhận trả lời: đã nhận (xong) hoặc chưa nhận được (báo lại người trả).
     func respond(_ id: String, received: Bool) async {
         let status = received ? "ok" : "no"
-        if demo { if let i = settles.firstIndex(where: { $0.id == id }) { settles[i].status = status }; return }
+        if demo, let g = cur { if let i = groups[g].settles.firstIndex(where: { $0.id == id }) { groups[g].settles[i].status = status }; return }
         guard let r = record(id) else { return }
         r["status"] = status
         _ = await run([r])
     }
 
     /// Bấm nút trên thông báo: app có thể vừa được mở lại, nên tải nhóm trước khi trả lời
-    func respondFromNotification(_ id: String, received: Bool) async {
-        if zone == nil { await load() }
+    func respondFromNotification(_ id: String, group: String, received: Bool) async {
+        if !groups.contains(where: { $0.id == group }) { await load() }
+        currentID = group
         await respond(id, received: received)
     }
 
@@ -417,41 +475,43 @@ final class House: ObservableObject {
 
     /// Nhận thông báo đẩy im lặng mỗi khi dữ liệu nhóm đổi (máy khác ghi), để tải lại và báo cho người liên quan.
     private func subscribe() async {
-        let id = "house-\(scope == .private ? "private" : "shared")"
-        guard !UserDefaults.standard.bool(forKey: "house.sub.\(id)") else { return }
-        let sub = CKDatabaseSubscription(subscriptionID: id)
-        let info = CKSubscription.NotificationInfo()
-        info.shouldSendContentAvailable = true
-        sub.notificationInfo = info
-        if (try? await db.modifySubscriptions(saving: [sub], deleting: [])) != nil {
-            UserDefaults.standard.set(true, forKey: "house.sub.\(id)")
+        for scope in [CKDatabase.Scope.private, .shared] {
+            let id = "house-\(scope == .private ? "private" : "shared")"
+            guard !UserDefaults.standard.bool(forKey: "house.sub.\(id)") else { continue }
+            let sub = CKDatabaseSubscription(subscriptionID: id)
+            let info = CKSubscription.NotificationInfo()
+            info.shouldSendContentAvailable = true
+            sub.notificationInfo = info
+            if (try? await container.database(with: scope).modifySubscriptions(saving: [sub], deleting: [])) != nil {
+                UserDefaults.standard.set(true, forKey: "house.sub.\(id)")
+            }
         }
     }
 
     /// Máy khác vừa đổi dữ liệu (app đang chạy nền): tải lại rồi báo.
-    func backgroundRefresh() async {
-        if zone == nil { await load(); return }
-        try? await fetchAll()
-    }
+    func backgroundRefresh() async { await load() }
 
     /// Báo những lần trả liên quan tới mình mà máy này chưa báo: có người báo đã chuyển cho mình,
     /// người nhận xác nhận hoặc báo chưa nhận được tiền mình chuyển. Lần đầu mở nhóm thì chỉ ghi nhớ, không báo dồn.
-    private func notifyChanges() {
-        guard let me, let zone else { return }
-        let key = "house.seen.\(zone.zoneName)"
+    private func notifyChanges(_ gi: Int) {
+        let g = groups[gi]
+        guard let me = g.me else { return }
+        let key = "house.seen.\(g.id)"
         let first = UserDefaults.standard.object(forKey: key) == nil
         var seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
-        let name = memberName
-        for s in settles where s.to == me || s.from == me {
+        let names = Dictionary(uniqueKeysWithValues: g.members.map { ($0.id, $0.name) })
+        let name = { (id: String) in names[id] ?? "Người đã xoá" }
+        for s in g.settles where s.to == me || s.from == me {
             let tag = "\(s.id).\(s.status)"
             guard seen.insert(tag).inserted, !first else { continue }
             let c = UNMutableNotificationContent()
             c.sound = .default
+            c.subtitle = g.name
+            c.userInfo = ["settle": s.id, "group": g.id]
             if s.to == me && s.from != me && s.status == "wait" {
                 c.title = "\(name(s.from)) báo đã chuyển \(fmt(s.amount))đ"
                 c.body = "Kiểm tra tài khoản rồi xác nhận đã nhận."
                 c.categoryIdentifier = "HOUSE_CONFIRM"
-                c.userInfo = ["settle": s.id]
             } else if s.from == me && s.to != me && s.status == "no" {
                 c.title = "\(name(s.to)) chưa nhận được \(fmt(s.amount))đ"
                 c.body = "Kiểm tra lại giao dịch trong app ngân hàng hoặc chuyển lại."
@@ -472,20 +532,20 @@ final class House: ObservableObject {
     }
 
     func delete(_ id: String) async {
-        if demo { spends.removeAll { $0.id == id }; settles.removeAll { $0.id == id }; return }
-        guard let zone else { return }
+        if demo, let i = cur { groups[i].spends.removeAll { $0.id == id }; groups[i].settles.removeAll { $0.id == id }; return }
+        guard let zone, let i = cur else { return }
         let rid = CKRecord.ID(recordName: id, zoneID: zone)
         busy = true; defer { busy = false }
         do {
             _ = try await db.modifyRecords(saving: [], deleting: [rid])
-            records[rid] = nil
-            rebuild()
+            groups[i].records[rid] = nil
+            Self.rebuild(&groups[i])
         } catch { phase = .failed(Self.describe(error)) }
     }
 
     private func record(_ id: String) -> CKRecord? {
-        guard let zone else { return nil }
-        return records[CKRecord.ID(recordName: id, zoneID: zone)]
+        guard let g = current else { return nil }
+        return g.records[CKRecord.ID(recordName: id, zoneID: g.zone)]
     }
 
     private func run(_ rs: [CKRecord]) async -> Bool {
@@ -495,11 +555,12 @@ final class House: ObservableObject {
 
     private func save(_ rs: [CKRecord]) async throws {
         let r = try await db.modifyRecords(saving: rs, deleting: [], savePolicy: .changedKeys)
+        guard let i = cur else { return }
         for (id, res) in r.saveResults {
             let saved = try res.get()
-            if !(saved is CKShare) { records[id] = saved }
+            if !(saved is CKShare) { groups[i].records[id] = saved }
         }
-        rebuild()
+        Self.rebuild(&groups[i])
     }
 
     static func describe(_ e: Error) -> String {
@@ -566,11 +627,12 @@ final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationC
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard let id = response.notification.request.content.userInfo["settle"] as? String else { return }
+        let info = response.notification.request.content.userInfo
+        guard let id = info["settle"] as? String, let group = info["group"] as? String else { return }
         switch response.actionIdentifier {
-        case "yes": await House.shared.respondFromNotification(id, received: true)
-        case "no": await House.shared.respondFromNotification(id, received: false)
-        default: await MainActor.run { QuickAction.shared.openHouse = true }
+        case "yes": await House.shared.respondFromNotification(id, group: group, received: true)
+        case "no": await House.shared.respondFromNotification(id, group: group, received: false)
+        default: await MainActor.run { House.shared.open(group); QuickAction.shared.openHouse = true }
         }
     }
 

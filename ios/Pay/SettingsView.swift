@@ -128,8 +128,8 @@ struct SettingsView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(s.level == .over ? Palette.danger : .primary)
             }
-            Text(v > 0 ? "Kéo để chỉnh, chạm để nhập số chính xác. Kéo hết sang trái là bỏ ngân sách."
-                       : "Kéo sang phải để đặt ngân sách tháng, hoặc chạm để nhập số. Màn hình chính và widget sẽ hiện số còn lại và mức nên tiêu mỗi ngày.")
+            Text(v > 0 ? "Kéo hoặc chạm vào thanh để chỉnh, giữ lâu để nhập số chính xác. Kéo hết sang trái là bỏ ngân sách."
+                       : "Kéo hoặc chạm vào thanh để đặt ngân sách tháng, giữ lâu để nhập số. Màn hình chính và widget sẽ hiện số còn lại và mức nên tiêu mỗi ngày.")
         }
     }
 
@@ -310,23 +310,47 @@ struct SettingsView: View {
 
 // MARK: Thanh kéo ngân sách
 
-/// Thanh kéo kiểu app Peek / thanh âm lượng: khối sáng bo tròn có tay nắm ở đầu, chữ nằm trong khối, số tiền ở cuối thanh.
-/// Kéo ngang ở đâu trên thanh cũng được, khối chạy theo ngón tay (không nhảy tới chỗ chạm). Chạm để nhập số chính xác.
+/// Thanh kéo ngân sách, lấy nguyên kiểu `LabeledSlider` của app Peek (thanh Âm lượng / Độ sáng): nhãn và số
+/// nằm trong rãnh, phần đã đầy là mảng sáng bo nhẹ, đầu phải có vạch dọc làm tay nắm. Số đo của Peek
+/// (cao 34, bo 11, chữ 12) phóng lên khoảng 1,4 lần cho vừa ngón tay.
+///
+/// Giống Peek: chạm chỗ nào trên thanh thì nhảy tới chỗ đó; nắm trúng vạch tay nắm thì vạch đi theo tay.
+/// Khác Peek vì là màn hình cảm ứng nằm trong trang cuộn: kéo dọc nhường cho trang cuộn, chạm vào phần nhãn
+/// không làm gì (tránh lỡ tay xoá ngân sách), giữ lâu để nhập số chính xác.
 struct BudgetSlider: View {
     /// Ngân sách đang đặt (đồng), 0 = chưa đặt
     let value: Int
     /// Số đang kéo, chỉ lưu khi buông tay
     @Binding var draft: Int?
     let commit: (Int) -> Void
-    let tap: () -> Void
+    /// Giữ lâu trên thanh: nhập số chính xác
+    let typeExact: () -> Void
 
-    /// Vị trí (0...1) lúc bắt đầu kéo
-    @State private var start: Double?
-    /// Kéo quá đầu / cuối thanh: thanh giãn ra một chút về phía đang kéo rồi bật lại khi buông
-    @State private var stretch: CGFloat = 0
+    /// Khoảng lệch từ chỗ nắm tới mép mảng sáng, giữ suốt một lượt kéo; khác nil là đang kéo
+    @State private var grab: CGFloat?
     @State private var width: CGFloat = 1
     @State private var labelWidth: CGFloat = 80
-    @State private var valueWidth: CGFloat = 50
+    @State private var valueWidth: CGFloat = 40
+
+    /// Vạch tay nắm lúc đang kéo: màu Peek dùng khi rê chuột lên thanh
+    private static let handleActive = Color(.sRGB, red: 0.62, green: 0.85, blue: 0.10)
+    private static let height: CGFloat = 48
+    /// Bo nhẹ thôi, không phải viên thuốc
+    private static let radius: CGFloat = 15
+    private static let leadingPad: CGFloat = 18
+    private static let barWidth: CGFloat = 4
+    private static let barInset: CGFloat = 13
+    /// Chạm cách vạch tay nắm trong chừng này thì tính là nắm vạch (ngón tay to hơn con trỏ nên rộng hơn Peek)
+    private static let grabReach: CGFloat = 22
+    /// Mảng sáng còn cách số chừng này thì số chuyển vào trong mảng sáng
+    private static let valueGap: CGFloat = 20
+    /// Từ mép phải số tới vạch tay nắm, lúc số nằm trong mảng sáng
+    private static let valueInset: CGFloat = 11
+    // Giao diện tối đúng màu Peek (mảng trắng 0,92 trên rãnh trắng 0,10); giao diện sáng thì đảo lại
+    private static let track = Color.primary.opacity(0.10)
+    private static let fill = Color.primary.opacity(0.92)
+    /// Chữ và vạch nằm trên mảng sáng
+    private static let ink = Color(light: 0xFFFFFF, dark: 0x000000)
 
     /// Các mức kéo được: 0 (chưa đặt), mỗi nấc 500 nghìn đến 10 triệu, rồi mỗi nấc 1 triệu đến 30 triệu.
     /// Nửa trái thanh dành cho 0–10 triệu cho dễ chỉnh mức hay dùng.
@@ -351,49 +375,54 @@ struct BudgetSlider: View {
         return s.replacingOccurrences(of: ".", with: ",") + "tr"
     }
 
-    /// Khối tô: đen trên nền trắng (giao diện sáng), trắng ngà trên nền tối như Peek
-    private static let fillColor = Color(light: 0x111114, dark: 0xEBEBED)
-    private static let fillInk = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
-
     private var shown: Int { draft ?? value }
-    /// Khối sáng ngắn nhất (mức 0): vừa chữ + tay nắm, như Peek
-    private var minFill: CGFloat { 18 + labelWidth + 16 + 4 + 12 }
-    /// Quãng đường khối sáng chạy được: ngón tay kéo bao nhiêu thì đầu khối đi bấy nhiêu
-    private var travel: CGFloat { max(width - minFill, 1) }
+    /// Mức 0 không phải bề rộng 0: mảng sáng phải bọc trọn nhãn chữ và vạch tay nắm
+    private var floorWidth: CGFloat { min(Self.leadingPad + labelWidth + 14 + Self.barWidth + Self.barInset, width) }
+    /// Quãng chạy thật của mép mảng sáng
+    private var usable: CGFloat { max(1, width - floorWidth) }
+    private var filled: CGFloat { floorWidth + usable * Self.position(shown) }
 
     var body: some View {
-        let fill = minFill + travel * Self.position(shown)
-        // Số tiền nằm cuối thanh; khối sáng dài tới nơi thì số chui vào trong khối, ngay trước tay nắm
-        let inside = fill > width - 20 - valueWidth - 12
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let filled = self.filled
+        // Hết chỗ thì số chuyển vào trong mảng sáng, sát bên trái vạch tay nắm và chạy theo nó
+        let inside = width - Self.leadingPad - valueWidth - filled < Self.valueGap
         ZStack(alignment: .leading) {
-            shape.fill(Color(.secondarySystemGroupedBackground))
-            HStack(spacing: 0) {
-                Text("Mỗi tháng").fixedSize()
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { labelWidth = $0 }
-                Spacer(minLength: 16)
-                Capsule().frame(width: 4, height: 20).opacity(0.45)
+            RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(Self.track)
+            RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(Self.fill)
+                .frame(width: filled)
+                .overlay(alignment: .trailing) {
+                    Capsule()
+                        .fill(grab != nil ? Self.handleActive : Self.ink.opacity(0.55))
+                        .frame(width: Self.barWidth, height: Self.height * 0.44)
+                        .padding(.trailing, Self.barInset)
+                        .animation(.easeOut(duration: 0.14), value: grab != nil)
+                }
+            Text("Mỗi tháng")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(Self.ink.opacity(0.78))
+                .fixedSize()
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { labelWidth = $0 }
+                .padding(.leading, Self.leadingPad)
+            // Số không vẽ hai bản chồng nhau: ở ngoài thì nằm trên rãnh, ở trong thì nằm trên mảng sáng;
+            // đổi chỗ thì mờ chéo chứ không trượt (đang kéo thì cú trượt bị cắt ngang thành cú nhảy)
+            ZStack(alignment: .leading) {
+                valueLabel(size: 17)
+                    .foregroundStyle(shown > 0 ? AnyShapeStyle(Color.primary.opacity(0.85)) : AnyShapeStyle(.secondary))
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { valueWidth = $0 }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, Self.leadingPad)
+                    .mask(alignment: .trailing) { Rectangle().frame(width: max(0, width - filled)) }
+                    .opacity(inside ? 0 : 1)
+                valueLabel(size: 16)
+                    .foregroundStyle(Self.ink.opacity(0.78))
+                    .frame(width: max(0, filled - Self.barInset - Self.barWidth - Self.valueInset), alignment: .trailing)
+                    .opacity(inside ? 1 : 0)
             }
-            .padding(.leading, 18).padding(.trailing, 12)
-            .frame(width: fill)
-            .frame(maxHeight: .infinity)
-            .background(Self.fillColor, in: shape)
-            .foregroundStyle(Self.fillInk)
-            Text(shown > 0 ? Self.compact(shown) : "Chưa đặt").fixedSize()
-                .monospacedDigit()
-                .foregroundStyle(inside ? AnyShapeStyle(Self.fillInk) : shown > 0 ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { valueWidth = $0 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, inside ? width - fill + 30 : 20)
+            .animation(.easeInOut(duration: 0.25), value: inside)
         }
-        .font(.system(size: 17, weight: .medium))
-        .frame(height: 52)
+        .frame(height: Self.height)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = max($0, 1) }
-        .overlay { HorizontalPan(changed: drag, tapped: tap) }
-        .scaleEffect(x: 1 + abs(stretch) / width, y: 1, anchor: stretch < 0 ? .trailing : .leading)
-        .scaleEffect(start != nil ? 1.02 : 1)
-        .animation(.spring(duration: 0.3), value: start != nil)
-        .animation(.snappy(duration: 0.2), value: inside)
+        .overlay { SliderGestures(pan: pan, tap: tap, hold: hold) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ngân sách tháng")
         .accessibilityValue(shown > 0 ? "\(fmt(shown)) đồng" : "Chưa đặt")
@@ -401,26 +430,52 @@ struct BudgetSlider: View {
             let i = Int((Self.position(value) * Self.last).rounded()) + (dir == .increment ? 1 : -1)
             commit(Self.levels[min(max(i, 0), Self.levels.count - 1)])
         }
-        .accessibilityAction(named: "Nhập số chính xác", tap)
+        .accessibilityAction(named: "Nhập số chính xác", typeExact)
     }
 
-    private func drag(_ dx: CGFloat, _ phase: HorizontalPan.Phase) {
-        if phase == .began { start = Self.position(shown) }
-        guard let start else { return }
-        if phase == .ended {
+    private func valueLabel(size: CGFloat) -> some View {
+        Text(shown > 0 ? Self.compact(shown) : "Chưa đặt")
+            .font(.system(size: size, weight: .medium, design: .rounded))
+            .monospacedDigit()
+            .fixedSize()
+    }
+
+    /// Mép vạch tay nắm hiện tại (giữa vạch)
+    private var bar: CGFloat { filled - Self.barInset - Self.barWidth / 2 }
+
+    private func pan(_ x: CGFloat, _ touchDown: CGFloat, _ phase: SliderGestures.Phase) {
+        switch phase {
+        case .began:
+            // Nắm trúng vạch thì vạch đi theo tay (nhớ khoảng lệch); nắm chỗ khác thì mép mảng sáng nhảy tới tay
+            grab = abs(touchDown - bar) <= Self.grabReach ? filled - touchDown : 0
+            move(to: x)
+        case .changed:
+            move(to: x)
+        case .ended:
             if let d = draft, d != value { commit(d) }
             draft = nil
-            self.start = nil
-            withAnimation(.spring(duration: 0.4, bounce: 0.45)) { stretch = 0 }
-            return
+            grab = nil
         }
-        let raw = start + Double(dx / travel)
-        let v = Self.level(at: raw)
+    }
+
+    private func move(to x: CGFloat) {
+        let v = Self.level(at: Double((x + (grab ?? 0) - floorWidth) / usable))
         if v != shown { tick(v) }
         draft = v
-        // Quá đầu / cuối: giãn ra, càng kéo càng nặng tay
-        let over = CGFloat(raw - min(max(raw, 0), 1)) * travel
-        stretch = over == 0 ? 0 : (over < 0 ? -1 : 1) * 14 * (1 - exp(-abs(over) / 60))
+    }
+
+    /// Chạm: nhảy tới chỗ chạm. Chạm vào phần nhãn hay ngay vạch tay nắm thì thôi.
+    private func tap(_ x: CGFloat) {
+        guard x > floorWidth, abs(x - bar) > Self.grabReach else { return }
+        let v = Self.level(at: Double((x - floorWidth) / usable))
+        guard v != value else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(.snappy(duration: 0.25)) { commit(v) }
+    }
+
+    private func hold() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        typeExact()
     }
 
     /// Rung nhẹ ở các mốc tròn (mỗi 1 triệu, trên 10 triệu thì mỗi 5 triệu), rung mạnh hơn khi chạm đầu / cuối thanh.
@@ -433,11 +488,13 @@ struct BudgetSlider: View {
     }
 }
 
-/// Lớp trong suốt phủ lên thanh kéo: nhận kéo ngang và chạm; kéo dọc thì nhường để trang Cài đặt vẫn cuộn được.
-struct HorizontalPan: UIViewRepresentable {
+/// Lớp trong suốt phủ lên thanh kéo: kéo ngang, chạm, giữ lâu. Kéo dọc thì nhường để trang Cài đặt vẫn cuộn được.
+struct SliderGestures: UIViewRepresentable {
     enum Phase { case began, changed, ended }
-    let changed: (CGFloat, Phase) -> Void
-    let tapped: () -> Void
+    /// Kéo: chỗ ngón tay đang ở, và chỗ vừa chạm xuống (theo chiều ngang của thanh)
+    let pan: (_ x: CGFloat, _ touchDown: CGFloat, _ phase: Phase) -> Void
+    let tap: (_ x: CGFloat) -> Void
+    let hold: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -445,36 +502,51 @@ struct HorizontalPan: UIViewRepresentable {
         let v = UIView()
         v.backgroundColor = .clear
         v.accessibilityElementsHidden = true   // VoiceOver dùng thanh kéo của SwiftUI (vuốt lên / xuống để chỉnh)
-        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.pan(_:)))
-        pan.delegate = context.coordinator
-        v.addGestureRecognizer(pan)
-        v.addGestureRecognizer(UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap)))
-        update(context.coordinator)
+        let c = context.coordinator
+        let pan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.pan(_:)))
+        pan.delegate = c
+        let hold = UILongPressGestureRecognizer(target: c, action: #selector(Coordinator.hold(_:)))
+        let tap = UITapGestureRecognizer(target: c, action: #selector(Coordinator.tap(_:)))
+        tap.require(toFail: hold)
+        [pan, hold, tap].forEach(v.addGestureRecognizer)
+        update(c)
         return v
     }
 
     func updateUIView(_ v: UIView, context: Context) { update(context.coordinator) }
 
     private func update(_ c: Coordinator) {
-        c.changed = changed
-        c.tapped = tapped
+        c.onPan = pan
+        c.onTap = tap
+        c.onHold = hold
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var changed: (CGFloat, Phase) -> Void = { _, _ in }
-        var tapped: () -> Void = {}
+        var onPan: (CGFloat, CGFloat, Phase) -> Void = { _, _, _ in }
+        var onTap: (CGFloat) -> Void = { _ in }
+        var onHold: () -> Void = {}
+        /// Chỗ ngón tay chạm xuống. Cử chỉ kéo chỉ bắt đầu sau khi ngón tay đi được một quãng,
+        /// nên lấy từ lúc chạm chứ không suy ngược từ cử chỉ.
+        private var touchDown: CGFloat = 0
 
         @objc func pan(_ g: UIPanGestureRecognizer) {
-            let dx = g.translation(in: g.view).x
+            let x = g.location(in: g.view).x
             switch g.state {
-            case .began: changed(dx, .began)
-            case .changed: changed(dx, .changed)
-            case .ended, .cancelled, .failed: changed(dx, .ended)
+            case .began: onPan(x, touchDown, .began)
+            case .changed: onPan(x, touchDown, .changed)
+            case .ended, .cancelled, .failed: onPan(x, touchDown, .ended)
             default: break
             }
         }
 
-        @objc func tap() { tapped() }
+        @objc func tap(_ g: UITapGestureRecognizer) { onTap(g.location(in: g.view).x) }
+
+        @objc func hold(_ g: UILongPressGestureRecognizer) { if g.state == .began { onHold() } }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            if g is UIPanGestureRecognizer { touchDown = touch.location(in: g.view).x }
+            return true
+        }
 
         /// Chỉ nhận khi kéo ngang nhiều hơn dọc
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {

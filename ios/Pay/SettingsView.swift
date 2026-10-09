@@ -101,7 +101,7 @@ struct SettingsView: View {
         } header: {
             Text("Danh mục")
         } footer: {
-            Text(list.isEmpty ? "Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng (Thú cưng, Con nhỏ, Gym…)."
+            Text(list.isEmpty ? "Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng như Thú cưng, Con nhỏ, Gym."
                               : "Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác.")
         }
     }
@@ -177,7 +177,7 @@ struct SettingsView: View {
         return Section {
             if list.isEmpty {
                 Label {
-                    Text("Nhấn giữ một khoản chi (tiền nhà, điện, internet…) và chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")
+                    Text("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")
                         .font(.system(size: 15)).foregroundStyle(.secondary)
                 } icon: {
                     icon("repeat", .purple)

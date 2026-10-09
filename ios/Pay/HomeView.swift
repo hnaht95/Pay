@@ -164,11 +164,10 @@ struct HomeView: View {
                 Text(fmt(store.total(on: now)))
                     .font(.system(size: 46, weight: .bold)).kerning(-1.5)
                     .minimumScaleFactor(0.5).lineLimit(1)
-                Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }
             .padding(.top, 8).padding(.bottom, 14)
             HStack {
-                Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))đ")
+                Text("Tháng \(Calendar.current.component(.month, from: now)): \(fmt(month))")
                     .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(Palette.pill, in: Capsule())
@@ -191,9 +190,9 @@ struct HomeView: View {
             HStack(spacing: 4) {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
                 if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
-                Text(b.label).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
+                Text(b.remaining >= 0 ? "Còn \(fmt(b.remaining))" : "Vượt \(fmt(-b.remaining))").font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
                 Spacer()
-                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))đ" : "~\(fmt(b.perDay(at: now)))đ/ngày")
+                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))" : "~\(fmt(b.perDay(at: now)))/ngày")
                     .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             .lineLimit(1).minimumScaleFactor(0.8)
@@ -241,7 +240,7 @@ struct HomeView: View {
                 .background(c.color, in: Circle())
             VStack(alignment: .leading, spacing: 1) {
                 Text(name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
-                Text("\(fmt(f.amount))đ").font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                Text(fmt(f.amount)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
         }
         .padding(.leading, 8).padding(.trailing, 18).padding(.vertical, 8)
@@ -268,7 +267,7 @@ struct HomeView: View {
                         }
                         Spacer(minLength: 14)
                         Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
-                        Text("\(fmt(perCat[c.k] ?? 0))đ").font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+                        Text(fmt(perCat[c.k] ?? 0)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
                     }
                     .foregroundStyle(Color(hex: 0x111114))
                     .padding(16)
@@ -405,7 +404,7 @@ struct ExpenseRow: View {
                 Text(sub(c)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
-            Text("\(fmt(e.a))đ").font(.system(size: 18, weight: .bold)).lineLimit(1)
+            Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1)
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)

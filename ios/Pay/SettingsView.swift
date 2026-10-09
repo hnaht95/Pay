@@ -338,7 +338,7 @@ struct BudgetSlider: View {
     private static let handleActive = Color(.sRGB, red: 0.62, green: 0.85, blue: 0.10)
     private static let height: CGFloat = 48
     /// Bo nhẹ thôi, không phải viên thuốc: đúng tỉ lệ Peek (bo 11 trên cao 34)
-    private static let radius: CGFloat = height * 11 / 34
+    private static let radius: CGFloat = 18
     private static let leadingPad: CGFloat = 18
     private static let barWidth: CGFloat = 4
     private static let barInset: CGFloat = 13
@@ -349,7 +349,7 @@ struct BudgetSlider: View {
     /// Từ mép phải số tới vạch tay nắm, lúc số nằm trong mảng sáng
     private static let valueInset: CGFloat = 11
     // Giao diện tối đúng màu Peek (mảng trắng 0,92 trên rãnh trắng 0,10); giao diện sáng thì đảo lại
-    private static let track = Color.primary.opacity(0.10)
+    private static let track = Color(light: 0xDCDCE2, dark: 0x2E2E31)
     private static let fill = Color.primary.opacity(0.92)
     /// Chữ và vạch nằm trên mảng sáng
     private static let ink = Color(light: 0xFFFFFF, dark: 0x000000)

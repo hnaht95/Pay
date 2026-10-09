@@ -47,14 +47,7 @@ nav .logo img { width: 36px; height: 36px; border-radius: 10px; }
 .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .note { color: var(--muted); font-size: 14px; margin-top: 14px; }
 #signin { min-height: 52px; display: flex; align-items: center; }
-.iphone { position: relative; justify-self: center; width: min(100%, 320px); aspect-ratio: 460 / 1000; padding: 11px; border-radius: 58px;
-  background: linear-gradient(145deg, #d9dade, #9fa1a7 30%, #e6e7ea 55%, #8d8f95 80%, #c9cacf);
-  box-shadow: 0 40px 90px rgba(0,0,0,.18), inset 0 0 0 1.5px rgba(255,255,255,.55), inset 0 0 0 3px rgba(0,0,0,.18); }
-.iphone .glass { width: 100%; height: 100%; border-radius: 47px; overflow: hidden; background: #000; padding: 4px; }
-.iphone img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 43px; }
-.iphone .key { position: absolute; width: 4px; border-radius: 2px; background: linear-gradient(90deg, #8d8f95, #c9cacf); }
-.iphone .b1 { left: -3px; top: 17%; height: 5%; } .iphone .b2 { left: -3px; top: 25%; height: 9%; }
-.iphone .b3 { left: -3px; top: 36%; height: 9%; } .iphone .b4 { right: -3px; top: 29%; height: 13%; }
+.iphone { justify-self: center; width: min(100%, 330px); height: auto; display: block; }
 section { padding: 60px 0; }
 section h2 { font-size: clamp(30px, 4vw, 42px); letter-spacing: -1px; line-height: 1.1; margin-bottom: 14px; }
 section .lead { color: var(--muted); font-size: 18px; max-width: 34em; margin-bottom: 30px; }
@@ -93,10 +86,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; border-top:
       </div>
       <div class="note" id="signinNote">Đăng nhập bằng Apple ID để dùng Nhóm chung trên web, kể cả máy Android hay Windows.</div>
     </div>
-    <div class="iphone" role="img" aria-label="Màn hình chính của Pay trên iPhone 17 Pro">
-      <i class="key b1"></i><i class="key b2"></i><i class="key b3"></i><i class="key b4"></i>
-      <div class="glass"><img src="screen-home.jpg" width="460" height="1000" alt=""></div>
-    </div>
+    <img class="iphone" src="iphone-home.webp" width="675" height="1380" alt="Màn hình chính của Pay trên iPhone 17 Pro">
   </header>
 </div>
 

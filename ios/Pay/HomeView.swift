@@ -192,7 +192,7 @@ struct HomeView: View {
                 if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
                 Text(b.remaining >= 0 ? "Còn \(fmt(b.remaining))" : "Vượt \(fmt(-b.remaining))").font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
                 Spacer()
-                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))" : "~\(fmt(b.perDay(at: now)))/ngày")
+                Text(b.level == .over ? "Ngân sách \(fmt(b.budget))" : "\(fmt(b.perDay(at: now)))/ngày")
                     .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             .lineLimit(1).minimumScaleFactor(0.8)

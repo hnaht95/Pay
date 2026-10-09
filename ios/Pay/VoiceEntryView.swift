@@ -65,13 +65,14 @@ final class VoiceListener: ObservableObject {
             }
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
                 req.append(buffer)
-                // Độ to (RMS) đổi sang thang 0…1 cho sóng âm
+                // Độ to (RMS) đổi sang thang 0…1 cho sóng âm. Micro ở chế độ đo (không tự khuếch đại) nên giọng thường
+                // chỉ khoảng -40…-25 dB: lấy dải -55…-25 dB và nâng phần giữa (mũ 0,7) để nói nhỏ vẫn thấy rõ
                 guard let ch = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
                 let n = Int(buffer.frameLength)
                 var sum: Float = 0
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
-                let v = CGFloat(min(max((db + 50) / 40, 0), 1))
+                let v = CGFloat(pow(min(max((db + 55) / 30, 0), 1), 0.7))
                 Task { @MainActor in self?.push(v) }
             }
             engine.prepare()
@@ -180,7 +181,7 @@ struct VoiceEntryView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             amountBlock
-            if mic.phase == .listening { Waveform(levels: mic.levels).frame(height: 44) }
+            if mic.phase == .listening { Waveform(levels: mic.levels).frame(height: 56) }
             buttons
         }
         .padding(22)
@@ -337,7 +338,7 @@ private struct Waveform: View {
             ForEach(levels.indices, id: \.self) { i in
                 Capsule().fill(Palette.cta.opacity(0.35 + 0.65 * Double(i) / Double(max(levels.count - 1, 1))))   // cũ mờ hơn
                     .frame(maxWidth: .infinity)
-                    .frame(height: max(4, 44 * levels[i]))
+                    .frame(height: max(4, 56 * levels[i]))
             }
         }
         .animation(.linear(duration: 0.05), value: levels)

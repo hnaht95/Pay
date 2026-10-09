@@ -273,8 +273,10 @@ extension View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button(role: .destructive, action: delete) { Label("Xoá", systemImage: "trash.fill") }
-                Button(action: edit) { Label("Sửa", systemImage: "pencil") }.tint(Color(light: 0x2A78D6, dark: 0x3987E5))
+                // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
+                Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel("Xoá")
+                Button(action: edit) { Image(systemName: "pencil") }.accessibilityLabel("Sửa")
+                    .tint(Color(light: 0x2A78D6, dark: 0x3987E5))
             }
     }
 }

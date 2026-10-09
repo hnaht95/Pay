@@ -105,6 +105,8 @@ struct SettingsView: View {
                 budgetText = store.budget > 0 ? fmt(store.budget) : ""
                 typingBudget = true
             }
+            // Chừa lề trên dưới: sát mép ô thì ô danh sách cắt mất góc bo phía dưới của thanh
+            .padding(.vertical, 4)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         } header: {
@@ -335,8 +337,8 @@ struct BudgetSlider: View {
     /// Vạch tay nắm lúc đang kéo: màu Peek dùng khi rê chuột lên thanh
     private static let handleActive = Color(.sRGB, red: 0.62, green: 0.85, blue: 0.10)
     private static let height: CGFloat = 48
-    /// Bo nhẹ thôi, không phải viên thuốc
-    private static let radius: CGFloat = 15
+    /// Bo nhẹ thôi, không phải viên thuốc: đúng tỉ lệ Peek (bo 11 trên cao 34)
+    private static let radius: CGFloat = height * 11 / 34
     private static let leadingPad: CGFloat = 18
     private static let barWidth: CGFloat = 4
     private static let barInset: CGFloat = 13

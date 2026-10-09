@@ -43,7 +43,7 @@ struct LogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = Store.shared
-        guard let e = store.quickAdd(text) else {
+        guard let e = store.quickAdd(text, spoken: true) else {
             throw $text.needsValueError(IntentDialog("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe"))
         }
         var reply = "Đã ghi \(fmt(e.a))đ \(Category.get(e.c).name)."

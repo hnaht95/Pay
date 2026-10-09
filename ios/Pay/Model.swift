@@ -188,9 +188,10 @@ final class Store: ObservableObject {
     }
 
     /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.
+    /// spoken: câu từ giọng nói, hiểu thêm số bằng chữ ("ba lăm nghìn") và số dưới 1.000 là nghìn.
     @discardableResult
-    func quickAdd(_ text: String) -> Expense? {
-        guard let q = QuickParse.expense(text) else { return nil }
+    func quickAdd(_ text: String, spoken: Bool = false) -> Expense? {
+        guard let q = spoken ? (QuickParse.spoken(text) ?? QuickParse.expense(text)) : QuickParse.expense(text) else { return nil }
         add(amount: q.amount, note: q.note, cat: Category.guess(q.note))
         return items.last
     }

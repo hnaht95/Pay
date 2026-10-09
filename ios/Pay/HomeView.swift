@@ -68,9 +68,11 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .sheet(isPresented: $listening) {
-            VoiceEntryView {
+            VoiceEntryView(onTypeInstead: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .new(cat: nil) }
-            }
+            }, onEdit: { e in
+                Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
+            })
             .environmentObject(store)
         }
         .onChange(of: quick.pending, initial: true) { _, k in

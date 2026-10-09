@@ -29,4 +29,138 @@ enum QuickParse {
             .split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return (a, note)
     }
+
+    // MARK: Giọng nói
+
+    /// Câu nói (Siri / nhận dạng giọng nói) -> số tiền + ghi chú. Hiểu cả số bằng chữ và kiểu nói tắt:
+    /// "ba mươi lăm nghìn cà phê", "ba lăm cafe", "hai trăm rưỡi", "một triệu hai", "nửa triệu", "2 lít", "3 củ".
+    /// Không có đơn vị và số dưới 1.000 thì hiểu là nghìn ("35 cafe" = 35.000đ).
+    static func spoken(_ text: String) -> (amount: Int, note: String)? {
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        let toks = words.map { tok(strip($0).trimmingCharacters(in: .punctuationCharacters)) }
+
+        // Tìm các cụm số liền nhau; chọn cụm "chắc chắn" nhất (có đơn vị / hàng chục trăm / số ≥ 10), rồi lớn nhất
+        var best: (range: Range<Int>, value: Double, strong: Bool)?
+        var i = 0
+        while i < toks.count {
+            guard let t = toks[i], t.canStart else { i += 1; continue }
+            var j = i + 1
+            while j < toks.count, let u = toks[j] {
+                j += 1
+                if case .end = u { break }
+            }
+            let run = toks[i..<j].compactMap { $0 }
+            let v = value(run)
+            let strong = run.contains { $0.isStrong }
+            if v > 0, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
+                best = (i..<j, v, strong)
+            }
+            i = j
+        }
+        guard let b = best else { return nil }
+        var amount = Int(b.value.rounded())
+        if amount < 1000 { amount *= 1000 }
+        let note = words.enumerated().filter { !b.range.contains($0.offset) }.map(\.element).joined(separator: " ")
+        return (amount, note)
+    }
+
+    private enum Tok {
+        case num(Double), tens, hundreds, linh, scale(Double), half, halfPrefix, end, full(Double)
+
+        var canStart: Bool {
+            switch self { case .num, .full, .halfPrefix, .tens: true; default: false }
+        }
+        var isStrong: Bool {
+            switch self {
+            case .scale, .full, .hundreds, .tens: true
+            case .num(let v): v >= 10
+            default: false
+            }
+        }
+    }
+
+    private static let digitWords: [String: Double] = [
+        "khong": 0, "mot": 1, "hai": 2, "ba": 3, "bon": 4, "tu": 4, "nam": 5, "lam": 5, "nham": 5,
+        "sau": 6, "bay": 7, "tam": 8, "chin": 9,
+    ]
+
+    private static func tok(_ k: String) -> Tok? {
+        if let d = digitWords[k] { return .num(d) }
+        switch k {
+        case "muoi", "chuc": return .tens
+        case "tram": return .hundreds
+        case "linh", "le": return .linh
+        case "nghin", "ngan", "k": return .scale(1e3)
+        case "trieu", "tr", "cu": return .scale(1e6)
+        case "lit", "xi": return .scale(1e5)        // tiếng lóng: 1 lít / 1 xị = 100 nghìn
+        case "ruoi": return .half
+        case "nua": return .halfPrefix
+        case "dong", "d", "vnd": return .end
+        default: break
+        }
+        if k.wholeMatch(of: #/\d{1,3}(?:[.,]\d{3})+/#) != nil { return .num(Double(k.filter(\.isNumber))!) }
+        if let m = k.wholeMatch(of: #/(\d+)(?:[.,](\d+))?/#) { return .num(Double(String(m.1) + (m.2.map { "." + $0 } ?? ""))!) }
+        if k.contains(where: \.isLetter), let a = amount(k) { return .full(Double(a)) }   // "35k", "1tr2"
+        return nil
+    }
+
+    /// Đọc một cụm số tiếng Việt thành giá trị.
+    private static func value(_ toks: [Tok]) -> Double {
+        enum Last { case none, num, tens, hundreds, linh, scale }
+        var total = 0.0, group = 0.0, lastScale = 0.0
+        var pending: Double?
+        var pendingAfter = Last.none, last = Last.none
+
+        // "hai trăm năm" = 250 (nói tắt), "hai trăm linh năm" = 205
+        func flush() -> Double {
+            guard let p = pending else { return group }
+            return group + (pendingAfter == .hundreds && p < 10 ? p * 10 : p)
+        }
+
+        loop: for t in toks {
+            switch t {
+            case .num(let v):
+                if let p = pending, last == .num, p < 10, v < 10, pendingAfter != .hundreds, pendingAfter != .linh {
+                    group += p * 10 + v          // "ba lăm" = 35
+                    pending = nil; last = .tens
+                } else {
+                    if pending != nil { group = flush() }
+                    pending = v; pendingAfter = last; last = .num
+                }
+            case .tens:
+                if let p = pending { group += p * 10; pending = nil } else { group += 10 }
+                last = .tens
+            case .hundreds:
+                group += (pending ?? 1) * 100; pending = nil; last = .hundreds
+            case .linh:
+                last = .linh
+            case .scale(let s):
+                let g = flush()
+                total += (g == 0 ? 1 : g) * s
+                group = 0; pending = nil; last = .scale; lastScale = s
+            case .half:
+                if last == .scale { total += lastScale / 2 }
+                else if last == .hundreds { group += 50 }
+                else if let p = pending { pending = p + 0.5 }
+                last = .none
+            case .halfPrefix:
+                if pending != nil { group = flush() }
+                pending = 0.5; pendingAfter = last; last = .num
+            case .full(let v):
+                total += v; group = 0; pending = nil; last = .scale; lastScale = v >= 1e6 ? 1e6 : 1e3
+            case .end:
+                break loop
+            }
+        }
+
+        // Phần đuôi sau đơn vị, nói tắt: "một triệu hai" = 1,2 triệu, "một triệu hai trăm" = 1,2 triệu, "ba nghìn hai" = 3.200
+        if lastScale > 0 {
+            if let p = pending, pendingAfter == .scale, group == 0, p < 10 { return total + p * lastScale / 10 }
+            let rem = flush()
+            if rem > 0 && rem < 1000 { return total + rem * max(lastScale / 1000, 1) }
+            return total + rem
+        }
+        return total + flush()
+    }
 }
+

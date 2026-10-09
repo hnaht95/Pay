@@ -34,6 +34,10 @@ final class VoiceListener: ObservableObject {
 
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults = true
+            // Báo trước những từ hay nói để nhận dạng số tiền chuẩn hơn
+            req.contextualStrings = ["nghìn", "ngàn", "triệu", "trăm", "mươi", "rưỡi", "nửa triệu", "đồng", "củ",
+                                     "cà phê", "cafe", "trà sữa", "ăn sáng", "ăn trưa", "phở", "cơm", "grab", "xăng", "gửi xe", "shopee"]
+            req.taskHint = .dictation
             if recognizer.supportsOnDeviceRecognition { req.requiresOnDeviceRecognition = true }   // không gửi giọng lên mạng nếu máy tự làm được
             request = req
 
@@ -106,9 +110,13 @@ struct VoiceEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var mic = VoiceListener()
     @State private var saved: Expense?
+    @State private var heard = ""
     @State private var notUnderstood = false
+    @State private var autoClose: Task<Void, Never>?
     /// Bấm "Nhập tay": đóng bảng này và mở màn hình nhập.
     var onTypeInstead: () -> Void
+    /// Bấm "Sửa" sau khi ghi: đóng bảng này và mở khoản vừa ghi để sửa.
+    var onEdit: (Expense) -> Void = { _ in }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -135,11 +143,14 @@ struct VoiceEntryView: View {
     }
 
     private func handle(_ said: String) {
-        guard !said.isEmpty, let e = store.quickAdd(said) else { notUnderstood = true; return }
+        heard = said
+        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else { notUnderstood = true; return }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        Task {
-            try? await Task.sleep(for: .milliseconds(1300))
+        // Để 3 giây cho kịp nhìn số tiền; bấm Sửa / Hoàn tác thì không tự đóng
+        autoClose = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
             dismiss()
         }
     }
@@ -172,7 +183,7 @@ struct VoiceEntryView: View {
     }
 
     private var detail: String {
-        if let e = saved { return e.n?.isEmpty == false ? e.n! : "" }
+        if saved != nil { return "Đã nghe: \"\(heard)\"" }
         if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
         switch mic.phase {
         case .listening: return mic.text.isEmpty ? "Nói ví dụ: \"35k cafe\", \"1tr2 tiền nhà\"" : "Ngừng nói là tự ghi"
@@ -182,7 +193,21 @@ struct VoiceEntryView: View {
     }
 
     @ViewBuilder private var buttons: some View {
-        if saved == nil && mic.phase != .listening {
+        if let e = saved {
+            HStack(spacing: 12) {
+                pill("Hoàn tác", primary: false) {
+                    autoClose?.cancel()
+                    store.remove(id: e.id, toast: false)
+                    saved = nil
+                    retry()
+                }
+                pill("Sửa", primary: true) {
+                    autoClose?.cancel()
+                    dismiss()
+                    onEdit(e)
+                }
+            }
+        } else if mic.phase != .listening {
             HStack(spacing: 12) {
                 if mic.phase == .denied {
                     pill("Mở Cài đặt", primary: true) {

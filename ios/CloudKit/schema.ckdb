@@ -40,6 +40,7 @@ DEFINE SCHEMA
         amount          INT64,
         date            TIMESTAMP,
         from            STRING,
+        status          STRING,
         to              STRING,
         GRANT WRITE TO "_creator",
         GRANT CREATE TO "_icloud",

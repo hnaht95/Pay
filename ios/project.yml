@@ -36,11 +36,13 @@ targets:
         com.apple.developer.icloud-services: [CloudDocuments, CloudKit]
         com.apple.developer.ubiquity-container-identifiers: [iCloud.com.hnaht95.sochipay]
         com.apple.security.application-groups: [group.com.hnaht95.sochipay]
+        aps-environment: development
     info:
       path: Pay/Info.plist
       properties:
         CFBundleDisplayName: Pay
         CKSharingSupported: true
+        UIBackgroundModes: [remote-notification]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Pay dùng camera để quét mã QR thanh toán.

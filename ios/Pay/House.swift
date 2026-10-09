@@ -1,4 +1,5 @@
 import CloudKit
+import UserNotifications
 import SwiftUI
 import UIKit
 
@@ -37,6 +38,8 @@ struct HouseSettle: Identifiable, Hashable {
     var to: String
     var amount: Int
     var date: Date
+    /// ok: đã xong; wait: người trả báo đã chuyển, chờ người nhận xác nhận; no: người nhận báo chưa nhận được
+    var status = "ok"
 }
 
 struct HouseTransfer: Hashable {
@@ -72,7 +75,8 @@ enum Settle {
             net[e.payer, default: 0] += e.amount
             for (id, part) in split(e.amount, e.shares, seed: e.id) { net[id, default: 0] -= part }
         }
-        for s in settles {
+        // Lần trả đang chờ xác nhận vẫn tính (để không gợi ý trả lần nữa); bị báo chưa nhận được thì bỏ
+        for s in settles where s.status != "no" {
             net[s.from, default: 0] += s.amount
             net[s.to, default: 0] -= s.amount
         }
@@ -155,7 +159,8 @@ final class House: ObservableObject {
             HouseSpend(id: "e3", amount: 300_000, note: "Lẩu tối thứ 6", payer: "c", shares: ["a", "c", "d"], date: ago(4), cat: "an"),
             HouseSpend(id: "e4", amount: 250_000, note: "Internet", payer: "a", shares: ["a", "b", "c", "d"], date: ago(8), cat: "hd"),
         ]
-        settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1))]
+        settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1)),
+                   HouseSettle(id: "s2", from: "a", to: "c", amount: 50_000, date: ago(0.1), status: "wait")]
         if me == nil { me = "c" }
         phase = .ready
     }
@@ -186,6 +191,7 @@ final class House: ObservableObject {
             guard zone != nil else { phase = .none; return }
             try await fetchAll()
             phase = .ready
+            await enableNotifications()
         } catch let e as CKError where e.code == .zoneNotFound || e.code == .userDeletedZone || e.code == .notAuthenticated {
             reset()
             phase = e.code == .notAuthenticated ? .noAccount : .none
@@ -212,6 +218,7 @@ final class House: ObservableObject {
         if me == nil, let u = try? await container.userRecordID().recordName {
             me = members.first { $0.user == u }?.id
         }
+        notifyChanges()
     }
 
     private func rebuild() {
@@ -229,7 +236,8 @@ final class House: ObservableObject {
                                      date: r["date"] as? Date ?? r.creationDate ?? Date(), cat: r["cat"] as? String ?? "khac"))
             case "Settle":
                 st.append(HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
-                                      amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date()))
+                                      amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
+                                      status: r["status"] as? String ?? "ok"))
             case "Info": name = r["name"] as? String ?? name
             default: break
             }
@@ -380,12 +388,87 @@ final class House: ObservableObject {
         return await run([r])
     }
 
+    /// Ghi một lần trả. Người trả báo thì chờ người nhận xác nhận; người nhận tự bấm "Đã nhận" thì xong luôn.
     func settle(_ t: HouseTransfer) async {
-        if demo { settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date()), at: 0); return }
+        let status = t.from == me && t.to != me ? "wait" : "ok"
+        if demo { settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date(), status: status), at: 0); return }
         guard let zone else { return }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
-        r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date()
+        r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date(); r["status"] = status
         _ = await run([r])
+    }
+
+    /// Người nhận trả lời: đã nhận (xong) hoặc chưa nhận được (báo lại người trả).
+    func respond(_ id: String, received: Bool) async {
+        let status = received ? "ok" : "no"
+        if demo { if let i = settles.firstIndex(where: { $0.id == id }) { settles[i].status = status }; return }
+        guard let r = record(id) else { return }
+        r["status"] = status
+        _ = await run([r])
+    }
+
+    /// Bấm nút trên thông báo: app có thể vừa được mở lại, nên tải nhóm trước khi trả lời
+    func respondFromNotification(_ id: String, received: Bool) async {
+        if zone == nil { await load() }
+        await respond(id, received: received)
+    }
+
+    // MARK: Thông báo giữa các máy
+
+    /// Nhận thông báo đẩy im lặng mỗi khi dữ liệu nhóm đổi (máy khác ghi), để tải lại và báo cho người liên quan.
+    private func subscribe() async {
+        let id = "house-\(scope == .private ? "private" : "shared")"
+        guard !UserDefaults.standard.bool(forKey: "house.sub.\(id)") else { return }
+        let sub = CKDatabaseSubscription(subscriptionID: id)
+        let info = CKSubscription.NotificationInfo()
+        info.shouldSendContentAvailable = true
+        sub.notificationInfo = info
+        if (try? await db.modifySubscriptions(saving: [sub], deleting: [])) != nil {
+            UserDefaults.standard.set(true, forKey: "house.sub.\(id)")
+        }
+    }
+
+    /// Máy khác vừa đổi dữ liệu (app đang chạy nền): tải lại rồi báo.
+    func backgroundRefresh() async {
+        if zone == nil { await load(); return }
+        try? await fetchAll()
+    }
+
+    /// Báo những lần trả liên quan tới mình mà máy này chưa báo: có người báo đã chuyển cho mình,
+    /// người nhận xác nhận hoặc báo chưa nhận được tiền mình chuyển. Lần đầu mở nhóm thì chỉ ghi nhớ, không báo dồn.
+    private func notifyChanges() {
+        guard let me, let zone else { return }
+        let key = "house.seen.\(zone.zoneName)"
+        let first = UserDefaults.standard.object(forKey: key) == nil
+        var seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        let name = memberName
+        for s in settles where s.to == me || s.from == me {
+            let tag = "\(s.id).\(s.status)"
+            guard seen.insert(tag).inserted, !first else { continue }
+            let c = UNMutableNotificationContent()
+            c.sound = .default
+            if s.to == me && s.from != me && s.status == "wait" {
+                c.title = "\(name(s.from)) báo đã chuyển \(fmt(s.amount))đ"
+                c.body = "Kiểm tra tài khoản rồi xác nhận đã nhận."
+                c.categoryIdentifier = "HOUSE_CONFIRM"
+                c.userInfo = ["settle": s.id]
+            } else if s.from == me && s.to != me && s.status == "no" {
+                c.title = "\(name(s.to)) chưa nhận được \(fmt(s.amount))đ"
+                c.body = "Kiểm tra lại giao dịch trong app ngân hàng hoặc chuyển lại."
+            } else if s.from == me && s.to != me && s.status == "ok" && seen.contains("\(s.id).wait") {
+                c.title = "\(name(s.to)) đã nhận \(fmt(s.amount))đ"
+                c.body = "Khoản trả đã được xác nhận."
+            } else { continue }
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: tag, content: c, trigger: nil))
+        }
+        UserDefaults.standard.set(Array(seen), forKey: key)
+    }
+
+    /// Xin quyền thông báo và đăng ký nhận đẩy (một lần, khi đã ở trong nhóm).
+    private func enableNotifications() async {
+        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        UIApplication.shared.registerForRemoteNotifications()
+        await subscribe()
     }
 
     func delete(_ id: String) async {
@@ -458,7 +541,39 @@ final class HouseSceneDelegate: NSObject, UIWindowSceneDelegate {
     }
 }
 
-final class PayAppDelegate: NSObject, UIApplicationDelegate {
+final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        // Nút ngay trên thông báo: xác nhận mà không cần mở app
+        center.setNotificationCategories([UNNotificationCategory(identifier: "HOUSE_CONFIRM", actions: [
+            UNNotificationAction(identifier: "yes", title: "Đã nhận", options: []),
+            UNNotificationAction(identifier: "no", title: "Chưa nhận được", options: [.destructive]),
+        ], intentIdentifiers: [])])
+        application.registerForRemoteNotifications()
+        return true
+    }
+
+    /// Đẩy im lặng từ iCloud: nhóm vừa đổi trên máy khác
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        await House.shared.backgroundRefresh()
+        return .newData
+    }
+
+    /// Đang mở app vẫn hiện thông báo
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard let id = response.notification.request.content.userInfo["settle"] as? String else { return }
+        switch response.actionIdentifier {
+        case "yes": await House.shared.respondFromNotification(id, received: true)
+        case "no": await House.shared.respondFromNotification(id, received: false)
+        default: await MainActor.run { QuickAction.shared.openHouse = true }
+        }
+    }
+
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let c = UISceneConfiguration(name: nil, sessionRole: session.role)

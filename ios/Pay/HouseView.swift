@@ -83,14 +83,17 @@ struct HouseView: View {
         }
         .confirmationDialog("Xác nhận đã chuyển?", isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } }), titleVisibility: .visible) {
             if let t = paying {
-                let who = t.from == house.me ? "Bạn" : house.memberName(t.from)
-                Button("\(who) đã chuyển \(fmt(t.amount))đ") { Task { await house.settle(t) } }
-                Button("Chưa chuyển", role: .cancel) {}
+                if t.from == house.me {
+                    Button("Đã chuyển \(fmt(t.amount))đ") { Task { await house.settle(t) } }
+                    Button("Chưa chuyển", role: .cancel) {}
+                } else {
+                    Button("Đã nhận \(fmt(t.amount))đ") { Task { await house.settle(t) } }
+                }
             }
         } message: {
             if let t = paying {
-                let to = t.to == house.me ? "bạn" : house.memberName(t.to)
-                Text(t.from == house.me ? "Bạn đã chuyển xong cho \(to) chưa? Cả nhà sẽ thấy Đã trả." : "Ghi nhận \(house.memberName(t.from)) đã chuyển cho \(to).")
+                Text(t.from == house.me ? "\(house.memberName(t.to)) sẽ nhận thông báo để xác nhận đã nhận tiền."
+                                        : "Ghi nhận bạn đã nhận tiền từ \(house.memberName(t.from)).")
             }
         }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store) }
@@ -317,6 +320,8 @@ struct HouseView: View {
             .padding(.top, 12)
         }
 
+        pendingSection
+
         sectionTitle("Ai chuyển cho ai", trailing: transfers.isEmpty ? nil : "\(transfers.count) lần")
         if transfers.isEmpty {
             HStack(spacing: 12) {
@@ -394,16 +399,20 @@ struct HouseView: View {
             }
             Spacer(minLength: 4)
             // Mình là người trả và người nhận đã thêm tài khoản: mở app ngân hàng điền sẵn
+            // Chỉ người trả và người nhận mới có nút; người khác chỉ xem
             let canPay = t.from == house.me && house.members.first { $0.id == t.to }?.hasBank == true
-            Button(canPay ? "Trả ngay" : t.to == house.me ? "Đã nhận" : "Đã trả") {
-                if canPay { Task { await house.payNow(t, app: store.bankApp) } } else { paying = t }
+            if mine {
+                Button(canPay ? "Trả ngay" : t.to == house.me ? "Đã nhận" : "Đã chuyển") {
+                    if canPay { Task { await house.payNow(t, app: store.bankApp) } } else { paying = t }
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .lineLimit(1).fixedSize()
+                .padding(.horizontal, 14).frame(height: 38)
+                .foregroundStyle(Palette.ctaInk)
+                .background(Palette.cta, in: Capsule())
+                .buttonStyle(Pressable())
+                .contextMenu { if canPay { Button("Đã chuyển bằng cách khác", systemImage: "checkmark") { paying = t } } }
             }
-            .font(.system(size: 15, weight: .semibold))
-            .padding(.horizontal, 14).frame(height: 38)
-            .foregroundStyle(mine ? Palette.ctaInk : .primary)
-            .background(mine ? Palette.cta : Palette.pill, in: Capsule())
-            .buttonStyle(Pressable())
-            .contextMenu { if canPay { Button("Đánh dấu đã trả", systemImage: "checkmark") { paying = t } } }
         }
         .padding(12).padding(.trailing, 2)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -494,16 +503,22 @@ struct HouseView: View {
     private func settleRow(_ s: HouseSettle) -> some View {
         let from = s.from == house.me ? "Bạn" : house.memberName(s.from)
         let to = s.to == house.me ? "bạn" : house.memberName(s.to)
+        let (icon, tint, note): (String, Color, String) = switch s.status {
+        case "wait": ("clock", .orange, "Chờ xác nhận")
+        case "no": ("xmark", Palette.danger, "Chưa nhận được")
+        default: ("checkmark", Palette.goodInk, "Đã xác nhận")
+        }
         return HStack(spacing: 14) {
-            Image(systemName: "checkmark").font(.system(size: 20, weight: .bold)).foregroundStyle(Palette.goodInk)
+            Image(systemName: icon).font(.system(size: 20, weight: .bold)).foregroundStyle(tint)
                 .frame(width: 52, height: 52)
-                .background(Palette.good, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(from) đã trả \(to)").font(.system(size: 17, weight: .semibold)).lineLimit(1)
-                Text(day(s.date)).font(.system(size: 14)).foregroundStyle(.secondary)
+                Text("\(from) chuyển \(to)").font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                Text("\(note) · \(day(s.date))").font(.system(size: 14)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            Text(fmt(s.amount)).font(.system(size: 17, weight: .bold)).foregroundStyle(Palette.goodInk)
+            Text(fmt(s.amount)).font(.system(size: 17, weight: .bold)).foregroundStyle(s.status == "no" ? .secondary : tint)
+                .strikethrough(s.status == "no")
         }
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -511,6 +526,70 @@ struct HouseView: View {
         .contextMenu {
             Button("Xoá lần trả này", systemImage: "trash", role: .destructive) { Task { await house.delete(s.id) } }
         }
+    }
+
+    /// Lần trả cần mình làm gì: xác nhận đã nhận, chờ người kia xác nhận, hoặc bị báo chưa nhận được.
+    @ViewBuilder private var pendingSection: some View {
+        let me = house.me
+        let mine = house.settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok") }
+        if !mine.isEmpty {
+            sectionTitle("Cần xác nhận")
+            VStack(spacing: 10) {
+                ForEach(mine) { s in pendingCard(s) }
+            }
+        }
+    }
+
+    private func pendingCard(_ s: HouseSettle) -> some View {
+        let from = house.memberName(s.from), to = house.memberName(s.to)
+        let incoming = s.to == house.me
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                HouseAvatar(id: incoming ? s.from : s.to, name: incoming ? from : to, size: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(incoming ? "\(from) báo đã chuyển cho bạn" : s.status == "no" ? "\(to) chưa nhận được" : "Chờ \(to) xác nhận")
+                        .font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                    Text(fmt(s.amount)).font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(s.status == "no" ? Palette.danger : .primary)
+                }
+                Spacer(minLength: 0)
+                if !incoming && s.status == "wait" {
+                    Image(systemName: "clock").font(.system(size: 18, weight: .semibold)).foregroundStyle(.orange)
+                }
+            }
+            if incoming {
+                HStack(spacing: 8) {
+                    pill("Chưa nhận được", primary: false) { Task { await house.respond(s.id, received: false) } }
+                    pill("Đã nhận", primary: true) { Task { await house.respond(s.id, received: true) } }
+                }
+            } else if s.status == "no" {
+                Text("Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại.")
+                    .font(.system(size: 14)).foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    pill("Bỏ", primary: false) { Task { await house.delete(s.id) } }
+                    pill("Chuyển lại", primary: true) {
+                        Task {
+                            await house.delete(s.id)
+                            let t = HouseTransfer(from: s.from, to: s.to, amount: s.amount)
+                            if house.members.first(where: { $0.id == s.to })?.hasBank == true { await house.payNow(t, app: store.bankApp) }
+                            else { paying = t }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(incoming ? Palette.hero : Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Text(title).font(.system(size: 16, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 46)
+                .foregroundStyle(primary ? Palette.ctaInk : .primary)
+                .background(primary ? Palette.cta : Palette.pill, in: Capsule())
+        }
+        .buttonStyle(Pressable())
     }
 
     private func invite() {

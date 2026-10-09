@@ -207,16 +207,23 @@ struct HomeView: View {
     @ViewBuilder private var recent: some View {
         let list = Array(store.sorted.prefix(5))
         if list.isEmpty {
-            Text("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Lưu** / bấm một danh mục ở trên.")
+            Text("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")
                 .font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else {
-            VStack(spacing: 10) {
+            // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
+            List {
                 ForEach(list) { e in
-                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true) }.buttonStyle(Pressable())
+                    Button { entry = .edit(e) } label: { ExpenseRow(e: e, showDay: true) }
+                        .buttonStyle(Pressable())
+                        .expenseSwipe(edit: { entry = .edit(e) }, delete: { store.remove(id: e.id) })
                 }
             }
+            .listStyle(.plain)
+            .scrollDisabled(true)
+            .scrollContentBackground(.hidden)
+            .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
         }
     }
 
@@ -258,7 +265,23 @@ struct HomeView: View {
 
 // MARK: Thành phần dùng chung
 
+extension View {
+    /// Hàng khoản chi trong List: vuốt sang trái hiện Sửa / Xoá (vuốt hết cỡ là xoá), không kẻ dòng, nền trong suốt.
+    func expenseSwipe(edit: @escaping () -> Void, delete: @escaping () -> Void) -> some View {
+        self
+            .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Button(role: .destructive, action: delete) { Label("Xoá", systemImage: "trash.fill") }
+                Button(action: edit) { Label("Sửa", systemImage: "pencil") }.tint(Color(light: 0x2A78D6, dark: 0x3987E5))
+            }
+    }
+}
+
 struct ExpenseRow: View {
+    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 80pt: biểu tượng 56 + lề 2×12).
+    static let rowHeight: CGFloat = 90
     let e: Expense
     var showDay = false
 

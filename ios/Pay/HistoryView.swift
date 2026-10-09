@@ -7,25 +7,33 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                let groups = grouped()
+            let groups = grouped()
+            List {
                 if groups.isEmpty {
-                    Text("Chưa có khoản nào.").font(.system(size: 17)).foregroundStyle(.secondary).padding(40)
+                    Text("Chưa có khoản nào.").font(.system(size: 17)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity).padding(40)
+                        .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
-                LazyVStack(alignment: .leading, spacing: 10) {
-                    ForEach(groups, id: \.0) { day, list in
+                ForEach(groups, id: \.0) { day, list in
+                    Section {
+                        ForEach(list) { e in
+                            Button { editing = .edit(e) } label: { ExpenseRow(e: e) }
+                                .buttonStyle(Pressable())
+                                .expenseSwipe(edit: { editing = .edit(e) }, delete: { store.remove(id: e.id) })
+                        }
+                    } header: {
                         HStack {
                             Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))đ")
                         }
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 4).padding(.top, 12)
-                        ForEach(list) { e in
-                            Button { editing = .edit(e) } label: { ExpenseRow(e: e) }.buttonStyle(Pressable())
-                        }
+                        .textCase(nil)
                     }
+                    .listSectionSeparator(.hidden)
                 }
-                .padding(.horizontal, 16).padding(.bottom, 24)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
             .navigationTitle("Lịch sử chi tiêu")
             .navigationBarTitleDisplayMode(.inline)

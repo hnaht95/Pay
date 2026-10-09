@@ -135,7 +135,7 @@ struct HomeView: View {
             Text("Pay").font(.system(size: 28, weight: .bold))
             Spacer()
             headerButton("person.2.crop.square.stack.fill", "Nhóm chung") { showHouse = true }
-            headerButton("chart.bar.fill", "Thống kê") { showStats = true }
+            headerButton("icon-dashboard", "Thống kê", asset: true) { showStats = true }
             headerButton("gearshape.fill", "Cài đặt") { showSettings = true }
         }
         .padding(.top, 8)
@@ -145,9 +145,10 @@ struct HomeView: View {
     private static let headerSize: CGFloat = 42
 
     /// Nút tròn trên thanh đầu trang: biểu tượng tô đặc, cùng kích thước.
-    private func headerButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
+    /// asset: biểu tượng vẽ sẵn trong Assets (vd icon-dashboard của Tabler) thay vì SF Symbols
+    private func headerButton(_ symbol: String, _ label: String, asset: Bool = false, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: symbol)
+            (asset ? Image(symbol) : Image(systemName: symbol))
                 .resizable().scaledToFit()
                 .fontWeight(.semibold)
                 .frame(width: 22, height: 22)   // mọi biểu tượng vừa trong cùng ô nên to bằng nhau

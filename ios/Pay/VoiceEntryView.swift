@@ -145,7 +145,7 @@ struct VoiceEntryView: View {
         guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else { notUnderstood = true; return }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        // Để 3 giây cho kịp nhìn số tiền; bấm Sửa / Hoàn tác thì không tự đóng
+        // Để 3 giây cho kịp nhìn số tiền rồi tự đóng; bấm Sửa / Xong thì đóng ngay
         autoClose = Task {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
@@ -198,17 +198,16 @@ struct VoiceEntryView: View {
 
     @ViewBuilder private var buttons: some View {
         if let e = saved {
+            // Hoàn tác đã có ở thông báo ngoài màn hình chính, ở đây chỉ Sửa / Xong
             HStack(spacing: 12) {
-                pill("Hoàn tác", primary: false) {
-                    autoClose?.cancel()
-                    store.remove(id: e.id, toast: false)
-                    saved = nil
-                    retry()
-                }
-                pill("Sửa", primary: true) {
+                pill("Sửa", primary: false) {
                     autoClose?.cancel()
                     dismiss()
                     onEdit(e)
+                }
+                pill("Xong", primary: true) {
+                    autoClose?.cancel()
+                    dismiss()
                 }
             }
         } else if mic.phase != .listening {

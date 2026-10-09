@@ -125,7 +125,34 @@ final class House: ObservableObject {
     private var records: [CKRecord.ID: CKRecord] = [:]
     private static let zonePrefix = "nha-"
 
-    private init() {}
+    /// Bản Debug chạy với "-houseDemo YES": dữ liệu mẫu, không cần iCloud, sửa gì cũng chỉ trên máy (để xem giao diện trên máy ảo)
+    private var demo = false
+
+    private init() {
+        #if DEBUG
+        demo = UserDefaults.standard.bool(forKey: "houseDemo")
+        #endif
+    }
+
+    private func loadDemo() {
+        let now = Date()
+        func ago(_ d: Double) -> Date { now.addingTimeInterval(-d * 86_400) }
+        name = "Nhà mình"; isOwner = true
+        members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan"),
+                   HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà")]
+        spends = [
+            HouseSpend(id: "e1", amount: 420_000, note: "Đi chợ cuối tuần", payer: "a", shares: ["a", "b", "c", "d"], date: ago(0.2), cat: "an"),
+            HouseSpend(id: "e2", amount: 860_000, note: "Tiền điện tháng 9", payer: "b", shares: ["a", "b", "c", "d"], date: ago(2), cat: "hd"),
+            HouseSpend(id: "e3", amount: 300_000, note: "Lẩu tối thứ 6", payer: "c", shares: ["a", "c", "d"], date: ago(4), cat: "an"),
+            HouseSpend(id: "e4", amount: 250_000, note: "Internet", payer: "a", shares: ["a", "b", "c", "d"], date: ago(8), cat: "hd"),
+        ]
+        settles = [HouseSettle(id: "s1", from: "d", to: "a", amount: 100_000, date: ago(1))]
+        if me == nil { me = "a" }
+        phase = .ready
+    }
+
+    /// Màu riêng cho mỗi người (theo mã), dùng cho ảnh đại diện
+    func tone(_ id: String) -> Int { Int(Settle.hash(id) % UInt32(CategoryTone.all.count)) }
 
     var memberName: (String) -> String {
         let m = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0.name) })
@@ -136,6 +163,7 @@ final class House: ObservableObject {
 
     /// Tìm nhóm: trước trong vùng mình tạo, không có thì trong các vùng người khác chia sẻ cho mình.
     func load() async {
+        if demo { if phase != .ready { loadDemo() }; return }
         if phase != .ready { phase = .loading }
         do {
             guard try await container.accountStatus() == .available else { phase = .noAccount; return }
@@ -203,6 +231,7 @@ final class House: ObservableObject {
 
     /// Tạo nhóm mới với chính mình là thành viên đầu tiên.
     func create(name groupName: String, me myName: String) async {
+        if demo { loadDemo(); name = groupName; members[0].name = myName; return }
         busy = true; defer { busy = false }
         do {
             let z = CKRecordZone(zoneName: Self.zonePrefix + UUID().uuidString.prefix(8).lowercased())
@@ -238,6 +267,7 @@ final class House: ObservableObject {
 
     /// Chủ nhóm: xoá cả nhóm. Người được mời: rời nhóm (dữ liệu vẫn còn ở chủ nhóm).
     func leave() async {
+        if demo { members = []; spends = []; settles = []; me = nil; phase = .none; return }
         guard let zone else { return }
         busy = true; defer { busy = false }
         do {
@@ -268,6 +298,7 @@ final class House: ObservableObject {
     // MARK: Sửa dữ liệu
 
     func addMember(_ n: String) async -> String? {
+        if demo { let id = UUID().uuidString; members.append(HouseMember(id: id, name: n)); return id }
         guard let zone else { return nil }
         let r = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["name"] = n
@@ -282,6 +313,10 @@ final class House: ObservableObject {
 
     @discardableResult
     func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String) async -> Bool {
+        if demo {
+            spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)
+            return true
+        }
         guard let zone else { return false }
         let r = CKRecord(recordType: "Spend", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["amount"] = Int64(amount); r["note"] = note; r["payer"] = payer; r["shares"] = shares; r["date"] = Date(); r["cat"] = cat
@@ -289,6 +324,7 @@ final class House: ObservableObject {
     }
 
     func settle(_ t: HouseTransfer) async {
+        if demo { settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date()), at: 0); return }
         guard let zone else { return }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date()
@@ -296,6 +332,7 @@ final class House: ObservableObject {
     }
 
     func delete(_ id: String) async {
+        if demo { spends.removeAll { $0.id == id }; settles.removeAll { $0.id == id }; return }
         guard let zone else { return }
         let rid = CKRecord.ID(recordName: id, zoneID: zone)
         busy = true; defer { busy = false }

@@ -68,7 +68,8 @@ enum QuickParse {
         case num(Double), tens, hundreds, linh, scale(Double), half, halfPrefix, end, full(Double)
 
         var canStart: Bool {
-            switch self { case .num, .full, .halfPrefix, .tens: true; default: false }
+            // "triệu hai", "trăm hai", "chục rưỡi": cụm số có thể mở đầu bằng đơn vị (ngầm hiểu là một)
+            switch self { case .num, .full, .halfPrefix, .tens, .hundreds, .scale: true; default: false }
         }
         var isStrong: Bool {
             switch self {
@@ -90,8 +91,9 @@ enum QuickParse {
         case "muoi", "chuc": return .tens
         case "tram": return .hundreds
         case "linh", "le": return .linh
-        case "nghin", "ngan", "k": return .scale(1e3)
+        case "nghin", "ngan", "k", "canh": return .scale(1e3)     // cành: tiếng lóng = nghìn
         case "trieu", "tr", "cu": return .scale(1e6)
+        case "ty", "toi": return .scale(1e9)                   // tỏi: tiếng lóng = tỷ
         case "lit", "xi": return .scale(1e5)        // tiếng lóng: 1 lít / 1 xị = 100 nghìn
         case "ruoi": return .half
         case "nua": return .halfPrefix
@@ -148,8 +150,10 @@ enum QuickParse {
                 total += (g == 0 ? 1 : g) * s
                 group = 0; pending = nil; last = .scale; lastScale = s
             case .half:
+                // rưỡi = nửa đơn vị đứng ngay trước: triệu rưỡi, trăm rưỡi, chục rưỡi
                 if last == .scale { total += lastScale / 2 }
                 else if last == .hundreds { group += 50 }
+                else if last == .tens { group += 5 }
                 else if let p = pending { pending = p + 0.5 }
                 last = .none
             case .halfPrefix:

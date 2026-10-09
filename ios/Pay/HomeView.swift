@@ -131,7 +131,7 @@ struct HomeView: View {
     // MARK: Các phần
 
     private func header(_ now: Date) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 2) {
             Text("Pay").font(.system(size: 28, weight: .bold))
             Spacer()
             headerButton("person.2.crop.square.stack.fill", "Nhóm chung") { showHouse = true }
@@ -150,9 +150,9 @@ struct HomeView: View {
             Image(systemName: symbol)
                 .resizable().scaledToFit()
                 .fontWeight(.semibold)
-                .frame(width: 18, height: 18)   // mọi biểu tượng vừa trong cùng ô 18×18 nên to bằng nhau
-                .frame(width: Self.headerSize, height: Self.headerSize)
-                .background(Palette.pill, in: Circle())
+                .frame(width: 22, height: 22)   // mọi biểu tượng vừa trong cùng ô nên to bằng nhau
+                .frame(width: Self.headerSize, height: Self.headerSize)   // không nền, nhưng vùng chạm vẫn 42×42
+                .contentShape(Rectangle())
         }
         .foregroundStyle(.primary)
         .accessibilityLabel(label)

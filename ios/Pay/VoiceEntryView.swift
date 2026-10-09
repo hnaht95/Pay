@@ -9,11 +9,8 @@ final class VoiceListener: ObservableObject {
 
     @Published var text = ""
     @Published var phase: Phase = .idle
-    /// Độ to của giọng (0…1) theo thời gian, cũ bên trái mới bên phải: mỗi phần tử là một thanh của sóng âm
-    @Published var levels: [CGFloat] = Array(repeating: 0, count: VoiceListener.bars)
-    static let bars = 28
-    private var pendingPeak: CGFloat = 0
-    private var pendingCount = 0
+    /// Độ to của giọng lúc này (0…1) để vẽ sóng âm
+    @Published var level: CGFloat = 0
     var onFinish: ((String) -> Void)?
 
     private let engine = AVAudioEngine()
@@ -23,12 +20,10 @@ final class VoiceListener: ObservableObject {
 
     func start() async {
         text = ""
-        levels = Array(repeating: 0, count: Self.bars)
         #if DEBUG
         // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
         if let demo = UserDefaults.standard.string(forKey: "voiceDemo") {
-            phase = .listening; text = demo
-            levels = (0..<Self.bars).map { i in CGFloat(abs(sin(Double(i) * 0.55))) * (i % 9 < 6 ? 0.9 : 0.1) }
+            phase = .listening; text = demo; level = 0.7
             return
         }
         #endif
@@ -73,7 +68,7 @@ final class VoiceListener: ObservableObject {
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
                 let v = CGFloat(pow(min(max((db + 55) / 30, 0), 1), 0.7))
-                Task { @MainActor in self?.push(v) }
+                Task { @MainActor in self?.level = v }
             }
             engine.prepare()
             try engine.start()
@@ -97,17 +92,6 @@ final class VoiceListener: ObservableObject {
         }
     }
 
-    /// Thêm một mẫu độ to; cứ 2 mẫu (~1/23 giây) gộp lấy đỉnh thành một thanh mới, đẩy thanh cũ nhất ra
-    private func push(_ v: CGFloat) {
-        pendingPeak = max(pendingPeak, v)
-        pendingCount += 1
-        guard pendingCount >= 2 else { return }
-        levels.removeFirst()
-        levels.append(pendingPeak)
-        pendingPeak = 0
-        pendingCount = 0
-    }
-
     /// Chưa nói gì thì chờ tối đa 6 giây; đã nói thì ngừng 1,4 giây là xong.
     private func waitForSilence() {
         silence?.cancel()
@@ -121,6 +105,7 @@ final class VoiceListener: ObservableObject {
 
     func finish() {
         guard phase == .listening else { return }
+        level = 0
         stop()
         phase = .idle
         onFinish?(text)
@@ -181,7 +166,7 @@ struct VoiceEntryView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             amountBlock
-            if mic.phase == .listening { Waveform(levels: mic.levels).frame(height: 56) }
+            if mic.phase == .listening { Waveform(level: mic.level).frame(height: 56) }
             buttons
         }
         .padding(22)
@@ -328,20 +313,25 @@ struct VoiceEntryView: View {
     }
 }
 
-/// Sóng âm chạy theo thời gian (kiểu app Ghi âm): mỗi thanh là độ to thật của giọng tại một thời điểm,
-/// thanh mới vào từ bên phải, cũ trôi dần sang trái. Im lặng thì thanh thấp sát.
+/// Sóng âm: độ cao chung theo độ to thật của giọng; hình dáng (giữa cao, rung nhẹ) là trang trí.
 private struct Waveform: View {
-    let levels: [CGFloat]
+    let level: CGFloat
 
     var body: some View {
-        HStack(alignment: .center, spacing: 4) {
-            ForEach(levels.indices, id: \.self) { i in
-                Capsule().fill(Palette.cta.opacity(0.35 + 0.65 * Double(i) / Double(max(levels.count - 1, 1))))   // cũ mờ hơn
-                    .frame(maxWidth: .infinity)
-                    .frame(height: max(4, 56 * levels[i]))
+        TimelineView(.animation) { t in
+            let time = t.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .center, spacing: 4) {
+                ForEach(0..<28, id: \.self) { i in
+                    let center = 1 - abs(CGFloat(i) - 13.5) / 14          // giữa cao, hai bên thấp
+                    let wobble = (sin(time * 9 + Double(i) * 0.7) + 1) / 2  // dao động nhẹ cho tự nhiên
+                    let h = 0.12 + 1.25 * level * center * (0.55 + 0.45 * CGFloat(wobble))   // ×1,25: nói thường đã gần đỉnh
+                    Capsule().fill(Palette.cta.opacity(0.85))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: max(4, 56 * min(h, 1)))
+                }
             }
+            .animation(.easeOut(duration: 0.12), value: level)
         }
-        .animation(.linear(duration: 0.05), value: levels)
     }
 }
 

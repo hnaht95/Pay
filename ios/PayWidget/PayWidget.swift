@@ -145,6 +145,7 @@ struct SpendView: View {
         Link(destination: k.url) {
             Label(title, systemImage: icon)
                 .font(.system(size: 15, weight: .semibold))
+                .lineLimit(1).minimumScaleFactor(0.7)
                 .foregroundStyle(primary ? (scheme == .dark ? Color.black : Color.white) : Color.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(primary ? AnyShapeStyle(.primary) : AnyShapeStyle(.background.opacity(0.6)),

@@ -300,7 +300,7 @@ struct VoiceEntryView: View {
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 18, weight: .semibold))
+            Text(title).font(.system(size: 18, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity, minHeight: 64)   // cao cho dễ nhấn
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.pill, in: Capsule())

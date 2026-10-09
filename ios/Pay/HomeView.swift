@@ -444,7 +444,7 @@ struct BigButton: View {
                     .frame(width: 56, height: 56)
                     .background(primary ? Color.white.opacity(0.18) : Color.primary.opacity(0.08), in: Circle())
                 if primary { Spacer(minLength: 0) }
-                Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
+                Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)   // màn hình hẹp: thu nhỏ chữ, không cắt thành "Quét…"
                 if primary { Spacer(minLength: 0) }
             }
             .padding(BigButton.inset)

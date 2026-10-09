@@ -100,10 +100,24 @@ enum QuickParse {
         case "dong", "d", "vnd": return .end
         default: break
         }
-        if k.wholeMatch(of: #/\d{1,3}(?:[.,]\d{3})+/#) != nil { return .num(Double(k.filter(\.isNumber))!) }
-        if let m = k.wholeMatch(of: #/(\d+)(?:[.,](\d+))?/#) { return .num(Double(String(m.1) + (m.2.map { "." + $0 } ?? ""))!) }
+        if k.wholeMatch(of: #/\d{1,3}(?:[.,]\d{3})+/#) != nil { return .num(siriShorthand(Double(k.filter(\.isNumber))!)) }
+        if let m = k.wholeMatch(of: #/(\d+)(?:[.,](\d+))?/#) {
+            let v = Double(String(m.1) + (m.2.map { "." + $0 } ?? ""))!
+            return .num(m.2 == nil ? siriShorthand(v) : v)
+        }
         if k.contains(where: \.isLetter), let a = amount(k) { return .full(Double(a)) }   // "35k", "1tr2"
         return nil
+    }
+
+    /// Siri hiểu "mười triệu hai" theo nghĩa đen và viết "10.000.002". Số tròn triệu/nghìn cộng 1–9 đồng
+    /// thì không ai nói thật, nên hiểu là nói tắt: 10.000.002 -> 10.200.000, 1.002 -> 1.200.
+    private static func siriShorthand(_ x: Double) -> Double {
+        for scale in [1e9, 1e6, 1e3] where x >= scale {
+            let d = x.truncatingRemainder(dividingBy: scale)
+            if d >= 1 && d <= 9 { return x - d + d * scale / 10 }
+            return x
+        }
+        return x
     }
 
     /// Đơn vị khi đọc thành lời: từ 1 triệu trở lên là "triệu", còn lại là "nghìn".

@@ -145,11 +145,13 @@ struct VoiceEntryView: View {
             Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
                 .onTapGesture { close() }
             if shown {
+                // Cách đáy màn hình bằng lề hai bên (12pt), bỏ khoảng an toàn của vạch Home
                 card
-                    .padding(.horizontal, 12).padding(.bottom, 8)
+                    .padding(.horizontal, 12).padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .ignoresSafeArea(.container, edges: .bottom)
         .animation(.spring(response: 0.38, dampingFraction: 0.86), value: shown)
         .presentationBackground(.clear)
         .task {
@@ -171,7 +173,7 @@ struct VoiceEntryView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))   // ôm theo góc bo màn hình
         .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
     }
 
@@ -275,8 +277,8 @@ struct VoiceEntryView: View {
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 17, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: 54)
+            Text(title).font(.system(size: 18, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 64)   // cao cho dễ nhấn
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.pill, in: Capsule())
         }

@@ -161,7 +161,8 @@ struct VoiceEntryView: View {
                 // Nâng lên khỏi đáy để thẻ không dính vào góc bo màn hình và các ô phía sau
                 card
                     .padding(.horizontal, 12).padding(.bottom, 34)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    // Chỉ trượt, không mờ dần: thẻ mờ nửa chừng đè lên các ô phía sau trông như bóng ma
+                    .transition(.move(edge: .bottom))
             }
         }
         .ignoresSafeArea(.container, edges: .bottom)
@@ -279,19 +280,19 @@ struct VoiceEntryView: View {
             if let e = saved {
                 // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
                 pill("Hoàn tác", primary: false) { undo(e) }
-                pill("Sửa", primary: false) { autoClose?.cancel(); dismiss(); onEdit(e) }
-                pill("Xong", primary: true) { autoClose?.cancel(); dismiss() }
+                pill("Sửa", primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
+                pill("Xong", primary: true) { autoClose?.cancel(); leave() }
             } else if mic.phase == .listening {
-                pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
+                pill("Quét QR", primary: false) { mic.stop(); leave(); onScan() }
                 pill("Xong", primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
                     .disabled(mic.text.isEmpty).opacity(mic.text.isEmpty ? 0.4 : 1)
             } else if mic.phase == .denied {
-                pill("Quét QR", primary: false) { dismiss(); onScan() }
+                pill("Quét QR", primary: false) { leave(); onScan() }
                 pill("Mở Cài đặt", primary: true) {
                     if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
                 }
             } else if notUnderstood || undone || mic.phase != .idle {
-                pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
+                pill("Quét QR", primary: false) { mic.stop(); leave(); onScan() }
                 pill("Nói lại", primary: true) { retry() }
             }
         }
@@ -321,7 +322,7 @@ struct VoiceEntryView: View {
         autoClose = Task {
             try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
-            dismiss()
+            leave()
         }
     }
 
@@ -342,7 +343,20 @@ struct VoiceEntryView: View {
     private func close() {
         autoClose?.cancel()
         mic.stop()
-        dismiss()
+        leave()
+    }
+
+    /// Đóng thẻ: tự trượt thẻ xuống và mờ nền trước, xong mới gỡ màn hình (không hiệu ứng).
+    /// Để hệ thống tự kéo cả màn hình xuống thì nền tối tắt phụt và bóng đổ của thẻ bị vệt.
+    private func leave() {
+        guard shown else { return }
+        withAnimation(.easeIn(duration: 0.25)) { shown = false }
+        Task {
+            try? await Task.sleep(for: .milliseconds(270))
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { dismiss() }
+        }
     }
 }
 

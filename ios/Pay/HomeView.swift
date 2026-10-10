@@ -323,7 +323,7 @@ struct HomeView: View {
             Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
                 .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
                 .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, minHeight: 132)
+                .frame(maxWidth: .infinity, minHeight: 152)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
         }
@@ -348,7 +348,7 @@ struct HomeView: View {
         }
         .foregroundStyle(c.ink)
         .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 152, alignment: .leading)
         .background(c.color, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
     }
 

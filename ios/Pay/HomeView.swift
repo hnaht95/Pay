@@ -463,7 +463,8 @@ struct ExpenseRow: View {
             .fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
-        .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
+        // Ô biểu tượng 56pt trong thẻ cao 86pt: cách trên dưới 15pt, nên bên trái cũng 15pt cho đều
+        .padding(.leading, 15).padding(.trailing, 16).padding(.vertical, 12)
         .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }

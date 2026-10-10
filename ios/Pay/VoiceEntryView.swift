@@ -619,8 +619,8 @@ struct VoiceEntryView: View {
     }
 }
 
-/// Sóng âm: một nét liền mảnh uốn lượn (không phải dải thanh dọc). Độ cao sóng theo độ to thật của giọng; hình dáng
-/// (hai đầu thu nhỏ, phồng ở giữa, uốn qua lại) là trang trí.
+/// Sóng âm: dải sáng gradient mờ (vài đốm màu nhoè, trôi qua lại), kiểu giao diện giọng nói AI. Nói to thì các đốm nở
+/// to và đậm lên theo độ to thật của giọng; im lặng chỉ còn vệt sáng nhỏ thở nhẹ để biết vẫn đang nghe.
 private struct Waveform: View {
     @ObservedObject var meter: MicLevel
     /// Dựng phim: độ to và thời điểm lấy từ phim
@@ -628,12 +628,46 @@ private struct Waveform: View {
     @State private var smooth = Smoother()
 
     var body: some View {
-        if let film, let v = film.voice { line(level: v.level, time: film.time) }
+        if let film, let v = film.voice { glow(level: v.level, time: film.time) }
         else {
             TimelineView(.animation) { t in
-                line(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
+                glow(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
             }
         }
+    }
+
+    /// Các đốm màu: màu, vị trí ngang (0…1), tốc độ trôi, lệch pha
+    private static let blobs: [(color: Color, x: Double, speed: Double, phase: Double)] = [
+        (Color(hex: 0x8EE6B0), 0.30, 0.9, 0.0),    // xanh bạc hà
+        (Color(hex: 0x5FD08C), 0.50, 1.3, 2.1),    // xanh lá
+        (Color(hex: 0x8CC8FF), 0.70, 1.1, 4.2),    // xanh trời
+        (Color(hex: 0xB8A6FF), 0.42, 0.7, 5.3),    // tím nhạt
+    ]
+
+    private func glow(level: CGFloat, time: Double) -> some View {
+        Canvas { ctx, size in
+            let lv: CGFloat = 0.12 + 0.88 * min(level, 1)   // im lặng vẫn còn vệt sáng nhỏ
+            // Nhoè theo chiều cao dải; đốm không cao quá ~60% dải để phần nhoè không bị cắt phẳng ở mép trên dưới
+            ctx.addFilter(.blur(radius: size.height * 0.26))
+            for b in Self.blobs {
+                let drift: Double = sin(time * b.speed + b.phase)
+                let breathe: Double = sin(time * 2.1 + b.phase * 1.7)
+                let w: CGFloat = size.width * (0.22 + 0.2 * lv) * CGFloat(1 + 0.08 * breathe)
+                // Giữ cả đốm (kèm phần nhoè) trong khung: trôi ra sát mép thì phần nhoè bị cắt thành mép thẳng
+                let margin: CGFloat = w / 2 + size.height * 0.4
+                let cx: CGFloat = min(max(size.width * CGFloat(b.x + 0.12 * drift), margin), size.width - margin)
+                let h: CGFloat = size.height * (0.18 + 0.42 * lv) * CGFloat(1 + 0.12 * breathe)
+                let rect = CGRect(x: cx - w / 2, y: (size.height - h) / 2, width: w, height: h)
+                ctx.fill(Path(ellipseIn: rect), with: .color(b.color.opacity(Double(0.45 + 0.5 * lv))))
+            }
+        }
+        // Phần nhoè tràn khỏi khung vẽ bị cắt phẳng ở mép trên dưới (thành dải chữ nhật): mờ dần hai mép cho vệt sáng tan vào nền
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.32),
+                                     .init(color: .black, location: 0.68), .init(color: .clear, location: 1)],
+                             startPoint: .top, endPoint: .bottom))
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.15),
+                                     .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
+                             startPoint: .leading, endPoint: .trailing))
     }
 
     /// Độ to micro nhảy theo từng lần đo (~43 lần/giây, giọng nói lên xuống thất thường) và về 0 ngay khi ngừng nghe:
@@ -649,29 +683,6 @@ private struct Waveform: View {
             let rate: Double = target > value ? 12 : 3.5   // lên nhanh, xuống chậm
             value += (target - value) * CGFloat(1 - exp(-dt * rate))
             return value
-        }
-    }
-
-    /// Số điểm dọc theo nét (đủ mịn để nét cong không gãy khúc)
-    private static let samples = 140
-
-    private func line(level: CGFloat, time: Double) -> some View {
-        Canvas { ctx, size in
-            let midY = size.height / 2
-            // Im lặng vẫn còn gợn nhẹ để biết đang nghe; nói thường gần chạm mép trên dưới
-            let amp: CGFloat = (midY - 2) * min(1, 0.08 + 1.1 * level)
-            var path = Path()
-            for k in 0...Self.samples {
-                let u: Double = Double(k) / Double(Self.samples)
-                let env: Double = pow(sin(Double.pi * u), 2)                      // 0 ở hai đầu, cao nhất ở giữa
-                let a: Double = sin(u * 19 + time * 6.5)                          // hai sóng khác nhịp chồng lên nhau,
-                let b: Double = sin(u * 33 - time * 9.3)                          // chạy ngược chiều nên nét uốn tự nhiên
-                let y: CGFloat = midY + amp * CGFloat(env * (0.65 * a + 0.35 * b))
-                let pt = CGPoint(x: size.width * CGFloat(u), y: y)
-                if k == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
-            }
-            ctx.stroke(path, with: .color(Palette.cta.opacity(0.85)),
-                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
         }
     }
 }

@@ -520,8 +520,11 @@ struct BigButton: View {
                             timer = Task { @MainActor in
                                 try? await Task.sleep(for: .milliseconds(380))
                                 guard !Task.isCancelled else { return }
-                                held = true; down = false
+                                // Đủ lâu: rung, biểu tượng đổi thành micro, một nhịp sau mới mở nói để ghi (để kịp thấy biểu tượng đổi)
+                                held = true
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                try? await Task.sleep(for: .milliseconds(240))
+                                down = false
                                 hold()
                             }
                         } else if !inside, !held {
@@ -529,16 +532,18 @@ struct BigButton: View {
                         }
                     }
                     .onEnded { v in
-                        let tapped = down && !held
-                        timer?.cancel(); timer = nil
-                        down = false; held = false
+                        let tapped = down && !held   // đã tính là nhấn giữ thì nhả tay không làm gì: micro vẫn mở
+                        if !held { timer?.cancel(); down = false }
+                        timer = nil
                         if tapped { action() }
                     })
                 // Ngón tay rời nút (nhả hoặc bị huỷ): dọn trạng thái để lần nhấn sau bắt đầu lại từ đầu
                 .onChange(of: touching) { _, on in
                     guard !on else { return }
-                    timer?.cancel(); timer = nil; held = false
-                    DispatchQueue.main.async { down = false }
+                    // Đã tính là nhấn giữ thì để nó chạy nốt (mở nói để ghi), biểu tượng về lại sau đó
+                    if !held { timer?.cancel() }
+                    timer = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { if !touching { held = false; down = false } }
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(title)
@@ -554,7 +559,10 @@ struct BigButton: View {
     // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
     private var label: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon).font(.system(size: 24, weight: .semibold))
+            // Nhấn giữ đủ lâu: biểu tượng đổi thành micro (sắp mở nói để ghi)
+            Image(systemName: held ? "mic.fill" : icon).font(.system(size: 24, weight: .semibold))
+                .contentTransition(.symbolEffect(.replace))
+                .animation(.snappy(duration: 0.2), value: held)
                 .frame(width: 56, height: 56)
                 .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
             if primary { Spacer(minLength: 0) }

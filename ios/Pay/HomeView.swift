@@ -377,12 +377,14 @@ struct HomeView: View {
                     TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
-                    .expenseSwipe(delete: { store.remove(id: e.id) })
+                    .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                 }
             }
             .listStyle(.plain)
             .scrollDisabled(true)
             .scrollContentBackground(.hidden)
+            // Không cắt ở mép khung: lúc xoá, hàng mới trượt vào từ dưới bị xẻ ngang ở mép dưới danh sách
+            .scrollClipDisabled()
             .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
         }
     }
@@ -758,9 +760,11 @@ struct ToastView: View {
             .padding(.horizontal, 16)   // thanh dài hết cỡ vẫn cách hai mép màn hình, bằng lề của nội dung
             .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
             // Trồi lên từ sau dải nút, ẩn thì trượt xuống chui lại sau đó (thanh nằm dưới lớp dải nút, xem HomeView)
+            // Chỉ lùi xuống 22 điểm (chạm nhẹ mép trên hai nút): lùi sâu thì thanh đậm lộ ra ở khe giữa hai nút. Hiện dần từ trong
+            // suốt nên không thấy một khối đậm bật ra
             .transition(.asymmetric(
-                insertion: .offset(y: 90).combined(with: .opacity.animation(.easeOut(duration: 0.22))),
-                removal: .offset(y: 90).combined(with: .opacity.animation(.easeIn(duration: 0.18)))))
+                insertion: .offset(y: 22).combined(with: .opacity.animation(.easeOut(duration: 0.3))),
+                removal: .offset(y: 22).combined(with: .opacity.animation(.easeIn(duration: 0.2)))))
             .task(id: t.id) {
                 // 3 giây: đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình. Bị huỷ giữa chừng (thanh được dựng lại, vd lúc màn
                 // hình Sửa vừa đóng) thì thôi, task mới sẽ đếm lại: không kiểm tra thì thanh vừa hiện đã tắt ngay

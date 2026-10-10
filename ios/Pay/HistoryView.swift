@@ -25,7 +25,7 @@ struct HistoryView: View {
                             TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                 ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                             }
-                            .expenseSwipe(delete: { store.remove(id: e.id) })
+                            .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                         }
                     } header: {
                         HStack {

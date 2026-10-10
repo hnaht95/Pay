@@ -177,16 +177,16 @@ struct StatsView: View {
             .padding(.top, 6)
             Chart(bars) { b in
                 if b.bills > 0 {
-                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", 0), yEnd: .value("Hoá đơn", b.bills), width: .ratio(0.42))
+                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", 0), yEnd: .value("Hoá đơn", b.bills), width: .ratio(0.72))
                         .foregroundStyle(Self.lime)
-                        .cornerRadius(5)
+                        .cornerRadius(7)
                         .opacity(isSelected(b.date) ? 1 : 0.4)
                 }
                 if b.other > 0 {
                     let start = b.bills > 0 ? Double(b.bills) + gap : 0
-                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", start), yEnd: .value("Chi tiêu khác", start + Double(b.other)), width: .ratio(0.42))
+                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", start), yEnd: .value("Chi tiêu khác", start + Double(b.other)), width: .ratio(0.72))
                         .foregroundStyle(Hatch.cyan)
-                        .cornerRadius(5)
+                        .cornerRadius(7)
                         .opacity(isSelected(b.date) ? 1 : 0.4)
                 }
             }

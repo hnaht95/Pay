@@ -13,6 +13,21 @@ struct FilmFrame {
     var toast: CGFloat = 0
     /// Các khoản "Chi lại" giữ nguyên thứ tự suốt phim
     var again: [Store.Frequent]? = nil
+    /// Thời điểm của phim (giây), cho những thứ tự chuyển động: sóng âm, chấm đỏ nhấp nháy
+    var time: Double = 0
+    /// Thẻ ghi bằng giọng nói đang hiện (nil = không)
+    var voice: Voice? = nil
+
+    struct Voice {
+        /// Thẻ trượt lên tới đâu (0…1)
+        var shown: CGFloat = 1
+        /// Câu đã nghe tới lúc này
+        var text = ""
+        /// Độ to giọng nói (0…1)
+        var level: CGFloat = 0
+        /// Khoản đã ghi xong (nil = còn đang nghe)
+        var saved: Expense? = nil
+    }
 }
 
 extension EnvironmentValues {
@@ -54,6 +69,8 @@ struct FilmScreen<Content: View>: View {
     static var size: CGSize { CGSize(width: 402, height: 874) }   // iPhone 17, tính bằng pt
     static var insets: EdgeInsets { EdgeInsets(top: 62, leading: 0, bottom: 34, trailing: 0) }
     var dark = false
+    /// Thanh trạng thái của màn hình khoá: biểu tượng trắng trên nền tối, không có giờ ở góc trái
+    var lightStatus = false
     /// Chấm chạm: vị trí và độ rõ (0…1)
     var touch: (at: CGPoint, alpha: CGFloat, scale: CGFloat)? = nil
     @ViewBuilder let content: Content
@@ -79,7 +96,8 @@ struct FilmScreen<Content: View>: View {
     private var statusBar: some View {
         ZStack {
             Capsule().fill(.black).frame(width: 125, height: 36.5).position(x: 201, y: 32.2)
-            Text("9:41").font(.system(size: 17, weight: .semibold)).position(x: 73, y: 33)
+            // Màn hình khoá không hiện giờ ở góc (đã có đồng hồ lớn): giờ chỉ có khi đã vào app
+            if !lightStatus { Text("9:41").font(.system(size: 17, weight: .semibold)).position(x: 73, y: 33) }
             HStack(spacing: 6) {
                 Image(systemName: "cellularbars").font(.system(size: 16, weight: .semibold))
                 Image(systemName: "wifi").font(.system(size: 15.5, weight: .semibold))
@@ -87,7 +105,60 @@ struct FilmScreen<Content: View>: View {
             }
             .position(x: 327, y: 33)
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(lightStatus ? Color.white : Color.primary)
         .frame(width: Self.size.width, height: 62)
+    }
+}
+
+/// Thanh tiêu đề của một bảng trượt lên (thay thanh điều hướng của hệ thống khi dựng phim):
+/// tiêu đề ở giữa, nút viên thuốc hai bên như iOS 26.
+struct FilmNavBar: View {
+    let title: String
+    var leading: String? = nil
+    var trailing: String? = nil
+    /// Mức nhấn của nút bên phải (0…1)
+    var trailingPressed: CGFloat = 0
+
+    var body: some View {
+        ZStack {
+            Text(title).font(.system(size: 17, weight: .semibold))
+            HStack {
+                if let leading { pill(leading, weight: .regular) }
+                Spacer()
+                if let trailing { pill(trailing, weight: .semibold).filmPressed(trailingPressed) }
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 76)
+    }
+
+    private func pill(_ text: String, weight: Font.Weight) -> some View {
+        Text(text).font(.system(size: 17, weight: weight))
+            .padding(.horizontal, 17).frame(height: 44)
+            .background {
+                Capsule().fill(Color.white.opacity(0.95))
+                    .shadow(color: .black.opacity(0.08), radius: 10, y: 3)
+            }
+            .foregroundStyle(Color(hex: 0x111114))
+    }
+}
+
+/// Một bảng trượt lên phủ gần hết màn hình (sheet), theo mức `shown` 0…1: phía sau tối dần, bảng trượt từ đáy lên.
+struct FilmSheet<Back: View, Content: View>: View {
+    var shown: CGFloat
+    @ViewBuilder let back: Back
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        let size = FilmScreen<EmptyView>.size, top = FilmScreen<EmptyView>.insets.top
+        ZStack(alignment: .top) {
+            back
+            Color.black.opacity(0.3 * Double(shown))
+            content
+                .frame(width: size.width, height: size.height - top)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 38, topTrailingRadius: 38, style: .continuous))
+                .offset(y: top + (1 - shown) * (size.height - top))
+        }
+        .frame(width: size.width, height: size.height)
     }
 }

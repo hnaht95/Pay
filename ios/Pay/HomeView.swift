@@ -166,6 +166,7 @@ struct HomeView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(Pressable())
+        .filmPressed(film?.pressed[symbol == "icon-dashboard" ? "stats" : symbol == "icon-settings" ? "settings" : "house"] ?? 0)
         .foregroundStyle(.primary)
         .accessibilityLabel(label)
     }

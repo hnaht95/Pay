@@ -172,8 +172,24 @@ struct VoiceEntryView: View {
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
     var onEdit: (Expense) -> Void = { _ in }
+    /// Đang dựng phim giới thiệu (xem Film.swift): trạng thái lấy từ phim thay vì micro
+    @Environment(\.film) private var film
+
+    private var heard: String { film?.voice?.text ?? mic.text }
+    private var isListening: Bool { film?.voice.map { $0.saved == nil } ?? (mic.phase == .listening) }
+    private var savedNow: Expense? { film != nil ? film?.voice?.saved : saved }
 
     var body: some View {
+        if let v = film?.voice {
+            // Phim: nền tối dần và thẻ trượt lên theo mức `shown`
+            ZStack(alignment: .bottom) {
+                Color.black.opacity(0.35 * Double(v.shown))
+                card.padding(.horizontal, 12).padding(.bottom, 34).offset(y: (1 - v.shown) * 460)
+            }
+        } else { live }
+    }
+
+    private var live: some View {
         ZStack(alignment: .bottom) {
             Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
                 .onTapGesture { close() }
@@ -202,7 +218,7 @@ struct VoiceEntryView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             amountBlock
-            if mic.phase == .listening { Waveform(meter: mic.meter).frame(height: 56) }
+            if isListening { Waveform(meter: mic.meter, film: film).frame(height: 56) }
             buttons
         }
         .padding(22)
@@ -215,11 +231,11 @@ struct VoiceEntryView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            if saved != nil {
+            if savedNow != nil {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 Text(L("Đã ghi")).foregroundStyle(.secondary)
-            } else if mic.phase == .listening {
-                PulseDot()
+            } else if isListening {
+                PulseDot(time: film?.time)
                 Text(L("Đang nghe")).foregroundStyle(.secondary)
             } else if undone {
                 Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary)
@@ -246,8 +262,8 @@ struct VoiceEntryView: View {
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
     @ViewBuilder private var amountBlock: some View {
         // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
-        let live = saved.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? (undone ? nil : QuickParse.spoken(mic.text)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
+        let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
+            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(live.map { fmt($0.amount) } ?? "0")
@@ -303,7 +319,7 @@ struct VoiceEntryView: View {
     private var hint: String {
         if undone { return L("Bấm Nói lại để nói khoản khác.") }
         if notUnderstood { return mic.text.isEmpty ? L("Không nghe thấy gì.") : L("Đã nghe: \"%@\"", mic.text) }
-        if mic.phase == .listening { return mic.text.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : mic.text }
+        if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : heard }
         if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
         return ""
     }
@@ -320,15 +336,15 @@ struct VoiceEntryView: View {
 
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 10) {
-            if let e = saved {
+            if let e = savedNow {
                 // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
                 pill(L("Hoàn tác"), primary: false) { undo(e) }
                 pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
                 pill(L("Xong"), primary: true) { autoClose?.cancel(); leave() }
-            } else if mic.phase == .listening {
+            } else if isListening {
                 pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
                 pill(L("Xong"), primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
-                    .disabled(mic.text.isEmpty).opacity(mic.text.isEmpty ? 0.4 : 1)
+                    .disabled(heard.isEmpty).opacity(heard.isEmpty ? 0.4 : 1)
             } else if mic.phase == .denied {
                 pill(L("Quét QR"), primary: false) { leave(); onScan() }
                 pill(L("Mở Cài đặt"), primary: true) {
@@ -349,6 +365,7 @@ struct VoiceEntryView: View {
                 .background(primary ? Palette.cta : Palette.pill, in: Capsule())
         }
         .buttonStyle(Pressable())
+        .filmPressed(primary ? film?.pressed["voice-primary"] ?? 0 : 0)
     }
 
     // MARK: Xử lý
@@ -420,11 +437,18 @@ struct VoiceEntryView: View {
 /// Sóng âm: độ cao chung theo độ to thật của giọng; hình dáng (giữa cao, rung nhẹ) là trang trí.
 private struct Waveform: View {
     @ObservedObject var meter: MicLevel
+    /// Dựng phim: độ to và thời điểm lấy từ phim
+    var film: FilmFrame? = nil
 
     var body: some View {
-        let level = meter.value
-        TimelineView(.animation) { t in
-            let time = t.date.timeIntervalSinceReferenceDate
+        if let film, let v = film.voice { bars(level: v.level, time: film.time) }
+        else {
+            let level = meter.value
+            TimelineView(.animation) { t in bars(level: level, time: t.date.timeIntervalSinceReferenceDate).animation(.easeOut(duration: 0.12), value: level) }
+        }
+    }
+
+    private func bars(level: CGFloat, time: Double) -> some View {
             HStack(alignment: .center, spacing: 4) {
                 ForEach(0..<28, id: \.self) { i in
                     let center = 1 - abs(CGFloat(i) - 13.5) / 14          // giữa cao, hai bên thấp
@@ -435,18 +459,18 @@ private struct Waveform: View {
                         .frame(height: max(4, 56 * min(h, 1)))
                 }
             }
-            .animation(.easeOut(duration: 0.12), value: level)
-        }
     }
 }
 
 /// Chấm đỏ nhấp nháy cạnh chữ "Đang nghe".
 private struct PulseDot: View {
     @State private var on = false
+    /// Dựng phim: nhấp nháy theo thời điểm của phim
+    var time: Double? = nil
 
     var body: some View {
         Circle().fill(Color.red).frame(width: 9, height: 9)
-            .opacity(on ? 1 : 0.35)
+            .opacity(time.map { 0.675 + 0.325 * sin($0 * .pi / 0.7) } ?? (on ? 1 : 0.35))
             .onAppear { withAnimation(.easeInOut(duration: 0.7).repeatForever()) { on = true } }
     }
 }

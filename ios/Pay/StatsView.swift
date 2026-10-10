@@ -9,6 +9,8 @@ struct StatsView: View {
     @State private var month = Date()
     /// Trang 6 tháng đang hiện trên thanh chọn tháng (0 = 6 tháng gần nhất, 1 = 6 tháng trước đó, ...)
     @State private var page: Int? = 0
+    /// Đang dựng phim giới thiệu (xem Film.swift)
+    @Environment(\.film) private var film
 
     private let cal = Calendar.current
 
@@ -23,21 +25,16 @@ struct StatsView: View {
     var body: some View {
         let items = store.monthItems(month)
         let prev = comparable(store.monthItems(cal.date(byAdding: .month, value: -1, to: month)!))
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    monthTabs
-                    hero(items, prev)
-                    grid(items, prev)
-                    limitCard(items)
-                    trendCard
-                    if !items.isEmpty {
-                        categoryCard(items)
-                        recentCard(items)
-                    }
-                }
-                .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 32)
+        if let film {
+            // Phim: thanh tiêu đề và vùng cuộn tự vẽ (xem Film.swift)
+            VStack(spacing: 0) {
+                FilmNavBar(title: L("Thống kê"), trailing: L("Xong"), trailingPressed: film.pressed["done"] ?? 0)
+                FilmScroll { content(items, prev) }
             }
+            .background(Self.page)
+        } else {
+        NavigationStack {
+            ScrollView { content(items, prev) }
             .background(Self.page.ignoresSafeArea())
             .navigationTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
@@ -45,6 +42,22 @@ struct StatsView: View {
                 ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { dismiss() } }
             }
         }
+        }
+    }
+
+    private func content(_ items: [Expense], _ prev: [Expense]) -> some View {
+        VStack(spacing: 20) {
+            monthTabs
+            hero(items, prev)
+            grid(items, prev)
+            limitCard(items)
+            trendCard
+            if !items.isEmpty {
+                categoryCard(items)
+                recentCard(items)
+            }
+        }
+        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 32)
     }
 
     // MARK: Chọn tháng (dạng tab, tháng đang chọn là viên thuốc đậm)
@@ -68,7 +81,14 @@ struct StatsView: View {
         return max(2, back / 6 + 1)
     }
 
-    private var monthTabs: some View {
+    @ViewBuilder private var monthTabs: some View {
+        if film != nil {
+            HStack(spacing: 2) { ForEach(months(page: 0), id: \.self) { m in monthTab(m) } }
+                .padding(4).background(Self.card, in: Capsule())
+        } else { pagedMonthTabs }
+    }
+
+    private var pagedMonthTabs: some View {
         // Vuốt ngang để đổi trang 6 tháng; mỗi trang vừa khít chiều ngang nên không bị cắt chữ
         ScrollView(.horizontal) {
             LazyHStack(spacing: 0) {

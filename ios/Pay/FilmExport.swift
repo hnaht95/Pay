@@ -45,7 +45,7 @@ enum FilmExport {
         var frame: (Double) -> AnyView
     }
 
-    static let scenes: [String: (Store) -> Film] = ["again": again]
+    static let scenes: [String: (Store) -> Film] = ["again": again, "stats": stats, "voice": voice]
 
     // MARK: Công cụ
 
@@ -63,6 +63,19 @@ enum FilmExport {
         for tap in taps where t >= tap.down && t <= tap.up + 0.3 {
             let a = ease(t, tap.down, tap.down + 0.1), out = ease(t, tap.up, tap.up + 0.3)
             return (tap.at, a * (1 - out), 0.6 + 0.4 * a + 0.3 * out)
+        }
+        return nil
+    }
+
+    /// Một lần kéo ngón tay từ `from` tới `to`
+    struct Drag { var from: CGPoint; var to: CGPoint; var start: Double; var end: Double }
+
+    /// Chấm chạm của một lần kéo
+    static func touch(_ drags: [Drag], _ t: Double) -> (at: CGPoint, alpha: CGFloat, scale: CGFloat)? {
+        for d in drags where t >= d.start - 0.1 && t <= d.end + 0.25 {
+            let k = ease(t, d.start, d.end)
+            let at = CGPoint(x: d.from.x + (d.to.x - d.from.x) * k, y: d.from.y + (d.to.y - d.from.y) * k)
+            return (at, ease(t, d.start - 0.1, d.start) * (1 - ease(t, d.end, d.end + 0.25)), 1)
         }
         return nil
     }
@@ -96,6 +109,81 @@ enum FilmExport {
             for (i, tap) in taps.enumerated() { frame.pressed["again-" + chips[order[i]].id] = press(tap, t) }
             frame.toast = taps.reduce(0) { $0 + ease(t, $1.up + 0.05, $1.up + 0.35) * (1 - ease(t, $1.up + hold, $1.up + hold + 0.3)) }
             return AnyView(FilmScreen(touch: touch(taps, t)) { HomeView() }.environment(\.film, frame))
+        }
+    }
+
+    // MARK: Phim "Thống kê"
+
+    static func stats(_ store: Store) -> Film {
+        let open = Tap(at: CGPoint(x: 321, y: 91), down: 0.8, up: 1.0)
+        // Hai lần vuốt lên để xem hết trang
+        let drags = [Drag(from: CGPoint(x: 200, y: 700), to: CGPoint(x: 200, y: 280), start: 2.6, end: 3.5),
+                     Drag(from: CGPoint(x: 200, y: 700), to: CGPoint(x: 200, y: 280), start: 5.0, end: 5.9)]
+        return Film(length: 8.0) { t in
+            var home = FilmFrame(again: store.frequent())
+            home.pressed["stats"] = press(open, t)
+            var sheet = FilmFrame()
+            // Trang trôi theo ngón tay rồi trượt thêm một đoạn theo đà
+            sheet.scroll = drags.reduce(0) { $0 + 420 * ease(t, $1.start, $1.end) + 110 * ease(t, $1.end, $1.end + 0.7) }
+            let dot = touch([open], t) ?? touch(drags, t)
+            return AnyView(FilmScreen(touch: dot) {
+                FilmSheet(shown: ease(t, open.up, open.up + 0.45)) {
+                    HomeView().environment(\.film, home)
+                } content: {
+                    StatsView().environment(\.film, sheet)
+                }
+            })
+        }
+    }
+
+    // MARK: Phim "Nói là ghi"
+
+    /// Bắt đầu ở màn hình khoá (ảnh Documents/film-assets/lock.<ngôn ngữ>.jpg do web/film/vector/make.sh chép vào),
+    /// nhấn giữ nút Tác vụ (vạch xanh cạnh máy do trang web vẽ, cùng mốc thời gian: xem VOICE_PRESS trong index.html),
+    /// máy mở khoá vào thẳng thẻ ghi âm, nói một câu, app ghi, bấm Xong.
+    static func voice(_ store: Store) -> Film {
+        let said = (Lang.isEnglish ? "200k for gas" : "hai trăm nghìn đổ xăng").split(separator: " ").map(String.init)
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let lock = UIImage(contentsOfFile: dir.appendingPathComponent("film-assets/lock.\(Lang.current.rawValue).jpg").path)
+        let unlock = 2.2, card = 2.6, first = 3.5, gap = 0.38
+        let heardAll = first + gap * Double(said.count - 1)
+        let save = heardAll + 1.1
+        let done = Tap(at: CGPoint(x: 316, y: 785), down: save + 1.9, up: save + 2.1)
+        let chips = store.frequent()
+        var saved: Expense?
+        return Film(length: done.up + 1.8) { t in
+            if saved == nil, t >= save { saved = store.quickAdd(said.joined(separator: " "), spoken: true, toast: false) }
+            var home = FilmFrame(again: chips)
+            home.time = t
+            var v = FilmFrame.Voice()
+            v.shown = ease(t, card, card + 0.4) * (1 - ease(t, done.up, done.up + 0.28))
+            let n = t < first ? 0 : min(said.count, Int((t - first) / gap) + 1)
+            v.text = said.prefix(n).joined(separator: " ")
+            // Giọng nói: to nhỏ theo từng tiếng lúc đang nói, lặng dần khi nói xong
+            v.level = t < first ? 0.08 : t < heardAll + 0.3 ? 0.55 + 0.35 * CGFloat(abs(sin(t * 7.3))) : 0.1
+            v.saved = saved
+            var cardFrame = home
+            cardFrame.voice = v
+            cardFrame.pressed["voice-primary"] = press(done, t)
+            let k = ease(t, unlock, unlock + 0.5)   // mở khoá: màn hình khoá trượt lên, app phía dưới thu về đúng cỡ
+            let size = FilmScreen<EmptyView>.size
+            return AnyView(FilmScreen(lightStatus: k < 0.45, touch: touch([done], t)) {
+                ZStack {
+                    HomeView().environment(\.film, home)
+                        .scaleEffect(1.07 - 0.07 * k)
+                    if t >= card - 0.05 && v.shown > 0 {
+                        VoiceEntryView(onScan: {}).environment(\.film, cardFrame)
+                    }
+                    if k < 1 {
+                        Color.black.opacity(0.4 * Double(1 - k))
+                        if let lock {
+                            Image(uiImage: lock).resizable().frame(width: size.width, height: size.height)
+                                .offset(y: -size.height * k)
+                        } else { Color.black.offset(y: -size.height * k) }
+                    }
+                }
+                .frame(width: size.width, height: size.height)
+            })
         }
     }
 }

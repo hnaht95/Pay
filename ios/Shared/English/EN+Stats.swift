@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let stats: [String: String] = [
+        "Chạm để lọc": "Tap to filter",
         "Tháng trước": "Previous month",
         "Tháng sau": "Next month",
         "Tất cả danh mục": "All categories",

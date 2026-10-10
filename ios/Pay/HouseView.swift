@@ -38,6 +38,8 @@ struct HouseView: View {
     /// Thêm người từ màn "Bạn là ai": thêm xong nhận luôn là mình
     @State private var claimAfterAdd = false
     @State private var editingMember: HouseMember?
+    /// Nhóm đang sửa ảnh đại diện / tên
+    @State private var editingGroup: HouseGroup?
     @State private var showInbox = false
     /// Đang tạo nhóm mới (từ danh sách nhóm)
     @State private var creating = false
@@ -190,6 +192,7 @@ struct HouseView: View {
                 Menu {
                     Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
                     Button(L("Thêm người"), systemImage: "plus") { addingMember = true }
+                    Button(L("Đổi ảnh, màu, tên nhóm"), systemImage: "paintpalette") { editingGroup = house.current }
                     Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
                 } label: {
                     Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold))
@@ -202,6 +205,7 @@ struct HouseView: View {
         }
         .padding(.top, 14).padding(.bottom, 14)
         .sheet(isPresented: $showInbox) { inbox }
+        .sheet(item: $editingGroup) { HouseGroupEditor(group: $0) }
     }
 
     private func circleButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
@@ -354,7 +358,7 @@ struct HouseView: View {
         let pend = g.pending.count
         return TapHold(tap: { withAnimation(.snappy) { house.open(g.id) } }, hold: { menu = groupMenu(g) }) {
             HStack(spacing: 14) {
-                groupIcon(g.id)
+                groupIcon(g)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(g.name.isEmpty ? L("Nhóm chung") : g.name).font(.system(size: 18, weight: .semibold)).lineLimit(1)
                     HStack(spacing: -6) {
@@ -388,20 +392,15 @@ struct HouseView: View {
         }
     }
 
-    private func groupIcon(_ id: String, size: CGFloat = 56) -> some View {
-        Image(systemName: "person.2.crop.square.stack.fill")
-            .font(.system(size: size * 0.43))
-            .foregroundStyle(Color(hex: 0x111114))
-            .frame(width: size, height: size)
-            .background(CategoryTone.bg(house.tone(id)), in: RoundedRectangle(cornerRadius: size * 0.32, style: .continuous))
-    }
+    private func groupIcon(_ g: HouseGroup, size: CGFloat = 56) -> some View { HouseGroupIcon(group: g, size: size) }
 
     private func groupMenu(_ g: HouseGroup) -> AppMenuSpec {
         let archived = house.archived.contains(g.id)
-        return AppMenuSpec(icon: AnyView(groupIcon(g.id)), title: g.name.isEmpty ? L("Nhóm chung") : g.name,
+        return AppMenuSpec(icon: AnyView(groupIcon(g)), title: g.name.isEmpty ? L("Nhóm chung") : g.name,
                            subtitle: L("%d người · %d khoản chung", g.members.count, g.spends.count), items: [
             AppMenuItem(icon: "arrow.right", title: L("Mở nhóm")) { house.open(g.id) },
             AppMenuItem(icon: "person.badge.plus", title: g.isOwner ? L("Mời thành viên") : L("Người trong nhóm")) { house.open(g.id); invite() },
+            AppMenuItem(icon: "paintpalette.fill", title: L("Đổi ảnh, màu, tên nhóm")) { editingGroup = g },
             archived ? AppMenuItem(icon: "tray.and.arrow.up", title: L("Bỏ lưu trữ")) { house.setArchived(g.id, false) }
                      : AppMenuItem(icon: "archivebox", title: L("Lưu trữ"), subtitle: L("Ẩn khỏi danh sách, chỉ trên máy này")) { house.setArchived(g.id, true) },
         ])
@@ -870,6 +869,123 @@ struct HouseView: View {
         if Lang.isEnglish { return d.formatted(.dateTime.month(.abbreviated).day().locale(Lang.locale)) }
         let c = cal.dateComponents([.day, .month], from: d)
         return "\(c.day!)/\(c.month!)"
+    }
+}
+
+/// Ảnh đại diện của nhóm: ảnh đã chọn, không thì biểu tượng nhóm trên nền màu (màu đã chọn, không thì màu theo mã nhóm).
+struct HouseGroupIcon: View {
+    let group: HouseGroup
+    var size: CGFloat = 56
+    /// Xem trước khi đang sửa: ảnh / màu đang chọn thay cho của nhóm
+    var photo: Data?? = nil
+    var tone: Int?? = nil
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.32, style: .continuous)
+        let t = (tone ?? group.tone) ?? House.shared.tone(group.id)
+        if let data = photo ?? group.photo, let img = UIImage(data: data) {
+            Image(uiImage: img).resizable().scaledToFill().frame(width: size, height: size).clipShape(shape)
+        } else {
+            Image(systemName: "person.2.crop.square.stack.fill")
+                .font(.system(size: size * 0.43))
+                .foregroundStyle(CategoryTone.dark(t) ? .white : Color(hex: 0x111114))
+                .frame(width: size, height: size)
+                .background(CategoryTone.bg(t), in: shape)
+        }
+    }
+}
+
+/// Sửa nhóm: ảnh đại diện (ảnh tự chọn hoặc một màu) và tên. Cả nhóm cùng thấy.
+struct HouseGroupEditor: View {
+    @ObservedObject private var house = House.shared
+    @Environment(\.dismiss) private var dismiss
+    let group: HouseGroup
+    @State private var name = ""
+    @State private var tone: Int?
+    @State private var photo: Data?
+    @State private var photoChanged = false
+    @State private var pick: PhotosPickerItem?
+    @State private var loaded = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    VStack(spacing: 12) {
+                        HouseGroupIcon(group: group, size: 96, photo: .some(photo), tone: .some(tone))
+                        HStack(spacing: 16) {
+                            PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")) }
+                            if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng
+                    }
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                }
+                Section(L("Tên")) { TextField(L("Tên nhóm"), text: $name) }
+                Section {
+                    VStack(spacing: 10) {
+                        swatchRow(CategoryTone.light)
+                        swatchRow(CategoryTone.strong)
+                        swatchRow(CategoryTone.flat)
+                    }
+                    .padding(.vertical, 6)
+                } header: {
+                    Text(L("Màu"))
+                } footer: {
+                    if photo != nil { Text(L("Đang dùng ảnh. Bỏ ảnh để hiện màu.")) }
+                }
+            }
+            .navigationTitle(L("Sửa nhóm"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L("Lưu")) {
+                        let n = name.trimmingCharacters(in: .whitespaces)
+                        let p: Data? = photoChanged ? (photo ?? Data()) : nil
+                        Task {
+                            await house.updateGroup(group.id, name: n.isEmpty ? group.name : n, tone: tone, photo: p)
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            .onAppear {
+                guard !loaded else { return }
+                loaded = true
+                name = group.name; tone = group.tone; photo = group.photo
+            }
+            .onChange(of: pick) { _, item in
+                Task {
+                    guard let d = try? await item?.loadTransferable(type: Data.self), let img = UIImage(data: d) else { return }
+                    photo = HouseMemberEditor.thumbnail(img)
+                    photoChanged = true
+                }
+            }
+        }
+    }
+
+    private func swatchRow(_ range: Range<Int>) -> some View {
+        let now = tone ?? house.tone(group.id)
+        return HStack(spacing: 0) {
+            ForEach(Array(range), id: \.self) { i in
+                Button { tone = i } label: {
+                    Circle().fill(CategoryTone.bg(i)).frame(width: 30, height: 30)
+                        .overlay { Circle().stroke(Color.primary.opacity(0.12), lineWidth: 1) }
+                        .overlay {
+                            if i == now && photo == nil {
+                                Image(systemName: "checkmark").font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(CategoryTone.dark(i) ? .white : Color(hex: 0x111114))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(Pressable())
+                .accessibilityLabel(L("Màu %d", i + 1))
+            }
+        }
     }
 }
 

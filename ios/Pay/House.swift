@@ -122,6 +122,9 @@ struct HouseGroup: Identifiable {
     var spends: [HouseSpend] = []
     var settles: [HouseSettle] = []
     var me: String?
+    /// Ảnh đại diện của nhóm do người dùng chọn: màu (chỉ số trong CategoryTone) hoặc ảnh. Chưa chọn thì màu theo mã nhóm
+    var tone: Int?
+    var photo: Data?
     var records: [CKRecord.ID: CKRecord] = [:]
 
     /// > 0: nhóm còn nợ mình; < 0: mình còn phải trả
@@ -354,7 +357,10 @@ final class House: ObservableObject {
                 st.append(HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
                                       amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
                                       status: r["status"] as? String ?? "ok"))
-            case "Info": g.name = r["name"] as? String ?? g.name
+            case "Info":
+                g.name = r["name"] as? String ?? g.name
+                g.tone = (r["tone"] as? Int64).map(Int.init)
+                g.photo = (r["photo"] as? CKAsset)?.fileURL.flatMap { try? Data(contentsOf: $0) }
             default: break
             }
         }
@@ -466,6 +472,36 @@ final class House: ObservableObject {
             }
         }
         _ = await run([r])
+    }
+
+    /// Đổi tên và ảnh đại diện của một nhóm (nhóm bất kỳ, không cần đang mở). Cả nhóm cùng thấy.
+    /// tone: nil = màu mặc định theo mã nhóm. photo: nil = giữ nguyên, Data rỗng = bỏ ảnh
+    func updateGroup(_ gid: String, name n: String, tone: Int?, photo: Data? = nil) async {
+        guard let i = groups.firstIndex(where: { $0.id == gid }) else { return }
+        if demo {
+            groups[i].name = n; groups[i].tone = tone
+            if let photo { groups[i].photo = photo.isEmpty ? nil : photo }
+            return
+        }
+        let g = groups[i]
+        let rid = CKRecord.ID(recordName: "info", zoneID: g.zone)
+        let r = g.records[rid] ?? CKRecord(recordType: "Info", recordID: rid)
+        r["name"] = n
+        r["tone"] = tone.map { Int64($0) }
+        if let photo {
+            if photo.isEmpty { r["photo"] = nil } else {
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent("group-\(gid).jpg")
+                try? photo.write(to: url)
+                r["photo"] = CKAsset(fileURL: url)
+            }
+        }
+        busy = true; defer { busy = false }
+        do {
+            let res = try await container.database(with: g.scope).modifyRecords(saving: [r], deleting: [], savePolicy: .changedKeys)
+            guard let j = groups.firstIndex(where: { $0.id == gid }) else { return }
+            for (id, one) in res.saveResults { groups[j].records[id] = try one.get() }
+            Self.rebuild(&groups[j])
+        } catch { phase = .failed(Self.describe(error)) }
     }
 
     /// "Tôi là người này": nhớ trên máy và gắn Apple ID vào thành viên, lần sau máy khác tự nhận ra.

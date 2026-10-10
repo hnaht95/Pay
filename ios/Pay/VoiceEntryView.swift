@@ -276,7 +276,7 @@ struct VoiceEntryView: View {
                 // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
                 try? await Task.sleep(for: .milliseconds(30))
                 withAnimation(.easeOut(duration: 0.1)) { faced = false }
-                withAnimation(.spring(response: 0.44, dampingFraction: 1)) { morph = 1 }   // không vọt quá cỡ thẻ rồi co lại
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) { morph = 1 }   // nảy nhẹ khi xuất hiện
                 withAnimation(.easeOut(duration: 0.2).delay(0.24)) { filled = true }   // chữ hiện khi khối đã lớn gần đủ, không tràn ra ngoài khối
                 Task { try? await Task.sleep(for: .milliseconds(560)); if filled { blob = false } }
                 // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy

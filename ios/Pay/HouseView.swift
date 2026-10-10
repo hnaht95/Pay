@@ -65,6 +65,7 @@ struct HouseView: View {
             ToastView().padding(.bottom, 100)
         }
         .overlay { if house.busy { ProgressView().controlSize(.large) } }
+        .sheetGrabber()
         // Vuốt từ mép trái: đang trong nhóm thì về danh sách nhóm, không thì đóng (như nút ở góc trái)
         .edgeBack {
             if inGroup { withAnimation(.snappy) { house.open(nil) } }
@@ -157,7 +158,8 @@ struct HouseView: View {
             } else if creating && !house.groups.isEmpty {
                 circleButton("chevron.left", L("Các nhóm")) { withAnimation(.snappy) { creating = false } }
             } else {
-                circleButton("chevron.down", L("Đóng")) { dismiss() }
+                // Ở danh sách nhóm không có nút đóng (vạch ngang trên cùng cho biết kéo xuống là đóng); giữ chỗ để tên vẫn ở giữa
+                Color.clear.frame(width: 42, height: 42)
             }
             Spacer()
             Text(inGroup && !house.name.isEmpty ? house.name : creating ? L("Nhóm mới") : L("Nhóm chung"))

@@ -628,10 +628,10 @@ private struct Waveform: View {
     @State private var smooth = Smoother()
 
     var body: some View {
-        if let film, let v = film.voice { bars(level: v.level, time: film.time) }
+        if let film, let v = film.voice { dots(level: v.level, time: film.time) }
         else {
             TimelineView(.animation) { t in
-                bars(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
+                dots(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
             }
         }
     }
@@ -653,21 +653,35 @@ private struct Waveform: View {
         return 0.2 + 0.8 * t * t * (3 - 2 * t)
     }
 
-    private func bars(level: CGFloat, time: Double) -> some View {
-        let lv: CGFloat = 0.1 + 0.9 * min(level, 1)   // im lặng vẫn còn vạch ngắn
-        return GeometryReader { g in
-            let n = max(1, Int((g.size.width + Self.gap) / (Self.barWidth + Self.gap)))
-            HStack(alignment: .center, spacing: Self.gap) {
-                ForEach(0..<n, id: \.self) { i in
-                    let shape: Double = (0.35 + 0.65 * Self.hash(i, 1)) * Self.taper(i, of: n)   // dáng: cao thấp xen kẽ, hai mép thấp
-                    let speed: Double = 5 + 7 * Self.hash(i, 2)                                   // mỗi thanh nhảy nhịp riêng
-                    let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
-                    let h: CGFloat = lv * CGFloat(shape * (0.55 + 0.45 * jitter))
-                    Capsule().fill(Palette.cta.opacity(0.85))
-                        .frame(width: Self.barWidth, height: max(Self.barWidth * 2, g.size.height * min(h, 1)))
+    /// Lưới chấm: đường kính chấm, khoảng cách giữa các chấm, số hàng
+    private static let dot: CGFloat = 5
+    private static let dotGap: CGFloat = 3.5
+    private static let rows = 7
+    /// Xanh lá của icon app
+    private static let green = Color(hex: 0x61BE6E)
+
+    /// Ma trận chấm: mỗi cột sáng một số chấm đều từ hàng giữa ra trên dưới theo độ to (dáng cao thấp xen kẽ, hai mép thấp
+    /// như dải thanh dọc trước đây); chấm không sáng vẫn hiện mờ để thấy cả lưới.
+    private func dots(level: CGFloat, time: Double) -> some View {
+        let lv: CGFloat = 0.1 + 0.9 * min(level, 1)   // im lặng vẫn sáng hàng giữa
+        return Canvas { ctx, size in
+            let step = Self.dot + Self.dotGap
+            let n = max(1, Int((size.width + Self.dotGap) / step))
+            let x0 = (size.width - (CGFloat(n) * step - Self.dotGap)) / 2
+            let y0 = (size.height - (CGFloat(Self.rows) * step - Self.dotGap)) / 2
+            let mid = Self.rows / 2
+            for i in 0..<n {
+                let shape: Double = (0.35 + 0.65 * Self.hash(i, 1)) * Self.taper(i, of: n)
+                let speed: Double = 5 + 7 * Self.hash(i, 2)
+                let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
+                let h: Double = Double(lv) * shape * (0.55 + 0.45 * jitter)
+                let reach = Int((min(h, 1) * (Double(mid) + 0.5)).rounded(.down))   // số chấm sáng mỗi phía hàng giữa
+                for r in 0..<Self.rows {
+                    let rect = CGRect(x: x0 + CGFloat(i) * step, y: y0 + CGFloat(r) * step, width: Self.dot, height: Self.dot)
+                    let on = abs(r - mid) <= reach
+                    ctx.fill(Path(ellipseIn: rect), with: .color(Self.green.opacity(on ? 1 : 0.16)))
                 }
             }
-            .frame(width: g.size.width, height: g.size.height)
         }
     }
 

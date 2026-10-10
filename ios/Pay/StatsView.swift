@@ -41,7 +41,7 @@ struct StatsView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
-        .presentationDragIndicator(.visible)
+        .sheetGrabber()
         }
     }
 

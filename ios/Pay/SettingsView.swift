@@ -50,10 +50,9 @@ struct SettingsView: View {
             .edgeBack { dismiss() }
             .navigationTitle(L("Cài đặt"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { dismiss() } }
-            }
         }
+        // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
+        .sheetGrabber()
         // File sao lưu có cả khoản định kỳ và danh mục đã học: đổi gì cũng làm lại
         .task(id: [store.items.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in

@@ -19,4 +19,20 @@ extension View {
             if v.translation.height > 110, abs(v.translation.width) < 80 { action() }
         })
     }
+
+    /// Vạch ngang trên cùng của bảng, cho biết kéo xuống là đóng (thay nút Xong). Tự vẽ thay cho vạch của iOS
+    /// vì vạch của iOS nằm sát mép trên, không dời xuống được.
+    func sheetGrabber() -> some View {
+        overlay(alignment: .top) {
+            SheetGrabber().padding(.top, SheetGrabber.top).ignoresSafeArea().allowsHitTesting(false)
+        }
+    }
+}
+
+struct SheetGrabber: View {
+    /// Khoảng cách từ mép trên của bảng tới vạch
+    static let top: CGFloat = 11
+    var body: some View {
+        Capsule().fill(Color.primary.opacity(0.22)).frame(width: 36, height: 5)
+    }
 }

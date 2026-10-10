@@ -751,12 +751,12 @@ struct HouseView: View {
             .background(Palette.bg.ignoresSafeArea())
             .navigationTitle(L("Thông báo"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { showInbox = false } } }
             .task {
                 let s = await UNUserNotificationCenter.current().notificationSettings()
                 notifyOn = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
             }
         }
+        .sheetGrabber()   // không có nút Xong: kéo xuống là đóng
     }
 
     private struct Activity { let id: String; let who: String; let text: String; let date: Date }

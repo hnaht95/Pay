@@ -869,6 +869,8 @@ struct HouseMemberEditor: View {
     @State private var photo: Data?
     @State private var photoChanged = false
     @State private var pick: PhotosPickerItem?
+    /// Đã nạp thông tin của thành viên vào các ô chưa (chỉ nạp một lần)
+    @State private var loaded = false
 
     private static let banks = BankData.names.sorted { $0.value.lowercased() < $1.value.lowercased() }
 
@@ -924,7 +926,13 @@ struct HouseMemberEditor: View {
                     }
                 }
             }
-            .onAppear { name = member.name; bin = member.bin ?? ""; acct = member.acct ?? ""; photo = member.photo }
+            // Chỉ nạp lần đầu: chọn ngân hàng mở trang riêng, lúc quay lại onAppear chạy lần nữa — nạp lại thì
+            // ngân hàng vừa chọn (và tên, số tài khoản đang gõ) bị trả về giá trị cũ
+            .onAppear {
+                guard !loaded else { return }
+                loaded = true
+                name = member.name; bin = member.bin ?? ""; acct = member.acct ?? ""; photo = member.photo
+            }
             .onChange(of: pick) { _, item in
                 Task {
                     guard let d = try? await item?.loadTransferable(type: Data.self), let img = UIImage(data: d) else { return }

@@ -711,6 +711,9 @@ struct ToastView: View {
     var body: some View {
         ZStack(alignment: .bottom) { bar }
             .animation(film == nil ? .spring(response: 0.28, dampingFraction: 0.75) : nil, value: store.toast?.id)
+            // Cắt ở mép dưới (ngay trên hai nút Nhập / Quét QR): thanh trượt xuống chui vào mép này rồi biến mất, trồi lên từ
+            // đây khi hiện, không đè lên hai nút. Chừa 12 điểm cho bóng đổ, phía trên để thoáng cho độ nảy
+            .mask(Rectangle().padding(.top, -200).padding(.bottom, -12))
     }
 
     @ViewBuilder private var bar: some View {

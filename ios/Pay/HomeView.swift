@@ -517,7 +517,7 @@ struct ExpenseRow: View {
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .frame(minHeight: dot ? 64 : Self.rowHeight - 10)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: dot ? 14 : 24, style: .continuous))
     }
 
     private var sub: String {

@@ -555,10 +555,21 @@ struct VoiceEntryView: View {
         }
     }
 
+    /// Đổi ngay sang dạng "Đang nghe" như lúc mới mở thẻ (`starting`), không hiệu ứng: để hiệu ứng thu/giãn của thẻ chạy
+    /// thì chữ cũ ("Chưa nghe rõ", "Đã nghe: …") và chữ mới mờ vào nhau tại chỗ, đè lên sóng âm. Micro chưa kịp bật
+    /// cũng đã hiện như đang nghe, nên không nháy qua dạng trung gian.
     private func retry() {
-        notUnderstood = false
-        undone = false
-        Task { await mic.start() }
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) {
+            notUnderstood = false
+            undone = false
+            starting = true
+        }
+        Task {
+            await mic.start()
+            starting = false
+        }
     }
 
     private func close() {

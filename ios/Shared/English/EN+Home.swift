@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Thu ô về nửa hàng": "Make tile half width",
+        "Kéo ô dài cả hàng": "Make tile full width",
         // HomeView
         "Danh mục": "Categories",
         "Gần đây": "Recent",

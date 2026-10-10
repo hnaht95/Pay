@@ -284,27 +284,50 @@ struct HomeView: View {
     private func tiles(_ now: Date) -> some View {
         var perCat: [String: Int] = [:]
         for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a }
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            ForEach(Category.all) { c in
-                // Chạm: nhập khoản mới; nhấn giữ: bảng tuỳ chọn tự vẽ (thay menu mặc định của iOS)
-                TapHold(tap: { entry = .new(cat: c.k) }, hold: { menu = categoryMenu(c) }) {
-                    tile(c, total: perCat[c.k] ?? 0)
-                }
-                .filmPressed(film?.pressed["tile-" + c.k] ?? 0)
+        // Mỗi danh mục dài cả hàng hoặc nửa hàng (đổi trong bảng nhấn giữ). Ô nửa hàng đứng lẻ ngay trước một ô dài
+        // thì giãn ra cho kín hàng. Ô dấu + luôn ở cuối, nửa hàng.
+        var rows: [[Category?]] = [], half: [Category?] = []   // nil = ô dấu +
+        for c in Category.all {
+            if store.isWide(c.k) {
+                if !half.isEmpty { rows.append(half); half = [] }
+                rows.append([c])
+            } else {
+                half.append(c)
+                if half.count == 2 { rows.append(half); half = [] }
             }
-            // Ô cuối: tạo danh mục riêng
-            Button { addingCat = true } label: {
-                // Chỉ dấu + ở giữa ô, không chữ
-                Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                    .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
-                    .foregroundStyle(.primary)
+        }
+        half.append(nil); rows.append(half)
+        return VStack(spacing: 12) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 12) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { _, c in
+                        if let c {
+                            // Chạm: nhập khoản mới; nhấn giữ: bảng tuỳ chọn tự vẽ (thay menu mặc định của iOS)
+                            TapHold(tap: { entry = .new(cat: c.k) }, hold: { menu = categoryMenu(c) }) {
+                                tile(c, total: perCat[c.k] ?? 0)
+                            }
+                            .filmPressed(film?.pressed["tile-" + c.k] ?? 0)
+                        } else {
+                            addTile
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Ô cuối: tạo danh mục riêng. Chỉ dấu + ở giữa ô, không chữ
+    private var addTile: some View {
+        Button { addingCat = true } label: {
+            Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
+                .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, minHeight: 140)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            }
-            .buttonStyle(Pressable())
-            .accessibilityLabel(L("Thêm danh mục"))
         }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(L("Thêm danh mục"))
     }
 
     private func tile(_ c: Category, total: Int) -> some View {
@@ -332,6 +355,9 @@ struct HomeView: View {
         var items = [
             AppMenuItem(icon: "plus", title: L("Nhập khoản %@", c.name)) { entry = .new(cat: c.k) },
             AppMenuItem(icon: "paintpalette.fill", title: L("Đổi biểu tượng, màu, tên")) { editingCat = CatEdit.of(c.k, store: store) },
+            store.isWide(c.k)
+                ? AppMenuItem(icon: "rectangle.split.2x1", title: L("Thu ô về nửa hàng")) { withAnimation(.snappy) { store.setWide(c.k, false) } }
+                : AppMenuItem(icon: "rectangle", title: L("Kéo ô dài cả hàng")) { withAnimation(.snappy) { store.setWide(c.k, true) } },
         ]
         if Category.isBuiltin(c.k) {
             if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: L("Về mặc định")) { store.resetCategory(c.k) }) }

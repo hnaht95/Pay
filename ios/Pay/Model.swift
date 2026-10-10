@@ -31,6 +31,8 @@ struct CustomCat: Codable, Hashable {
     var tone: Int        // chỉ số trong CategoryTone
     var on: Bool
     var u: Double
+    /// Ô ở màn hình chính chiếm cả hàng (nil / false: nửa hàng). Giữ cả khi `on` = false (danh mục có sẵn chưa sửa gì khác)
+    var wide: Bool? = nil
 
     /// tone < 0: giữ màu gốc của danh mục có sẵn
     var category: Category {
@@ -461,6 +463,17 @@ final class Store: ObservableObject {
     func updateCategory(_ k: String, name: String, icon: String, tone: Int) {
         var c = cats[k] ?? CustomCat(k: k, name: name, icon: icon, tone: tone, on: true, u: now)
         c.name = name; c.icon = icon; c.tone = tone; c.on = true; c.u = now
+        cats[k] = c
+        persist()
+    }
+
+    /// Ô danh mục ở màn hình chính dài cả hàng hay nửa hàng
+    func isWide(_ k: String) -> Bool { cats[k]?.wide == true }
+
+    func setWide(_ k: String, _ wide: Bool) {
+        let base = Category.get(k)
+        var c = cats[k] ?? CustomCat(k: k, name: base.rawName, icon: base.icon, tone: -1, on: false, u: now)
+        c.wide = wide; c.u = now
         cats[k] = c
         persist()
     }

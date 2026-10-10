@@ -304,7 +304,7 @@ struct VoiceEntryView: View {
             let settle = film?.voice?.settle ?? 0
             if isListening || (film != nil && settle < 1) {
                 // Điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không — dịch lẻ thì chữ và nền lệch nhau
-                let room = (92 * (1 - settle)).rounded()   // 74 sóng âm + 18 khoảng cách
+                let room = (74 * (1 - settle)).rounded()   // 56 sóng âm + 18 khoảng cách
                 Waveform(meter: mic.meter, film: film)
                     .frame(height: max(0, room - 18), alignment: .center).clipped()
                     .opacity(Double(1 - settle))
@@ -619,8 +619,8 @@ struct VoiceEntryView: View {
     }
 }
 
-/// Sóng âm: ba dải sóng phát sáng (đường sóng dày tô gradient màu, nhoè) gợn lên xuống, chạy ngược nhịp nhau, kiểu giao diện
-/// giọng nói AI. Nói to thì sóng cao theo độ to thật của giọng; im lặng chỉ còn gợn nhẹ để biết vẫn đang nghe.
+/// Sóng âm: dải thanh dọc mảnh cách đều, mỗi thanh cao thấp khác nhau và nhảy theo nhịp riêng (xen kẽ như sóng giọng nói,
+/// không phồng thành một cục ở giữa). Độ cao chung theo độ to thật của giọng; im lặng chỉ còn các vạch ngắn.
 private struct Waveform: View {
     @ObservedObject var meter: MicLevel
     /// Dựng phim: độ to và thời điểm lấy từ phim
@@ -628,50 +628,36 @@ private struct Waveform: View {
     @State private var smooth = Smoother()
 
     var body: some View {
-        if let film, let v = film.voice { glow(level: v.level, time: film.time) }
+        if let film, let v = film.voice { bars(level: v.level, time: film.time) }
         else {
             TimelineView(.animation) { t in
-                glow(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
+                bars(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
             }
         }
     }
 
-    /// Mỗi dải: màu gradient từ trái sang phải, số gợn trên bề ngang, tốc độ chạy (âm = chạy ngược), lệch pha
-    private static let waves: [(colors: [Color], cycles: Double, speed: Double, phase: Double)] = [
-        ([Color(hex: 0x8EE6B0), Color(hex: 0x5FD08C), Color(hex: 0x8CC8FF)], 1.6, 2.4, 0.0),
-        ([Color(hex: 0xB8A6FF), Color(hex: 0x8CC8FF), Color(hex: 0x8EE6B0)], 2.3, -3.0, 1.9),
-        ([Color(hex: 0x5FD08C), Color(hex: 0xB8A6FF), Color(hex: 0x8CC8FF)], 1.1, 1.7, 3.8),
-    ]
-    /// Số điểm dọc theo mỗi dải (đủ mịn để sóng không gãy khúc)
-    private static let samples = 90
+    private static let count = 44
+    private static let barWidth: CGFloat = 2
 
-    private func glow(level: CGFloat, time: Double) -> some View {
-        Canvas { ctx, size in
-            let lv: CGFloat = 0.12 + 0.88 * min(level, 1)   // im lặng vẫn còn gợn nhẹ
-            let mid = size.height / 2
-            let thick: CGFloat = size.height * (0.13 + 0.07 * lv)
-            let blur: CGFloat = size.height * 0.11
-            // Sóng cao nhất vẫn chừa chỗ cho bề dày dải và phần nhoè, không chạm mép khung
-            let amp: CGFloat = (mid - thick / 2 - blur) * lv
-            ctx.addFilter(.blur(radius: blur))
-            for w in Self.waves {
-                var path = Path()
-                for k in 0...Self.samples {
-                    let u: Double = Double(k) / Double(Self.samples)
-                    let env: Double = pow(sin(Double.pi * u), 1.5)   // hai đầu về đường giữa, giữa nhấp nhô mạnh nhất
-                    let wave: Double = sin(u * 2 * Double.pi * w.cycles + time * w.speed + w.phase)
-                    let pt = CGPoint(x: size.width * CGFloat(u), y: mid + amp * CGFloat(env * wave))
-                    if k == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
-                }
-                ctx.stroke(path, with: .linearGradient(Gradient(colors: w.colors.map { $0.opacity(Double(0.55 + 0.4 * lv)) }),
-                                                       startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
-                           style: StrokeStyle(lineWidth: thick, lineCap: .round, lineJoin: .round))
+    /// Số giả ngẫu nhiên cố định 0…1 theo thứ tự thanh: dáng cao thấp riêng và nhịp nhảy riêng của từng thanh
+    private static func hash(_ i: Int, _ salt: Double) -> Double {
+        let v = sin(Double(i) * 12.9898 + salt * 78.233) * 43758.5453
+        return v - v.rounded(.down)
+    }
+
+    private func bars(level: CGFloat, time: Double) -> some View {
+        let lv: CGFloat = 0.1 + 0.9 * min(level, 1)   // im lặng vẫn còn vạch ngắn
+        return HStack(alignment: .center, spacing: 0) {
+            ForEach(0..<Self.count, id: \.self) { i in
+                let shape: Double = 0.35 + 0.65 * Self.hash(i, 1)                       // dáng: thanh cao, thanh thấp
+                let speed: Double = 5 + 7 * Self.hash(i, 2)                             // mỗi thanh nhảy nhịp riêng
+                let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
+                let h: CGFloat = lv * CGFloat(shape * (0.55 + 0.45 * jitter))
+                Capsule().fill(Palette.cta.opacity(0.85))
+                    .frame(width: Self.barWidth, height: max(Self.barWidth * 2, 56 * min(h, 1)))
+                    .frame(maxWidth: .infinity)
             }
         }
-        // Hai đầu dải mờ dần vào nền thẻ
-        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.12),
-                                     .init(color: .black, location: 0.88), .init(color: .clear, location: 1)],
-                             startPoint: .leading, endPoint: .trailing))
     }
 
     /// Độ to micro nhảy theo từng lần đo (~43 lần/giây, giọng nói lên xuống thất thường) và về 0 ngay khi ngừng nghe:

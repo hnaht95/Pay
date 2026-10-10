@@ -65,6 +65,12 @@ struct HouseView: View {
             ToastView().padding(.bottom, 100)
         }
         .overlay { if house.busy { ProgressView().controlSize(.large) } }
+        // Vuốt từ mép trái: đang trong nhóm thì về danh sách nhóm, không thì đóng (như nút ở góc trái)
+        .edgeBack {
+            if inGroup { withAnimation(.snappy) { house.open(nil) } }
+            else if creating && !house.groups.isEmpty { withAnimation(.snappy) { creating = false } }
+            else { dismiss() }
+        }
         .task {
             await house.load()
             #if DEBUG

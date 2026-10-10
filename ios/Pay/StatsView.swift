@@ -36,6 +36,7 @@ struct StatsView: View {
         NavigationStack {
             ScrollView { content(items, prev) }
             .background(Self.page.ignoresSafeArea())
+            .edgeBack { dismiss() }
             .navigationTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

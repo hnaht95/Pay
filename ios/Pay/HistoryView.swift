@@ -3,6 +3,9 @@ import UniformTypeIdentifiers
 
 struct HistoryView: View {
     @EnvironmentObject var store: Store
+    @Environment(\.dismiss) private var dismiss
+    /// Chỉ xem một danh mục (mở từ ô danh mục ở màn hình chính); nil = toàn bộ lịch sử
+    var category: String? = nil
     @State private var editing: EntryMode?
     @State private var menu: AppMenuSpec?
 
@@ -37,8 +40,18 @@ struct HistoryView: View {
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
-            .navigationTitle(L("Lịch sử chi tiêu"))
+            .edgeBack { dismiss() }
+            .navigationTitle(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Đang xem một danh mục: nhập luôn khoản mới vào danh mục đó
+                if let category {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button { editing = .new(cat: category) } label: { Image(systemName: "plus") }
+                            .accessibilityLabel(L("Nhập khoản %@", Category.get(category).name))
+                    }
+                }
+            }
         }
         .fullScreenCover(item: $editing) { EntryView(mode: $0).environmentObject(store) }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
@@ -47,7 +60,7 @@ struct HistoryView: View {
 
     private func grouped() -> [(Date, [Expense])] {
         let cal = Calendar.current
-        let dict = Dictionary(grouping: store.items) { cal.startOfDay(for: $0.date) }
+        let dict = Dictionary(grouping: store.items.filter { category == nil || $0.c == category }) { cal.startOfDay(for: $0.date) }
         return dict.keys.sorted(by: >).map { ($0, dict[$0]!.sorted { $0.t > $1.t }) }
     }
 

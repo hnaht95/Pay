@@ -38,6 +38,7 @@
 		AE1526A32B9A892E36FFC96F /* PayWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DA4B5C6B3F3A1E13827F11A9 /* PayWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A44344E8096362017AC591B /* QuickParse.swift */; };
 		B7BB8FBA27616CC043B35EEC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */; };
+		BA138B77A3D6F3094B1D5F69 /* Swipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6AB32059939F825265F69CB /* Swipe.swift */; };
 		BCCC32A2A03A84C57664153D /* BankData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670B9C247A53BD43509CC680 /* BankData.swift */; };
 		D9BF7176763144227AE77268 /* EN+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E4AB183C62C00335ACF57F /* EN+Settings.swift */; };
 		DE8ACBD25F257AE1FDA5E3F2 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA7538B886B5157A6125740 /* HistoryView.swift */; };
@@ -103,6 +104,7 @@
 		A0DE5AB7A1379185BA286D6A /* AppMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMenu.swift; sourceTree = "<group>"; };
 		A2852463900AD9FAE95133FC /* Pay.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B596D5B30FB62C52A570D2AF /* Parts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parts.swift; sourceTree = "<group>"; };
+		B6AB32059939F825265F69CB /* Swipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Swipe.swift; sourceTree = "<group>"; };
 		C495C9B5ABDB2E162467B1A8 /* PayWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PayWidget.entitlements; sourceTree = "<group>"; };
 		C52368CCF0CD05A29F53F06A /* PayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayWidget.swift; sourceTree = "<group>"; };
 		C5CCA8FB4425669D725FC11F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -145,6 +147,7 @@
 				8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */,
 				E141264B0193BD7C93AC85D7 /* SettingsView.swift */,
 				D89B234044050006AE979177 /* StatsView.swift */,
+				B6AB32059939F825265F69CB /* Swipe.swift */,
 				6710F63C94C742F268FE2D19 /* VietQR.swift */,
 				7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */,
 			);
@@ -331,6 +334,7 @@
 				9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */,
 				1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */,
 				E1C3818D189576DA486E6398 /* Summary.swift in Sources */,
+				BA138B77A3D6F3094B1D5F69 /* Swipe.swift in Sources */,
 				E1C4BAAEA60CC5544DE0C0EF /* VietQR.swift in Sources */,
 				ABAF7C9D3EFFBE9F9E02D294 /* VoiceEntryView.swift in Sources */,
 			);

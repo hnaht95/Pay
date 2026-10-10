@@ -37,6 +37,8 @@ struct HomeView: View {
     @State private var editingCat: CatEdit?
     /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
     @State private var menu: AppMenuSpec?
+    /// Danh mục đang mở danh sách khoản chi (chạm vào ô danh mục)
+    @State private var listing: Category?
     @Environment(\.scenePhase) private var scenePhase
     /// Đang dựng phim giới thiệu (xem Film.swift): vẽ theo trạng thái phim đưa vào
     @Environment(\.film) private var film
@@ -89,6 +91,7 @@ struct HomeView: View {
             ScannerView { code in scanned = code; scanning = false }
         }
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
+        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store) }
@@ -130,9 +133,9 @@ struct HomeView: View {
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
     private func run(_ k: QuickKind) async {
-        let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || listening
+        let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || listening || listing != nil
         if (k == .scan && scanning) || (k == .voice && listening) { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false
+        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false; listing = nil
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true
@@ -303,8 +306,8 @@ struct HomeView: View {
                 HStack(spacing: 12) {
                     ForEach(Array(row.enumerated()), id: \.offset) { _, c in
                         if let c {
-                            // Chạm: nhập khoản mới; nhấn giữ: bảng tuỳ chọn tự vẽ (thay menu mặc định của iOS)
-                            TapHold(tap: { entry = .new(cat: c.k) }, hold: { menu = categoryMenu(c) }) {
+                            // Chạm: xem các khoản của danh mục; nhấn giữ: bảng tuỳ chọn tự vẽ (có "Nhập khoản…")
+                            TapHold(tap: { listing = c }, hold: { menu = categoryMenu(c) }) {
                                 tile(c, total: perCat[c.k] ?? 0, count: counts[c.k] ?? 0, of: monthTotal)
                             }
                             .filmPressed(film?.pressed["tile-" + c.k] ?? 0)

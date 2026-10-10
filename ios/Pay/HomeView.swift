@@ -478,6 +478,9 @@ struct ExpenseRow: View {
     /// Danh mục của khoản, lấy sẵn lúc dựng hàng chứ không đọc trong body: Category.custom / edited là biến static, SwiftUI
     /// không theo dõi, nên phải là một đầu vào thì sửa / xoá danh mục xong hàng mới vẽ lại
     private let c: Category
+    /// Vị trí ngang bình thường của hàng và hàng đang bị vuốt sang trái (xem ô biểu tượng bên dưới)
+    @State private var restX: CGFloat?
+    @State private var swiped = false
 
     init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false) {
         self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats
@@ -490,6 +493,10 @@ struct ExpenseRow: View {
                 .frame(width: 56, height: 56)
                 // Bo đồng tâm với thẻ: bo của thẻ trừ đi khoảng cách tới mép
                 .background(c.color, in: RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
+                // Vuốt để xoá: danh sách cắt hàng ở mép trái, ô biểu tượng trượt gần hết ra ngoài nhưng còn lộ một vệt nền màu.
+                // Hàng lệch khỏi chỗ cũ thì ô biểu tượng mờ đi
+                .opacity(swiped ? 0 : 1)
+                .animation(.easeOut(duration: 0.15), value: swiped)
             HStack(spacing: 6) {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
                 Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
@@ -517,6 +524,11 @@ struct ExpenseRow: View {
         .padding(.leading, Self.inset).padding(.trailing, 16).padding(.vertical, 12)
         .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { x in
+            // Chỗ đứng yên là chỗ xa bên phải nhất từng thấy (lúc mới hiện có thể đang trượt vào)
+            if restX == nil || x > restX! { restX = x }
+            swiped = x < (restX ?? x) - 12
+        }
     }
 
     /// Ngày (nếu cần) và giờ của khoản chi

@@ -182,20 +182,29 @@ struct SpendView: View {
             if let b = e.s.budgetStatus {
                 Text(b.label).font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)
                     .minimumScaleFactor(0.7).lineLimit(1)
-                // Trên nền màu: thanh màu mực thay cho xanh / cam / đỏ (chữ ở trên đã nói còn hay vượt)
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(ink.opacity(0.16))
-                        Capsule().fill(ink).frame(width: max(5, g.size.width * min(b.ratio, 1)))
-                    }
-                }
-                .frame(height: 5).padding(.top, 3)
+                InkBar(ratio: b.ratio, ink: ink).padding(.top, 3)
             } else {
                 Text(L("Tháng %ld: %@đ", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)
                     .minimumScaleFactor(0.7).lineLimit(1)
             }
         }
+    }
+}
+
+/// Thanh ngân sách trên nền màu: màu mực thay cho xanh / cam / đỏ (dòng chữ phía trên đã nói còn hay vượt)
+private struct InkBar: View {
+    let ratio: Double
+    let ink: Color
+
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule().fill(ink.opacity(0.16))
+                Capsule().fill(ink).frame(width: max(5, g.size.width * min(ratio, 1)))
+            }
+        }
+        .frame(height: 5)
     }
 }
 
@@ -373,13 +382,14 @@ struct MyQRView: View {
                     Text(e.s.budgetStatus.map(\.label)
                          ?? L("Tháng %ld: %@đ", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
                         .font(.system(size: 12, weight: .semibold)).foregroundStyle(ink).minimumScaleFactor(0.7).lineLimit(1)
+                    if let b = e.s.budgetStatus { InkBar(ratio: b.ratio, ink: ink).padding(.top, 3) }
                     Spacer(minLength: 6)
                     HStack(spacing: 6) {
                         quick("qrcode.viewfinder", .scan, L("Quét QR"), primary: true)
                         quick("mic.fill", .voice, L("Nói để ghi"))
                         quick("plus", .add, L("Nhập"))
                     }
-                    .frame(height: 44)
+                    .frame(height: 40)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }

@@ -276,14 +276,14 @@ struct StatsView: View {
                             Capsule().fill(Color.white.opacity(0.08))
                             Capsule().fill(spent > limit ? AnyShapeStyle(Self.bad)
                                                          : AnyShapeStyle(LinearGradient(colors: [Self.cyan, Self.lime], startPoint: .leading, endPoint: .trailing)))
-                                .frame(width: max(10, g.size.width * min(Double(spent) / Double(max(limit, 1)), 1)))
+                                .frame(width: max(20, g.size.width * min(Double(spent) / Double(max(limit, 1)), 1)))
                         }
                     }
-                    .frame(height: 10).padding(.top, 8)
+                    .frame(height: 20).padding(.top, 10)
                     HStack {
                         Text("\(fmt(spent))đ"); Spacer(); Text("\(fmt(limit))đ")
                     }
-                    .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 2)
+                    .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 4)
                 } else {
                     Text(L("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.")).font(.system(size: 13)).foregroundStyle(.secondary)
                 }
@@ -315,13 +315,13 @@ struct StatsView: View {
                 let room = g.size.width - 3 * CGFloat(max(ranked.count - 1, 0))
                 HStack(spacing: 3) {
                     ForEach(Array(ranked.enumerated()), id: \.offset) { i, c in
-                        RoundedRectangle(cornerRadius: 4, style: .continuous).fill(color(i))
-                            .frame(width: max(6, room * CGFloat(byCat[c.k]!) / CGFloat(total)))
+                        RoundedRectangle(cornerRadius: 7, style: .continuous).fill(color(i))
+                            .frame(width: max(10, room * CGFloat(byCat[c.k]!) / CGFloat(total)))
                     }
                 }
                 .frame(width: g.size.width, alignment: .leading).clipped()
             }
-            .frame(height: 12).padding(.top, 8)
+            .frame(height: 24).padding(.top, 10)
             VStack(spacing: 12) {
                 ForEach(Array(ranked.enumerated()), id: \.offset) { i, c in
                     let v = byCat[c.k]!

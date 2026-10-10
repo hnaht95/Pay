@@ -26,11 +26,15 @@ struct SpendEntry: TimelineEntry {
 /// Màu nền của widget, người dùng chọn khi nhấn giữ widget > Sửa tiện ích. Mỗi widget đặt màu riêng được.
 enum WidgetTone: String, AppEnum {
     case green, black, white, orange, yellow, cream, mint, forest, pink
+    // Màu pastel, cùng bộ màu nhạt của danh mục trong app
+    case pOrange, pGreen, pTeal, pBlue, pPurple, pRed, pYellow, pGray
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Màu"
     static let caseDisplayRepresentations: [WidgetTone: DisplayRepresentation] = [
         .green: "Xanh lá", .black: "Đen", .white: "Trắng", .orange: "Cam", .yellow: "Vàng",
         .cream: "Kem", .mint: "Xanh nhạt", .forest: "Xanh lá đậm", .pink: "Hồng",
+        .pOrange: "Pastel cam", .pGreen: "Pastel xanh lá", .pTeal: "Pastel xanh ngọc", .pBlue: "Pastel xanh dương",
+        .pPurple: "Pastel tím", .pRed: "Pastel hồng", .pYellow: "Pastel vàng", .pGray: "Pastel xám",
     ]
 
     private var hex: UInt32 {
@@ -44,6 +48,14 @@ enum WidgetTone: String, AppEnum {
         case .mint: 0xADD3D4
         case .forest: 0x134128
         case .pink: 0xFBC1A9
+        case .pOrange: 0xFFE1B3
+        case .pGreen: 0xD6F5C9
+        case .pTeal: 0xC8F0F0
+        case .pBlue: 0xD7E0FF
+        case .pPurple: 0xF3D6FF
+        case .pRed: 0xFFD6D6
+        case .pYellow: 0xFFF2B8
+        case .pGray: 0xE4E4E8
         }
     }
     /// Nền tối: chữ và nút chuyển sang trắng

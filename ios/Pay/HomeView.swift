@@ -758,7 +758,6 @@ struct ToastView: View {
             // Phim: mờ từng phần (chữ, nền, bóng) thay vì mờ cả khối — khối có bóng mà mờ thì không vẽ ra PDF được
             .opacity(shown)
             .background(Palette.cta.opacity(shown), in: Capsule())
-            .shadow(color: .black.opacity(0.18 * shown), radius: 16, y: 6)
             .padding(.horizontal, 16)   // thanh dài hết cỡ vẫn cách hai mép màn hình, bằng lề của nội dung
             .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
             // Trồi lên từ sau dải nút, ẩn thì trượt xuống chui lại sau đó (thanh nằm dưới lớp dải nút, xem HomeView)

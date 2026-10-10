@@ -565,6 +565,8 @@ struct VoiceEntryView: View {
         withAnimation(.easeOut(duration: 0.1)) { veiled = true }
         Task {
             try? await Task.sleep(for: .milliseconds(100))
+            // Trong lúc micro bật lại (xin quyền, dựng phiên âm thanh) thẻ đã hiện như đang nghe. Không thì có một nhịp thẻ không ở
+            // trạng thái nào: mất sóng âm và cả hàng nút, co lại rồi lại nở ra khi micro chạy — nội dung nhảy xuống rồi lên.
             withAnimation(Self.settle) {
                 notUnderstood = false
                 undone = false

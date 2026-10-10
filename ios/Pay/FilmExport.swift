@@ -172,9 +172,20 @@ enum FilmExport {
                 let since = first + gap * Double(n - 1)
                 v.shift = spring(t, since, 0.42)   // trượt lên rồi nảy nhẹ, như hiệu ứng số của app
             }
-            // Giọng nói: lên dần khi bắt đầu nói, nhấp nhô êm trong lúc nói, lặng dần khi nói xong (không giật cục)
-            let speaking = ease(t, first - 0.15, first + 0.3) * (1 - ease(t, heardAll + 0.15, heardAll + 0.75))
-            v.level = 0.08 + speaking * CGFloat(0.62 + 0.16 * sin(t * 4.7) + 0.1 * sin(t * 7.9 + 1.3))
+            // Giọng nói theo nhịp từng tiếng: mỗi tiếng bật lên nhanh rồi lắng xuống, tiếng nhấn mạnh to hơn,
+            // giữa hai tiếng có quãng lặng ngắn; nói xong thì im (trước là một dải đều đều)
+            var level: CGFloat = 0.06
+            for (i, word) in said.enumerated() {
+                // Chữ có số ("200k") đọc thành nhiều âm tiết
+                let beats = word.contains(where: \.isNumber) ? 3 : 1
+                for b in 0..<beats {
+                    let at = first - 0.22 + gap * Double(i) + gap * Double(b) / Double(beats)
+                    let loud = [0.78, 1.0, 0.62, 0.92, 0.7][(i + b) % 5] * (beats > 1 ? 0.85 : 1)
+                    let len = beats > 1 ? 0.2 : 0.34
+                    level += CGFloat(loud) * ease(t, at, at + 0.07) * (1 - ease(t, at + 0.1, at + len))
+                }
+            }
+            v.level = min(1, level)
             v.saved = saved
             v.settle = ease(t, save, save + 0.38)
             var cardFrame = home

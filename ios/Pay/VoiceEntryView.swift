@@ -184,7 +184,7 @@ struct VoiceEntryView: View {
             // Phim: nền tối dần và thẻ trượt lên theo mức `shown`
             ZStack(alignment: .bottom) {
                 Color.black.opacity(0.35 * Double(v.shown))
-                card.padding(.horizontal, 12).padding(.bottom, 34).offset(y: (1 - v.shown) * 460)
+                card.padding(.horizontal, 12).padding(.bottom, 34).offset(y: ((1 - v.shown) * 460).rounded())
             }
         } else { live }
     }
@@ -221,9 +221,11 @@ struct VoiceEntryView: View {
             // Ghi xong thì sóng âm xẹp dần, thẻ thu gọn lại (phim: theo `settle`; app: theo animation bên dưới)
             let settle = film?.voice?.settle ?? 0
             if isListening || (film != nil && settle < 1) {
+                // Làm tròn về điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không —
+                // dịch lẻ thì chữ và nền của nó lệch nhau từng khung, trông giật
                 Waveform(meter: mic.meter, film: film)
-                    .frame(height: 56 * (1 - settle), alignment: .center).clipped()
-                    .opacity(Double(1 - settle)).padding(.bottom, -18 * settle)
+                    .frame(height: (56 * (1 - settle)).rounded(), alignment: .center).clipped()
+                    .opacity(Double(1 - settle)).padding(.bottom, -(18 * settle).rounded())
                     .transition(.opacity)
             }
             buttons
@@ -278,10 +280,10 @@ struct VoiceEntryView: View {
                 let shift = film?.voice?.shift ?? 1
                 ZStack(alignment: .leading) {
                     if let prev = film?.voice?.previous, shift < 1 {
-                        number(prev, dim: prev == "0").opacity(Double(max(0, 1 - shift * 1.6))).offset(y: -26 * shift)
+                        number(prev, dim: prev == "0").opacity(Double(max(0, 1 - shift * 1.6))).offset(y: (-26 * shift).rounded())
                     }
                     number(live.map { fmt($0.amount) } ?? "0", dim: live == nil)
-                        .opacity(Double(min(1, shift * 1.4))).offset(y: 26 * (1 - shift))
+                        .opacity(Double(min(1, shift * 1.4))).offset(y: (26 * (1 - shift)).rounded())
                 }
                 Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }

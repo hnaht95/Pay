@@ -620,7 +620,7 @@ struct ToastView: View {
             .opacity(shown)
             .background(Palette.cta.opacity(shown), in: Capsule())
             .shadow(color: .black.opacity(0.18 * shown), radius: 16, y: 6)
-            .offset(y: (1 - shown) * 14)   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
+            .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
             .transition(.offset(y: 14).combined(with: .opacity))
             .task(id: t.id) {
                 try? await Task.sleep(for: .seconds(5))

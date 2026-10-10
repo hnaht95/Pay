@@ -60,7 +60,7 @@ struct FilmScroll<Content: View>: View {
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading).clipped()   // minWidth 0: không thì khung nở theo nội dung
             } else {
                 content.fixedSize(horizontal: false, vertical: true)
-                    .offset(y: -film.scroll)
+                    .offset(y: -film.scroll.rounded())   // điểm nguyên: chữ và hình cùng bước, không lệch nhau
                     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top).clipped()
             }
         } else {
@@ -162,7 +162,7 @@ struct FilmSheet<Back: View, Content: View>: View {
             content
                 .frame(width: size.width, height: size.height - top)
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 38, topTrailingRadius: 38, style: .continuous))
-                .offset(y: top + (1 - shown) * (size.height - top))
+                .offset(y: (top + (1 - shown) * (size.height - top)).rounded())
         }
         .frame(width: size.width, height: size.height)
     }

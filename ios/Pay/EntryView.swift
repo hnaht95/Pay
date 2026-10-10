@@ -102,7 +102,7 @@ struct EntryView: View {
         .swipeDownToClose { dismiss() }
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(650)]).sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(560)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -353,7 +353,7 @@ struct KeyStyle: ButtonStyle {
     }
 }
 
-/// Bảng chọn ngày giờ tự vẽ (không dùng DatePicker của iOS): lịch tháng bắt đầu từ thứ Hai, bánh xe giờ : phút của Peek, nút Xong.
+/// Bảng chọn ngày giờ tự vẽ (không dùng DatePicker của iOS): lịch tháng bắt đầu từ thứ Hai, hai ô chỉnh giờ / phút, nút Xong.
 /// Không chọn được thời điểm trong tương lai.
 struct DateSheet: View {
     @Binding var when: Date
@@ -400,15 +400,13 @@ struct DateSheet: View {
                 }
             }
             Spacer(minLength: 0)
-            // Giờ : phút bằng bánh xe của tab Lịch trong Peek, trên nền ô xám như ô chữ bên đó
-            TimeWheel(time: cal.component(.hour, from: when) * 60 + cal.component(.minute, from: when)) { setTime($0) }
-                // Ô nền ôm vừa hai cột số (không trải hết bề ngang, hai bên khỏi thừa)
-                .padding(.horizontal, 22)
-                .background(Palette.pill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(L("Giờ"))
-                .accessibilityValue(String(format: "%02d:%02d", cal.component(.hour, from: when), cal.component(.minute, from: when)))
-                .accessibilityAdjustableAction { setTime(cal.component(.hour, from: when) * 60 + cal.component(.minute, from: when) + ($0 == .increment ? 5 : -5)) }
+            HStack(spacing: 10) {
+                Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
+                Spacer()
+                dial(cal.component(.hour, from: when)) { bump(.hour, $0) }
+                Text(":").font(.system(size: 22, weight: .bold)).foregroundStyle(.secondary)
+                dial(cal.component(.minute, from: when)) { bump(.minute, $0 * 5) }
+            }
             Button { dismiss() } label: {
                 Text(L("Xong")).font(.system(size: 19, weight: .semibold))
                     .frame(maxWidth: .infinity, minHeight: 58)
@@ -436,6 +434,18 @@ struct DateSheet: View {
         .buttonStyle(Pressable()).accessibilityLabel(label)
     }
 
+    /// Một ô số có nút trừ / cộng hai bên
+    private func dial(_ value: Int, _ step: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: 2) {
+            Button { step(-1) } label: { Image(systemName: "minus").font(.system(size: 13, weight: .bold)).frame(width: 34, height: 40) }
+            Text(String(format: "%02d", value)).font(.system(size: 22, weight: .bold).monospacedDigit()).frame(width: 34)
+                .contentTransition(.numericText())
+            Button { step(1) } label: { Image(systemName: "plus").font(.system(size: 13, weight: .bold)).frame(width: 34, height: 40) }
+        }
+        .foregroundStyle(.primary).buttonStyle(Pressable())
+        .background(Palette.pill, in: Capsule())
+    }
+
     private func shift(_ by: Int) {
         guard let m = cal.date(byAdding: .month, value: by, to: first), m <= Date() else { return }
         withAnimation(.snappy) { month = m }
@@ -448,11 +458,14 @@ struct DateSheet: View {
         set(cal.date(bySettingHour: t.hour ?? 0, minute: t.minute ?? 0, second: 0, of: day) ?? day)
     }
 
-    /// Đặt giờ phút (phút tính từ nửa đêm) trong chính ngày đang chọn
-    private func setTime(_ minutes: Int) {
-        let m = ((minutes % 1440) + 1440) % 1440
-        if let d = cal.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: when) { set(d) }
+    private func bump(_ unit: Calendar.Component, _ by: Int) {
+        // Giờ / phút xoay vòng trong chính ngày đó (không nhảy sang ngày khác)
+        var c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: when)
+        if unit == .hour { c.hour = ((c.hour ?? 0) + by + 24) % 24 }
+        else { c.minute = (((c.minute ?? 0) / 5 * 5) + by + 60) % 60 }
+        UISelectionFeedbackGenerator().selectionChanged()
+        if let d = cal.date(from: c) { set(d) }
     }
 
-    private func set(_ d: Date) { when = min(d, Date()) }
+    private func set(_ d: Date) { withAnimation(.snappy(duration: 0.2)) { when = min(d, Date()) } }
 }

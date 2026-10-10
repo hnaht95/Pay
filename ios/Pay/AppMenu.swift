@@ -101,6 +101,19 @@ extension View {
 
 /// Chạm và nhấn giữ trên cùng một ô: chạm chạy `tap`, giữ thì rung nhẹ rồi chạy `hold`; đang nhấn thì ô thu nhỏ một chút.
 /// Dùng thay Button + contextMenu để mở bảng tự vẽ; vẫn cuộn được khi kéo bắt đầu trên ô.
+/// Như Pressable (HomeView), thêm báo lúc ngón tay vừa đặt xuống
+private struct PressableDown: ButtonStyle {
+    let down: () -> Void
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(configuration.isPressed ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35),
+                       value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, on in if on { down() } }
+    }
+}
+
 struct TapHold<Content: View>: View {
     var tap: (() -> Void)? = nil
     let hold: () -> Void
@@ -115,11 +128,11 @@ struct TapHold<Content: View>: View {
             if held { held = false; return }
             tap?()
         } label: { content.contentShape(Rectangle()) }
-        .buttonStyle(Pressable())
+        // Ngón tay vừa đặt xuống là một lần nhấn mới: xoá cờ cũ, phòng lần trước giữ rồi kéo ra ngoài mới nhả (Button không
+        // chạy nên cờ còn treo) làm mất lần chạm này. Biết qua trạng thái nhấn của Button, KHÔNG gắn onChanged vào
+        // LongPressGesture: làm vậy cử chỉ giành luôn ngón tay, đặt tay lên ô rồi vuốt thì trang không cuộn được.
+        .buttonStyle(PressableDown { held = false })
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.35)
-            // Ngón tay vừa đặt xuống: lần nhấn mới. Xoá cờ cũ, phòng lần trước giữ rồi kéo ra ngoài mới nhả
-            // (Button không chạy nên cờ còn treo) làm mất lần chạm này
-            .onChanged { _ in held = false }
             .onEnded { _ in
                 held = true
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()

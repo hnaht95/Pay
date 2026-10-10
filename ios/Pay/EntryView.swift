@@ -15,6 +15,8 @@ struct EntryView: View {
     @State private var note = ""
     @State private var addingCat = false
     @State private var ready = false
+    /// Đang nhập / sửa. Mở một khoản đã ghi thì ban đầu chỉ xem (bàn phím mờ), bấm Sửa mới sửa
+    @State private var editing = true
     @FocusState private var noteFocused: Bool
 
     private var amount: Int { Int(digits) ?? 0 }
@@ -23,17 +25,28 @@ struct EntryView: View {
         VStack(alignment: .leading, spacing: 0) {
             head
             Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
-            HStack(alignment: .firstTextBaseline) {
+            HStack(spacing: 4) {
                 Text(amount > 0 ? fmt(amount) : "0")
                     .font(.system(size: 40, weight: .bold)).kerning(-1)
                     .foregroundStyle(amount > 0 ? .primary : .tertiary)
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
-                Spacer()
+                // Đang nhập số tiền: vạch nhấp nháy sau số, như con trỏ của ô nhập
+                if editing && !noteFocused {
+                    TimelineView(.periodic(from: .now, by: 0.55)) { t in
+                        let on = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
+                        Capsule().fill(Palette.goodInk).frame(width: 3, height: 36).opacity(on ? 1 : 0)
+                            .animation(.easeInOut(duration: 0.18), value: on)
+                    }
+                    .accessibilityHidden(true)
+                }
+                Spacer(minLength: 0)
             }
             // Ô số tiền: khung viền mảnh, nhạt, không nền
             .padding(.horizontal, 18).padding(.vertical, 12)
             .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1) }
+            .contentShape(Rectangle())
+            .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)
 
             chips.padding(.top, 14)
@@ -50,6 +63,8 @@ struct EntryView: View {
                     let g = store.guessCategory(v)
                     if g != "khac" { cat = g }
                 }
+                // Chạm vào ghi chú cũng là bắt đầu sửa
+                .onChange(of: noteFocused) { _, on in if on { withAnimation(.snappy) { editing = true } } }
 
             keypad.padding(.vertical, 8)
             actions
@@ -113,7 +128,7 @@ struct EntryView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Category.all) { c in
-                        Button { cat = c.k; catPicked = true; chosen = true } label: {
+                        Button { cat = c.k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } } label: {
                             let on = cat == c.k
                             // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
                             HStack(spacing: 8) {
@@ -170,6 +185,9 @@ struct EntryView: View {
         }
         .frame(maxHeight: 320)
         .frame(maxHeight: .infinity)
+        // Chưa bấm Sửa: bàn phím mờ và không nhận chạm
+        .opacity(editing ? 1 : 0.25)
+        .disabled(!editing)
     }
 
     private func press(_ k: String) {
@@ -203,9 +221,13 @@ struct EntryView: View {
                         .frame(maxWidth: .infinity)
                 }
             case .edit(var e):
-                primary(L("Lưu thay đổi")) {
-                    e.a = amount; e.n = trimmed; e.c = finalCat
-                    learn(); store.update(e); dismiss()
+                if editing {
+                    primary(L("Lưu thay đổi")) {
+                        e.a = amount; e.n = trimmed; e.c = finalCat
+                        learn(); store.update(e); dismiss()
+                    }
+                } else {
+                    primary(L("Sửa")) { withAnimation(.snappy) { editing = true } }
                 }
                 Button(role: .destructive) { store.remove(id: e.id); dismiss() } label: {
                     Text(L("Xoá khoản này")).font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 46)
@@ -274,6 +296,7 @@ struct EntryView: View {
             catPicked = m?.c != nil
         case .edit(let e):
             digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true
+            editing = false
         }
     }
 }

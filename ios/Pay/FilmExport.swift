@@ -55,6 +55,12 @@ enum FilmExport {
         return CGFloat(x * x * (3 - 2 * x))
     }
 
+    /// Như lò xo: từ 0 lúc `a` vọt quá 1 một chút rồi nảy về 1 (kiểu .snappy của SwiftUI), xong sau khoảng `dur` giây
+    static func spring(_ t: Double, _ a: Double, _ dur: Double) -> CGFloat {
+        let x = max(0, (t - a) / dur)
+        return x >= 1.6 ? 1 : CGFloat(1 - exp(-5.5 * x) * cos(7.5 * x))
+    }
+
     /// Một lần chạm tại `at`, ngón tay xuống lúc `down`, nhấc lúc `up`
     struct Tap { var at: CGPoint; var down: Double; var up: Double }
 
@@ -159,9 +165,18 @@ enum FilmExport {
             v.shown = ease(t, card, card + 0.4) * (1 - ease(t, done.up, done.up + 0.28))
             let n = t < first ? 0 : min(said.count, Int((t - first) / gap) + 1)
             v.text = said.prefix(n).joined(separator: " ")
-            // Giọng nói: to nhỏ theo từng tiếng lúc đang nói, lặng dần khi nói xong
-            v.level = t < first ? 0.08 : t < heardAll + 0.3 ? 0.55 + 0.35 * CGFloat(abs(sin(t * 7.3))) : 0.1
+            // Số tiền đổi khi nghe thêm một tiếng: số cũ trôi lên, số mới trượt lên và nảy nhẹ
+            func amount(_ k: Int) -> String { QuickParse.spoken(said.prefix(k).joined(separator: " ")).map { fmt($0.amount) } ?? "0" }
+            if n > 0, amount(n) != amount(n - 1) {
+                v.previous = amount(n - 1)
+                let since = first + gap * Double(n - 1)
+                v.shift = spring(t, since, 0.42)   // trượt lên rồi nảy nhẹ, như hiệu ứng số của app
+            }
+            // Giọng nói: lên dần khi bắt đầu nói, nhấp nhô êm trong lúc nói, lặng dần khi nói xong (không giật cục)
+            let speaking = ease(t, first - 0.15, first + 0.3) * (1 - ease(t, heardAll + 0.15, heardAll + 0.75))
+            v.level = 0.08 + speaking * CGFloat(0.62 + 0.16 * sin(t * 4.7) + 0.1 * sin(t * 7.9 + 1.3))
             v.saved = saved
+            v.settle = ease(t, save, save + 0.38)
             var cardFrame = home
             cardFrame.voice = v
             cardFrame.pressed["voice-primary"] = press(done, t)

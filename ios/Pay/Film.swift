@@ -27,6 +27,11 @@ struct FilmFrame {
         var level: CGFloat = 0
         /// Khoản đã ghi xong (nil = còn đang nghe)
         var saved: Expense? = nil
+        /// Số tiền vừa đổi: số cũ và mức chuyển sang số mới (0…1) — số cũ trôi lên mờ đi, số mới trồi lên
+        var previous: String? = nil
+        var shift: CGFloat = 1
+        /// Ghi xong: thẻ thu gọn lại (sóng âm xẹp dần), 0…1
+        var settle: CGFloat = 0
     }
 }
 

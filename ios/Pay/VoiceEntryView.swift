@@ -218,11 +218,19 @@ struct VoiceEntryView: View {
         VStack(alignment: .leading, spacing: 18) {
             header
             amountBlock
-            if isListening { Waveform(meter: mic.meter, film: film).frame(height: 56) }
+            // Ghi xong thì sóng âm xẹp dần, thẻ thu gọn lại (phim: theo `settle`; app: theo animation bên dưới)
+            let settle = film?.voice?.settle ?? 0
+            if isListening || (film != nil && settle < 1) {
+                Waveform(meter: mic.meter, film: film)
+                    .frame(height: 56 * (1 - settle), alignment: .center).clipped()
+                    .opacity(Double(1 - settle)).padding(.bottom, -18 * settle)
+                    .transition(.opacity)
+            }
             buttons
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.snappy(duration: 0.35), value: isListening)
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
         // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
         .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
@@ -266,11 +274,15 @@ struct VoiceEntryView: View {
             ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(live.map { fmt($0.amount) } ?? "0")
-                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
-                    .foregroundStyle(live == nil ? Color.secondary.opacity(0.5) : .primary)
-                    .contentTransition(.numericText())
-                    .minimumScaleFactor(0.5).lineLimit(1)
+                // Số đổi: app dùng hiệu ứng số của iOS; phim tự vẽ số cũ trôi lên, số mới trồi lên
+                let shift = film?.voice?.shift ?? 1
+                ZStack(alignment: .leading) {
+                    if let prev = film?.voice?.previous, shift < 1 {
+                        number(prev, dim: prev == "0").opacity(Double(max(0, 1 - shift * 1.6))).offset(y: -26 * shift)
+                    }
+                    number(live.map { fmt($0.amount) } ?? "0", dim: live == nil)
+                        .opacity(Double(min(1, shift * 1.4))).offset(y: 26 * (1 - shift))
+                }
                 Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }
             .animation(.snappy, value: live?.amount)
@@ -314,6 +326,13 @@ struct VoiceEntryView: View {
                 Text(hint).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(2)
             }
         }
+    }
+
+    private func number(_ s: String, dim: Bool) -> some View {
+        Text(s).font(.system(size: 46, weight: .bold)).kerning(-1.5)
+            .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
+            .contentTransition(.numericText())
+            .minimumScaleFactor(0.5).lineLimit(1)
     }
 
     private var hint: String {

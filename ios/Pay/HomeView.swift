@@ -439,22 +439,28 @@ struct ExpenseRow: View {
             CategoryIcon(c: c, size: 30)
                 .frame(width: 56, height: 56)
                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                    Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
-                        .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
-                    if repeats {
-                        Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
-                            .accessibilityLabel(L("Hằng tháng"))
-                    }
+            HStack(spacing: 6) {
+                // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
+                Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
+                    .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
+                if repeats {
+                    Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
+                        .accessibilityLabel(L("Hằng tháng"))
                 }
-                // Chỉ ngày giờ: danh mục đã có biểu tượng ở đầu hàng, khỏi nhắc lại bằng chữ
-                Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
-            // Số tiền luôn hiện đủ: phần tên nhường chỗ
-            Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1).fixedSize().layoutPriority(1)
+            // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1)
+                HStack(spacing: 9) {
+                    let parts = when
+                    ForEach(Array(parts.enumerated()), id: \.offset) { i, p in
+                        if i > 0 { Rectangle().fill(Color.primary.opacity(0.18)).frame(width: 1, height: 13) }
+                        Text(p).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+            }
+            .fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
@@ -462,7 +468,8 @@ struct ExpenseRow: View {
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    private var sub: String {
+    /// Ngày (nếu cần) và giờ của khoản chi
+    private var when: [String] {
         let tf = DateFormatter(); tf.dateFormat = "HH:mm"
         var parts: [String] = []
         if showDay {
@@ -472,7 +479,7 @@ struct ExpenseRow: View {
             else { let d = cal.dateComponents([.day, .month], from: e.date); parts.append("\(d.day!)/\(d.month!)") }
         }
         parts.append(tf.string(from: e.date))
-        return parts.joined(separator: " · ")
+        return parts
     }
 }
 

@@ -271,7 +271,13 @@ struct EntryView: View {
                 } else {
                     primary(L("Sửa")) { withAnimation(.snappy) { editing = true } }
                 }
-                Button(role: .destructive) { store.remove(id: e.id); dismiss() } label: {
+                Button(role: .destructive) {
+                    // Đóng màn hình trước, xoá khi nó trượt đi gần hết: xoá ngay thì thanh "Đã xoá" bật lên sau màn hình đang trượt
+                    // xuống, tới lúc thấy được thì nó đã đứng yên, như không có hiệu ứng
+                    let id = e.id
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { store.remove(id: id) }
+                } label: {
                     Text(L("Xoá khoản này")).font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 46)
                 }
                 .foregroundStyle(Palette.danger)

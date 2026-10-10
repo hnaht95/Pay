@@ -710,7 +710,7 @@ struct ToastView: View {
     /// trước đây chỉ lúc tự ẩn sau 5 giây là mượt, còn lúc hiện ("Đã xoá") và lúc bấm Hoàn tác thì bật / tắt phụt.
     var body: some View {
         ZStack(alignment: .bottom) { bar }
-            .animation(film == nil ? .snappy(duration: 0.32) : nil, value: store.toast?.id)
+            .animation(film == nil ? .spring(response: 0.28, dampingFraction: 0.75) : nil, value: store.toast?.id)
     }
 
     @ViewBuilder private var bar: some View {
@@ -741,7 +741,8 @@ struct ToastView: View {
             .shadow(color: .black.opacity(0.18 * shown), radius: 16, y: 6)
             .padding(.horizontal, 16)   // thanh dài hết cỡ vẫn cách hai mép màn hình, bằng lề của nội dung
             .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
-            .transition(.offset(y: 14).combined(with: .opacity))
+            // Bật lên từ dưới, hơi phóng to, nảy nhẹ; ẩn thì trượt xuống, thu nhỏ, mờ đi (lệch 14 điểm như trước thì gần như không thấy)
+            .transition(.offset(y: 70).combined(with: .scale(scale: 0.85, anchor: .bottom)).combined(with: .opacity))
             .task(id: t.id) {
                 try? await Task.sleep(for: .seconds(5))
                 if store.toast?.id == t.id { withAnimation { store.toast = nil } }

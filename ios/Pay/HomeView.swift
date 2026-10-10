@@ -727,7 +727,9 @@ struct ToastView: View {
     /// trước đây chỉ lúc tự ẩn sau 5 giây là mượt, còn lúc hiện ("Đã xoá") và lúc bấm Hoàn tác thì bật / tắt phụt.
     var body: some View {
         ZStack(alignment: .bottom) { bar }
-            .animation(film == nil ? .spring(response: 0.38, dampingFraction: 0.6) : nil, value: store.toast?.id)   // nảy rõ khi hiện
+            // Hiện: lò xo nảy rõ. Ẩn: trượt êm không nảy (dùng chung lò xo nảy thì lúc ẩn thanh giật lên rồi mới rơi, trông gắt)
+            .animation(film == nil ? (store.toast == nil ? .easeInOut(duration: 0.38) : .spring(response: 0.38, dampingFraction: 0.6)) : nil,
+                       value: store.toast?.id)
     }
 
     @ViewBuilder private var bar: some View {
@@ -764,7 +766,7 @@ struct ToastView: View {
             // suốt nên không thấy một khối đậm bật ra
             .transition(.asymmetric(
                 insertion: .offset(y: 22).combined(with: .opacity.animation(.easeOut(duration: 0.3))),
-                removal: .offset(y: 22).combined(with: .opacity.animation(.easeIn(duration: 0.2)))))
+                removal: .offset(y: 16).combined(with: .scale(scale: 0.96, anchor: .bottom)).combined(with: .opacity.animation(.easeOut(duration: 0.32)))))
             .task(id: t.id) {
                 // 3 giây: đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình. Bị huỷ giữa chừng (thanh được dựng lại, vd lúc màn
                 // hình Sửa vừa đóng) thì thôi, task mới sẽ đếm lại: không kiểm tra thì thanh vừa hiện đã tắt ngay

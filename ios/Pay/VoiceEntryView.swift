@@ -180,6 +180,8 @@ struct VoiceEntryView: View {
     /// Vừa bấm Hoàn tác: khoản vừa ghi đã xoá
     @State private var undone = false
     @State private var autoClose: Task<Void, Never>?
+    /// Bấm Xong khi đang nghe: ghi xong thì đóng thẻ ngay
+    @State private var closeAfterSave = false
     @State private var shown = false
     /// Thẻ vừa mở, micro chưa kịp chạy
     @State private var starting = true
@@ -498,7 +500,8 @@ struct VoiceEntryView: View {
     /// Nút chính (bên phải) theo trạng thái: tên, việc làm, có đang tắt không
     private var primaryButton: (title: String, off: Bool, run: () -> Void)? {
         if savedNow != nil { return (L("Xong"), false, { autoClose?.cancel(); leave() }) }
-        if isListening { return (L("Xong"), heard.isEmpty, { mic.finish() }) }          // ngừng nghe ngay, không chờ im lặng
+        // Ngừng nghe ngay, không chờ im lặng; ghi xong là đóng thẻ luôn (không bắt bấm Xong lần nữa)
+        if isListening { return (L("Xong"), heard.isEmpty, { closeAfterSave = true; mic.finish() }) }
         if mic.phase == .denied {
             return (L("Mở Cài đặt"), false, { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } })
         }
@@ -547,6 +550,13 @@ struct VoiceEntryView: View {
         }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if closeAfterSave {
+            // Đã bấm Xong lúc đang nghe: ghi xong đóng thẻ, báo "Đã lưu" kèm Hoàn tác ở màn chính
+            closeAfterSave = false
+            store.show(L("Đã lưu %@đ", fmt(e.a))) { [store] in store.remove(id: e.id, toast: false) }
+            leave()
+            return
+        }
         // Để 5 giây cho kịp nhìn số tiền và bấm Hoàn tác rồi tự đóng; bấm Sửa / Xong thì đóng ngay
         autoClose = Task {
             try? await Task.sleep(for: .seconds(5))
@@ -582,6 +592,7 @@ struct VoiceEntryView: View {
     /// Mọi thứ đổi trong cùng một nhịp hiệu ứng: thẻ giãn ra cho sóng âm, dòng trạng thái và dòng gợi ý vừa mờ sang chữ mới
     /// vừa trượt lên theo thẻ, sóng âm hiện dần.
     private func retry() {
+        closeAfterSave = false
         withAnimation(Self.settle) {
             notUnderstood = false
             undone = false

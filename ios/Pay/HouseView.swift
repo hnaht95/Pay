@@ -59,7 +59,7 @@ struct HouseView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 120)
             }
-            .refreshable { await house.load() }
+            // Không có kéo-để-tải-lại: nó giành mất cử chỉ vuốt xuống để ẩn bảng. Sổ tự tải khi mở, khi app quay lại và khi có thông báo
             .withDock(dock: dock, fallbackBlur: bottomFade, film: film != nil)
 
             ToastView().padding(.bottom, 100)

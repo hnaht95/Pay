@@ -744,7 +744,7 @@ struct ToastView: View {
             // Bật lên từ dưới, hơi phóng to, nảy nhẹ; ẩn thì trượt xuống, thu nhỏ, mờ đi (lệch 14 điểm như trước thì gần như không thấy)
             .transition(.offset(y: 70).combined(with: .scale(scale: 0.85, anchor: .bottom)).combined(with: .opacity))
             .task(id: t.id) {
-                try? await Task.sleep(for: .seconds(5))
+                try? await Task.sleep(for: .seconds(3))   // đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình
                 if store.toast?.id == t.id { withAnimation { store.toast = nil } }
             }
         }

@@ -122,15 +122,18 @@ struct SettingsView: View {
                 .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Pay").font(.system(size: 22, weight: .bold))
-                Text(L("Tháng %@: %@đ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
-                    .font(.system(size: 15)).foregroundStyle(.secondary)
-                Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
-                    .font(.system(size: 15)).foregroundStyle(.secondary)
+                Group {
+                    Text(L("Tháng %@: %@đ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
+                    Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
+                }
+                .font(.system(size: 15)).opacity(0.75)
             }
+            .foregroundStyle(Color(hex: 0x111114))   // nền xanh ở cả hai chế độ sáng tối: chữ luôn đen
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(Palette.hero, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        // Nền xanh lá của icon app (nền tím nhạt cũ tương phản kém)
+        .background(Color(hex: 0x61BE6E), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     // MARK: Ngân sách

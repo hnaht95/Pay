@@ -1148,7 +1148,9 @@ struct HouseSpendEditor: View {
     @State private var saving = false
     /// Lần lưu vừa rồi không thành: hiện thanh báo lỗi ngay trên bảng này (thanh ở màn nhóm bị bảng che)
     @State private var failed = false
-    @FocusState private var amountFocused: Bool
+    /// Bàn phím số của app đang hiện (ẩn khi gõ ghi chú, chạm số tiền thì hiện lại)
+    @State private var padShown = true
+    @FocusState private var noteFocused: Bool
 
     private var amount: Int { Int(amountText.filter(\.isNumber).prefix(12)) ?? 0 }
     private var parts: [String: Int] { Settle.split(amount, Array(shares), seed: "") }
@@ -1171,7 +1173,7 @@ struct HouseSpendEditor: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
-                    // Ô nhập ẩn giữ các chữ số, phía trên hiện số đã chia dấu chấm; con trỏ luôn ở cuối, không nhảy giữa số
+                    // Số tiền nhập bằng bàn phím số của app (bên dưới), chạm vào đây để hiện lại bàn phím
                     HStack(alignment: .firstTextBaseline) {
                         Text(amount > 0 ? fmt(amount) : "0")
                             .font(.system(size: 46, weight: .bold)).kerning(-1.5)
@@ -1181,18 +1183,13 @@ struct HouseSpendEditor: View {
                         Spacer()
                         Text("đ").font(.system(size: 22, weight: .semibold)).foregroundStyle(.secondary)
                     }
-                    .background {
-                        TextField("", text: Binding(get: { amountText }, set: { amountText = String($0.filter(\.isNumber).prefix(12)) }))
-                            .keyboardType(.numberPad)
-                            .focused($amountFocused)
-                            .foregroundStyle(.clear).tint(.clear)
-                    }
                     .contentShape(Rectangle())
-                    .onTapGesture { amountFocused = true }
+                    .onTapGesture { noteFocused = false; withAnimation(.snappy(duration: 0.25)) { padShown = true } }
                     .animation(.snappy(duration: 0.15), value: amount)
                     Rectangle().fill(.primary).frame(height: 2).padding(.top, 4)
 
                     TextField(L("Ghi chú, ví dụ: đi chợ"), text: $note)
+                        .focused($noteFocused)
                         .font(.system(size: 18))
                         .padding(.horizontal, 18).padding(.vertical, 15)
                         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -1249,6 +1246,15 @@ struct HouseSpendEditor: View {
                 .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.interactively)
+            // Gõ ghi chú thì bàn phím chữ của iOS lên, bàn phím số của app nhường chỗ
+            .onChange(of: noteFocused) { _, f in if f { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
+
+            if padShown {
+                NumberPad(digits: $amountText) { noteFocused = false }
+                    .frame(height: 248)
+                    .padding(.vertical, 6)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
 
             Button { save() } label: {
                 ZStack {
@@ -1270,7 +1276,6 @@ struct HouseSpendEditor: View {
         .onAppear {
             payer = house.me ?? house.members.first?.id ?? ""
             shares = Set(house.members.map(\.id))
-            amountFocused = true
         }
     }
 

@@ -204,40 +204,12 @@ struct EntryView: View {
     // MARK: Bàn phím số
 
     private var keypad: some View {
-        let rows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["000", "0", "del"]]
-        return VStack(spacing: 4) {
-            ForEach(rows, id: \.self) { row in
-                HStack(spacing: 4) {
-                    ForEach(row, id: \.self) { k in
-                        Button { press(k) } label: {
-                            Group {
-                                if k == "del" { Image(systemName: "delete.left").font(.system(size: 26)) }
-                                else { Text(k).font(.system(size: k == "000" ? 26 : 32, weight: .medium)) }
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(KeyStyle())
-                        .accessibilityLabel(k == "del" ? L("Xoá") : k)
-                    }
-                }
-            }
-        }
+        NumberPad(digits: $digits) { noteFocused = false }
         .frame(maxHeight: 320)
         .frame(maxHeight: .infinity)
         // Chưa bấm Sửa: bàn phím mờ và không nhận chạm
         .opacity(editing ? 1 : 0.25)
         .disabled(!editing)
-    }
-
-    private func press(_ k: String) {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        noteFocused = false
-        withAnimation(.snappy(duration: 0.15)) {
-            if k == "del" { digits = String(digits.dropLast()) }
-            else if digits.isEmpty && (k == "0" || k == "000") { return }
-            else if digits.count + k.count <= 12 { digits += k }
-        }
     }
 
     // MARK: Nút
@@ -347,6 +319,45 @@ struct EntryView: View {
             digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date
             // Chạm vào một khoản thì ban đầu chỉ xem; đã bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ) thì vào sửa luôn
             if case .edit = mode { editing = false }
+        }
+    }
+}
+
+/// Bàn phím số của app (1–9, 000, 0, xoá): dùng ở màn nhập khoản chi và khoản chung thay cho bàn phím số của iOS.
+struct NumberPad: View {
+    @Binding var digits: String
+    /// Gọi mỗi lần bấm phím (vd bỏ chọn ô ghi chú)
+    var onPress: () -> Void = {}
+
+    var body: some View {
+        let rows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["000", "0", "del"]]
+        VStack(spacing: 4) {
+            ForEach(rows, id: \.self) { row in
+                HStack(spacing: 4) {
+                    ForEach(row, id: \.self) { k in
+                        Button { press(k) } label: {
+                            Group {
+                                if k == "del" { Image(systemName: "delete.left").font(.system(size: 26)) }
+                                else { Text(k).font(.system(size: k == "000" ? 26 : 32, weight: .medium)) }
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(KeyStyle())
+                        .accessibilityLabel(k == "del" ? L("Xoá") : k)
+                    }
+                }
+            }
+        }
+    }
+
+    private func press(_ k: String) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onPress()
+        withAnimation(.snappy(duration: 0.15)) {
+            if k == "del" { digits = String(digits.dropLast()) }
+            else if digits.isEmpty && (k == "0" || k == "000") { return }
+            else if digits.count + k.count <= 12 { digits += k }
         }
     }
 }

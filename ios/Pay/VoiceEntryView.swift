@@ -633,15 +633,20 @@ private struct Waveform: View {
         }
     }
 
+    /// Số thanh và độ dày mỗi thanh: thanh mảnh cố định, khoảng trống giữa các thanh chia đều theo bề ngang thẻ
+    private static let count = 36
+    private static let barWidth: CGFloat = 3
+
     private func bars(level: CGFloat, time: Double) -> some View {
-            HStack(alignment: .center, spacing: 4) {
-                ForEach(0..<28, id: \.self) { i in
-                    let center = 1 - abs(CGFloat(i) - 13.5) / 14          // giữa cao, hai bên thấp
-                    let wobble = (sin(time * 9 + Double(i) * 0.7) + 1) / 2  // dao động nhẹ cho tự nhiên
+            HStack(alignment: .center, spacing: 0) {
+                ForEach(0..<Self.count, id: \.self) { i in
+                    let mid = CGFloat(Self.count - 1) / 2
+                    let center = 1 - abs(CGFloat(i) - mid) / (mid + 0.5)   // giữa cao, hai bên thấp
+                    let wobble = (sin(time * 9 + Double(i) * 0.55) + 1) / 2  // dao động nhẹ cho tự nhiên
                     let h = 0.12 + 1.25 * level * center * (0.55 + 0.45 * CGFloat(wobble))   // ×1,25: nói thường đã gần đỉnh
                     Capsule().fill(Palette.cta.opacity(0.85))
+                        .frame(width: Self.barWidth, height: max(Self.barWidth, 56 * min(h, 1)))
                         .frame(maxWidth: .infinity)
-                        .frame(height: max(4, 56 * min(h, 1)))
                 }
             }
     }

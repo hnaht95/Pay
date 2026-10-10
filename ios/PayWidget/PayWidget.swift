@@ -19,43 +19,81 @@ struct PayWidgets: WidgetBundle {
 struct SpendEntry: TimelineEntry {
     let date: Date
     let s: Summary
+    var tone: WidgetTone = .green
 }
 
-struct SpendProvider: TimelineProvider {
+/// Màu nền của widget, người dùng chọn khi nhấn giữ widget > Sửa tiện ích. Mỗi widget đặt màu riêng được.
+enum WidgetTone: String, AppEnum {
+    case green, black, white, orange, yellow, cream, mint, forest, pink
+
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Màu"
+    static let caseDisplayRepresentations: [WidgetTone: DisplayRepresentation] = [
+        .green: "Xanh lá", .black: "Đen", .white: "Trắng", .orange: "Cam", .yellow: "Vàng",
+        .cream: "Kem", .mint: "Xanh nhạt", .forest: "Xanh lá đậm", .pink: "Hồng",
+    ]
+
+    private var hex: UInt32 {
+        switch self {
+        case .green: 0x61BE6E
+        case .black: 0x141414
+        case .white: 0xFFFFFF
+        case .orange: 0xF5491C
+        case .yellow: 0xEEAC27
+        case .cream: 0xF4EDE1
+        case .mint: 0xADD3D4
+        case .forest: 0x134128
+        case .pink: 0xFBC1A9
+        }
+    }
+    /// Nền tối: chữ và nút chuyển sang trắng
+    var dark: Bool { self == .black || self == .forest }
+    var bg: Color { Color(red: Double(hex >> 16 & 0xFF) / 255, green: Double(hex >> 8 & 0xFF) / 255, blue: Double(hex & 0xFF) / 255) }
+    /// Màu chữ, biểu tượng và nền nút chính
+    var ink: Color { dark ? .white : Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255) }
+    /// Màu chữ đặt trên nút chính
+    var onInk: Color { dark ? Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255) : .white }
+}
+
+struct WidgetLook: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "Màu widget"
+    static let description = IntentDescription("Chọn màu nền cho widget này.")
+
+    @Parameter(title: "Màu", default: .green) var tone: WidgetTone
+}
+
+struct SpendProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> SpendEntry {
         SpendEntry(date: Date(), s: Summary(today: 125_000, month: 3_450_000, count: 3, day: Date(), budget: 8_000_000))
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SpendEntry) -> Void) {
-        completion(context.isPreview ? placeholder(in: context) : SpendEntry(date: Date(), s: Summary.load().at(Date())))
+    func snapshot(for look: WidgetLook, in context: Context) async -> SpendEntry {
+        var e = context.isPreview ? placeholder(in: context) : SpendEntry(date: Date(), s: Summary.load().at(Date()))
+        e.tone = look.tone
+        return e
     }
 
     /// App ghi số liệu mới là widget vẽ lại; thêm một mốc lúc nửa đêm để "hôm nay" tự về 0.
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SpendEntry>) -> Void) {
+    func timeline(for look: WidgetLook, in context: Context) async -> Timeline<SpendEntry> {
         let now = Date()
         let s = Summary.load()
         let midnight = Calendar.current.startOfDay(for: now.addingTimeInterval(86_400))
-        let entries = [SpendEntry(date: now, s: s.at(now)), SpendEntry(date: midnight, s: s.at(midnight))]
-        completion(Timeline(entries: entries, policy: .after(midnight)))
+        let entries = [SpendEntry(date: now, s: s.at(now), tone: look.tone), SpendEntry(date: midnight, s: s.at(midnight), tone: look.tone)]
+        return Timeline(entries: entries, policy: .after(midnight))
     }
 }
 
 struct SpendWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "SpendWidget", provider: SpendProvider()) { SpendView(e: $0) }
+        AppIntentConfiguration(kind: "SpendWidget", intent: WidgetLook.self, provider: SpendProvider()) { SpendView(e: $0) }
             .configurationDisplayName(L("Chi tiêu hôm nay"))
             .description(L("Xem nhanh số đã chi, chạm để quét QR, nói hoặc nhập khoản mới."))
             .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline])
     }
 }
 
-/// Màu của widget: thẻ xanh lá như icon app (cả nền sáng lẫn nền tối), chữ và nút màu mực gần đen
-private let card = Color(red: 0x61 / 255, green: 0xBE / 255, blue: 0x6E / 255)
-private let ink = Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255)
-private let soft = ink.opacity(0.62)
-
 /// Hai chi tiết của icon app: chấm tròn ở góc trái, sóng "chạm để trả" ở góc phải
 private struct CardMarks: View {
+    let ink: Color
     var body: some View {
         HStack {
             Circle().fill(ink).frame(width: 11, height: 11)
@@ -69,6 +107,10 @@ private struct CardMarks: View {
 struct SpendView: View {
     let e: SpendEntry
     @Environment(\.widgetFamily) private var family
+    /// Màu theo lựa chọn của người dùng cho widget này (mặc định thẻ xanh lá như icon app)
+    private var card: Color { e.tone.bg }
+    private var ink: Color { e.tone.ink }
+    private var soft: Color { e.tone.ink.opacity(0.62) }
 
     var body: some View {
         content
@@ -91,7 +133,7 @@ struct SpendView: View {
                     Link(destination: QuickKind.scan.url) {
                         Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
                             .font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(e.tone.onInk)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(ink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
@@ -134,7 +176,7 @@ struct SpendView: View {
             Label(L("Hôm nay %@đ", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(QuickKind.scan.url)
         default:   // nhỏ: chạm vào là quét QR luôn
             VStack(alignment: .leading, spacing: 0) {
-                CardMarks()
+                CardMarks(ink: ink)
                 Spacer(minLength: 6)
                 totals
             }
@@ -152,7 +194,7 @@ struct SpendView: View {
             if let b = e.s.budgetStatus {
                 Text(b.label).font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)
                     .minimumScaleFactor(0.7).lineLimit(1)
-                // Trên nền xanh: thanh màu mực thay cho xanh / cam / đỏ (chữ ở trên đã nói còn hay vượt)
+                // Trên nền màu: thanh màu mực thay cho xanh / cam / đỏ (chữ ở trên đã nói còn hay vượt)
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
                         Capsule().fill(ink.opacity(0.16))
@@ -184,7 +226,7 @@ struct SpendView: View {
 
 struct VoiceWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "VoiceWidget", provider: SpendProvider()) { VoiceView(e: $0) }
+        AppIntentConfiguration(kind: "VoiceWidget", intent: WidgetLook.self, provider: SpendProvider()) { VoiceView(e: $0) }
             .configurationDisplayName(L("Nói để ghi"))
             .description(L("Chạm là Pay nghe luôn, nói \"35k cafe\" là ghi."))
             .supportedFamilies([.systemSmall, .accessoryCircular])
@@ -194,6 +236,10 @@ struct VoiceWidget: Widget {
 struct VoiceView: View {
     let e: SpendEntry
     @Environment(\.widgetFamily) private var family
+    /// Màu theo lựa chọn của người dùng cho widget này (mặc định thẻ xanh lá như icon app)
+    private var card: Color { e.tone.bg }
+    private var ink: Color { e.tone.ink }
+    private var soft: Color { e.tone.ink.opacity(0.62) }
 
     var body: some View {
         content
@@ -215,7 +261,7 @@ struct VoiceView: View {
                 HStack(alignment: .top) {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(e.tone.onInk)
                         .frame(width: 58, height: 58)
                         .background(ink, in: Circle())
                     Spacer()

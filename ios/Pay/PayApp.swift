@@ -27,6 +27,7 @@ struct PayApp: App {
                 .task {
                     #if DEBUG
                     FilmTouches.install()
+                    await FilmExport.runIfAsked(store: store, quick: quick)
                     #endif
                 }
                 #if DEBUG

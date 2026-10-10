@@ -38,13 +38,15 @@ struct HomeView: View {
     /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
     @State private var menu: AppMenuSpec?
     @Environment(\.scenePhase) private var scenePhase
+    /// Đang dựng phim giới thiệu (xem Film.swift): vẽ theo trạng thái phim đưa vào
+    @Environment(\.film) private var film
 
     var body: some View {
         let now = self.now
         ZStack(alignment: .bottom) {
             Palette.bg.ignoresSafeArea()
 
-            ScrollView {
+            FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
                     header(now)
                     Button { showStats = true } label: { hero(now) }
@@ -62,12 +64,13 @@ struct HomeView: View {
                     recent
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, Self.nativeEdge ? 16 : 120)
+                .padding(.bottom, Self.nativeEdge && film == nil ? 16 : 120)
+                .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
-            .withDock(dock: dock, fallbackBlur: bottomBlur)
+            .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil)
 
             ToastView()
-                .padding(.bottom, 108)
+                .padding(.bottom, 108 + (film == nil ? 0 : FilmScreen<EmptyView>.insets.bottom))
         }
         .appMenu($menu)
         .fullScreenCover(item: $entry) { EntryView(mode: $0) }
@@ -230,9 +233,10 @@ struct HomeView: View {
 
     /// Chi lại một chạm: những khoản hay chi, chạm là ghi luôn (có Hoàn tác ở dưới).
     @ViewBuilder private var againSection: some View {
+        let again = film?.again ?? self.again
         if !again.isEmpty {
             sectionTitle(L("Chi lại")) { Text(L("Chạm là ghi")) }
-            ScrollView(.horizontal, showsIndicators: false) {
+            FilmScroll(axes: .horizontal) {
                 HStack(spacing: 10) {
                     ForEach(again) { f in
                         Button {
@@ -240,6 +244,7 @@ struct HomeView: View {
                             store.add(amount: f.amount, note: f.note, cat: f.cat)
                         } label: { againChip(f) }
                         .buttonStyle(Pressable())
+                        .filmPressed(film?.pressed["again-" + f.id] ?? 0)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -339,6 +344,8 @@ struct HomeView: View {
                 .font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        } else if film != nil {
+            VStack(spacing: 10) { ForEach(list) { ExpenseRow(e: $0, showDay: true, now: now, repeats: store.rule(for: $0) != nil) } }
         } else {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
@@ -509,8 +516,10 @@ struct BigButton: View {
 
 extension View {
     /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
-    @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B) -> some View {
-        if #available(iOS 26.0, *) {
+    @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B, film: Bool = false) -> some View {
+        if film {
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
+        } else if #available(iOS 26.0, *) {
             // Mép mờ của hệ thống quá nhẹ trên máy thật, nên phủ thêm lớp mờ tự làm phía dưới thanh nút
             overlay(alignment: .bottom) { fallbackBlur }
                 .safeAreaBar(edge: .bottom) { dock }
@@ -532,8 +541,26 @@ struct GlassGroup<Content: View>: View {
 
 extension View {
     /// Nền kính hình viên thuốc: Liquid Glass trên iOS 26, kính mờ + bóng đổ trên iOS cũ hơn.
-    @ViewBuilder func glassCapsule(tint: Color?) -> some View {
-        if #available(iOS 26.0, *) {
+    func glassCapsule(tint: Color?) -> some View { modifier(GlassCapsule(tint: tint)) }
+}
+
+private struct GlassCapsule: ViewModifier {
+    @Environment(\.film) private var film
+    let tint: Color?
+
+    func body(content: Content) -> some View { content.glass(tint: tint, drawn: film != nil) }
+}
+
+private extension View {
+    /// drawn: tự vẽ nền giống kính (cho phim: kính của hệ thống không vẽ ra PDF được)
+    @ViewBuilder func glass(tint: Color?, drawn: Bool) -> some View {
+        if drawn {
+            background {
+                Capsule().fill(tint ?? Color.white.opacity(0.82))
+                    .overlay { Capsule().strokeBorder(.white.opacity(tint == nil ? 0.9 : 0.12), lineWidth: 1) }
+                    .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
+            }
+        } else if #available(iOS 26.0, *) {
             glassEffect(tint.map { Glass.regular.tint($0).interactive() } ?? .regular.interactive(), in: Capsule())
         } else {
             background {
@@ -560,6 +587,7 @@ struct Pressable: ButtonStyle {
 
 struct ToastView: View {
     @EnvironmentObject var store: Store
+    @Environment(\.film) private var film
 
     var body: some View {
         if let t = store.toast {
@@ -582,6 +610,7 @@ struct ToastView: View {
             .padding(.leading, 20).padding(.trailing, t.undo == nil ? 22 : 7).padding(.vertical, t.undo == nil ? 15 : 7)
             .background(Palette.cta, in: Capsule())
             .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+            .offset(y: (1 - (film?.toast ?? 1)) * 70).opacity(Double(film?.toast ?? 1))
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .task(id: t.id) {
                 try? await Task.sleep(for: .seconds(5))

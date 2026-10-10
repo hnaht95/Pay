@@ -7,6 +7,7 @@ struct PayWidgets: WidgetBundle {
     var body: some Widget {
         SpendWidget()
         VoiceWidget()
+        MyQRWidget()
         if #available(iOS 18.0, *) {
             VoiceControl()
             ScanControl()
@@ -275,6 +276,82 @@ struct VoiceView: View {
                     .minimumScaleFactor(0.7).lineLimit(1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+    }
+}
+
+// MARK: Mã QR nhận tiền của mình: người khác quét là chuyển khoản (tài khoản đặt trong Cài đặt của app)
+
+struct MyQREntry: TimelineEntry {
+    let date: Date
+    let qr: MyQR
+}
+
+struct MyQRProvider: TimelineProvider {
+    func placeholder(in context: Context) -> MyQREntry {
+        MyQREntry(date: Date(), qr: MyQR(bin: "970416", bank: "ACB", acct: "123456789", name: "NGUYEN VAN A"))
+    }
+    func getSnapshot(in context: Context, completion: @escaping (MyQREntry) -> Void) {
+        let q = MyQR.load()
+        completion(context.isPreview && !q.ready ? placeholder(in: context) : MyQREntry(date: Date(), qr: q))
+    }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<MyQREntry>) -> Void) {
+        completion(Timeline(entries: [MyQREntry(date: Date(), qr: MyQR.load())], policy: .never))
+    }
+}
+
+struct MyQRWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "MyQRWidget", provider: MyQRProvider()) { MyQRView(e: $0) }
+            .configurationDisplayName(L("Mã QR nhận tiền"))
+            .description(L("Mã VietQR của bạn ngay trên màn hình chính, người khác quét là chuyển khoản."))
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+
+struct MyQRView: View {
+    let e: MyQREntry
+    @Environment(\.widgetFamily) private var family
+    private let ink = Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255)
+
+    var body: some View {
+        // Nền trắng ở cả nền sáng lẫn nền tối: mã QR cần nền trắng để máy quét đọc được
+        content.containerBackground(for: .widget) { Color.white }
+    }
+
+    /// Bốn số cuối của tài khoản, đủ để nhận ra mà không phơi cả số ra màn hình chính
+    private var tail: String { e.qr.acct.count > 4 ? "••" + e.qr.acct.suffix(4) : e.qr.acct }
+
+    @ViewBuilder private var content: some View {
+        if !e.qr.ready {
+            VStack(spacing: 8) {
+                Image(systemName: "qrcode").font(.system(size: 34, weight: .semibold)).foregroundStyle(ink)
+                Text(L("Mở Pay > Cài đặt để thêm tài khoản nhận tiền"))
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(ink.opacity(0.62))
+                    .multilineTextAlignment(.center).minimumScaleFactor(0.8)
+            }
+        } else if family == .systemMedium {
+            HStack(spacing: 16) {
+                MyQRCode(qr: e.qr)
+                VStack(alignment: .leading, spacing: 3) {
+                    Circle().fill(ink).frame(width: 11, height: 11).accessibilityHidden(true)
+                    Spacer(minLength: 4)
+                    Text(L("Quét để chuyển cho")).font(.system(size: 13, weight: .medium)).foregroundStyle(ink.opacity(0.62)).lineLimit(1)
+                    if !e.qr.name.isEmpty {
+                        Text(e.qr.name).font(.system(size: 17, weight: .bold)).foregroundStyle(ink).lineLimit(2).minimumScaleFactor(0.7)
+                    }
+                    Text(e.qr.bank).font(.system(size: 14, weight: .semibold)).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(e.qr.acct).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(ink.opacity(0.62)).lineLimit(1).minimumScaleFactor(0.6)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+        } else {
+            VStack(spacing: family == .systemLarge ? 10 : 4) {
+                MyQRCode(qr: e.qr)
+                Text(e.qr.bank.isEmpty ? tail : e.qr.bank + " · " + tail)
+                    .font(.system(size: family == .systemLarge ? 15 : 11, weight: .semibold)).foregroundStyle(ink.opacity(0.7))
+                    .lineLimit(1).minimumScaleFactor(0.6)
+            }
         }
     }
 }

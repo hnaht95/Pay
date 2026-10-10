@@ -1,8 +1,11 @@
 import SwiftUI
+import WidgetKit
 
 struct SettingsView: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
+    /// Tài khoản nhận tiền của mình, cho widget mã QR
+    @State private var myQR = MyQR.load()
     @State private var importing = false
     @State private var confirmErase = false
     @State private var syncing = false
@@ -27,6 +30,7 @@ struct SettingsView: View {
                 recurringSection
                 cloudSection
                 bankSection
+                myQRSection
                 languageSection
 
                 Section {
@@ -255,6 +259,43 @@ struct SettingsView: View {
             Text(L("Thanh toán"))
         } footer: {
             Text(store.bankApp.fill ? L("Sau khi quét, Pay mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
+        }
+    }
+
+    // MARK: Mã QR nhận tiền của mình (cho widget)
+
+    private static let banks = BankData.names.sorted { $0.value.lowercased() < $1.value.lowercased() }
+
+    private var myQRSection: some View {
+        Section {
+            Picker(selection: $myQR.bin) {
+                Text(L("Chưa chọn")).tag("")
+                ForEach(Self.banks, id: \.key) { Text($0.value).tag($0.key) }
+            } label: {
+                row(L("Ngân hàng"))
+            }
+            .pickerStyle(.navigationLink)
+            TextField(L("Số tài khoản"), text: $myQR.acct)
+                .keyboardType(.asciiCapable).textInputAutocapitalization(.characters).autocorrectionDisabled()
+            TextField(L("Tên chủ tài khoản (không bắt buộc)"), text: $myQR.name)
+                .textInputAutocapitalization(.characters).autocorrectionDisabled()
+            if myQR.ready {
+                MyQRCode(qr: myQR)
+                    .frame(width: 180, height: 180).padding(10)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .frame(maxWidth: .infinity).padding(.vertical, 6)
+            }
+        } header: {
+            Text(L("Mã QR nhận tiền"))
+        } footer: {
+            Text(L("Thêm widget \"Mã QR nhận tiền\" ra màn hình chính: người khác quét là chuyển khoản cho bạn, không phải mở app ngân hàng."))
+        }
+        .onChange(of: myQR) { _, q in
+            var q = q
+            q.acct = q.acct.filter { !$0.isWhitespace }
+            q.bank = BankData.names[q.bin] ?? ""
+            q.save()
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 

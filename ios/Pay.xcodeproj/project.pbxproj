@@ -25,6 +25,7 @@
 		725657DE14F9E53250763B3F /* FilmExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA8EF45CE66A02F640C00AD /* FilmExport.swift */; };
 		73F53BA6CBD915C6F7D5D7BA /* Lang.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B3666354A2198F18B94A57 /* Lang.swift */; };
 		79B85BA7716448436AB6F746 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED087675452679C35387B98C /* Model.swift */; };
+		7ADE6CEEACA7F952115FACC8 /* MyQR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5E3A393AEE6AD86555B7B3 /* MyQR.swift */; };
 		83BDFF08D509826915C1D13F /* EN+Home.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD0448711F3EB7D353E6768 /* EN+Home.swift */; };
 		8C57794EB9ED77F1177F80FA /* EN+Stats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D009139059C851E5FE78B10 /* EN+Stats.swift */; };
 		91C3E24BBC0387D5264FA56D /* PayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C52368CCF0CD05A29F53F06A /* PayWidget.swift */; };
@@ -51,6 +52,7 @@
 		EC5FD112F75591F103D214D6 /* EN+Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6F8D423DB7710149F52728 /* EN+Voice.swift */; };
 		F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44363C52BE264A2C9A5D3E8D /* QuickAction.swift */; };
 		F46263D2A70AF19D5FC69B3A /* HouseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9A02E66795259132018E66 /* HouseView.swift */; };
+		F63C248E1044A7810022B363 /* MyQR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5E3A393AEE6AD86555B7B3 /* MyQR.swift */; };
 		FF57A27DDE16FAD031AE7639 /* Summary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F129DFA9AABEFF1CFB450789 /* Summary.swift */; };
 /* End PBXBuildFile section */
 
@@ -80,6 +82,7 @@
 
 /* Begin PBXFileReference section */
 		0931645A127E5C8DFC720589 /* House.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = House.swift; sourceTree = "<group>"; };
+		0A5E3A393AEE6AD86555B7B3 /* MyQR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyQR.swift; sourceTree = "<group>"; };
 		0E6F8D423DB7710149F52728 /* EN+Voice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EN+Voice.swift"; sourceTree = "<group>"; };
 		0ED480E454B97B65E2A4153C /* Budget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Budget.swift; sourceTree = "<group>"; };
 		12194354B3B9408BEBA73165 /* FilmTouches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmTouches.swift; sourceTree = "<group>"; };
@@ -169,6 +172,7 @@
 			children = (
 				0ED480E454B97B65E2A4153C /* Budget.swift */,
 				91B3666354A2198F18B94A57 /* Lang.swift */,
+				0A5E3A393AEE6AD86555B7B3 /* MyQR.swift */,
 				44363C52BE264A2C9A5D3E8D /* QuickAction.swift */,
 				F129DFA9AABEFF1CFB450789 /* Summary.swift */,
 				FC1CFC6D7EBA0E249B264405 /* English */,
@@ -265,7 +269,7 @@
 					2CA39577F5A44AC9D635F905 = {
 						DevelopmentTeam = U5DGWB7A5X;
 						ProvisioningStyle = Automatic;
-						SystemCapabilities = "[\"com.apple.iCloud\": [\"enabled\": 1], \"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
 					};
 				};
 			};
@@ -326,6 +330,7 @@
 				F46263D2A70AF19D5FC69B3A /* HouseView.swift in Sources */,
 				E4954F86EBB045E1DD1BFF57 /* Lang.swift in Sources */,
 				79B85BA7716448436AB6F746 /* Model.swift in Sources */,
+				7ADE6CEEACA7F952115FACC8 /* MyQR.swift in Sources */,
 				AD211944DCFBAC31AA4D6A80 /* Parts.swift in Sources */,
 				40405BB47395FF979965CD24 /* PayApp.swift in Sources */,
 				F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */,
@@ -351,6 +356,7 @@
 				04C6139949A41EDA880DA99C /* EN+Stats.swift in Sources */,
 				EC5FD112F75591F103D214D6 /* EN+Voice.swift in Sources */,
 				73F53BA6CBD915C6F7D5D7BA /* Lang.swift in Sources */,
+				F63C248E1044A7810022B363 /* MyQR.swift in Sources */,
 				132E3557D0C9606D92EE043D /* Parts.swift in Sources */,
 				91C3E24BBC0387D5264FA56D /* PayWidget.swift in Sources */,
 				ACA5747DA4A0AE572D34F222 /* QuickAction.swift in Sources */,

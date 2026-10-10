@@ -481,15 +481,13 @@ struct ExpenseRow: View {
     var now = Date()
     /// Khoản định kỳ (app tự ghi hằng tháng): hiện biểu tượng lặp
     var repeats = false
-    /// Danh sách của riêng một danh mục: không cần biểu tượng, chỉ một chấm tròn màu danh mục ở đầu hàng
+    /// Danh sách của riêng một danh mục: không cần biểu tượng, chỉ một vạch dọc màu danh mục ở đầu hàng
     var dot = false
 
     var body: some View {
         let c = Category.get(e.c)
         HStack(spacing: 14) {
-            if dot {
-                Circle().fill(c.color).frame(width: 12, height: 12).padding(.leading, 6)
-            } else {
+            if !dot {
                 CategoryIcon(c: c, size: 30)
                     .frame(width: 56, height: 56)
                     .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -506,6 +504,11 @@ struct ExpenseRow: View {
                 }
                 // Chỉ ngày giờ: danh mục đã có biểu tượng ở đầu hàng, khỏi nhắc lại bằng chữ
                 Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            // Vạch dọc màu danh mục, cao bằng đúng khối chữ (tên hai dòng thì vạch dài theo)
+            .padding(.leading, dot ? 14 : 0)
+            .overlay(alignment: .leading) {
+                if dot { Capsule().fill(c.color).frame(width: 4).padding(.leading, 2) }
             }
             Spacer(minLength: 8)
             // Số tiền luôn hiện đủ: phần tên nhường chỗ

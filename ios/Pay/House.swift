@@ -156,6 +156,12 @@ final class House: ObservableObject {
     /// Bản Debug chạy với "-houseDemo YES": dữ liệu mẫu, không cần iCloud, sửa gì cũng chỉ trên máy (để xem giao diện trên máy ảo)
     private var demo = false
 
+    /// Số lần máy này tự đổi `groups` (lưu, xoá, tạo, rời nhóm, chọn "tôi là ai"). Sổ hiện ngay từ bản lưu nên người dùng bấm được
+    /// trong lúc load() còn chạy; load() so số này trước và sau khi tải để không lấy bản đã cũ đè lên thay đổi vừa lưu
+    private var edits = 0
+    /// Đang tạo nhóm / đang lưu khoản chung: bấm nút lần nữa khi mạng chậm thì bỏ qua, không tạo hai lần
+    private var creatingGroup = false, addingSpend = false
+
     private init() {
         #if DEBUG
         demo = UserDefaults.standard.bool(forKey: "houseDemo")
@@ -199,6 +205,9 @@ final class House: ObservableObject {
         }
     }
 
+    /// Ghi bản lưu ngay, không chờ nhịp gộp: việc chạy nền (đẩy im lặng, nút trên thông báo) xong là iOS có thể treo app luôn
+    private func flushCache() { saving?.cancel(); saveCache() }
+
     private func saveCache() {
         guard !demo else { return }
         let list: [[String: Any]] = groups.map {
@@ -215,6 +224,7 @@ final class House: ObservableObject {
     private func dropCache() {
         try? FileManager.default.removeItem(at: Self.cacheURL)
         groups = []; currentID = nil
+        subscribed = []   // tài khoản đăng nhập sau phải đăng ký nhận đẩy lại
     }
 
     // MARK: Nhóm đang mở
@@ -231,6 +241,7 @@ final class House: ObservableObject {
         get { current?.me }
         set {
             guard let i = cur else { return }
+            edits += 1
             groups[i].me = newValue
             UserDefaults.standard.set(newValue, forKey: "house.me.\(groups[i].id)")
         }
@@ -288,28 +299,64 @@ final class House: ObservableObject {
         if demo { if groups.isEmpty { loadDemo() }; return }
         if phase != .ready { phase = .loading }
         do {
-            guard try await container.accountStatus() == .available else { dropCache(); phase = .noAccount; return }
-            // Hai cơ sở dữ liệu (của mình, được chia sẻ) hỏi cùng lúc, rồi các nhóm cũng tải cùng lúc thay vì lần lượt
-            async let mine = container.privateCloudDatabase.allRecordZones()
-            async let theirs = container.sharedCloudDatabase.allRecordZones()
-            var found: [(CKRecordZone.ID, CKDatabase.Scope)] = []
-            for (zones, scope) in [(try await mine, CKDatabase.Scope.private), (try await theirs, .shared)] {
-                for z in zones where z.zoneID.zoneName.hasPrefix(Self.zonePrefix) { found.append((z.zoneID, scope)) }
+            switch try await container.accountStatus() {
+            case .available: break
+            case .noAccount: dropCache(); phase = .noAccount; return
+            default:
+                // Vẫn đăng nhập nhưng iCloud tạm chưa dùng được (đòi nhập lại mật khẩu, bị giới hạn…): vẫn là tài khoản đó nên
+                // giữ bản lưu. Đang có sổ thì xem tiếp, chưa có gì thì báo lỗi kèm nút Thử lại
+                if phase != .ready { phase = .failed(L("iCloud tạm thời chưa sẵn sàng. Kiểm tra iCloud trong Cài đặt rồi thử lại.")) }
+                return
             }
-            let known = groups
-            let next = await withTaskGroup(of: HouseGroup.self) { tasks in
-                for (zid, scope) in found {
-                    let g = known.first { $0.id == zid.zoneName } ?? HouseGroup(zone: zid, scope: scope, isOwner: scope == .private)
-                    tasks.addTask { @MainActor in (try? await self.fetch(g)) ?? g }
+            // Thay đổi vừa lưu xong trong lúc đang tải (xác nhận, thêm, xoá, tạo, rời nhóm…) có thể chưa nằm trong bản vừa tải,
+            // thay vào là mất thay đổi đó trên máy. Thấy `edits` đổi thì bỏ bản này và tải lại, tối đa 3 lượt
+            var loaded: [(String, HouseGroup?, Error?)] = []
+            var stamp = edits, tries = 0
+            repeat {
+                stamp = edits; tries += 1
+                // Hai cơ sở dữ liệu (của mình, được chia sẻ) hỏi cùng lúc, rồi các nhóm cũng tải cùng lúc thay vì lần lượt
+                async let mine = container.privateCloudDatabase.allRecordZones()
+                async let theirs = container.sharedCloudDatabase.allRecordZones()
+                var found: [(CKRecordZone.ID, CKDatabase.Scope)] = []
+                for (zones, scope) in [(try await mine, CKDatabase.Scope.private), (try await theirs, .shared)] {
+                    for z in zones where z.zoneID.zoneName.hasPrefix(Self.zonePrefix) { found.append((z.zoneID, scope)) }
                 }
-                var out: [HouseGroup] = []
-                for await g in tasks { out.append(g) }
-                return out
+                let known = groups
+                loaded = await withTaskGroup(of: (String, HouseGroup?, Error?).self) { tasks in
+                    for (zid, scope) in found {
+                        let g = known.first { $0.id == zid.zoneName } ?? HouseGroup(zone: zid, scope: scope, isOwner: scope == .private)
+                        tasks.addTask { @MainActor in
+                            do { return (g.id, try await self.fetch(g), nil) } catch { return (g.id, nil, error) }
+                        }
+                    }
+                    var out: [(String, HouseGroup?, Error?)] = []
+                    for await one in tasks { out.append(one) }
+                    return out
+                }
+            } while stamp != edits && tries < 3
+            // Hết lượt mà vẫn có thay đổi mới: giữ `groups` đang có (nó chứa thay đổi của người dùng), lần tải sau sẽ đồng bộ
+            guard stamp == edits else { phase = .ready; return }
+            var next: [HouseGroup] = [], failure: Error?, missing = false
+            for (id, fresh, why) in loaded {
+                if let fresh { next.append(fresh) }
+                // Một nhóm đọc lỗi: giữ bản đang có trên máy. Máy chưa có bản nào thì bỏ qua nhóm đó, không đưa nhóm rỗng vào
+                // danh sách và bản lưu ("0 người", người dùng thêm lại chính mình thành trùng thành viên)
+                else if let old = groups.first(where: { $0.id == id }) { next.append(old) }
+                else { missing = true }
+                if failure == nil { failure = why }
+            }
+            if next.isEmpty, let failure {
+                // Trên iCloud có nhóm mà không đọc được nhóm nào, máy cũng chưa có sổ: màn báo lỗi có nút Thử lại,
+                // không hiện form "Tạo nhóm" như thể chưa có nhóm nào
+                phase = groups.isEmpty ? .failed(Self.describe(failure)) : .ready
+                return
             }
             groups = next.sorted { $0.lastActivity > $1.lastActivity }
             if let id = currentID, !groups.contains(where: { $0.id == id }) { currentID = nil }
             phase = .ready
             for i in groups.indices { notifyChanges(i) }
+            // Nhóm chưa từng tải về máy mà lần này đọc lỗi thì tạm vắng trong danh sách: người dùng đang xem thì báo cho biết
+            if missing, prompt, !Task.isCancelled, let failure { Store.shared.showError(Self.describe(failure)) }
             if !groups.isEmpty, prompt { await enableNotifications() }
         } catch let e as CKError where e.code == .notAuthenticated {
             dropCache(); phase = .noAccount
@@ -380,10 +427,13 @@ final class House: ObservableObject {
             groups.insert(g, at: 0); currentID = g.id
             return
         }
+        guard !creatingGroup else { return }
+        creatingGroup = true; defer { creatingGroup = false }
         busy = true; defer { busy = false }
         do {
             let z = CKRecordZone(zoneName: Self.zonePrefix + UUID().uuidString.prefix(8).lowercased())
             _ = try await container.privateCloudDatabase.modifyRecordZones(saving: [z], deleting: [])
+            edits += 1
             groups.insert(HouseGroup(zone: z.zoneID, scope: .private, isOwner: true, name: groupName), at: 0)
             currentID = z.zoneID.zoneName
             let info = CKRecord(recordType: "Info", recordID: CKRecord.ID(recordName: "info", zoneID: z.zoneID))
@@ -394,7 +444,8 @@ final class House: ObservableObject {
             // Nhớ "tôi là ai" trước khi lưu: lần tải lại chạy song song cũng nhận ra ngay, khỏi hỏi lại
             UserDefaults.standard.set(m.recordID.recordName, forKey: "house.me.\(z.zoneID.zoneName)")
             try await save([info, m])
-            me = m.recordID.recordName
+            // Gán theo mã nhóm vừa tạo, không theo nhóm đang mở: trong lúc chờ lưu người dùng có thể đã mở nhóm khác
+            if let i = groups.firstIndex(where: { $0.id == z.zoneID.zoneName }) { edits += 1; groups[i].me = m.recordID.recordName }
             phase = .ready
             await enableNotifications()
         } catch {
@@ -410,7 +461,9 @@ final class House: ObservableObject {
             currentID = metadata.share.recordID.zoneID.zoneName
             QuickAction.shared.openHouse = true
         } catch {
-            fail(error)
+            // Lời mời được bấm từ ngoài app, màn Nhóm chung thường chưa mở: báo bằng thanh báo trên màn đang hiện.
+            // Chỉ đặt phase = .failed thì không ai thấy, lần load() kế tiếp lại xoá mất
+            Store.shared.showError(L("Không mở được lời mời") + ". " + Self.describe(error))
         }
     }
 
@@ -421,6 +474,7 @@ final class House: ObservableObject {
         busy = true; defer { busy = false }
         do {
             _ = try await container.database(with: g.scope).modifyRecordZones(saving: [], deleting: [g.zone])
+            edits += 1
             UserDefaults.standard.removeObject(forKey: "house.me.\(g.id)")
             groups.removeAll { $0.id == g.id }
             currentID = nil
@@ -463,7 +517,7 @@ final class House: ObservableObject {
             }
             return
         }
-        guard let r = record(id) else { return }
+        guard let r = record(id) else { stale(); return }
         r["name"] = n; r["bin"] = bin; r["acct"] = acct
         if let photo {
             if photo.isEmpty { r["photo"] = nil } else {
@@ -486,7 +540,8 @@ final class House: ObservableObject {
         }
         let g = groups[i]
         let rid = CKRecord.ID(recordName: "info", zoneID: g.zone)
-        let r = g.records[rid] ?? CKRecord(recordType: "Info", recordID: rid)
+        // Sửa trên bản sao (xem record(_:in:)): lưu hỏng thì bản đang dùng không dính thay đổi chưa lên iCloud
+        let r = (g.records[rid]?.copy() as? CKRecord) ?? CKRecord(recordType: "Info", recordID: rid)
         r["name"] = n
         r["tone"] = tone.map { Int64($0) }
         if let photo {
@@ -499,6 +554,7 @@ final class House: ObservableObject {
         busy = true; defer { busy = false }
         do {
             let res = try await container.database(with: g.scope).modifyRecords(saving: [r], deleting: [], savePolicy: .changedKeys)
+            edits += 1
             guard let j = groups.firstIndex(where: { $0.id == gid }) else { return }
             for (id, one) in res.saveResults { groups[j].records[id] = try one.get() }
             Self.rebuild(&groups[j])
@@ -507,6 +563,8 @@ final class House: ObservableObject {
 
     /// "Tôi là người này": nhớ trên máy và gắn Apple ID vào thành viên, lần sau máy khác tự nhận ra.
     func claim(_ id: String) async {
+        // Nhóm đang mở có thể vừa đổi trong lúc chờ (thêm mình xong mới nhận): không lấy mã thành viên của nhóm khác làm "tôi"
+        guard members.contains(where: { $0.id == id }) else { return }
         me = id
         if demo { return }
         guard let r = record(id), let u = try? await container.userRecordID().recordName, r["user"] as? String != u else { return }
@@ -536,11 +594,26 @@ final class House: ObservableObject {
             groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)
             return true
         }
-        guard let zone else { return false }
+        guard let zone, !addingSpend else { return false }
+        guard knows(shares + [payer]) else { stale(); return false }
+        addingSpend = true; defer { addingSpend = false }
         let r = CKRecord(recordType: "Spend", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["amount"] = Int64(amount); r["note"] = note; r["payer"] = payer; r["shares"] = shares; r["date"] = Date(); r["cat"] = cat
         return await run([r])
     }
+
+    /// Các mã này có thuộc nhóm đang mở không (thành viên, kể cả người đã xoá nhưng còn trong sổ). Nhóm đang mở có thể bị đổi
+    /// (chạm thông báo của nhóm khác) khi bảng nhập của nhóm cũ còn trên màn hình: không ghi mã của nhóm này vào nhóm kia
+    private func knows(_ ids: [String]) -> Bool {
+        guard let g = current else { return false }
+        var all = Set(g.members.map(\.id))
+        for e in g.spends { all.insert(e.payer); all.formUnion(e.shares) }
+        for s in g.settles { all.insert(s.from); all.insert(s.to) }
+        return ids.allSatisfy { all.contains($0) }
+    }
+
+    /// Thao tác bị từ chối vì không còn khớp với nhóm đang mở: báo để người dùng mở lại rồi nhập lại, thay vì bấm Lưu mà không thấy gì
+    private func stale() { Store.shared.showError(L("Nhóm đang mở vừa đổi nên chưa lưu được. Mở lại rồi nhập lại.")) }
 
     /// Ghi một lần trả. Người trả báo thì chờ người nhận xác nhận; người nhận tự bấm "Đã nhận" thì xong luôn.
     func settle(_ t: HouseTransfer) async {
@@ -550,9 +623,13 @@ final class House: ObservableObject {
             return
         }
         guard let zone else { return }
+        guard knows([t.from, t.to]) else { stale(); return }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date(); r["status"] = status
-        _ = await run([r])
+        guard await run([r]), status == "wait", let i = groups.firstIndex(where: { $0.id == zone.zoneName }) else { return }
+        // Ghi nhớ đã thấy lần trả này ở trạng thái "chờ" (iCloud không đẩy về chính máy vừa ghi, nên không có load() nào làm việc đó):
+        // thiếu thẻ này thì lúc người nhận xác nhận, notifyChanges không báo "đã nhận" cho người trả
+        notifyChanges(i)
     }
 
     /// Người nhận trả lời: đã nhận (xong) hoặc chưa nhận được (báo lại người trả).
@@ -564,32 +641,45 @@ final class House: ObservableObject {
         _ = await run([r])
     }
 
-    /// Bấm nút trên thông báo: app có thể vừa được mở lại, nên tải nhóm trước khi trả lời
+    /// Bấm nút trên thông báo: app có thể vừa được mở lại ở nền với bản lưu cũ hơn thông báo, nên thiếu nhóm hoặc thiếu
+    /// lần trả này thì tải lại trước khi trả lời. Ghi thẳng vào nhóm của thông báo, không đổi nhóm đang mở:
+    /// bảng nhập của nhóm đang mở có thể còn trên màn hình và sẽ lưu nhầm sang nhóm kia
     func respondFromNotification(_ id: String, group: String, received: Bool) async {
-        if !groups.contains(where: { $0.id == group }) { await load() }
-        currentID = group
-        await respond(id, received: received)
+        if record(id, in: group) == nil { await load(prompt: false) }
+        if let r = record(id, in: group) {
+            r["status"] = received ? "ok" : "no"
+            _ = await run([r])
+        }
+        flushCache()
     }
 
     // MARK: Thông báo giữa các máy
+
+    /// Cơ sở dữ liệu đã đăng ký nhận đẩy trong lần chạy app này. Chỉ nhớ trong bộ nhớ: đăng ký nằm trên máy chủ theo tài khoản
+    /// và môi trường iCloud, cờ lưu trên máy sẽ sai khi đổi Apple ID hoặc cài bản TestFlight đè lên bản chạy từ Xcode
+    /// (máy đó không bao giờ nhận đẩy nữa). Lưu lại một đăng ký cùng mã thì không sao
+    private var subscribed: Set<String> = []
 
     /// Nhận thông báo đẩy im lặng mỗi khi dữ liệu nhóm đổi (máy khác ghi), để tải lại và báo cho người liên quan.
     private func subscribe() async {
         for scope in [CKDatabase.Scope.private, .shared] {
             let id = "house-\(scope == .private ? "private" : "shared")"
-            guard !UserDefaults.standard.bool(forKey: "house.sub.\(id)") else { continue }
+            guard !subscribed.contains(id) else { continue }
             let sub = CKDatabaseSubscription(subscriptionID: id)
             let info = CKSubscription.NotificationInfo()
             info.shouldSendContentAvailable = true
             sub.notificationInfo = info
-            if (try? await container.database(with: scope).modifySubscriptions(saving: [sub], deleting: [])) != nil {
-                UserDefaults.standard.set(true, forKey: "house.sub.\(id)")
+            // Lệnh không ném lỗi của riêng từng đăng ký: phải xem kết quả của chính nó mới coi là xong, không thì lần sau thử lại
+            if let r = try? await container.database(with: scope).modifySubscriptions(saving: [sub], deleting: []),
+               let one = r.saveResults[id], case .success = one {
+                subscribed.insert(id)
             }
         }
     }
 
-    /// Máy khác vừa đổi dữ liệu (app đang chạy nền): tải lại rồi báo.
-    func backgroundRefresh() async { await load() }
+    /// Máy khác vừa đổi dữ liệu (app đang chạy nền): tải lại rồi báo. Không hỏi quyền hay đăng ký lại ở nền.
+    /// Ghi bản lưu luôn: thông báo vừa hiện có nút "Đã nhận", lần mở app sau (để trả lời) phải thấy đúng lần trả đó
+    func backgroundRefresh() async { await load(prompt: false); flushCache() }
 
     /// Báo những lần trả liên quan tới mình mà máy này chưa báo: có người báo đã chuyển cho mình,
     /// người nhận xác nhận hoặc báo chưa nhận được tiền mình chuyển. Lần đầu mở nhóm thì chỉ ghi nhớ, không báo dồn.
@@ -633,19 +723,25 @@ final class House: ObservableObject {
 
     func delete(_ id: String) async {
         if demo, let i = cur { groups[i].spends.removeAll { $0.id == id }; groups[i].settles.removeAll { $0.id == id }; return }
-        guard let zone, let i = cur else { return }
-        let rid = CKRecord.ID(recordName: id, zoneID: zone)
+        guard let g = current else { return }
+        let gid = g.id, rid = CKRecord.ID(recordName: id, zoneID: g.zone)
         busy = true; defer { busy = false }
         do {
-            _ = try await db.modifyRecords(saving: [], deleting: [rid])
+            _ = try await container.database(with: g.scope).modifyRecords(saving: [], deleting: [rid])
+            edits += 1
+            // Trong lúc chờ, load() có thể đã xếp lại hoặc thay mảng groups, người dùng có thể đã sang nhóm khác:
+            // tìm lại nhóm theo mã, không dùng chỉ số lấy từ trước
+            guard let i = groups.firstIndex(where: { $0.id == gid }) else { return }
             groups[i].records[rid] = nil
             Self.rebuild(&groups[i])
         } catch { fail(error) }
     }
 
-    private func record(_ id: String) -> CKRecord? {
-        guard let g = current else { return nil }
-        return g.records[CKRecord.ID(recordName: id, zoneID: g.zone)]
+    /// Bản ghi của một thành viên / lần trả để sửa rồi lưu (gid = nil: trong nhóm đang mở). Trả về bản sao: lưu hỏng thì bỏ bản sao,
+    /// bản đang dùng trong `groups` (và bản lưu trên máy) không dính thay đổi chưa lên iCloud
+    private func record(_ id: String, in gid: String? = nil) -> CKRecord? {
+        guard let g = gid == nil ? current : groups.first(where: { $0.id == gid }) else { return nil }
+        return g.records[CKRecord.ID(recordName: id, zoneID: g.zone)]?.copy() as? CKRecord
     }
 
     private func run(_ rs: [CKRecord]) async -> Bool {
@@ -654,8 +750,12 @@ final class House: ObservableObject {
     }
 
     private func save(_ rs: [CKRecord]) async throws {
-        let r = try await db.modifyRecords(saving: rs, deleting: [], savePolicy: .changedKeys)
-        guard let i = cur else { return }
+        // Nhóm đích lấy từ chính bản ghi, không theo nhóm đang mở: trong lúc chờ iCloud người dùng có thể đã lùi ra danh sách
+        // hoặc sang nhóm khác, khi đó bản ghi vừa lưu bị bỏ khỏi máy hoặc gắn nhầm nhóm
+        guard let gid = rs.first?.recordID.zoneID.zoneName, let g = groups.first(where: { $0.id == gid }) else { throw CKError(.zoneNotFound) }
+        let r = try await container.database(with: g.scope).modifyRecords(saving: rs, deleting: [], savePolicy: .changedKeys)
+        edits += 1
+        guard let i = groups.firstIndex(where: { $0.id == gid }) else { return }
         for (id, res) in r.saveResults {
             let saved = try res.get()
             if !(saved is CKShare) { groups[i].records[id] = saved }
@@ -668,7 +768,7 @@ final class House: ObservableObject {
     private func fail(_ error: Error) {
         if groups.isEmpty { phase = .failed(Self.describe(error)); return }
         phase = .ready
-        Store.shared.show(Self.describe(error))
+        Store.shared.showError(Self.describe(error))
     }
 
     static func describe(_ e: Error) -> String {

@@ -69,12 +69,14 @@ struct LogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = Store.shared
+        // Câu trả lời ghép lúc chạy nên đi qua L() được (tiêu đề và câu hỏi ở trên là chữ tĩnh của hệ thống, giữ tiếng Việt):
+        // từng câu trọn vẹn một khoá, không ghép nửa Việt nửa Anh với tên danh mục / nhãn ngân sách đã dịch
         guard let e = store.quickAdd(text, spoken: true) else {
-            throw $text.needsValueError(IntentDialog("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe"))
+            throw $text.needsValueError(IntentDialog(stringLiteral: L("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe")))
         }
-        var reply = "Đã ghi \(fmt(e.a))đ \(Category.get(e.c).name)."
-        if let b = store.budgetStatus() { reply += " \(b.label) trong tháng." }
-        else { reply += " Hôm nay đã chi \(fmt(store.total(on: Date())))đ." }
+        var reply = L("Đã ghi %@đ %@.", fmt(e.a), Category.get(e.c).name)
+        if let b = store.budgetStatus() { reply += " " + L("%@ trong tháng.", b.label) }
+        else { reply += " " + L("Hôm nay đã chi %@đ.", fmt(store.total(on: Date()))) }
         return .result(dialog: IntentDialog(stringLiteral: reply))
     }
 }

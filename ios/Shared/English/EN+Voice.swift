@@ -26,6 +26,12 @@ extension English {
         "Mở Cài đặt": "Open Settings",
         "Nói lại": "Try Again",
 
+        // Câu trả lời của lệnh "Ghi chi tiêu" trong Siri / Phím tắt (LogExpenseIntent)
+        "Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe": "Didn't catch the amount. Try again, e.g. 35k coffee",
+        "Đã ghi %@đ %@.": "Logged %@đ under %@.",
+        "%@ trong tháng.": "%@ this month.",
+        "Hôm nay đã chi %@đ.": "Spent %@đ today.",
+
         // Widget và nút Trung tâm điều khiển (PayWidget)
         "Chi tiêu hôm nay": "Today's Spending",
         "Xem nhanh số đã chi, chạm để quét QR, nói hoặc nhập khoản mới.": "See today's spending at a glance. Tap to scan a QR code, speak, or add an expense.",

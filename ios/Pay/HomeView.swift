@@ -6,13 +6,15 @@ enum EntryMode: Identifiable {
     case scan(VietQR)
     case raw(String)
     case edit(Expense)
+    /// Như .edit nhưng mở ra là sửa được ngay: người dùng vừa bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ), không qua bước chỉ xem
+    case editNow(Expense)
 
     var id: String {
         switch self {
         case .new(let c): return "new-\(c ?? "")"
         case .scan(let q): return "scan-\(q.raw)"
         case .raw(let s): return "raw-\(s)"
-        case .edit(let e): return "edit-\(e.id)"
+        case .edit(let e), .editNow(let e): return "edit-\(e.id)"
         }
     }
 }
@@ -27,6 +29,9 @@ struct HomeView: View {
     @State private var showStats = false
     @State private var showHouse = false
     @State private var listening = false
+    /// Lượt mở thẻ nói qua fullScreenCover, mỗi lần mở là một lượt mới (xem listen()). Thẻ chỉ tự đóng được khi còn
+    /// đúng lượt của nó: lệnh đóng còn treo của thẻ cũ (tự đóng 5 giây sau "Đã ghi") không đóng nhầm thẻ vừa mở lại
+    @State private var voiceRound = 0
     /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: khung của nút, thẻ biến hình từ đó ra thay vì trượt lên từ đáy
     @State private var voiceFrom: CGRect?
     @State private var scanned: String?
@@ -103,16 +108,18 @@ struct HomeView: View {
                 VoiceEntryView(from: voiceFrom, face: AnyView(BigButton.face(title: L("Quét QR"), icon: "qrcode", primary: true)), onClose: { self.voiceFrom = nil }, onScan: {
                     Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
                 }, onEdit: { e in
-                    Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
+                    Task { try? await Task.sleep(for: .milliseconds(450)); entry = .editNow(e) }
                 })
                 .environmentObject(store)
             }
         }
         .fullScreenCover(isPresented: $listening, onDismiss: {}) {
-            VoiceEntryView(onScan: {
+            // Thẻ đóng qua onClose kèm số lượt (xem voiceRound), không dùng dismiss của chính nó
+            let round = voiceRound
+            VoiceEntryView(onClose: { if round == voiceRound { listening = false } }, onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
             }, onEdit: { e in
-                Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
+                Task { try? await Task.sleep(for: .milliseconds(450)); entry = .editNow(e) }
             })
             .environmentObject(store)
         }
@@ -134,14 +141,24 @@ struct HomeView: View {
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
     private func run(_ k: QuickKind) async {
         let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || listening || listing != nil
-        if (k == .scan && scanning) || (k == .voice && listening) { return }
+            || addingCat || editingCat != nil
+        // Thẻ nói còn mở thì không bỏ qua lệnh nói: thẻ có thể đã ngừng nghe từ lâu (đã ghi, chưa nghe rõ, thiếu quyền micro),
+        // ở đây không biết được, nên đóng rồi mở lại để nghe ngay
+        if k == .scan && scanning { return }
         entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false; listing = nil; voiceFrom = nil
+        addingCat = false; editingCat = nil; menu = nil
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true
         case .add: entry = .new(cat: nil)
-        case .voice: listening = true
+        case .voice: listen()
         }
+    }
+
+    /// Mở thẻ nói qua fullScreenCover; mỗi lần mở là một lượt mới (xem voiceRound).
+    private func listen() {
+        voiceRound += 1
+        listening = true
     }
 
     // MARK: Các phần
@@ -244,7 +261,9 @@ struct HomeView: View {
 
     private func tiles(_ now: Date) -> some View {
         var perCat: [String: Int] = [:]
-        for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a }
+        // Gom theo danh mục đang có: khoản của danh mục tự tạo đã xoá (hoặc chưa đồng bộ về máy này) tính vào Khác,
+        // đúng như hàng của nó đang hiện, để tổng các ô vẫn bằng tổng tháng
+        for e in store.monthItems(now) { perCat[Category.get(e.c).k, default: 0] += e.a }
         // Mỗi danh mục dài cả hàng hoặc nửa hàng (đổi trong bảng nhấn giữ). Ô nửa hàng đứng lẻ ngay trước một ô dài
         // thì giãn ra cho kín hàng. Ô dấu + luôn ở cuối, nửa hàng.
         var rows: [[Category?]] = [], half: [Category?] = []   // nil = ô dấu +
@@ -323,7 +342,7 @@ struct HomeView: View {
 
     /// Bảng nhấn giữ của một danh mục
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
-        let month = store.monthItems(now).filter { $0.c == c.k }
+        let month = store.monthItems(now).filter { Category.get($0.c).k == c.k }
         var items = [
             AppMenuItem(icon: "paintpalette.fill", title: L("Đổi biểu tượng, màu, tên")) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
@@ -356,7 +375,7 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
-                    TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .edit(e) } }) {
+                    TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
                     .expenseSwipe(delete: { store.remove(id: e.id) })
@@ -398,6 +417,9 @@ struct HomeView: View {
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in
+                    // VoiceOver: mở qua fullScreenCover, để thẻ là một màn hình riêng (tiêu điểm chuyển vào thẻ, phần phía sau
+                    // không còn chọn được); lớp phủ biến hình chỉ là hiệu ứng để nhìn
+                    if UIAccessibility.isVoiceOverRunning { listen(); return }
                     voiceFrom = frame
                     // Thẻ hiện ngay trên màn hình chính (xem lớp phủ bên dưới), không qua fullScreenCover
                 }) { scanning = true }
@@ -454,9 +476,16 @@ struct ExpenseRow: View {
     var now = Date()
     /// Khoản định kỳ (app tự ghi hằng tháng): hiện biểu tượng lặp
     var repeats = false
+    /// Danh mục của khoản, lấy sẵn lúc dựng hàng chứ không đọc trong body: Category.custom / edited là biến static, SwiftUI
+    /// không theo dõi, nên phải là một đầu vào thì sửa / xoá danh mục xong hàng mới vẽ lại
+    private let c: Category
+
+    init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false) {
+        self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats
+        c = Category.get(e.c)
+    }
 
     var body: some View {
-        let c = Category.get(e.c)
         HStack(spacing: 14) {
             CategoryIcon(c: c, size: 30)
                 .frame(width: 56, height: 56)
@@ -559,6 +588,8 @@ struct BigButton: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { action() }
                 .accessibilityAction(named: Text(L("Nói để ghi"))) { swipeUp(frame) }
+                // Đang ẩn (đã thành thẻ nói): mặt nút không vẽ nhưng phần tử trợ năng bọc ngoài vẫn còn, phải ẩn theo
+                .accessibilityHidden(ghost)
         } else {
             Button(action: action) { label }.buttonStyle(Pressable())
         }
@@ -678,8 +709,11 @@ struct ToastView: View {
     var body: some View {
         if let t = store.toast {
             HStack(spacing: 14) {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 18))
-                Text(t.message).font(.system(size: 17, weight: .medium)).lineLimit(1)
+                // Báo lỗi (vd lưu khoản chung thất bại) thì không vẽ dấu tích thành công
+                Image(systemName: t.error ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").font(.system(size: 18))
+                // Câu dài (vd "Sẽ tự ghi ngày 28 hằng tháng, lần tới 28/11", câu báo lỗi) xuống dòng thứ hai thay vì bị cắt "…"
+                Text(t.message).font(.system(size: 17, weight: .medium))
+                    .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     Button { undo(); store.toast = nil } label: {
@@ -698,6 +732,7 @@ struct ToastView: View {
             .opacity(shown)
             .background(Palette.cta.opacity(shown), in: Capsule())
             .shadow(color: .black.opacity(0.18 * shown), radius: 16, y: 6)
+            .padding(.horizontal, 16)   // thanh dài hết cỡ vẫn cách hai mép màn hình, bằng lề của nội dung
             .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
             .transition(.offset(y: 14).combined(with: .opacity))
             .task(id: t.id) {

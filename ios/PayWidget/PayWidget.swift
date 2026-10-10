@@ -30,6 +30,8 @@ struct SpendProvider: AppIntentTimelineProvider {
     }
 
     func snapshot(for look: WidgetLook, in context: Context) async -> SpendEntry {
+        // Tiến trình widget sống qua nhiều lần vẽ lại: đọc lại ngôn ngữ vừa đổi trong app trước khi dựng hình
+        Lang.reload()
         var e = context.isPreview ? placeholder(in: context) : SpendEntry(date: Date(), s: Summary.load().at(Date()))
         e.tone = look.tone
         return e
@@ -37,6 +39,7 @@ struct SpendProvider: AppIntentTimelineProvider {
 
     /// App ghi số liệu mới là widget vẽ lại; thêm một mốc lúc nửa đêm để "hôm nay" tự về 0.
     func timeline(for look: WidgetLook, in context: Context) async -> Timeline<SpendEntry> {
+        Lang.reload()
         let now = Date()
         let s = Summary.load()
         let midnight = Calendar.current.startOfDay(for: now.addingTimeInterval(86_400))
@@ -73,6 +76,7 @@ struct MyQRProvider: AppIntentTimelineProvider {
                   s: Summary(today: 125_000, month: 3_450_000, count: 3, day: Date(), budget: 8_000_000))
     }
     func snapshot(for look: WidgetLook, in context: Context) async -> MyQREntry {
+        Lang.reload()
         let q = MyQR.load()
         var e = context.isPreview && !q.ready ? placeholder(in: context) : MyQREntry(date: Date(), qr: q, s: Summary.load().at(Date()))
         e.tone = look.tone
@@ -80,6 +84,7 @@ struct MyQRProvider: AppIntentTimelineProvider {
     }
     /// Như widget Chi tiêu hôm nay: app ghi số mới là vẽ lại, thêm một mốc lúc nửa đêm để "hôm nay" tự về 0
     func timeline(for look: WidgetLook, in context: Context) async -> Timeline<MyQREntry> {
+        Lang.reload()
         let now = Date(), q = MyQR.load(), s = Summary.load()
         let midnight = Calendar.current.startOfDay(for: now.addingTimeInterval(86_400))
         return Timeline(entries: [MyQREntry(date: now, qr: q, tone: look.tone, s: s.at(now)),

@@ -60,6 +60,11 @@ struct AppMenu: View {
             .padding(.horizontal, 24)
             .transition(.scale(scale: 0.9).combined(with: .opacity))
         }
+        // VoiceOver: bảng chỉ là một lớp phủ trong cùng màn hình nên phải tự báo là modal (không thì vẫn vuốt tới được
+        // các ô phía sau), và nhận cử chỉ thoát (vuốt hình chữ Z) để đóng
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape, close)
     }
 
     private func row(_ item: AppMenuItem) -> some View {
@@ -100,21 +105,26 @@ struct TapHold<Content: View>: View {
     var tap: (() -> Void)? = nil
     let hold: () -> Void
     @ViewBuilder let content: Content
-    /// Lúc vừa nhấn giữ: lần nhả tay ngay sau đó không tính là chạm
-    @State private var heldAt = Date.distantPast
+    /// Lần nhấn này đã thành nhấn giữ: lúc nhả tay không tính là chạm nữa, dù giữ bao lâu
+    /// (trước đây chỉ bỏ qua lần nhả trong 0,8 giây, giữ lâu hơn rồi nhả là chạy cả hai việc)
+    @State private var held = false
 
     var body: some View {
         // Dùng Button (không phải onTapGesture) để vuốt xoá trong danh sách vẫn chạy
         Button {
-            guard Date().timeIntervalSince(heldAt) > 0.8 else { return }
+            if held { held = false; return }
             tap?()
         } label: { content.contentShape(Rectangle()) }
         .buttonStyle(Pressable())
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.35).onEnded { _ in
-            heldAt = Date()
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            hold()
-        })
+        .simultaneousGesture(LongPressGesture(minimumDuration: 0.35)
+            // Ngón tay vừa đặt xuống: lần nhấn mới. Xoá cờ cũ, phòng lần trước giữ rồi kéo ra ngoài mới nhả
+            // (Button không chạy nên cờ còn treo) làm mất lần chạm này
+            .onChanged { _ in held = false }
+            .onEnded { _ in
+                held = true
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                hold()
+            })
         .accessibilityAction(named: Text(L("Tuỳ chọn")), hold)
     }
 }

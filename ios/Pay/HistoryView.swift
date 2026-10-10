@@ -21,7 +21,8 @@ struct HistoryView: View {
                 ForEach(groups, id: \.0) { day, list in
                     Section {
                         ForEach(list) { e in
-                            TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .edit(e) } }) {
+                            // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
+                            TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                 ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                             }
                             .expenseSwipe(delete: { store.remove(id: e.id) })
@@ -60,7 +61,13 @@ struct HistoryView: View {
 
     private func grouped() -> [(Date, [Expense])] {
         let cal = Calendar.current
-        let dict = Dictionary(grouping: store.items.filter { category == nil || $0.c == category }) { cal.startOfDay(for: $0.date) }
+        // Lọc theo danh mục đang có (như Category.get), không theo mã thô: khoản của danh mục đã xoá hoặc chưa đồng bộ
+        // về máy này được vẽ là "Khác" ở mọi nơi nên cũng phải nằm trong danh sách "Khác".
+        // Tính sẵn tập mã một lần, khỏi dựng lại Category.all cho từng khoản của cả lịch sử
+        let all = Category.all, known = Set(all.map(\.k)), other = all.last!.k
+        let canon = { (k: String) in known.contains(k) ? k : other }
+        let want = category.map(canon)
+        let dict = Dictionary(grouping: store.items.filter { want == nil || canon($0.c) == want }) { cal.startOfDay(for: $0.date) }
         return dict.keys.sorted(by: >).map { ($0, dict[$0]!.sorted { $0.t > $1.t }) }
     }
 

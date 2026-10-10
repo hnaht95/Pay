@@ -36,14 +36,14 @@ extension English {
         "Cao nhất": "Highest",
         "Theo danh mục": "By category",
         "Khoản chi gần đây": "Recent expenses",
-        "%ld khoản": "%ld entries",
+        "%ld khoản": "%ld items",   // số ít dùng "1 khoản" (EN+Home: "1 item")
 
         // Thông báo (Model)
         "Đã lưu %@đ": "Saved %@đ",
         "Đã xoá": "Deleted",
         "Đã xoá tất cả khoản chi": "All expenses deleted",
         "File sao lưu không hợp lệ": "Invalid backup file",
-        "Đã khôi phục %ld khoản": "Restored %ld entries",
+        "Đã khôi phục %ld khoản": "Entries restored: %ld",   // không theo số ít / số nhiều, để 1 khoản không thành "1 entries"
         "Đã xoá danh mục %@": "Deleted category %@",
         "Sẽ tự ghi ngày %1$ld hằng tháng, lần tới %2$ld/%3$ld": "Repeats monthly on day %1$ld, next on %3$ld/%2$ld",
         "Đã bỏ lặp %@": "Stopped repeating %@",

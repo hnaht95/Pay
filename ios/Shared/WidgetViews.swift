@@ -53,6 +53,15 @@ enum WidgetTone: String, AppEnum {
     var ink: Color { dark ? .white : Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255) }
     /// Màu chữ đặt trên nút chính
     var onInk: Color { dark ? Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255) : .white }
+
+    /// Màu để lấy mực theo chỗ widget đang được vẽ. iOS gỡ nền widget (StandBy: còn nền đen) hoặc tô lại mọi màu
+    /// (màn hình chính kiểu Tinted / Clear, StandBy ban đêm, `mode` khác fullColor) thì mực đen của nền sáng sẽ chìm:
+    /// lấy mực trắng của nền tối. Nền thì vẫn đặt theo màu đã chọn, iOS tự bỏ khi cần.
+    func inked(_ mode: WidgetRenderingMode, background: Bool) -> WidgetTone { background && mode == .fullColor ? self : .black }
+    /// Nền và chữ của nút chính. `flat` (iOS tô lại mọi màu thành một màu, chỉ giữ độ trong): nền mực đặc với chữ onInk
+    /// sẽ dính thành một khối, nên nền chuyển sang mực trong, chữ dùng mực
+    func plate(_ flat: Bool) -> Color { flat ? ink.opacity(0.3) : ink }
+    func onPlate(_ flat: Bool) -> Color { flat ? ink : onInk }
 }
 
 /// Hai chi tiết của icon app: chấm tròn ở góc trái, sóng "chạm để trả" ở góc phải
@@ -74,10 +83,14 @@ struct SpendView: View {
     var size: WidgetFamily? = nil
     @Environment(\.widgetFamily) private var envFamily
     private var family: WidgetFamily { size ?? envFamily }
+    @Environment(\.widgetRenderingMode) private var mode
+    @Environment(\.showsWidgetContainerBackground) private var showsBg
     /// Màu theo lựa chọn của người dùng cho widget này (mặc định thẻ xanh lá như icon app)
     private var card: Color { e.tone.bg }
-    private var ink: Color { e.tone.ink }
-    private var soft: Color { e.tone.ink.opacity(0.62) }
+    /// Mực theo chỗ đang vẽ (xem `WidgetTone.inked`); app dựng phim thì tự vẽ nền nên giữ đúng màu đã chọn
+    private var tone: WidgetTone { size == nil ? e.tone.inked(mode, background: showsBg) : e.tone }
+    private var ink: Color { tone.ink }
+    private var soft: Color { tone.ink.opacity(0.62) }
 
     var body: some View {
         content
@@ -96,7 +109,7 @@ struct SpendView: View {
                     totals
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                QuickButtons(tone: e.tone).frame(width: 118)
+                QuickButtons(tone: tone).frame(width: 118)
             }
         case .accessoryCircular:
             // Có ngân sách: vòng tròn đầy dần theo phần đã tiêu trong tháng, giữa là biểu tượng quét
@@ -177,15 +190,19 @@ struct InkBar: View {
 /// Ba nút vào nhanh của widget cỡ vừa: Quét QR (nút chính), dưới là Nói để ghi và Nhập
 struct QuickButtons: View {
     let tone: WidgetTone
+    @Environment(\.widgetRenderingMode) private var mode
+    /// iOS tô lại mọi màu thành một màu, chỉ giữ độ trong (màn hình chính kiểu Tinted / Clear, StandBy ban đêm)
+    private var flat: Bool { mode != .fullColor }
 
     var body: some View {
         VStack(spacing: 8) {
             Link(destination: QuickKind.scan.url) {
                 Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
                     .font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
-                    .foregroundStyle(tone.onInk)
+                    .foregroundStyle(tone.onPlate(flat))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(tone.ink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    // Nền nút chính nhận màu nhấn của kiểu Tinted; chữ ở nhóm thường nên vẫn tách khỏi nền
+                    .background { RoundedRectangle(cornerRadius: 16, style: .continuous).fill(tone.plate(flat)).widgetAccentable() }
             }
             HStack(spacing: 8) {
                 icon("mic.fill", .voice, L("Nói để ghi"))
@@ -212,10 +229,16 @@ struct VoiceView: View {
     var size: WidgetFamily? = nil
     @Environment(\.widgetFamily) private var envFamily
     private var family: WidgetFamily { size ?? envFamily }
+    @Environment(\.widgetRenderingMode) private var mode
+    @Environment(\.showsWidgetContainerBackground) private var showsBg
     /// Màu theo lựa chọn của người dùng cho widget này (mặc định thẻ xanh lá như icon app)
     private var card: Color { e.tone.bg }
-    private var ink: Color { e.tone.ink }
-    private var soft: Color { e.tone.ink.opacity(0.62) }
+    /// Mực theo chỗ đang vẽ (xem `WidgetTone.inked`); app dựng phim thì tự vẽ nền nên giữ đúng màu đã chọn
+    private var tone: WidgetTone { size == nil ? e.tone.inked(mode, background: showsBg) : e.tone }
+    private var ink: Color { tone.ink }
+    private var soft: Color { tone.ink.opacity(0.62) }
+    /// iOS tô lại mọi màu thành một màu, chỉ giữ độ trong (màn hình chính kiểu Tinted / Clear, StandBy ban đêm)
+    private var flat: Bool { mode != .fullColor }
 
     var body: some View {
         content
@@ -237,9 +260,9 @@ struct VoiceView: View {
                 HStack(alignment: .top) {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(e.tone.onInk)
+                        .foregroundStyle(tone.onPlate(flat))
                         .frame(width: 58, height: 58)
-                        .background(ink, in: Circle())
+                        .background { Circle().fill(tone.plate(flat)).widgetAccentable() }
                     Spacer()
                     Image(systemName: "wave.3.right").font(.system(size: 15, weight: .bold)).foregroundStyle(ink)
                         .accessibilityHidden(true)
@@ -269,9 +292,15 @@ struct MyQRView: View {
     var size: WidgetFamily? = nil
     @Environment(\.widgetFamily) private var envFamily
     private var family: WidgetFamily { size ?? envFamily }
+    @Environment(\.widgetRenderingMode) private var mode
+    @Environment(\.showsWidgetContainerBackground) private var showsBg
     /// Cùng bộ màu với các widget khác của Pay (mặc định thẻ xanh lá, đổi được trong Sửa tiện ích)
-    private var ink: Color { e.tone.ink }
-    private var soft: Color { e.tone.ink.opacity(0.62) }
+    /// Mực theo chỗ đang vẽ (xem `WidgetTone.inked`); app dựng phim thì tự vẽ nền nên giữ đúng màu đã chọn
+    private var tone: WidgetTone { size == nil ? e.tone.inked(mode, background: showsBg) : e.tone }
+    private var ink: Color { tone.ink }
+    private var soft: Color { tone.ink.opacity(0.62) }
+    /// iOS tô lại mọi màu thành một màu, chỉ giữ độ trong (màn hình chính kiểu Tinted / Clear, StandBy ban đêm)
+    private var flat: Bool { mode != .fullColor }
 
     var body: some View {
         content.containerBackground(for: .widget) { e.tone.bg }
@@ -281,14 +310,17 @@ struct MyQRView: View {
     private var tail: String { e.qr.acct.count > 4 ? "••" + e.qr.acct.suffix(4) : e.qr.acct }
 
     /// Mã QR không nền, vẽ thẳng lên nền widget: ô màu đen trên nền sáng, màu trắng trên nền tối
-    private var code: some View { MyQRCode(qr: e.qr, ink: e.tone.dark ? .white : .black) }
+    private var code: some View { MyQRCode(qr: e.qr, ink: tone.dark ? .white : .black) }
 
     private func quick(_ icon: String, _ k: QuickKind, _ label: String, primary: Bool = false) -> some View {
         Link(destination: k.url) {
             Image(systemName: icon).font(.system(size: 17, weight: .semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .foregroundStyle(primary ? e.tone.onInk : ink)
-                .background(primary ? ink : ink.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .foregroundStyle(primary ? tone.onPlate(flat) : ink)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous).fill(primary ? tone.plate(flat) : ink.opacity(0.14))
+                        .widgetAccentable(primary)
+                }
         }
         .accessibilityLabel(label)
     }

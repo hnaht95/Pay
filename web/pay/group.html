@@ -25,6 +25,9 @@ body { color: var(--ink); font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF
   -webkit-font-smoothing: antialiased; min-height: 100vh; }
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
 input { font: inherit; color: var(--ink); }
+/* Ô chọn ngân hàng: mặc định của trình duyệt là chữ đen, ở chế độ tối không đọc được. Danh sách xổ xuống đặt đủ cả chữ lẫn nền, không thì thành chữ sáng trên nền trắng */
+select { color: var(--ink); }
+option { color: var(--ink); background: var(--surface); }
 main { max-width: 480px; margin: 0 auto; padding: 0 16px 140px; }
 
 /* Đầu trang */
@@ -66,7 +69,7 @@ header h1 { flex: 1; text-align: center; font-size: 19px; font-weight: 700; whit
 /* Nút */
 .pillbtn { height: 38px; padding: 0 14px; border-radius: 99px; font-size: 15px; font-weight: 600; background: var(--cta); color: var(--cta-ink); white-space: nowrap; flex: none; transition: transform .15s; }
 .pillbtn.soft { background: var(--pill); color: var(--ink); }
-.pillbtn:active { transform: scale(.96); }
+.pillbtn:active { transform: scale(.96); } .pillbtn:disabled { opacity: .35; }
 .wide { display: flex; gap: 8px; margin-top: 12px; } .wide > * { flex: 1; height: 46px; font-size: 16px; }
 .cta { width: 100%; height: 64px; border-radius: 99px; background: var(--cta); color: var(--cta-ink); font-size: 19px; font-weight: 600; transition: transform .15s; }
 .cta:active { transform: scale(.98); } .cta:disabled { opacity: .35; }
@@ -235,18 +238,28 @@ function transfers(net) {
 const $ = id => document.getElementById(id);
 const fmt = n => Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const digits = v => String(v ?? '').replace(/\D/g, '');
 const TONES = ['#FFE1B3','#D6F5C9','#C8F0F0','#D7E0FF','#F3D6FF','#FFD6D6','#FFF2B8','#E4E4E8'];
 const CATS = { an: 'Ăn uống', cafe: 'Cafe', di: 'Đi lại', mua: 'Mua sắm', hd: 'Hoá đơn', khac: 'Khác' };
 const catIcon = k => `<img src="cat/${CATS[k] ? k : 'khac'}.svg" alt="">`;
 const catColor = k => `var(--${CATS[k] ? k : 'khac'})`;
+// Cùng danh sách với app (BankData.names trong ios/Pay/BankData.swift): ngân hàng đặt trên iPhone thì web cũng phải chọn và gọi tên được
 const BANKS = { '970436': 'Vietcombank', '970418': 'BIDV', '970415': 'VietinBank', '970405': 'Agribank', '970422': 'MBBank', '970407': 'Techcombank',
   '970416': 'ACB', '970432': 'VPBank', '970423': 'TPBank', '970403': 'Sacombank', '970437': 'HDBank', '970441': 'VIB', '970448': 'OCB',
-  '970443': 'SHB', '970431': 'Eximbank', '970426': 'MSB', '970454': 'VietCapitalBank', '963388': 'Timo', '546034': 'CAKE', '970449': 'LPBank' };
-function avatar(m, size) {
+  '970443': 'SHB', '970431': 'Eximbank', '970426': 'MSB', '970454': 'VietCapitalBank', '963388': 'Timo', '546034': 'CAKE', '970449': 'LPBank',
+  '970429': 'SCB', '546035': 'Ubank', '971005': 'ViettelMoney', '971011': 'VNPTMoney', '970400': 'SaigonBank', '970409': 'BacABank', '971025': 'MoMo',
+  '971133': 'PVcomBank Pay', '970412': 'PVcomBank', '970414': 'MBV', '970419': 'NCB', '970424': 'ShinhanBank', '970425': 'ABBANK', '970427': 'VietABank',
+  '970428': 'NamABank', '970430': 'PGBank', '970433': 'VietBank', '970438': 'BaoVietBank', '970440': 'SeABank', '970446': 'COOPBANK', '970452': 'KienLongBank',
+  '668888': 'KBank', '977777': 'MAFC', '970442': 'HongLeong', '970467': 'KEBHANAHN', '970466': 'KEBHanaHCM', '533948': 'Citibank', '970444': 'CBBank',
+  '422589': 'CIMB', '796500': 'DBSBank', '970406': 'Vikki', '999888': 'VBSP', '970408': 'GPBank', '970463': 'KookminHCM', '970462': 'KookminHN',
+  '970457': 'Woori', '970421': 'VRB', '458761': 'HSBC', '970455': 'IBKHN', '970456': 'IBKHCM', '970434': 'IndovinaBank', '970458': 'UnitedOverseas',
+  '801011': 'Nonghyup', '970410': 'StandardChartered', '970439': 'PublicBank' };
+// extra: CSS thêm cho riêng chỗ gọi (ví dụ canh giữa), nối vào cùng một thuộc tính style
+function avatar(m, size, extra = '') {
   const name = m?.name || '?', id = m?.id || '?';
   const init = (name.trim().split(/\s+/).pop() || '?')[0].toUpperCase();
-  const st = (size ? `width:${size}px;height:${size}px;font-size:${size * .42}px;` : '') +
-    (m?.photo ? `background-image:url('${m.photo}')` : `background-color:${TONES[stableHash(id) % TONES.length]}`);
+  const st = extra + (size ? `width:${size}px;height:${size}px;font-size:${size * .42}px;` : '') +
+    (m?.photo ? `background-image:url('${esc(m.photo)}')` : `background-color:${TONES[stableHash(id) % TONES.length]}`);
   return `<div class="av" style="${st}">${m?.photo ? '' : esc(init)}</div>`;
 }
 function day(t) {
@@ -277,7 +290,7 @@ const confirmMenu = (o) => new Promise(res => openMenu({ ...o, items: [{ ...o.ye
 
 // ─── Trạng thái ────────────────────────────────────────────────────────
 let container, me = null;      // me: mã người dùng iCloud của Apple ID đang đăng nhập
-let groups = [];               // { zoneID, scope, name, members, spends, settles, records, meId }
+let groups = [];               // { zoneID, scope, name, members, spends, settles, records, meId, seq }
 let current = null;            // zoneName đang mở
 const db = scope => scope === 'shared' ? container.sharedCloudDatabase : container.privateCloudDatabase;
 const cur = () => groups.find(g => g.zoneID.zoneName === current);
@@ -292,7 +305,8 @@ function parseGroup(g, records) {
     const f = k => r.fields?.[k]?.value;
     switch (r.recordType) {
       case 'Info': g.name = f('name') || g.name; break;
-      case 'Member': g.members.push({ id: r.recordName, name: f('name') || '', bin: f('bin'), acct: f('acct'), user: f('user'), photo: f('photo')?.downloadURL }); break;
+      // bin, acct chỉ giữ chữ số (app và trang này cũng chỉ cho nhập số): người trong nhóm ghi thẳng lên iCloud được chuỗi bất kỳ, mà hai giá trị này đi vào địa chỉ ảnh QR
+      case 'Member': g.members.push({ id: r.recordName, name: f('name') || '', bin: digits(f('bin')), acct: digits(f('acct')), user: f('user'), photo: f('photo')?.downloadURL }); break;
       case 'Spend': g.spends.push({ id: r.recordName, amount: f('amount') || 0, note: f('note') || '', payer: f('payer') || '', shares: f('shares') || [], date: f('date') || r.created?.timestamp, cat: f('cat') || 'khac' }); break;
       case 'Settle': g.settles.push({ id: r.recordName, from: f('from'), to: f('to'), amount: f('amount') || 0, date: f('date') || 0, status: f('status') || 'ok' }); break;
     }
@@ -300,10 +314,13 @@ function parseGroup(g, records) {
   g.members.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
   g.spends.sort((a, b) => b.date - a.date);
   g.settles.sort((a, b) => b.date - a.date);
-  g.meId = localStorage.getItem('house.me.' + g.zoneID.zoneName);
+  // "Tôi là ai" nhớ theo từng Apple ID: máy dùng chung, người sau đăng nhập không bị nhận nhầm là người trước
+  g.meId = me ? localStorage.getItem('house.me.' + me + '.' + g.zoneID.zoneName) : null;
   if (!g.members.some(m => m.id === g.meId)) g.meId = (g.members.find(m => m.user === me) || {}).id || null;
 }
 async function fetchGroup(g) {
+  // Số thứ tự của lần nạp: lần nạp cũ (bắt đầu trước khi lưu) về muộn thì bỏ, không ghi đè dữ liệu của lần nạp mới hơn
+  const seq = g.seq = (g.seq || 0) + 1;
   let records = [], syncToken, more = true;
   while (more) {
     const r = await db(g.scope).fetchRecordZoneChanges({ zoneID: g.zoneID, syncToken });
@@ -311,25 +328,46 @@ async function fetchGroup(g) {
     const z = r.zones[0];
     records = records.concat(z.records); syncToken = z.syncToken; more = z.moreComing;
   }
-  parseGroup(g, records);
+  if (seq === g.seq) parseGroup(g, records);
 }
 async function loadAll() {
   const next = [];
   for (const scope of ['private', 'shared']) {
     const r = await db(scope).fetchAllRecordZones();
     if (r.hasErrors) continue;
-    for (const z of r.zones) if (z.zoneID.zoneName.startsWith(PREFIX)) next.push({ zoneID: z.zoneID, scope, name: '', members: [], spends: [], settles: [] });
+    // Dùng lại đối tượng nhóm đang có (fetchGroup ghi đè tại chỗ): bảng đang mở (mã QR, thêm khoản, sửa thành viên) còn giữ đối tượng đó.
+    // Tạo mới thì lưu xong lại nạp vào đối tượng cũ, màn hình không thấy khoản vừa lưu và người dùng bấm lần nữa thành ghi trùng.
+    for (const z of r.zones) if (z.zoneID.zoneName.startsWith(PREFIX))
+      next.push(groups.find(o => o.scope === scope && o.zoneID.zoneName === z.zoneID.zoneName) || { zoneID: z.zoneID, scope, name: '', members: [], spends: [], settles: [] });
   }
   await Promise.all(next.map(g => fetchGroup(g).catch(() => {})));
   groups = next.sort((a, b) => ((b.spends[0]?.date || 0) - (a.spends[0]?.date || 0)));
   if (current && !cur()) current = null;
   render();
 }
+let saving = false;            // đang ghi lên iCloud: bấm lần nữa thì bỏ qua (mạng chậm, bấm hai lần "Đã nhận" là ghi hai lần trả)
 async function save(g, recs) {
-  const r = await db(g.scope).saveRecords(recs, { zoneID: g.zoneID });
-  if (r.hasErrors) { toast(r.errors[0].reason || 'Không lưu được'); throw r.errors[0]; }
-  await fetchGroup(g); render();
+  if (saving) throw new Error('busy');
+  saving = true;
+  try {
+    // Mất mạng hay phiên hết hạn thì CloudKit JS reject chứ không trả hasErrors: gom về một đường để lúc nào cũng có thông báo
+    const r = await db(g.scope).saveRecords(recs, { zoneID: g.zoneID }).catch(e => ({ hasErrors: true, errors: [e] }));
+    if (r.hasErrors) { toast(r.errors[0]?.reason || 'Không lưu được'); throw r.errors[0]; }
+    // Đã ghi xong: nạp lại lỗi cũng không coi là lưu hỏng (nơi gọi sẽ cho bấm lại thành ghi trùng), lần quay lại trang sẽ tự nạp.
+    // Thử nạp thêm một lần: vẽ lại từ dữ liệu cũ thì nút "Đã nhận" / "Trả ngay" hiện lại, bấm nữa là ghi trùng
+    await fetchGroup(g).catch(() => fetchGroup(g)).catch(() => {}); render();
+  } finally { saving = false; }
 }
+// Nút lưu trong bảng trượt: khoá nút lúc đang ghi, ghi xong mới đóng bảng (đóng trước thì khi mất mạng người dùng tưởng đã lưu).
+// Lỗi thì giữ bảng mở và bật lại nút để bấm lại, save đã hiện thông báo. Trả về true khi đã lưu.
+async function saveInSheet(btn, run) {
+  btn.disabled = true;
+  try { await run(); } catch { btn.disabled = false; return false; }
+  if (btn.isConnected && $('sheet').classList.contains('open')) closeAll();   // bảng đã bị đóng hay thay bằng bảng khác thì thôi
+  return true;
+}
+// Nút ghi ngay trên trang (Đã nhận, Chưa nhận được): khoá nút lúc đang ghi. Ghi xong render() vẽ lại cả trang; lỗi thì bật lại nút, save đã hiện thông báo.
+const saveOnTap = (btn, run) => { btn.disabled = true; return run().catch(() => { btn.disabled = false; }); };
 const field = v => ({ value: v });
 const newName = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random()).toUpperCase();
 
@@ -384,8 +422,8 @@ function renderList() {
 function renderPickMe(g) {
   $('view').innerHTML = `<div style="font-size:26px;font-weight:800;padding-top:10px">Bạn là ai trong nhóm?</div>
     <div class="sub" style="font-size:16px;margin:4px 0 20px">Chỉ để biết phần nào là của bạn trên máy này.</div>
-    <div class="grid2">${g.members.map(m => `<button class="press" style="background:var(--card);border-radius:24px;padding:20px 8px;text-align:center" data-m="${m.id}">
-      ${avatar(m, 56).replace('class="av"', 'class="av" style="margin:0 auto 10px;')}<b class="ell" style="display:block">${esc(m.name)}</b></button>`).join('')}
+    <div class="grid2">${g.members.map(m => `<button class="press" style="background:var(--card);border-radius:24px;padding:20px 8px;text-align:center" data-m="${esc(m.id)}">
+      ${avatar(m, 56, 'margin:0 auto 10px;')}<b class="ell" style="display:block">${esc(m.name)}</b></button>`).join('')}
       <button class="press" style="background:var(--card);border-radius:24px;padding:20px 8px" id="addMe">
         <div class="circle" style="width:56px;height:56px;margin:0 auto;background:var(--surface)">${I.plus}</div></button></div>`;
   document.querySelectorAll('[data-m]').forEach(el => el.onclick = () => claim(g, el.dataset.m));
@@ -395,14 +433,13 @@ function renderPickMe(g) {
     $('newMe').focus();
     $('saveMe').onclick = async () => {
       const n = $('newMe').value.trim(); if (!n) return;
-      const id = newName(); closeAll();
-      await save(g, [{ recordName: id, recordType: 'Member', fields: { name: field(n), user: field(me) } }]);
-      claim(g, id);
+      const id = newName();
+      if (await saveInSheet($('saveMe'), () => save(g, [{ recordName: id, recordType: 'Member', fields: { name: field(n), user: field(me) } }]))) claim(g, id);
     };
   });
 }
 async function claim(g, id) {
-  localStorage.setItem('house.me.' + g.zoneID.zoneName, id);
+  localStorage.setItem('house.me.' + me + '.' + g.zoneID.zoneName, id);
   g.meId = id;
   const r = g.records[id];
   if (r && r.fields?.user?.value !== me) {
@@ -431,13 +468,13 @@ function renderGroup(g) {
       if (incoming) h += `<div class="card" style="background:var(--hero);padding:14px"><div class="row">${avatar(member(g, s.from), 44)}
         <div class="grow"><div class="ell" style="font-weight:600;font-size:16px">${esc(memberName(g, s.from))} báo đã chuyển cho bạn</div>
         <div style="font-size:20px;font-weight:700">${fmt(s.amount)}</div></div></div>
-        <div class="wide"><button class="pillbtn soft" data-no="${s.id}">Chưa nhận được</button><button class="pillbtn" data-yes="${s.id}">Đã nhận</button></div></div>`;
+        <div class="wide"><button class="pillbtn soft" data-no="${esc(s.id)}">Chưa nhận được</button><button class="pillbtn" data-yes="${esc(s.id)}">Đã nhận</button></div></div>`;
       else h += `<div class="card" style="padding:14px"><div class="row">${avatar(member(g, s.to), 44)}<div class="grow">
         <div class="ell" style="font-weight:600;font-size:16px">${s.status === 'no' ? esc(memberName(g, s.to)) + ' chưa nhận được' : 'Chờ ' + esc(memberName(g, s.to)) + ' xác nhận'}</div>
         <div style="font-size:20px;font-weight:700" class="${s.status === 'no' ? 'neg' : ''}">${fmt(s.amount)}</div></div>
         ${s.status === 'wait' ? `<span style="width:20px;color:orange">${I.clock}</span>` : ''}</div>
         ${s.status === 'no' ? `<div class="sub" style="margin-top:10px">Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại.</div>
-          <div class="wide"><button class="pillbtn soft" data-del="${s.id}">Bỏ</button><button class="pillbtn" data-again="${s.id}">Chuyển lại</button></div>` : ''}</div>`;
+          <div class="wide"><button class="pillbtn soft" data-del="${esc(s.id)}">Bỏ</button><button class="pillbtn" data-again="${esc(s.id)}">Chuyển lại</button></div>` : ''}</div>`;
     }
     h += `</div>`;
   }
@@ -459,7 +496,7 @@ function renderGroup(g) {
   h += `<div class="sec"><h2>Thành viên</h2><span class="tag">${g.members.length} người</span></div><div class="hscroll">`;
   for (const m of g.members) {
     const v = net[m.id] || 0;
-    h += `<button class="mem press" data-mem="${m.id}">${avatar(m, 48)}<b class="ell">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b>
+    h += `<button class="mem press" data-mem="${esc(m.id)}">${avatar(m, 48)}<b class="ell">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b>
       <small class="${v < 0 ? 'neg' : v > 0 ? 'pos' : 'sub'}">${v ? (v > 0 ? '+' : '−') + fmt(v) : '0'}</small></button>`;
   }
   h += `<button class="mem press" id="addMember" style="display:grid;place-items:center"><div class="circle" style="width:48px;height:48px;background:var(--surface)">${I.plus}</div></button></div>`;
@@ -472,22 +509,23 @@ function renderGroup(g) {
   $('view').innerHTML = h;
 
   $('addBank')?.addEventListener('click', () => editMember(g, meM));
-  document.querySelectorAll('[data-yes]').forEach(b => b.onclick = () => respond(g, b.dataset.yes, 'ok'));
-  document.querySelectorAll('[data-no]').forEach(b => b.onclick = () => respond(g, b.dataset.no, 'no'));
+  document.querySelectorAll('[data-yes]').forEach(b => b.onclick = () => saveOnTap(b, () => respond(g, b.dataset.yes, 'ok')));
+  document.querySelectorAll('[data-no]').forEach(b => b.onclick = () => saveOnTap(b, () => respond(g, b.dataset.no, 'no')));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => del(g, b.dataset.del));
   document.querySelectorAll('[data-again]').forEach(b => b.onclick = async () => {
-    const s = g.settles.find(x => x.id === b.dataset.again); await del(g, s.id); payFlow(g, { from: s.from, to: s.to, amount: s.amount });
+    const s = g.settles.find(x => x.id === b.dataset.again);
+    if (s && await del(g, s.id)) payFlow(g, { from: s.from, to: s.to, amount: s.amount });   // chưa xoá được lần báo cũ thì không mở lần trả mới
   });
   document.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => payFlow(g, tr[+b.dataset.pay]));
-  document.querySelectorAll('[data-recv]').forEach(b => b.onclick = () => settle(g, tr[+b.dataset.recv], 'ok'));
+  document.querySelectorAll('[data-recv]').forEach(b => b.onclick = () => saveOnTap(b, () => settle(g, tr[+b.dataset.recv], 'ok')));
   document.querySelectorAll('[data-mem]').forEach(b => b.onclick = () => { const m = member(g, b.dataset.mem); if (m) editMember(g, m); });
   $('addMember').onclick = () => openSheet(`<div style="font-size:21px;font-weight:700">Thêm người vào nhóm</div>
       <div class="sub" style="font-size:15px;margin-top:4px">Thêm được cả người không dùng Pay, bạn ghi giúp phần của họ.</div>
       <div class="lbl">Tên</div><input class="note" style="margin:0" id="memName" placeholder="Ví dụ: Lan">
       <button class="cta" style="margin-top:18px" id="saveMem">Thêm</button>`, () => {
     $('memName').focus();
-    $('saveMem').onclick = async () => { const n = $('memName').value.trim(); if (!n) return; closeAll();
-      await save(g, [{ recordName: newName(), recordType: 'Member', fields: { name: field(n) } }]); toast('Đã thêm ' + n); };
+    $('saveMem').onclick = async () => { const n = $('memName').value.trim(); if (!n) return;
+      if (await saveInSheet($('saveMem'), () => save(g, [{ recordName: newName(), recordType: 'Member', fields: { name: field(n) } }]))) toast('Đã thêm ' + n); };
   });
   document.querySelectorAll('[data-sp]').forEach(b => b.onclick = () => {
     const e = g.spends.find(x => x.id === b.dataset.sp);
@@ -505,7 +543,7 @@ function renderGroup(g) {
 
 function spendRow(g, e) {
   const part = e.shares.includes(g.meId) ? splitExpense(e.amount, e.shares, e.id).get(g.meId) : 0;
-  return `<button class="card row press" data-sp="${e.id}" style="width:100%;text-align:left">
+  return `<button class="card row press" data-sp="${esc(e.id)}" style="width:100%;text-align:left">
     <div class="tile" style="background:${catColor(e.cat)}">${catIcon(e.cat)}</div>
     <div class="grow"><div class="ell" style="font-weight:600">${esc(e.note || CATS[e.cat] || 'Khác')}</div>
     <div class="sub ell">${esc(e.payer === g.meId ? 'Bạn' : memberName(g, e.payer))} ứng · chia ${new Set(e.shares).size} người · ${day(e.date)}</div></div>
@@ -513,7 +551,7 @@ function spendRow(g, e) {
 }
 function settleRow(g, s) {
   const [ic, note, color] = s.status === 'wait' ? [I.clock, 'Chờ xác nhận', '#FF9500'] : s.status === 'no' ? [I.x, 'Chưa nhận được', 'var(--danger)'] : [I.check, 'Đã xác nhận', 'var(--good-ink)'];
-  return `<button class="card row press" data-st="${s.id}" style="width:100%;text-align:left">
+  return `<button class="card row press" data-st="${esc(s.id)}" style="width:100%;text-align:left">
     <div class="tile" style="background:color-mix(in srgb, ${color} 15%, transparent);color:${color}"><span style="width:22px;display:grid">${ic}</span></div>
     <div class="grow"><div class="ell" style="font-weight:600">${esc(s.from === g.meId ? 'Bạn' : memberName(g, s.from))} chuyển ${esc(s.to === g.meId ? 'bạn' : memberName(g, s.to))}</div>
     <div class="sub">${note} · ${day(s.date)}</div></div>
@@ -525,22 +563,22 @@ function payFlow(g, t) {
   const to = member(g, t.to);
   if (!to?.acct || !to?.bin) return askPaid(g, t);
   const info = encodeURIComponent('Pay ' + (g.name || 'Nhom chung'));
-  const qr = `https://img.vietqr.io/image/${to.bin}-${to.acct}-compact2.png?amount=${t.amount}&addInfo=${info}&accountName=${encodeURIComponent(to.name)}`;
+  const qr = `https://img.vietqr.io/image/${encodeURIComponent(to.bin)}-${encodeURIComponent(to.acct)}-compact2.png?amount=${t.amount}&addInfo=${info}&accountName=${encodeURIComponent(to.name)}`;
   openSheet(`<div style="font-size:21px;font-weight:700">Chuyển cho ${esc(to.name)}</div>
     <div class="sub" style="font-size:15px;margin-top:4px">Quét mã bằng app ngân hàng, số tiền và nội dung đã điền sẵn.</div>
-    <img class="qr" src="${qr}" alt="Mã VietQR">
+    <img class="qr" src="${esc(qr)}" alt="Mã VietQR">
     <div class="card" style="margin-top:6px"><div class="row" style="justify-content:space-between"><span class="sub">Ngân hàng</span><b>${esc(BANKS[to.bin] || to.bin)}</b></div>
       <div class="row" style="justify-content:space-between;margin-top:8px"><span class="sub">Số tài khoản</span><b id="acctCopy" style="cursor:pointer">${esc(to.acct)} ⧉</b></div>
       <div class="row" style="justify-content:space-between;margin-top:8px"><span class="sub">Số tiền</span><b>${fmt(t.amount)}đ</b></div></div>
     <button class="cta" style="margin-top:16px" id="paidBtn">Tôi đã chuyển</button>`, () => {
     $('acctCopy').onclick = () => { navigator.clipboard?.writeText(to.acct); toast('Đã chép số tài khoản'); };
-    $('paidBtn').onclick = () => { closeAll(); settle(g, t, 'wait'); };
+    $('paidBtn').onclick = () => saveInSheet($('paidBtn'), () => settle(g, t, 'wait'));
   });
 }
 async function askPaid(g, t) {
   const ok = await confirmMenu({ icon: avatar(member(g, t.to), 56), title: `Bạn trả ${memberName(g, t.to)} · ${fmt(t.amount)}`,
     sub: `${memberName(g, t.to)} sẽ nhận thông báo để xác nhận`, yes: { icon: I.check, title: 'Đã chuyển tiền' } });
-  if (ok) settle(g, t, 'wait');
+  if (ok) settle(g, t, 'wait').catch(() => {});   // lỗi đã có thông báo trong save
 }
 async function settle(g, t, status) {
   await save(g, [{ recordName: newName(), recordType: 'Settle', fields: { from: field(t.from), to: field(t.to), amount: field(t.amount), date: field(Date.now()), status: field(status) } }]);
@@ -552,25 +590,30 @@ async function respond(g, id, status) {
   toast(status === 'ok' ? 'Đã xác nhận' : 'Đã báo chưa nhận được');
 }
 async function del(g, id) {
-  const r = await db(g.scope).deleteRecords([{ recordName: id }], { zoneID: g.zoneID });
-  if (r.hasErrors) return toast('Không xoá được');
-  await fetchGroup(g); render();
+  const r = await db(g.scope).deleteRecords([{ recordName: id }], { zoneID: g.zoneID }).catch(e => ({ hasErrors: true, errors: [e] }));
+  if (r.hasErrors) { toast('Không xoá được'); return false; }
+  await fetchGroup(g).catch(() => {}); render();
+  return true;
 }
 
 // Sửa thành viên: tên, tài khoản nhận tiền
 function editMember(g, m) {
-  openSheet(`<div style="text-align:center">${avatar(m, 88).replace('class="av"', 'class="av" style="margin:6px auto 8px;')}<div style="font-size:21px;font-weight:700">${esc(m.id === g.meId ? 'Bạn' : m.name)}</div></div>
+  // Ngân hàng đang lưu mà trang này không biết tên: vẫn phải có trong ô chọn, không thì ô rơi về "Chưa chọn" và bấm Lưu là xoá mất ngân hàng của người đó
+  const banks = { ...BANKS }; if (m.bin && !banks[m.bin]) banks[m.bin] = 'Ngân hàng ' + m.bin;
+  openSheet(`<div style="text-align:center">${avatar(m, 88, 'margin:6px auto 8px;')}<div style="font-size:21px;font-weight:700">${esc(m.id === g.meId ? 'Bạn' : m.name)}</div></div>
     <div class="lbl">Tên</div><input class="note" style="margin:0" id="mName" value="${esc(m.name)}">
     <div class="lbl">Ngân hàng nhận tiền</div><select class="note" style="margin:0;appearance:none" id="mBank"><option value="">Chưa chọn</option>
-      ${Object.entries(BANKS).sort((a, b) => a[1].localeCompare(b[1])).map(([k, v]) => `<option value="${k}" ${k === m.bin ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      ${Object.entries(banks).sort((a, b) => a[1].localeCompare(b[1])).map(([k, v]) => `<option value="${esc(k)}" ${k === m.bin ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
     <div class="lbl">Số tài khoản</div><input class="note" style="margin:0" id="mAcct" inputmode="numeric" value="${esc(m.acct || '')}" placeholder="Ví dụ: 0123456789">
     <div class="sub" style="margin-top:8px">Ai nợ người này bấm Trả ngay là có mã QR với sẵn số tiền.</div>
     <button class="cta" style="margin-top:18px" id="saveM">Lưu</button>`, () => {
     $('saveM').onclick = async () => {
-      const r = g.records[m.id]; closeAll();
-      await save(g, [{ recordName: m.id, recordType: 'Member', recordChangeTag: r?.recordChangeTag, fields: {
-        name: field($('mName').value.trim() || m.name), bin: field($('mBank').value || null), acct: field($('mAcct').value.replace(/\D/g, '') || null) } }]);
-      toast('Đã lưu');
+      const r = g.records[m.id], bin = $('mBank').value, acct = digits($('mAcct').value);
+      // Chỉ gửi ngân hàng, số tài khoản khi có đổi: sửa tên thì không đụng tới tài khoản nhận tiền
+      const fields = { name: field($('mName').value.trim() || m.name) };
+      if (bin !== (m.bin || '')) fields.bin = field(bin || null);
+      if (acct !== (m.acct || '')) fields.acct = field(acct || null);
+      if (await saveInSheet($('saveM'), () => save(g, [{ recordName: m.id, recordType: 'Member', recordChangeTag: r?.recordChangeTag, fields }]))) toast('Đã lưu');
     };
   });
 }
@@ -592,9 +635,9 @@ function openAdd() {
       <div style="margin-top:12px" class="chips">${Object.keys(CATS).map(k => `<button class="chip ${k === cat ? 'on' : ''}" data-cat="${k}" style="${k === cat ? `background:${catColor(k)}` : ''}">
         <span class="ci" style="background:${catColor(k)}">${catIcon(k)}</span>${CATS[k]}</button>`).join('')}</div>
       <div class="lbl">Ai ứng tiền</div>
-      <div class="chips">${g.members.map(m => `<button class="pchip ${m.id === payer ? 'on' : ''}" data-payer="${m.id}">${avatar(m, 36)}<b style="font-size:16px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b></button>`).join('')}</div>
+      <div class="chips">${g.members.map(m => `<button class="pchip ${m.id === payer ? 'on' : ''}" data-payer="${esc(m.id)}">${avatar(m, 36)}<b style="font-size:16px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b></button>`).join('')}</div>
       <div class="lbl">Chia đều cho <button id="allBtn">${shares.size === g.members.length ? 'Bỏ chọn' : 'Cả nhóm'}</button></div>
-      <div class="grid2">${g.members.map(m => { const on = shares.has(m.id); return `<button class="pchip ${on ? 'on' : ''}" data-share="${m.id}">${avatar(m, 36)}
+      <div class="grid2">${g.members.map(m => { const on = shares.has(m.id); return `<button class="pchip ${on ? 'on' : ''}" data-share="${esc(m.id)}">${avatar(m, 36)}
         <span class="grow"><b class="ell" style="display:block;font-size:16px">${esc(m.id === g.meId ? 'Bạn' : m.name)}</b>${on && amt ? `<small>${fmt(parts.get(m.id))}</small>` : ''}</span><span class="check"></span></button>`; }).join('')}</div>
       <button class="cta" style="margin-top:22px" id="saveSpend" ${amt && shares.size && payer ? '' : 'disabled'}>Lưu</button>`;
   };
@@ -609,9 +652,12 @@ function openAdd() {
     $('allBtn').onclick = () => { shares = shares.size === g.members.length ? new Set() : new Set(g.members.map(m => m.id)); refresh(false); };
     $('saveSpend').onclick = async () => {
       $('saveSpend').disabled = true;
-      await save(g, [{ recordName: newName(), recordType: 'Spend', fields: { amount: field(amt), note: field(note.trim()), payer: field(payer),
-        shares: field([...shares]), date: field(Date.now()), cat: field(cat) } }]);
-      closeAll(); toast('Đã thêm khoản chung');
+      // Không dùng saveInSheet: gõ tiếp lúc đang lưu thì refresh() vẽ lại cả bảng, nút cũ không còn. Lỗi thì bật lại nút đang hiện để bấm lại.
+      try { await save(g, [{ recordName: newName(), recordType: 'Spend', fields: { amount: field(amt), note: field(note.trim()), payer: field(payer),
+        shares: field([...shares]), date: field(Date.now()), cat: field(cat) } }]); }
+      catch { const b = $('saveSpend'); if (b) b.disabled = !(amt && shares.size && payer); return; }
+      if ($('saveSpend') && $('sheet').classList.contains('open')) closeAll();
+      toast('Đã thêm khoản chung');
     };
   };
   // Vẽ lại mà giữ nguyên ô đang gõ (không mất con trỏ)
@@ -650,22 +696,34 @@ function shortGUIDFrom(text) {
   const t = String(text || '').trim();
   return /^[0-9A-Za-z_-]{10,}$/.test(t) ? t : null;
 }
+// Trả về true khi đã vào nhóm và tải lại danh sách. Không vào được thì trả false và không tải lại: lúc khởi động start() sẽ tự tải
+// (trang không đứng ở "Đang tải…"), còn bấm từ ô dán link thì giữ nguyên link vừa dán để thử lại
 async function acceptLink(text) {
   const guid = shortGUIDFrom(text);
-  if (!guid) return toast('Link lời mời không đúng');
+  if (!guid) { toast('Link lời mời không đúng'); return false; }
   const r = await container.acceptShares([guid]).catch(e => ({ hasErrors: true, errors: [e] }));
-  if (r?.hasErrors) return toast('Không vào được nhóm');
-  toast('Đã vào nhóm');
+  const ok = !r?.hasErrors;
+  toast(ok ? 'Đã vào nhóm' : 'Không vào được nhóm');
+  if (!ok) return false;
+  // Đã vào nhóm thì gỡ mã khỏi địa chỉ, tải lại trang không nhận lời mời lần nữa
+  try { history.replaceState(null, '', location.pathname + (ENV === 'development' ? '?env=dev' : '')); } catch {}
   await loadAll();
   const zid = r?.results?.[0]?.rootRecord?.zoneID?.zoneName || r?.results?.[0]?.zoneID?.zoneName;
   current = groups.find(g => g.zoneID.zoneName === zid)?.zoneID.zoneName || groups[0]?.zoneID.zoneName || null;
   render();
+  return true;
 }
 function pendingInvite() {
   // iCloud gắn mã lời mời vào cuối địa chỉ Sharing Fallback; không rõ dạng nên lấy chuỗi mã cuối cùng trong phần ?… và #…
-  const tail = decodeURIComponent(location.search + location.hash).replace(/[?&]env=dev/, '');
-  const m = tail.match(/share\/([0-9A-Za-z_-]{10,})/) || tail.match(/([0-9A-Za-z_-]{10,})(?!.*[0-9A-Za-z_-]{10,})/);
-  return m ? m[1] : null;
+  const dec = s => { try { return decodeURIComponent(s); } catch { return s; } };   // dấu % lẻ trong địa chỉ thì dùng nguyên văn, không để lỗi chặn cả trang
+  const m = dec(location.search + location.hash).match(/share\/([0-9A-Za-z_-]{10,})/);
+  if (m) return m[1];
+  // Chỉ xét giá trị (hoặc tham số trần ?mã), bỏ tham số theo dõi mà Zalo, Facebook… tự gắn: utm_source, fbclid không phải mã lời mời
+  const skip = /^(env|utm_.*|fbclid|gclid|msclkid|ttclid|igshid|zarsrc|mc_.*)$/i;
+  const vals = [...new URLSearchParams(location.search)].filter(([k]) => !skip.test(k)).map(([k, v]) => v || k);
+  vals.push(dec(location.hash.slice(1)));
+  for (const v of vals.reverse()) { const x = v.match(/([0-9A-Za-z_-]{10,})(?!.*[0-9A-Za-z_-]{10,})/); if (x) return x[1]; }
+  return null;
 }
 
 // ─── Khởi động ─────────────────────────────────────────────────────────
@@ -699,14 +757,19 @@ window.addEventListener('cloudkitloaded', async () => {
   CloudKit.configure({ containers: [{ containerIdentifier: CONTAINER, environment: ENV,
     apiTokenAuth: { apiToken: API_TOKEN, persist: true, signInButton: { id: 'apple-sign-in-button', theme: 'black' }, signOutButton: { id: 'apple-sign-out-button', theme: 'black' } } }] });
   container = CloudKit.getDefaultContainer();
-  const invite = pendingInvite();
+  let invite = null; try { invite = pendingInvite(); } catch {}
   const start = async user => {
     me = user.userRecordName;
-    if (invite) await acceptLink(invite); else await loadAll();
+    if (!(invite && await acceptLink(invite))) await loadAll();
     container.whenUserSignsOut().then(() => { me = null; groups = []; current = null; render(); showSignIn(); container.whenUserSignsIn().then(start); });
   };
   const user = await container.setUpAuth().catch(e => { $('view').innerHTML = `<div class="empty neg">Không kết nối được iCloud: ${esc(e.message || e)}</div>`; });
-  if (user) start(user); else if (user === null) { showSignIn(); container.whenUserSignsIn().then(start); }
+  if (user) start(user);
+  else if (user === null) {
+    showSignIn(); container.whenUserSignsIn().then(start);
+    // CloudKit JS chỉ gắn nút đăng nhập thật nếu #apple-sign-in-button đã có lúc setUpAuth chạy; lần gọi trên chạy trước khi showSignIn tạo ô đó nên gọi lại, không thì nút tự vẽ bấm không có gì xảy ra
+    container.setUpAuth().catch(() => {});
+  }
 });
 // Tự cập nhật khi quay lại trang (người khác vừa thêm / xác nhận)
 document.addEventListener('visibilitychange', () => { if (!document.hidden && me) loadAll(); });

@@ -61,13 +61,12 @@ struct StatsView: View {
 
     // MARK: Chọn tháng (dạng tab, tháng đang chọn là viên thuốc đậm)
 
-    /// Tháng cuối của trang đang xem.
-    private var windowEnd: Date { cal.date(byAdding: .month, value: -6 * (page ?? 0), to: Date())! }
-
     /// 6 tháng của một trang, cũ trước mới sau.
     private func months(page p: Int) -> [Date] {
-        let end = cal.date(byAdding: .month, value: -6 * p, to: Date())!
-        return (0..<6).reversed().map { cal.date(from: cal.dateComponents([.year, .month], from: cal.date(byAdding: .month, value: -$0, to: end)!))! }
+        // Lùi từ ngày 1 của tháng này, không lùi từ hôm nay: ngày 29–31 lùi 24 hay 30 tháng có khi rơi sang 1/3
+        // thay vì cuối tháng 2 (lỗi của Foundation), làm cả trang lệch một tháng
+        let start = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
+        return (0..<6).reversed().map { cal.date(byAdding: .month, value: -(6 * p + $0), to: start)! }
     }
 
     private var windowMonths: [Date] { months(page: page ?? 0) }
@@ -146,10 +145,13 @@ struct StatsView: View {
             }
             if let d = delta(total, sum(prev)) {
                 HStack(spacing: 8) {
-                    Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(.white.opacity(0.22), in: Capsule())
+                    // 0% (kể cả do làm tròn) không phải tăng cũng không phải giảm: không vẽ mũi tên
+                    Group {
+                        if d == 0 { Text(verbatim: "0%") } else { Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down") }
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(.white.opacity(0.22), in: Capsule())
                     Text(isRunning ? L("so với cùng kỳ") : L("so với tháng trước"))
                         .font(.system(size: 13)).opacity(0.85)
                 }
@@ -209,13 +211,18 @@ struct StatsView: View {
     }
 
     /// Chi tăng là xấu: mũi tên lên nền đỏ nhạt, xuống nền xanh nhạt (có mũi tên, không chỉ dựa vào màu).
-    private func deltaPill(_ d: Int) -> some View {
-        let up = d > 0
-        return Label("\(abs(d))%", systemImage: up ? "arrow.up" : "arrow.down")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(up ? Color(light: 0xB42318, dark: 0xFF8A80) : Color(light: 0x067647, dark: 0x6CE9A6))
-            .padding(.horizontal, 7).padding(.vertical, 3)
-            .background((up ? Color.red : Color.green).opacity(0.14), in: Capsule())
+    /// 0% (kể cả do làm tròn) không phải tăng cũng không phải giảm: nhãn xám, không mũi tên.
+    @ViewBuilder private func deltaPill(_ d: Int) -> some View {
+        if d == 0 {
+            notePill("0%")
+        } else {
+            let up = d > 0
+            Label("\(abs(d))%", systemImage: up ? "arrow.up" : "arrow.down")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(up ? Color(light: 0xB42318, dark: 0xFF8A80) : Color(light: 0x067647, dark: 0x6CE9A6))
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background((up ? Color.red : Color.green).opacity(0.14), in: Capsule())
+        }
     }
 
     /// Nhãn xám cùng cỡ với nhãn %, cho ô không có gì để so.
@@ -365,7 +372,9 @@ struct StatsView: View {
 
     private func categoryCard(_ items: [Expense]) -> some View {
         let total = max(sum(items), 1)
-        let byCat = Dictionary(grouping: items, by: \.c).mapValues(sum)
+        // Nhóm theo danh mục đang có: khoản của danh mục đã xoá (hoặc chưa đồng bộ về máy này) tính vào "Khác",
+        // như cách nó được vẽ ở mọi nơi, để các dòng cộng lại đúng bằng tổng chi
+        let byCat = Dictionary(grouping: items, by: { Category.get($0.c).k }).mapValues(sum)
         let ranked = Category.all.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }
         return card {
             Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold))
@@ -405,7 +414,8 @@ struct StatsView: View {
             HStack {
                 Text(L("Khoản chi gần đây")).font(.system(size: 17, weight: .semibold))
                 Spacer()
-                Text(L("%ld khoản", items.count)).font(.system(size: 13)).foregroundStyle(.secondary)
+                // "1 khoản" tách riêng để tiếng Anh có dạng số ít (như màn hình chính)
+                Text(items.count == 1 ? L("1 khoản") : L("%ld khoản", items.count)).font(.system(size: 13)).foregroundStyle(.secondary)
             }
             VStack(spacing: 0) {
                 ForEach(rows) { e in

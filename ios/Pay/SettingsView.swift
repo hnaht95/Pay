@@ -290,10 +290,15 @@ struct SettingsView: View {
         } footer: {
             Text(L("Thêm widget \"Mã QR nhận tiền\" ra màn hình chính: người khác quét là chuyển khoản cho bạn, không phải mở app ngân hàng."))
         }
-        .onChange(of: myQR) { _, q in
-            var q = q
-            q.acct = q.acct.filter { !$0.isWhitespace }
+        .onChange(of: myQR) { _, typed in
+            var q = typed
+            // Chỉ giữ chữ và số ASCII (số dán từ app ngân hàng, tin nhắn hay có dấu cách, chấm, gạch ngang), tối đa 32 ký tự:
+            // mã tính độ dài theo ký tự nên chữ có dấu làm lệch, và số dài quá 55 ký tự làm vỡ trường 38 (NAPAS chỉ cho 19)
+            q.acct = String(q.acct.filter { $0.isASCII && ($0.isLetter || $0.isNumber) }.prefix(32))
             q.bank = BankData.names[q.bin] ?? ""
+            // Ghi bản đã lọc ngược lại ô nhập trước khi lưu: mã xem trước ở trên vẽ từ đúng số mà widget sẽ dùng.
+            // Gán xong onChange chạy lại với bản sạch rồi mới lưu.
+            guard q == typed else { myQR = q; return }
             q.save()
             WidgetCenter.shared.reloadAllTimelines()
         }
@@ -431,13 +436,15 @@ struct BudgetSlider: View {
 
     private static func level(at p: Double) -> Int { levels[Int((min(max(p, 0), 1) * last).rounded())] }
 
-    /// 8.000.000 -> "8tr", 8.500.000 -> "8,5tr", 7.250.000 -> "7,25tr", 500.000 -> "500k"
+    /// 8.000.000 -> "8tr", 8.500.000 -> "8,5tr", 7.250.000 -> "7,25tr", 500.000 -> "500k" (tiếng Anh: "8M", "8.5M", "7.25M").
+    /// Số nhập tay giữ đúng tới hàng nghìn (1.004.000 -> "1,004tr", không làm tròn thành "1tr"); lẻ dưới một nghìn thì hiện đủ số.
     static func compact(_ v: Int) -> String {
-        if v < 1_000_000 { return v % 1000 == 0 ? "\(v / 1000)k" : "\(fmt(v))đ" }
-        var s = String(format: "%.2f", Double(v) / 1_000_000)
+        if v % 1000 != 0 { return "\(fmt(v))đ" }
+        if v < 1_000_000 { return "\(v / 1000)k" }
+        var s = String(format: "%.3f", Double(v) / 1_000_000)
         while s.hasSuffix("0") { s.removeLast() }
         if s.hasSuffix(".") { s.removeLast() }
-        return s.replacingOccurrences(of: ".", with: ",") + "tr"
+        return Lang.isEnglish ? s + "M" : s.replacingOccurrences(of: ".", with: ",") + "tr"
     }
 
     private var shown: Int { draft ?? value }
@@ -717,6 +724,7 @@ struct CategoryEditor: View {
                             }
                         }
                         .buttonStyle(Pressable())
+                        .accessibilityAddTraits(fTone < 0 ? .isSelected : [])
                     }
                     swatchRow(CategoryTone.light)
                     swatchRow(CategoryTone.strong)
@@ -837,14 +845,19 @@ struct CategoryEditor: View {
                     .buttonStyle(Pressable())
                     .filmPressed(film?.pressed["tone-\(i)"] ?? 0)
                     .accessibilityLabel(L("Màu %@", String(i + 1)))
+                    .accessibilityAddTraits(fTone == i ? .isSelected : [])
             }
         }
     }
 
     private func swatch(_ c: Color, on: Bool) -> some View {
+        // Vòng đang chọn nằm ngoài ô màu, cách một khe 2pt: nó nổi trên nền hàng nên màu nào, nền sáng hay tối cũng thấy
+        // (vẽ đè trong ô thì chìm trên than, xanh lá đậm ở nền sáng và trên các màu nhạt ở nền tối)
         Circle().fill(c)
+            .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
+            .padding(on ? 4.5 : 0)
             .frame(width: 32, height: 32)
-            .overlay(Circle().strokeBorder(Color.primary.opacity(on ? 0.8 : 0.08), lineWidth: on ? 2.5 : 1))
+            .overlay { if on { Circle().strokeBorder(Color.primary.opacity(0.8), lineWidth: 2.5) } }
     }
 
     private func save() {

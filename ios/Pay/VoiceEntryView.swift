@@ -24,6 +24,8 @@ final class VoiceListener: ObservableObject {
     private var task: SFSpeechRecognitionTask?
     private var silence: Task<Void, Never>?
     private var starting = false
+    /// Thẻ đã bị đóng (xem `cancel`): từ đây không ghi gì nữa, không bật lại micro
+    private var cancelled = false
 
     func start() async {
         // Bấm "Nói lại" liên tiếp: không bật micro hai lần (installTap lần hai làm app văng)
@@ -59,6 +61,7 @@ final class VoiceListener: ObservableObject {
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0 == .authorized) }
         }
         let micOK = await AVAudioApplication.requestRecordPermission()
+        guard !cancelled else { return }   // đóng thẻ khi micro chưa kịp bật: không bật nữa
         guard speechOK, micOK else { phase = .denied; return }
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: Lang.isEnglish ? "en-US" : "vi-VN")), recognizer.isAvailable else {
             phase = .failed(L("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR."))
@@ -109,7 +112,7 @@ final class VoiceListener: ObservableObject {
 
             task = recognizer.recognitionTask(with: req) { [weak self] result, error in
                 Task { @MainActor in
-                    guard let self, self.phase == .listening else { return }
+                    guard let self, !self.cancelled, self.phase == .listening else { return }
                     if let result {
                         self.text = result.bestTranscription.formattedString
                         if result.isFinal { self.finish() } else { self.waitForSilence() }
@@ -137,11 +140,21 @@ final class VoiceListener: ObservableObject {
     }
 
     func finish() {
-        guard phase == .listening else { return }
+        guard !cancelled, phase == .listening else { return }
         meter.value = 0
         stop()
         phase = .idle
         onFinish?(text)
+    }
+
+    /// Người dùng đóng thẻ (X, chạm nền tối, chuyển sang quét QR): dừng micro và bỏ luôn câu đang nghe.
+    /// stop() không đủ: sau task.cancel() iOS vẫn gọi lại kết quả / báo lỗi một lần nữa, lúc đó `phase` còn là .listening
+    /// nên khoản chi vẫn bị ghi âm thầm trong lúc thẻ đang đóng. Không đổi `phase` ở đây, để thẻ đang trượt đi
+    /// giữ nguyên dạng "Đang nghe" chứ không nháy sang dạng khác.
+    func cancel() {
+        cancelled = true
+        onFinish = nil   // closure này giữ view (và qua view giữ lại chính listener): gỡ ra để listener được giải phóng
+        stop()
     }
 
     func stop() {
@@ -267,7 +280,7 @@ struct VoiceEntryView: View {
             await mic.start()
             starting = false
         }
-        .onDisappear { mic.stop() }
+        .onDisappear { mic.cancel() }
     }
 
     // MARK: Thẻ
@@ -471,7 +484,7 @@ struct VoiceEntryView: View {
                     pill(L("Hoàn tác"), primary: false) { undo(e) }
                     pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
                 } else if primaryButton != nil {
-                    pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
+                    pill(L("Quét QR"), primary: false) { mic.cancel(); leave(); onScan() }
                 }
             }
             .transition(Self.swap)
@@ -540,7 +553,7 @@ struct VoiceEntryView: View {
 
     private func close() {
         autoClose?.cancel()
-        mic.stop()
+        mic.cancel()
         leave()
     }
 

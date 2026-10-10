@@ -9,6 +9,8 @@ struct EntryView: View {
     @State private var digits = ""
     @State private var cat: String?
     @State private var catPicked = false
+    /// Danh mục có sẵn trước khi gõ ghi chú (quét QR: đoán theo tên người nhận). Ghi chú không gợi ra danh mục nào thì về lại đây
+    @State private var baseCat: String?
     /// Người dùng tự bấm đổi danh mục: lưu xong thì nhớ danh mục này cho ghi chú.
     /// Mở từ ô danh mục thì không tính (chọn trước khi gõ, chưa phải đổi so với app đoán)
     @State private var chosen = false
@@ -60,8 +62,11 @@ struct EntryView: View {
                 .padding(.top, 12)
                 .onChange(of: note) { _, v in
                     guard !catPicked else { return }
+                    // Đoán lại theo ghi chú đang có, không giữ kết quả của lúc gõ dở (gõ "anh Tuấn mượn" thì "an" từng giữ Ăn uống).
+                    // Ghi chú không gợi ra danh mục nào thì về danh mục ban đầu; riêng "Khác" đã học cho ghi chú này
+                    // (từ khoá đoán ra danh mục khác mà app vẫn trả "Khác") thì phải chọn đúng "Khác"
                     let g = store.guessCategory(v)
-                    if g != "khac" { cat = g }
+                    cat = g != "khac" || Category.guess(v) != "khac" ? g : baseCat
                 }
                 // Chạm vào ghi chú cũng là bắt đầu sửa
                 .onChange(of: noteFocused) { _, on in if on { withAnimation(.snappy) { editing = true } } }
@@ -70,13 +75,17 @@ struct EntryView: View {
             actions
         }
         .padding(.horizontal, 18).padding(.bottom, 8)
+        // Bàn phím chữ (đang gõ ghi chú) phủ lên bàn phím số và các nút, bố cục đứng yên. Để iOS co vùng an toàn thì nội dung
+        // không co nổi tới mức đó: phần đầu trượt lên dưới thanh trạng thái, nút Lưu vẫn chìm dưới bàn phím
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .background(Palette.surface.ignoresSafeArea())
         // Vuốt từ mép trái để quay lại, vuốt xuống để ẩn (màn hình này mở toàn màn hình nên iOS không có sẵn)
         .edgeBack(slides: { true }) { dismiss() }
         .swipeDownToClose { dismiss() }
         .onAppear(perform: setup)
         .sheet(isPresented: $addingCat) {
-            CategoryEditor { k in cat = k; catPicked = true; chosen = true }
+            // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
+            CategoryEditor { k in cat = k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } }
                 .environmentObject(store)
                 .sheetGrabber()
         }
@@ -105,7 +114,7 @@ struct EntryView: View {
         case .new(let c): return c.map { "\(Category.get($0).icon) \(Category.get($0).name)" } ?? L("Lưu khoản chi")
         case .scan(let q): return L("Trả cho %@", q.name.isEmpty ? L("TK %@", q.acct ?? "") : q.name)
         case .raw: return L("Mã QR không phải VietQR")
-        case .edit: return L("Sửa khoản chi")
+        case .edit, .editNow: return L("Sửa khoản chi")
         }
     }
 
@@ -114,7 +123,7 @@ struct EntryView: View {
         case .new: return nil
         case .scan(let q): return [q.bank, q.acct ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         case .raw(let s): return String(s.prefix(80))
-        case .edit(let e):
+        case .edit(let e), .editNow(let e):
             let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
             if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }
             return f.string(from: e.date)
@@ -157,7 +166,9 @@ struct EntryView: View {
                 .padding(.horizontal, 18)
             }
             .padding(.horizontal, -18)
-            .onAppear { if let cat { proxy.scrollTo(cat, anchor: .center) } }
+            // Cuộn chip đang chọn vào giữa sau khi setup() gán xong `cat`. onAppear của hàng chip chạy trước
+            // onAppear ngoài cùng (nơi gọi setup), lúc đó `cat` còn nil nên không cuộn được
+            .onChange(of: ready) { _, _ in if let cat { proxy.scrollTo(cat, anchor: .center) } }
         }
     }
 
@@ -220,7 +231,7 @@ struct EntryView: View {
                         .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                 }
-            case .edit(var e):
+            case .edit(var e), .editNow(var e):
                 if editing {
                     primary(L("Lưu thay đổi")) {
                         e.a = amount; e.n = trimmed; e.c = finalCat
@@ -294,9 +305,11 @@ struct EntryView: View {
             if let a = q.amount, a > 0 { digits = String(a) }
             cat = m?.c ?? store.guessCategory(note)
             catPicked = m?.c != nil
-        case .edit(let e):
+            baseCat = cat
+        case .edit(let e), .editNow(let e):
             digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true
-            editing = false
+            // Chạm vào một khoản thì ban đầu chỉ xem; đã bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ) thì vào sửa luôn
+            if case .edit = mode { editing = false }
         }
     }
 }

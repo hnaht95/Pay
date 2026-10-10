@@ -8,7 +8,7 @@ enum Lang: String, CaseIterable {
     static let key = "appLanguage"
     private static let store = UserDefaults(suiteName: Summary.group) ?? .standard
 
-    /// Đọc một lần rồi giữ; đổi qua `Lang.set` (app dựng lại giao diện theo thông báo `Lang.changed`)
+    /// Đọc một lần rồi giữ; đổi qua `Lang.set` (app dựng lại giao diện theo thông báo `Lang.changed`), widget thì `Lang.reload`
     /// (Bản Debug chạy với "-filmLang en" thì dùng tiếng Anh mà không đổi lựa chọn đã lưu, để quay phim giới thiệu)
     private(set) static var current: Lang = {
         #if DEBUG
@@ -26,6 +26,16 @@ enum Lang: String, CaseIterable {
         current = l
         store.set(l.rawValue, forKey: key)
         NotificationCenter.default.post(name: changed, object: nil)
+    }
+
+    /// Widget chạy ở tiến trình riêng và iOS giữ tiến trình đó qua nhiều lần vẽ lại, nên `current` đọc một lần sẽ cũ
+    /// sau khi đổi ngôn ngữ trong app: widget gọi hàm này trước mỗi lần dựng timeline. App không cần gọi (đã có `set`).
+    static func reload() {
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "filmLang").flatMap(Lang.init(rawValue:)) != nil { return }
+        #endif
+        let saved = Lang(rawValue: store.string(forKey: key) ?? "") ?? .vi
+        if saved != current { current = saved }
     }
 
     /// Tên hiện trong Cài đặt, luôn viết bằng chính ngôn ngữ đó

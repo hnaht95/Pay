@@ -48,6 +48,9 @@ private struct SlideBack: ViewModifier {
     let slides: () -> Bool
     let action: () -> Void
     @State private var handle = SheetHandle.Ref()
+    /// Ngón tay còn kéo không; iOS tự đưa về false cả khi cử chỉ bị huỷ (khoá máy, hộp thoại hệ thống hiện lên…),
+    /// là lúc onEnded không được gọi
+    @GestureState private var dragging = false
 
     func body(content: Content) -> some View {
         content
@@ -56,8 +59,10 @@ private struct SlideBack: ViewModifier {
                 Color.clear.frame(width: 16).frame(maxHeight: .infinity).contentShape(Rectangle())
                     // Toạ độ màn hình: trang trượt theo ngón tay nên toạ độ của chính nó không dùng được
                     .gesture(DragGesture(minimumDistance: 8, coordinateSpace: .global)
-                        .onChanged { v in if slides() { handle.move(max(0, v.translation.width)) } }
+                        .updating($dragging) { _, on, _ in on = true }
+                        .onChanged { v in if slides() { handle.adrift = true; handle.move(max(0, v.translation.width)) } }
                         .onEnded { v in
+                            handle.adrift = false
                             guard slides() else {
                                 if v.translation.width > 60, abs(v.translation.height) < 90 { action() }
                                 return
@@ -72,6 +77,16 @@ private struct SlideBack: ViewModifier {
                         })
                     .ignoresSafeArea()
             }
+            // Cử chỉ bị huỷ giữa chừng: khung đang lệch theo ngón tay mà không có onEnded đưa về, nên tự đưa về chỗ cũ.
+            // Chờ một nhịp để onEnded của lần nhả tay bình thường chạy trước (nó tự lo trượt về hoặc trượt hết rồi đóng).
+            .onChange(of: dragging) { _, on in
+                guard !on else { return }
+                DispatchQueue.main.async {
+                    guard handle.adrift else { return }
+                    handle.adrift = false
+                    handle.move(0, animated: true)
+                }
+            }
     }
 }
 
@@ -79,6 +94,8 @@ private struct SlideBack: ViewModifier {
 private struct SheetHandle: UIViewRepresentable {
     final class Ref {
         weak var view: UIView?
+        /// Khung đang bị kéo lệch theo ngón tay, chưa có onEnded xử lý
+        var adrift = false
 
         /// Khung ngoài cùng của màn hình đang hiện: view của controller được present (kèm lớp bọc bo góc, đổ bóng nếu có)
         private var card: UIView? {

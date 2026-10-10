@@ -7,17 +7,25 @@ struct HouseAvatar: View {
     let id: String
     let name: String
     var size: CGFloat = 40
+    /// Xem trước khi đang sửa: ảnh đang chọn (nil = đã bỏ ảnh) thay cho ảnh đã lưu của thành viên
+    var photo: Data?? = nil
+    // Theo dõi House để ảnh đổi là vẽ lại: id, tên, cỡ vẫn như cũ thì SwiftUI không chạy lại body
+    @ObservedObject private var house = House.shared
 
     var body: some View {
         let initial = (name.split(separator: " ").last.map(String.init) ?? name).prefix(1).uppercased()
-        if let data = House.shared.members.first(where: { $0.id == id })?.photo, let img = UIImage(data: data) {
+        // Tìm ở nhóm đang mở trước, rồi mọi nhóm: ở danh sách nhóm chưa có nhóm nào đang mở
+        let member: HouseMember? = house.members.first(where: { $0.id == id })
+            ?? house.groups.lazy.flatMap { $0.members }.first(where: { $0.id == id })
+        let saved: Data? = member?.photo
+        if let data = photo ?? saved, let img = UIImage(data: data) {
             Image(uiImage: img).resizable().scaledToFill().frame(width: size, height: size).clipShape(Circle())
         } else {
             Text(initial.isEmpty ? "?" : initial)
                 .font(.system(size: size * 0.42, weight: .bold))
                 .foregroundStyle(Color(hex: 0x111114))
                 .frame(width: size, height: size)
-                .background(CategoryTone.bg(House.shared.tone(id)), in: Circle())
+                .background(CategoryTone.bg(house.tone(id)), in: Circle())
         }
     }
 }
@@ -72,7 +80,7 @@ struct HouseView: View {
         // Ở danh sách nhóm thì không làm gì: bảng có vạch ngang, đóng bằng vuốt xuống
         .edgeBack {
             if inGroup { withAnimation(.snappy) { house.open(nil) } }
-            else if creating && !house.groups.isEmpty { withAnimation(.snappy) { creating = false } }
+            else if creating && !house.groups.isEmpty && !house.busy { withAnimation(.snappy) { creating = false } }   // đang lưu nhóm vừa tạo thì chờ xong
         }
         .task {
             await house.load()
@@ -83,13 +91,14 @@ struct HouseView: View {
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
         .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
             TextField(L("Tên"), text: $newMember)
-            Button(L("Huỷ"), role: .cancel) { newMember = "" }
+            Button(L("Huỷ"), role: .cancel) { newMember = ""; claimAfterAdd = false }
             Button(L("Thêm")) {
                 let n = newMember.trimmingCharacters(in: .whitespaces)
                 newMember = ""
                 let claim = claimAfterAdd
                 claimAfterAdd = false
-                if !n.isEmpty { Task { if let id = await house.addMember(n), claim { await house.claim(id) } } }
+                // Chỉ nhận người vừa thêm là mình khi chưa chọn "tôi là ai": không bao giờ đè lên lựa chọn đã có
+                if !n.isEmpty { Task { if let id = await house.addMember(n), claim, house.me == nil { await house.claim(id) } } }
             }
         } message: {
             Text(L("Thêm được cả người không dùng Pay; bạn ghi giúp phần của họ."))
@@ -99,21 +108,8 @@ struct HouseView: View {
         } message: {
             Text(house.isOwner ? L("Mọi người trong nhóm sẽ mất sổ chung này. Không hoàn tác được.") : L("Sổ chung vẫn còn ở người tạo nhóm, họ mời lại được."))
         }
-        .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } }), titleVisibility: .visible) {
-            if let t = paying {
-                if t.from == house.me {
-                    Button(L("Đã chuyển %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
-                    Button(L("Chưa chuyển"), role: .cancel) {}
-                } else {
-                    Button(L("Đã nhận %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
-                }
-            }
-        } message: {
-            if let t = paying {
-                Text(t.from == house.me ? L("%@ sẽ nhận thông báo để xác nhận đã nhận tiền.", house.memberName(t.to))
-                                        : L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from)))
-            }
-        }
+        // Bảng Thông báo đang mở thì hộp này hiện trên bảng đó (xem `inbox`): gắn ở đây sẽ không bật lên được vì bảng đang che
+        .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: payAsked(!showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store).sheetGrabber() }
         .onDisappear { if film == nil { house.open(nil) } }   // (phim vẽ lại màn hình mỗi khung: không tính là đóng)
         .appMenu($menu)   // mở lại thì về danh sách nhóm
@@ -121,9 +117,38 @@ struct HouseView: View {
         .onChange(of: scenePhase) { _, p in
             if p == .active, let t = house.pendingPay { house.pendingPay = nil; paying = t }
         }
+        // App quay lại từ nền: tải lại sổ (người khác có thể vừa thêm khoản hay xác nhận; đẩy im lặng của iCloud không bảo đảm tới).
+        // Vừa đi trả ở app ngân hàng về thì không tải: sắp ghi lần trả ở hộp hỏi trên, không để lần ghi đó phải đua với một lần tải đang chạy
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            if house.pendingPay == nil { Task { await house.load(prompt: false) } }
+        }
         .alert(L("Không mở được lời mời"), isPresented: Binding(get: { inviteError != nil }, set: { if !$0 { inviteError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(inviteError ?? "") }
+    }
+
+    // MARK: Hộp "Xác nhận đã chuyển?" (gắn ở màn nhóm và ở bảng Thông báo; `on` chọn nơi đang hiện để hai hộp không tranh nhau)
+
+    private func payAsked(_ on: Bool) -> Binding<Bool> {
+        Binding(get: { paying != nil && on }, set: { if !$0 { paying = nil } })
+    }
+
+    @ViewBuilder private var payActions: some View {
+        if let t = paying {
+            if t.from == house.me {
+                Button(L("Đã chuyển %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
+                Button(L("Chưa chuyển"), role: .cancel) {}
+            } else {
+                Button(L("Đã nhận %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
+            }
+        }
+    }
+
+    @ViewBuilder private var payMessage: some View {
+        if let t = paying {
+            Text(t.from == house.me ? L("%@ sẽ nhận thông báo để xác nhận đã nhận tiền.", house.memberName(t.to))
+                                    : L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from)))
+        }
     }
 
     /// Nút "Thêm khoản chung" nổi ở đáy (chỉ khi đã vào nhóm)
@@ -158,7 +183,8 @@ struct HouseView: View {
             if inGroup {
                 circleButton("chevron.left", L("Các nhóm")) { withAnimation(.snappy) { house.open(nil) } }
             } else if creating && !house.groups.isEmpty {
-                circleButton("chevron.left", L("Các nhóm")) { withAnimation(.snappy) { creating = false } }
+                // (đang lưu nhóm vừa tạo thì chờ xong: lùi ra lúc này sẽ gặp màn "Bạn là ai" của nhóm chưa có ai)
+                circleButton("chevron.left", L("Các nhóm")) { if !house.busy { withAnimation(.snappy) { creating = false } } }
             } else {
                 // Ở danh sách nhóm không có nút đóng (vạch ngang trên cùng cho biết kéo xuống là đóng); giữ chỗ để tên vẫn ở giữa
                 Color.clear.frame(width: 42, height: 42)
@@ -191,7 +217,7 @@ struct HouseView: View {
             } else if inGroup {
                 Menu {
                     Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
-                    Button(L("Thêm người"), systemImage: "plus") { addingMember = true }
+                    Button(L("Thêm người"), systemImage: "plus") { claimAfterAdd = false; addingMember = true }
                     Button(L("Đổi ảnh, màu, tên nhóm"), systemImage: "paintpalette") { editingGroup = house.current }
                     Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
                 } label: {
@@ -303,12 +329,16 @@ struct HouseView: View {
 
         primaryButton(L("Tạo nhóm")) {
             Task {
+                guard !house.busy else { return }   // bấm hai lần liền nhau: lần đầu đang lưu
+                // Giữ màn này tới khi lưu xong: House.create đưa nhóm vào danh sách trước rồi mới lưu thành viên đầu tiên,
+                // giữa chừng nhóm chưa có ai và chưa biết "tôi là ai" nên màn hình sẽ nhảy sang "Bạn là ai trong nhóm?" trống
+                creating = true
                 await house.create(name: groupName.trimmingCharacters(in: .whitespaces), me: myName.trimmingCharacters(in: .whitespaces))
                 creating = false
             }
         }
-        .disabled(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty)
-        .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1)
+        .disabled(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty || house.busy)
+        .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty || house.busy ? 0.35 : 1)
         .padding(.top, 20)
 
         Text(L("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Pay và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi."))
@@ -596,7 +626,7 @@ struct HouseView: View {
                     .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .onTapGesture { editingMember = m }
                 }
-                Button { addingMember = true } label: {
+                Button { claimAfterAdd = false; addingMember = true } label: {
                     Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
                         .frame(width: 48, height: 48).background(Palette.surface, in: Circle())
                         .foregroundStyle(.primary)
@@ -757,6 +787,12 @@ struct HouseView: View {
                 notifyOn = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
             }
         }
+        // Bảng này che màn nhóm bên dưới, nên thanh báo lỗi, vòng xoay và hộp "Xác nhận đã chuyển?" của các thẻ
+        // "Cần xác nhận" phải có ngay trên bảng (ở màn nhóm thì bấm xong không thấy gì)
+        .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
+        .overlay { if house.busy { ProgressView().controlSize(.large) } }
+        .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: payAsked(showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
+        .environmentObject(store)
         .sheetGrabber()   // không có nút Xong: kéo xuống là đóng
     }
 
@@ -906,6 +942,8 @@ struct HouseGroupEditor: View {
     @State private var photoChanged = false
     @State private var pick: PhotosPickerItem?
     @State private var loaded = false
+    /// Đang lưu lên iCloud: nút Lưu mờ đi cho biết đã nhận (vòng xoay ở màn nhóm bị bảng này che)
+    @State private var saving = false
 
     var body: some View {
         NavigationStack {
@@ -945,11 +983,13 @@ struct HouseGroupEditor: View {
                     Button(L("Lưu")) {
                         let n = name.trimmingCharacters(in: .whitespaces)
                         let p: Data? = photoChanged ? (photo ?? Data()) : nil
+                        saving = true
                         Task {
                             await house.updateGroup(group.id, name: n.isEmpty ? group.name : n, tone: tone, photo: p)
                             dismiss()
                         }
                     }
+                    .disabled(saving)
                 }
             }
             .onAppear {
@@ -1002,6 +1042,8 @@ struct HouseMemberEditor: View {
     @State private var pick: PhotosPickerItem?
     /// Đã nạp thông tin của thành viên vào các ô chưa (chỉ nạp một lần)
     @State private var loaded = false
+    /// Đang lưu lên iCloud: nút Lưu mờ đi cho biết đã nhận (vòng xoay ở màn nhóm bị bảng này che)
+    @State private var saving = false
 
     private static let banks = BankData.names.sorted { $0.value.lowercased() < $1.value.lowercased() }
 
@@ -1014,7 +1056,8 @@ struct HouseMemberEditor: View {
                             if let photo, let img = UIImage(data: photo) {
                                 Image(uiImage: img).resizable().scaledToFill().frame(width: 96, height: 96).clipShape(Circle())
                             } else {
-                                HouseAvatar(id: member.id, name: name.isEmpty ? member.name : name, size: 96)
+                                // .some(nil): chỉ chữ cái — vừa bấm "Bỏ ảnh" thì không hiện lại ảnh đã lưu
+                                HouseAvatar(id: member.id, name: name.isEmpty ? member.name : name, size: 96, photo: .some(nil))
                             }
                         }
                         HStack(spacing: 16) {
@@ -1022,6 +1065,7 @@ struct HouseMemberEditor: View {
                             if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
                         }
                         .font(.system(size: 16, weight: .semibold))
+                        .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng (thiếu thì chạm "Đổi ảnh" là "Bỏ ảnh" cũng chạy)
                     }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
@@ -1049,12 +1093,14 @@ struct HouseMemberEditor: View {
                         let n = name.trimmingCharacters(in: .whitespaces)
                         let a = acct.filter(\.isNumber)
                         let p: Data? = photoChanged ? (photo ?? Data()) : nil
+                        saving = true
                         Task {
                             await house.updateMember(member.id, name: n.isEmpty ? member.name : n,
                                                      bin: bin.isEmpty ? nil : bin, acct: a.isEmpty ? nil : a, photo: p)
                             dismiss()
                         }
                     }
+                    .disabled(saving)
                 }
             }
             // Chỉ nạp lần đầu: chọn ngân hàng mở trang riêng, lúc quay lại onAppear chạy lần nữa — nạp lại thì
@@ -1093,9 +1139,15 @@ struct HouseSpendEditor: View {
     @State private var amountText = ""
     @State private var note = ""
     @State private var cat = "an"
+    /// Đã tự chọn danh mục: gõ tiếp ghi chú không đoán lại nữa (như màn nhập khoản chi)
+    @State private var catPicked = false
     @State private var payer = ""
     @State private var shares: Set<String> = []
     @State private var logMine = true
+    /// Đang lưu lên iCloud: khoá nút Lưu, bấm lần nữa sẽ thành hai khoản giống nhau
+    @State private var saving = false
+    /// Lần lưu vừa rồi không thành: hiện thanh báo lỗi ngay trên bảng này (thanh ở màn nhóm bị bảng che)
+    @State private var failed = false
     @FocusState private var amountFocused: Bool
 
     private var amount: Int { Int(amountText.filter(\.isNumber).prefix(12)) ?? 0 }
@@ -1145,7 +1197,10 @@ struct HouseSpendEditor: View {
                         .padding(.horizontal, 18).padding(.vertical, 15)
                         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .padding(.top, 16)
-                        .onChange(of: note) { _, v in let g = store.guessCategory(v); if g != "khac" { cat = g } }
+                        .onChange(of: note) { _, v in
+                            guard !catPicked else { return }
+                            let g = store.guessCategory(v); if g != "khac" { cat = g }
+                        }
 
                     categories.padding(.top, 12)
 
@@ -1195,17 +1250,22 @@ struct HouseSpendEditor: View {
             .scrollDismissesKeyboard(.interactively)
 
             Button { save() } label: {
-                Text(L("Lưu")).font(.system(size: 19, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 64)
-                    .foregroundStyle(Palette.ctaInk)
-                    .background(Palette.cta, in: Capsule())
+                ZStack {
+                    // Đang lưu: vòng xoay ngay trên nút (vòng xoay ở màn nhóm bị bảng này che)
+                    if saving { ProgressView().tint(Palette.ctaInk) }
+                    else { Text(L("Lưu")).font(.system(size: 19, weight: .semibold)) }
+                }
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .foregroundStyle(Palette.ctaInk)
+                .background(Palette.cta, in: Capsule())
             }
             .buttonStyle(Pressable())
-            .disabled(!valid).opacity(valid ? 1 : 0.35)
+            .disabled(!valid || saving).opacity(valid ? 1 : 0.35)
             .padding(.bottom, 8)
         }
         .padding(.horizontal, 18)
         .background(Palette.surface.ignoresSafeArea())
+        .overlay(alignment: .bottom) { if failed { ToastView().padding(.bottom, 84) } }   // ngay trên nút Lưu
         .onAppear {
             payer = house.me ?? house.members.first?.id ?? ""
             shares = Set(house.members.map(\.id))
@@ -1224,7 +1284,7 @@ struct HouseSpendEditor: View {
             HStack(spacing: 8) {
                 ForEach(Category.all) { c in
                     let on = cat == c.k
-                    Button { cat = c.k } label: {
+                    Button { cat = c.k; catPicked = true } label: {
                         HStack(spacing: 8) {
                             CategoryIcon(c: c, size: 20).frame(width: 32, height: 32)
                                 .background(on ? Color.white.opacity(0.7) : c.color, in: Circle())
@@ -1265,10 +1325,13 @@ struct HouseSpendEditor: View {
     }
 
     private func save() {
+        guard !saving else { return }
+        saving = true; failed = false
         let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare
         let log = logMine
         Task {
-            guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c) else { return }
+            // Không lưu được: ở lại bảng, mở lại nút Lưu, House đã đưa lỗi lên thanh báo
+            guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c) else { saving = false; failed = true; return }
             if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c) }
             dismiss()
         }

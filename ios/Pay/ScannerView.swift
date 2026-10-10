@@ -8,6 +8,8 @@ struct ScannerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var photo: PhotosPickerItem?
     @State private var error: String?
+    /// Lần mở này đã xong (đã có mã, hoặc đã bấm Đóng): camera và ảnh cùng đổ về `found`, mã tới sau đó bị bỏ qua
+    @State private var done = false
 
     var body: some View {
         ZStack {
@@ -43,19 +45,22 @@ struct ScannerView: View {
                 Spacer()
                 HStack(spacing: 12) {
                     PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh QR")) }
-                    Button { dismiss() } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
+                    Button { done = true; dismiss() } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
                 }
                 .padding(.horizontal, 16).padding(.bottom, 12)
             }
         }
-        .onChange(of: photo) { _, item in
-            guard let item else { return }
-            Task {
-                guard let data = try? await item.loadTransferable(type: Data.self), let code = decodeQR(data) else {
-                    error = L("Không đọc được mã QR trong ảnh"); return
-                }
-                found(code)
+        // Việc đọc ảnh gắn với màn quét: màn hình đóng (hoặc chọn ảnh khác) thì bị huỷ. Để Task rời thì ảnh tải chậm
+        // (còn trên iCloud) vẫn bắn onCode sau khi màn quét đã đóng, và mã đó nằm lại ở màn hình chính tới lần quét sau
+        .task(id: photo) {
+            guard let item = photo else { return }
+            let data = try? await item.loadTransferable(type: Data.self)
+            // loadTransferable không chắc dừng ngay khi bị huỷ
+            guard !Task.isCancelled else { return }
+            guard let data, let code = decodeQR(data) else {
+                error = L("Không đọc được mã QR trong ảnh"); return
             }
+            found(code)
         }
     }
 
@@ -66,6 +71,10 @@ struct ScannerView: View {
     }
 
     private func found(_ code: String) {
+        // Mỗi lần mở chỉ đưa ra một mã: camera bắt được mã trong lúc ảnh đang đọc (hoặc ngược lại) thì mã tới sau
+        // không được ghi đè mã màn hình chính đang xử lý
+        guard !done else { return }
+        done = true
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         onCode(code)
     }

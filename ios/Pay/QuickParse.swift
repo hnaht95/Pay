@@ -3,26 +3,37 @@ import Foundation
 /// Đọc câu nhập nhanh kiểu bản web: "35k cafe" -> 35000 + "cafe".
 enum QuickParse {
     /// "35k" -> 35000, "1tr2" -> 1200000, "1.5tr" -> 1500000, "35.000" -> 35000, "35000" -> 35000
+    /// Chỉ nhận chữ số 0-9: \d của Swift khớp cả chữ số Unicode ("３５", "٣٥") mà Double() không đọc được.
     static func amount(_ raw: String) -> Int? {
         let s = strip(raw).replacingOccurrences(of: " ", with: "")
-        if let m = s.wholeMatch(of: #/(\d+(?:[.,]\d+)?)(tr|trieu|m|cu)(\d+)?/#) {
-            var v = Double(m.1.replacingOccurrences(of: ",", with: "."))!
-            if let extra = m.3 { v += Double("0." + extra)! }
-            return Int((v * 1e6).rounded())
+        if let m = s.wholeMatch(of: #/([0-9]+(?:[.,][0-9]+)?)(tr|trieu|m|cu)([0-9]+)?/#) {
+            guard var v = Double(m.1.replacingOccurrences(of: ",", with: ".")) else { return nil }
+            if let extra = m.3 { v += Double("0." + extra) ?? 0 }
+            return whole(v * 1e6)
         }
-        if let m = s.wholeMatch(of: #/(\d+(?:[.,]\d+)?)(k|nghin|ngan|ng|n)/#) {
-            return Int((Double(m.1.replacingOccurrences(of: ",", with: "."))! * 1e3).rounded())
+        if let m = s.wholeMatch(of: #/([0-9]+(?:[.,][0-9]+)?)(k|nghin|ngan|ng|n)/#) {
+            return Double(m.1.replacingOccurrences(of: ",", with: ".")).flatMap { whole($0 * 1e3) }
         }
-        if s.wholeMatch(of: #/\d{1,3}(?:[.,]\d{3})+/#) != nil {
-            return Int(s.filter(\.isNumber))
+        if s.wholeMatch(of: #/[0-9]{1,3}(?:[.,][0-9]{3})+/#) != nil {
+            return Double(s.filter(\.isNumber)).flatMap(whole)
         }
-        if s.wholeMatch(of: #/\d+/#) != nil { return Int(s) }
+        if s.wholeMatch(of: #/[0-9]+/#) != nil { return Double(s).flatMap(whole) }
         return nil
+    }
+
+    /// Số tiền lớn nhất còn nhận: 12 chữ số, bằng bàn phím ở màn hình nhập. Dãy số dài hơn lẫn trong câu là mã giao dịch /
+    /// số tài khoản chứ không phải tiền, và Double vượt Int.max mà ép sang Int thì app văng.
+    private static let maxAmount = 999_999_999_999.0
+
+    /// Làm tròn thành số đồng; ngoài khoảng 0…maxAmount (kể cả vô cực / không phải số) thì nil.
+    private static func whole(_ v: Double) -> Int? {
+        let r = v.rounded()
+        return r >= 0 && r <= maxAmount ? Int(r) : nil
     }
 
     /// "35k cafe sáng" -> (35000, "cafe sáng"); bỏ chữ "đồng" Siri hay thêm vào. Không thấy số tiền thì nil.
     static func expense(_ text: String) -> (amount: Int, note: String)? {
-        let re = #/(?i)(^|\s)(\d+(?:[.,]\d+)*)\s*(k|tr|triệu|trieu|củ|cu|m|nghìn|ngàn|nghin|ngan)?(\d+)?(?:\s*(?:đồng|dong|vnđ|vnd|đ))?(?![\p{L}\d])/#
+        let re = #/(?i)(^|\s)([0-9]+(?:[.,][0-9]+)*)\s*(k|tr|triệu|trieu|củ|cu|m|nghìn|ngàn|nghin|ngan)?([0-9]+)?(?:\s*(?:đồng|dong|vnđ|vnd|đ))?(?![\p{L}\d])/#
         guard let m = text.firstMatch(of: re),
               let a = amount(String(m.2) + String(m.3 ?? "") + String(m.4 ?? "")), a > 0 else { return nil }
         let note = (text[..<m.range.lowerBound] + " " + text[m.range.upperBound...])
@@ -37,8 +48,9 @@ enum QuickParse {
     /// Không có đơn vị và số dưới 1.000 thì hiểu là nghìn ("35 cafe" = 35.000đ).
     /// Hiểu cả tiếng Anh ("200k for gas", "forty five thousand coffee"): dùng trước khi app đang ở tiếng Anh
     /// hoặc câu có chữ tiếng Anh rõ ràng; ngược lại chỉ dùng khi đọc kiểu tiếng Việt không ra số.
+    /// Câu có đơn vị tiền tiếng Việt thì luôn đọc kiểu tiếng Việt trước (xem `hasVietnameseUnit`).
     static func spoken(_ text: String) -> (amount: Int, note: String)? {
-        if (Lang.isEnglish && !looksVietnamese(text)) || looksEnglish(text) { return english(text) ?? vietnamese(text) }
+        if !hasVietnameseUnit(text), (Lang.isEnglish && !looksVietnamese(text)) || looksEnglish(text) { return english(text) ?? vietnamese(text) }
         return vietnamese(text) ?? english(text)
     }
 
@@ -64,14 +76,13 @@ enum QuickParse {
             let run = toks[i..<j].compactMap { $0 }
             let v = isLoneWord(run) ? 0 : value(run)
             let strong = run.contains { $0.isStrong }
-            if v > 0, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
+            if v > 0, v <= maxAmount, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
                 best = (i..<j, v, strong)
             }
             i = j
         }
-        guard let b = best else { return nil }
-        var amount = Int(b.value.rounded())
-        if amount < 1000 { amount *= 1000 }
+        // Dưới 1.000 là nghìn; nhân trước rồi mới làm tròn, để "35 rưỡi" / "35,5" ra 35.500 chứ không phải 36.000
+        guard let b = best, let amount = whole(b.value < 1000 ? b.value * 1000 : b.value) else { return nil }
         let note = words.enumerated().filter { !b.range.contains($0.offset) }.map(\.element).joined(separator: " ")
         return (amount, note)
     }
@@ -194,7 +205,7 @@ enum QuickParse {
             case .num(let v, _, _):
                 if let p = pending, last == .num, p < 10, v < 10, pendingAfter != .hundreds, pendingAfter != .linh {
                     group += p * 10 + v          // "ba lăm" = 35
-                    pending = nil; last = .tens
+                    pending = nil; last = .none  // không phải .tens: "ba lăm rưỡi" là 35,5 chứ không phải "chục rưỡi" (+5)
                 } else if let p = pending, last == .num, p >= 1000, v < 10, p.truncatingRemainder(dividingBy: impliedScale(p)) == 0 {
                     // Siri hay viết "1 triệu 2" thành "1.000.000 2": số tròn nghìn/triệu + một chữ số = nói tắt
                     // -> 1.200.000; "10.000 5" (mười nghìn năm) -> 10.500
@@ -221,7 +232,15 @@ enum QuickParse {
                 if last == .scale { total += lastScale / 2 }
                 else if last == .hundreds { group += 50 }
                 else if last == .tens { group += 5 }
-                else if let p = pending { pending = p + 0.5 }
+                else if let p = pending {
+                    // Sau một số trơn. Siri viết "hai trăm rưỡi" thành "200 rưỡi", "một triệu rưỡi" thành "1.000.000 rưỡi":
+                    // số tròn trăm / nghìn / triệu thì rưỡi là nửa hàng đó; số không tròn từ 1.000 trở lên thì bỏ qua
+                    if p >= 1000 {
+                        if p.truncatingRemainder(dividingBy: impliedScale(p)) == 0 { pending = p + impliedScale(p) / 2 }
+                    } else if p >= 100, p.truncatingRemainder(dividingBy: 100) == 0 { pending = p + 50 }
+                    else { pending = p + 0.5 }                // "35 rưỡi", "bảy rưỡi" = 35,5 / 7,5 (nghìn)
+                }
+                else if group > 0 { group += 0.5 }            // "ba lăm rưỡi" = 35,5
                 last = .none
             case .halfPrefix:
                 if pending != nil { group = flush() }
@@ -265,6 +284,20 @@ enum QuickParse {
         text.split(whereSeparator: \.isWhitespace).contains {
             englishMarkers.contains($0.lowercased().trimmingCharacters(in: .punctuationCharacters))
         }
+    }
+
+    /// Câu có đơn vị tiền tiếng Việt thì số tiền được nói kiểu Việt, dù lẫn chữ tiếng Anh (tên hàng, thương hiệu:
+    /// "mua Number One 2 triệu", "seven eleven 9 nghìn"). Bộ đọc tiếng Anh không hiểu các đơn vị này: nó đọc "2 triệu" thành 2.000đ
+    /// và để lại chữ "triệu" trong ghi chú. (Không có "tram" gõ không dấu: trùng chữ tiếng Anh.)
+    /// Trừ khi câu có luôn đơn vị tiếng Anh: lúc đó số tiền nói kiểu Anh, chữ Việt kia là chữ thường ("mười cái bánh 45 thousand").
+    private static func hasVietnameseUnit(_ text: String) -> Bool {
+        let units: Set<String> = ["nghìn", "ngàn", "triệu", "tỷ", "tỉ", "trăm", "mươi", "mười", "chục", "rưỡi", "củ",
+                                  "nghin", "ngan", "trieu", "muoi", "chuc", "ruoi"]
+        let english: Set<String> = ["thousand", "thousands", "million", "millions", "billion", "hundred"]
+        let words = text.split(whereSeparator: \.isWhitespace).map {
+            $0.lowercased().precomposedStringWithCanonicalMapping.trimmingCharacters(in: .punctuationCharacters)
+        }
+        return words.contains(where: units.contains) && !words.contains(where: english.contains)
     }
 
     /// Chữ thừa ở đầu / cuối ghi chú: "200k for gas" -> "gas", "lunch for 45k" -> "lunch"
@@ -363,14 +396,12 @@ enum QuickParse {
             let run = Array(toks[i..<j].compactMap { $0 })
             let v = isLoneEnglish(run) ? 0 : englishValue(run)
             let strong = run.contains { $0.isStrong }
-            if v > 0, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
+            if v > 0, v <= maxAmount, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
                 best = (i..<j, v, strong)
             }
             i = j
         }
-        guard let b = best else { return nil }
-        var amount = Int(b.value.rounded())
-        if amount < 1000 { amount *= 1000 }
+        guard let b = best, let amount = whole(b.value < 1000 ? b.value * 1000 : b.value) else { return nil }   // như bản tiếng Việt
         var note = words.enumerated().filter { !b.range.contains($0.offset) }.map(\.element)
         let isFiller = { (w: String) in englishFillers.contains(w.lowercased().trimmingCharacters(in: .punctuationCharacters)) }
         while let f = note.first, isFiller(f) { note.removeFirst() }

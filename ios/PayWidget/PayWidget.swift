@@ -294,20 +294,27 @@ struct MyQREntry: TimelineEntry {
     let date: Date
     let qr: MyQR
     var tone: WidgetTone = .green
+    /// Số đã chi (cỡ vừa hiện cạnh mã QR)
+    var s = Summary(today: 0, month: 0, count: 0, day: Date())
 }
 
 struct MyQRProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> MyQREntry {
-        MyQREntry(date: Date(), qr: MyQR(bin: "970416", bank: "ACB", acct: "123456789", name: "NGUYEN VAN A"))
+        MyQREntry(date: Date(), qr: MyQR(bin: "970416", bank: "ACB", acct: "123456789", name: "NGUYEN VAN A"),
+                  s: Summary(today: 125_000, month: 3_450_000, count: 3, day: Date(), budget: 8_000_000))
     }
     func snapshot(for look: WidgetLook, in context: Context) async -> MyQREntry {
         let q = MyQR.load()
-        var e = context.isPreview && !q.ready ? placeholder(in: context) : MyQREntry(date: Date(), qr: q)
+        var e = context.isPreview && !q.ready ? placeholder(in: context) : MyQREntry(date: Date(), qr: q, s: Summary.load().at(Date()))
         e.tone = look.tone
         return e
     }
+    /// Như widget Chi tiêu hôm nay: app ghi số mới là vẽ lại, thêm một mốc lúc nửa đêm để "hôm nay" tự về 0
     func timeline(for look: WidgetLook, in context: Context) async -> Timeline<MyQREntry> {
-        Timeline(entries: [MyQREntry(date: Date(), qr: MyQR.load(), tone: look.tone)], policy: .never)
+        let now = Date(), q = MyQR.load(), s = Summary.load()
+        let midnight = Calendar.current.startOfDay(for: now.addingTimeInterval(86_400))
+        return Timeline(entries: [MyQREntry(date: now, qr: q, tone: look.tone, s: s.at(now)),
+                                  MyQREntry(date: midnight, qr: q, tone: look.tone, s: s.at(midnight))], policy: .after(midnight))
     }
 }
 
@@ -337,6 +344,16 @@ struct MyQRView: View {
     /// Mã QR không nền, vẽ thẳng lên nền widget: ô màu đen trên nền sáng, màu trắng trên nền tối
     private var code: some View { MyQRCode(qr: e.qr, ink: e.tone.dark ? .white : .black) }
 
+    private func quick(_ icon: String, _ k: QuickKind, _ label: String, primary: Bool = false) -> some View {
+        Link(destination: k.url) {
+            Image(systemName: icon).font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .foregroundStyle(primary ? e.tone.onInk : ink)
+                .background(primary ? ink : ink.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .accessibilityLabel(label)
+    }
+
     @ViewBuilder private var content: some View {
         if !e.qr.ready {
             VStack(spacing: 8) {
@@ -346,10 +363,25 @@ struct MyQRView: View {
                     .multilineTextAlignment(.center).minimumScaleFactor(0.8)
             }
         } else if family == .systemMedium {
-            // Cỡ vừa: mã QR nhận tiền bên trái, bên phải là ba nút vào nhanh như widget Chi tiêu hôm nay
+            // Cỡ vừa: mã QR nhận tiền bên trái; bên phải là số đã chi hôm nay, dưới là ba nút vào nhanh trên một hàng
             HStack(spacing: 14) {
                 code
-                QuickButtons(tone: e.tone).frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("Hôm nay đã chi")).font(.system(size: 13, weight: .medium)).foregroundStyle(soft).lineLimit(1)
+                    Text(fmt(e.s.today)).font(.system(size: 28, weight: .bold)).kerning(-1).foregroundStyle(ink)
+                        .minimumScaleFactor(0.5).lineLimit(1)
+                    Text(e.s.budgetStatus.map(\.label)
+                         ?? L("Tháng %ld: %@đ", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(ink).minimumScaleFactor(0.7).lineLimit(1)
+                    Spacer(minLength: 6)
+                    HStack(spacing: 6) {
+                        quick("qrcode.viewfinder", .scan, L("Quét QR"), primary: true)
+                        quick("mic.fill", .voice, L("Nói để ghi"))
+                        quick("plus", .add, L("Nhập"))
+                    }
+                    .frame(height: 44)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
         } else {
             VStack(spacing: family == .systemLarge ? 10 : 5) {

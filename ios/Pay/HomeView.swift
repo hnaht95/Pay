@@ -427,6 +427,9 @@ extension View {
 struct ExpenseRow: View {
     /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 86pt: vừa tên hai dòng + dòng phụ).
     static let rowHeight: CGFloat = 96
+    /// Bo góc của thẻ (bằng ô danh mục) và khoảng cách từ ô biểu tượng tới mép thẻ: ô 56pt trong thẻ cao 86pt
+    /// cách trên dưới 15pt, nên bên trái cũng 15pt
+    static let radius: CGFloat = 28, inset: CGFloat = 15
     let e: Expense
     var showDay = false
     var now = Date()
@@ -438,7 +441,8 @@ struct ExpenseRow: View {
         HStack(spacing: 14) {
             CategoryIcon(c: c, size: 30)
                 .frame(width: 56, height: 56)
-                .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                // Bo đồng tâm với thẻ: bo của thẻ trừ đi khoảng cách tới mép
+                .background(c.color, in: RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
             HStack(spacing: 6) {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
                 Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
@@ -463,10 +467,9 @@ struct ExpenseRow: View {
             .fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
-        // Ô biểu tượng 56pt trong thẻ cao 86pt: cách trên dưới 15pt, nên bên trái cũng 15pt cho đều
-        .padding(.leading, 15).padding(.trailing, 16).padding(.vertical, 12)
+        .padding(.leading, Self.inset).padding(.trailing, 16).padding(.vertical, 12)
         .frame(minHeight: Self.rowHeight - 10)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
     }
 
     /// Ngày (nếu cần) và giờ của khoản chi

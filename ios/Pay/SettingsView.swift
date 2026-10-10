@@ -118,7 +118,6 @@ struct SettingsView: View {
         return HStack(spacing: 14) {
             Image("logo-pay").resizable().scaledToFit().frame(width: 60)   // chỉ thẻ xanh, không ô nền
             VStack(alignment: .leading, spacing: 4) {
-                Text("Pay").font(.system(size: 22, weight: .bold))
                 Group {
                     Text(L("Tháng %@: %@đ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
                     Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))

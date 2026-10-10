@@ -2,16 +2,6 @@ import Foundation
 
 extension English {
     static let stats: [String: String] = [
-        "Chạm để lọc": "Tap to filter",
-        "Tháng trước": "Previous month",
-        "Tháng sau": "Next month",
-        "Tất cả danh mục": "All categories",
-        "TB mỗi khoản": "Average entry",
-        "Tăng %ld%%": "Up %ld%%",
-        "Giảm %ld%%": "Down %ld%%",
-        "Chi vào đâu": "Where it goes",
-        "Đã dùng %ld%% hạn mức %@": "%ld%% of the %@ limit used",
-        "Tổng chi": "Total",
         // ghi chú của dữ liệu mẫu quay phim (Store.filmSeed)
         "ăn trưa": "lunch", "cà phê": "coffee", "ăn sáng": "breakfast", "ăn tối": "dinner",
         "trà sữa": "milk tea", "đi chợ": "groceries", "tiền nhà": "rent", "điện nước": "power & water",

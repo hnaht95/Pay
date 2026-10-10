@@ -276,7 +276,7 @@ struct VoiceEntryView: View {
                 // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
                 try? await Task.sleep(for: .milliseconds(30))
                 withAnimation(.easeOut(duration: 0.1)) { faced = false }
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) { morph = 1 }
+                withAnimation(.spring(response: 0.44, dampingFraction: 1)) { morph = 1 }   // không vọt quá cỡ thẻ rồi co lại
                 withAnimation(.easeOut(duration: 0.2).delay(0.24)) { filled = true }   // chữ hiện khi khối đã lớn gần đủ, không tràn ra ngoài khối
                 Task { try? await Task.sleep(for: .milliseconds(560)); if filled { blob = false } }
                 // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy
@@ -321,12 +321,8 @@ struct VoiceEntryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         // Đang biến hình từ nút (bare): thẻ không vẽ nền, viền, bóng của riêng nó — khối biến hình chính là nền. Vẽ cả hai thì
         // lúc mở và lúc thu về thấy hai cửa sổ chồng nhau (nền thẻ mờ dần ở cỡ đầy đủ, khối thì đang lớn / đang co).
-        // Bóng chỉ đổ từ nền thẻ, không đổ từ chữ và nút bên trong (gắn bóng cho cả khối thì hai nút Quét QR / Xong cũng có
-        // bóng, hiện ra trễ sau khi thẻ đã mở xong)
-        .background {
-            RoundedRectangle(cornerRadius: 42, style: .continuous).fill(Palette.surface.opacity(bare ? 0 : 1))
-                .shadow(color: .black.opacity(bare ? 0 : 0.18), radius: 24, y: 8)
-        }
+        // Không đổ bóng: khối biến hình không có bóng, nên lúc khối nhường chỗ cho thẻ thì bóng bật ra tức thì, trông như thẻ khựng
+        .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: 42, style: .continuous))
         // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
         .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(bare ? 0 : 0.08), lineWidth: 1))
         // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ

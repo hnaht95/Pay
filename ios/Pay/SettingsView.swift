@@ -612,6 +612,11 @@ struct CategoryEditor: View {
     @State private var tone = 0
     @FocusState private var nameFocused: Bool
     @State private var pickingEmoji = false
+    /// Đang dựng phim giới thiệu (xem Film.swift): biểu tượng, màu đang chọn lấy từ phim
+    @Environment(\.film) private var film
+    private var fIcon: String { film?.edit?.icon ?? icon }
+    private var fTone: Int { film?.edit?.tone ?? tone }
+    private var shownName: String { film != nil ? L(editing?.name ?? "") : trimmed }
 
     static let emojis = ["🏠", "🐶", "👶", "🏋️", "🎮", "🎬", "📚", "🎓", "💊", "🏥", "💇", "🧴",
                          "🎁", "✈️", "🚗", "⛽️", "🍺", "🎵", "⚽️", "💡", "🛠️", "🌱", "❤️", "💼"]
@@ -619,7 +624,7 @@ struct CategoryEditor: View {
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     /// Đang sửa danh mục có sẵn (Ăn uống, Cafe…): không xoá được, có "Về mặc định"
     private var builtin: Category? { editing.flatMap { e in Category.builtin.first { $0.k == e.k } } }
-    private var previewColor: Color { tone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(tone) }
+    private var previewColor: Color { fTone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)
@@ -627,23 +632,102 @@ struct CategoryEditor: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
+        if let film { filmBody(film) } else { form }
+    }
+
+    private var previewCard: some View {
                     HStack(spacing: 14) {
                         Group {
                             // Danh mục có sẵn chưa đổi biểu tượng: hiện đúng hình vẽ phẳng như ở màn hình chính
-                            if let b = builtin, icon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(icon).font(.system(size: 28)) }
+                            if let b = builtin, fIcon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(fIcon).font(.system(size: 28)) }
                         }
                             .frame(width: 56, height: 56).background(.white, in: Circle())
-                        Text(trimmed.isEmpty ? L("Tên danh mục") : trimmed)
+                        Text(shownName.isEmpty ? L("Tên danh mục") : shownName)
                             .font(.system(size: 20, weight: .semibold)).lineLimit(1)
-                            .opacity(trimmed.isEmpty ? 0.4 : 1)
+                            .opacity(shownName.isEmpty ? 0.4 : 1)
                         Spacer(minLength: 0)
                     }
                     .foregroundStyle(Color(hex: 0x111114))
                     .padding(16)
                     .background(previewColor, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var emojiGrid: some View {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
+                        ForEach(Self.emojis, id: \.self) { e in
+                            Button { icon = e } label: {
+                                Text(e).font(.system(size: 26))
+                                    .frame(maxWidth: .infinity, minHeight: 46)
+                                    .background(fIcon == e ? previewColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(Pressable())
+                            .filmPressed(film?.pressed["emoji-" + e] ?? 0)
+                        }
+                    }
+                    .padding(.vertical, 4)
+    }
+
+    @ViewBuilder private var colorRows: some View {
+                    if let b = builtin {
+                        Button { tone = -1 } label: {
+                            HStack(spacing: 12) {
+                                swatch(b.color, on: fTone < 0)
+                                Text(L("Màu gốc")).foregroundStyle(.primary)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(Pressable())
+                    }
+                    swatchRow(CategoryTone.light)
+                    swatchRow(CategoryTone.strong)
+    }
+
+    /// Phim: bản tự vẽ trông như Form (Form của hệ thống không vẽ ra PDF được): cùng các phần, cùng thứ tự
+    private func filmBody(_ film: FilmFrame) -> some View {
+        func head(_ t: String) -> some View {
+            Text(t).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary).padding(.leading, 20).padding(.top, 26).padding(.bottom, 10)
+        }
+        func box<V: View>(@ViewBuilder _ v: () -> V) -> some View {
+            VStack(alignment: .leading, spacing: 0) { v() }
+                .padding(.horizontal, 20).padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        }
+        return VStack(spacing: 0) {
+            FilmNavBar(title: L("Sửa danh mục"), leading: L("Huỷ"), trailing: L("Lưu"), trailingPressed: film.pressed["save"] ?? 0)
+            FilmScroll {
+                VStack(alignment: .leading, spacing: 0) {
+                    previewCard.padding(.top, 10)
+                    head(L("Tên"))
+                    box { Text(shownName).font(.system(size: 17)).frame(height: 44) }
+                    head(L("Biểu tượng"))
+                    box {
+                        HStack(spacing: 12) {
+                            Image(systemName: "face.smiling").font(.system(size: 18, weight: .semibold))
+                                .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
+                            Text(L("Tất cả biểu tượng")).font(.system(size: 17))
+                        }
+                        .frame(height: 52)
+                        Divider().padding(.leading, 46)
+                        emojiGrid.padding(.vertical, 6)
+                    }
+                    Text(L("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS."))
+                        .font(.system(size: 13)).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 8)
+                    head(L("Màu"))
+                    box { VStack(spacing: 10) { colorRows }.font(.system(size: 17)).padding(.vertical, 8) }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 60)
+            }
+        }
+        .background(Color(hex: 0xF2F2F7))
+        .environment(\.colorScheme, .light)
+    }
+
+    private var form: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    previewCard
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                 }
@@ -671,17 +755,7 @@ struct CategoryEditor: View {
                     }
                     .tint(.primary)
                     .background(EmojiField(isOn: $pickingEmoji) { icon = $0 }.frame(width: 1, height: 1).opacity(0.01))
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
-                        ForEach(Self.emojis, id: \.self) { e in
-                            Button { icon = e } label: {
-                                Text(e).font(.system(size: 26))
-                                    .frame(maxWidth: .infinity, minHeight: 46)
-                                    .background(icon == e ? previewColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            }
-                            .buttonStyle(Pressable())
-                        }
-                    }
-                    .padding(.vertical, 4)
+                    emojiGrid
                 } header: {
                     Text(L("Biểu tượng"))
                 } footer: {
@@ -689,18 +763,7 @@ struct CategoryEditor: View {
                 }
 
                 Section(L("Màu")) {
-                    if let b = builtin {
-                        Button { tone = -1 } label: {
-                            HStack(spacing: 12) {
-                                swatch(b.color, on: tone < 0)
-                                Text(L("Màu gốc")).foregroundStyle(.primary)
-                                Spacer()
-                            }
-                        }
-                        .buttonStyle(Pressable())
-                    }
-                    swatchRow(CategoryTone.light)
-                    swatchRow(CategoryTone.strong)
+                    colorRows
                 }
             }
             .navigationTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
@@ -729,8 +792,9 @@ struct CategoryEditor: View {
     private func swatchRow(_ r: Range<Int>) -> some View {
         HStack(spacing: 0) {
             ForEach(r, id: \.self) { i in
-                Button { tone = i } label: { swatch(CategoryTone.bg(i), on: tone == i).frame(maxWidth: .infinity, minHeight: 44) }
+                Button { tone = i } label: { swatch(CategoryTone.bg(i), on: fTone == i).frame(maxWidth: .infinity, minHeight: 44) }
                     .buttonStyle(Pressable())
+                    .filmPressed(film?.pressed["tone-\(i)"] ?? 0)
                     .accessibilityLabel(L("Màu %@", String(i + 1)))
             }
         }

@@ -45,11 +45,13 @@ struct HouseView: View {
     @State private var menu: AppMenuSpec?
     @State private var notifyOn: Bool?
     @Environment(\.scenePhase) private var scenePhase
+    /// Đang dựng phim giới thiệu (xem Film.swift)
+    @Environment(\.film) private var film
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Palette.bg.ignoresSafeArea()
-            ScrollView {
+            FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
                     header
                     content
@@ -58,7 +60,7 @@ struct HouseView: View {
                 .padding(.bottom, 120)
             }
             .refreshable { await house.load() }
-            .withDock(dock: dock, fallbackBlur: bottomFade)
+            .withDock(dock: dock, fallbackBlur: bottomFade, film: film != nil)
 
             ToastView().padding(.bottom, 100)
         }
@@ -104,7 +106,7 @@ struct HouseView: View {
             }
         }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store) }
-        .onDisappear { house.open(nil) }
+        .onDisappear { if film == nil { house.open(nil) } }   // (phim vẽ lại màn hình mỗi khung: không tính là đóng)
         .appMenu($menu)   // mở lại thì về danh sách nhóm
         // Trả qua app ngân hàng xong quay lại Pay: hỏi đã chuyển xong chưa
         .onChange(of: scenePhase) { _, p in
@@ -172,7 +174,11 @@ struct HouseView: View {
                 .foregroundStyle(.primary)
                 .accessibilityLabel(pending.isEmpty ? L("Thông báo") : L("Thông báo, %d việc cần xác nhận", pending.count))
             }
-            if inGroup {
+            if inGroup, film != nil {
+                // Phim: menu của hệ thống không vẽ ra PDF được, chỉ cần hình nút
+                Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold))
+                    .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+            } else if inGroup {
                 Menu {
                     Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
                     Button(L("Thêm người"), systemImage: "plus") { addingMember = true }
@@ -304,7 +310,7 @@ struct HouseView: View {
         let active = house.groups.filter { !house.archived.contains($0.id) }
         let old = house.groups.filter { house.archived.contains($0.id) }
         VStack(spacing: 10) {
-            ForEach(active) { groupCard($0) }
+            ForEach(active) { g in groupCard(g).filmPressed(film?.pressed["group-" + g.id] ?? 0) }
             Button { groupName = ""; creating = true } label: {
                 Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
                     .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
@@ -564,7 +570,7 @@ struct HouseView: View {
     }
 
     private func members(_ net: [String: Int]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        FilmScroll(axes: .horizontal) {
             HStack(spacing: 10) {
                 ForEach(house.members) { m in
                     let v = net[m.id] ?? 0
@@ -810,6 +816,7 @@ struct HouseView: View {
                 HStack(spacing: 8) {
                     pill(L("Chưa nhận được"), primary: false) { Task { await house.respond(s.id, received: false) } }
                     pill(L("Đã nhận"), primary: true) { Task { await house.respond(s.id, received: true) } }
+                        .filmPressed(film?.pressed["received"] ?? 0)
                 }
             } else if s.status == "no" {
                 Text(L("Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại."))

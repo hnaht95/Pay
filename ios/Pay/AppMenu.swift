@@ -24,10 +24,13 @@ struct AppMenuSpec: Identifiable {
 struct AppMenu: View {
     let spec: AppMenuSpec
     let close: () -> Void
+    /// Dựng phim: mức hiện của bảng (0…1) và lựa chọn đang bị nhấn
+    var shown: CGFloat = 1
+    var pressed: (index: Int, amount: CGFloat)? = nil
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.3).ignoresSafeArea().onTapGesture(perform: close)
+            Color.black.opacity(0.3 * Double(shown)).ignoresSafeArea().onTapGesture(perform: close)
             VStack(spacing: 0) {
                 HStack(spacing: 14) {
                     spec.icon
@@ -41,15 +44,19 @@ struct AppMenu: View {
                 }
                 .padding(18)
                 VStack(spacing: 4) {
-                    ForEach(spec.items) { item in
+                    ForEach(Array(spec.items.enumerated()), id: \.element.id) { i, item in
                         Button { close(); item.run() } label: { row(item) }
                             .buttonStyle(Pressable())
+                            .filmPressed(pressed?.index == i ? pressed!.amount : 0)
                     }
                 }
                 .padding(.horizontal, 8).padding(.bottom, 10)
             }
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .shadow(color: .black.opacity(0.2), radius: 30, y: 10)
+            // Mờ từng phần (nội dung, nền, bóng): khối có bóng mà mờ cả khối thì không vẽ ra PDF được (phim)
+            .opacity(Double(shown))
+            .background(Palette.surface.opacity(Double(shown)), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .shadow(color: .black.opacity(0.2 * Double(shown)), radius: 30, y: 10)
+            .scaleEffect(0.9 + 0.1 * shown)
             .padding(.horizontal, 24)
             .transition(.scale(scale: 0.9).combined(with: .opacity))
         }

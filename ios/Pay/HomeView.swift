@@ -73,6 +73,13 @@ struct HomeView: View {
                 .padding(.bottom, 108 + (film == nil ? 0 : FilmScreen<EmptyView>.insets.bottom))
         }
         .appMenu($menu)
+        .overlay {
+            // Phim: bảng nhấn giữ theo trạng thái phim đưa vào
+            if let m = film?.menu, m.shown > 0 {
+                AppMenu(spec: categoryMenu(Category.get(m.key)), close: {}, shown: m.shown,
+                        pressed: film?.pressed["menu-item"].map { (1, $0) })
+            }
+        }
         .fullScreenCover(item: $entry) { EntryView(mode: $0) }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }
@@ -283,6 +290,7 @@ struct HomeView: View {
                 TapHold(tap: { entry = .new(cat: c.k) }, hold: { menu = categoryMenu(c) }) {
                     tile(c, total: perCat[c.k] ?? 0)
                 }
+                .filmPressed(film?.pressed["tile-" + c.k] ?? 0)
             }
             // Ô cuối: tạo danh mục riêng
             Button { addingCat = true } label: {

@@ -29,7 +29,7 @@ for lang in ${=LANGS}; do
   # Ảnh phim cần (màn hình khoá…): chép vào app để nó đọc lúc vẽ
   mkdir -p "$C/Documents/film-assets" && cp "$ROOT/web/film/vector/assets/"* "$C/Documents/film-assets/"
   echo "▸ $SCENE.$lang: khung hình…"
-  xcrun simctl launch $U com.hnaht95.sochipay -filmSeed YES -filmLang $lang -filmExport $SCENE >/dev/null
+  xcrun simctl launch $U com.hnaht95.sochipay -filmSeed YES -houseDemo YES -filmLang $lang -filmExport $SCENE >/dev/null
   for i in $(seq 1 300); do [ -f "$TAKE/done" ] && break; sleep 1; done
   xcrun simctl terminate $U com.hnaht95.sochipay 2>/dev/null || true
   [ -f "$TAKE/done" ] || { echo "✗ app không xuất xong $SCENE.$lang" >&2; exit 1; }

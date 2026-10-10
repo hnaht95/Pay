@@ -15,6 +15,8 @@ enum FilmExport {
         try? FileManager.default.removeItem(at: dir)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
+        await House.shared.load()   // dữ liệu mẫu của Nhóm chung (chạy kèm -houseDemo YES)
+        House.shared.open(nil)
         var film = scene(store)
         let count = Int((film.length * fps).rounded()) + 1
         var log: [[String: Any]] = []
@@ -45,7 +47,7 @@ enum FilmExport {
         var frame: (Double) -> AnyView
     }
 
-    static let scenes: [String: (Store) -> Film] = ["again": again, "stats": stats, "voice": voice]
+    static let scenes: [String: (Store) -> Film] = ["again": again, "stats": stats, "voice": voice, "group": group, "category": category]
 
     // MARK: Công cụ
 
@@ -210,6 +212,89 @@ enum FilmExport {
                 .frame(width: size.width, height: size.height)
             })
         }
+    }
+
+    // MARK: Phim "Nhóm chung"
+
+    /// Mở Nhóm chung, vào nhóm đầu, bấm "Đã nhận" cho khoản người khác báo đã chuyển, rồi kéo xem ai chuyển cho ai
+    static func group(_ store: Store) -> Film {
+        let house = House.shared
+        let open = Tap(at: CGPoint(x: 277, y: 91), down: 0.8, up: 1.0)
+        let pick = Tap(at: CGPoint(x: 150, y: 196), down: 2.5, up: 2.7)
+        let got = Tap(at: CGPoint(x: 290, y: 568), down: 4.7, up: 4.9)
+        let drag = Drag(from: CGPoint(x: 200, y: 660), to: CGPoint(x: 200, y: 330), start: 6.4, end: 7.3)
+        let first = house.groups.first
+        var picked = false, answered = false
+        return Film(length: 9.6) { t in
+            if !picked, t >= pick.up, let first { house.open(first.id); picked = true }
+            if !answered, t >= got.up, let s = house.current?.pending.first(where: { $0.to == house.me }) {
+                answered = true
+                Task { await house.respond(s.id, received: true) }
+            }
+            var home = FilmFrame(again: store.frequent())
+            home.pressed["house"] = press(open, t)
+            var sheet = FilmFrame()
+            if let first { sheet.pressed["group-" + first.id] = press(pick, t) }
+            sheet.pressed["received"] = press(got, t)
+            sheet.scroll = 330 * ease(t, drag.start, drag.end) + 90 * ease(t, drag.end, drag.end + 0.7)
+            let dot = touch([open, pick, got], t) ?? touch([drag], t)
+            return AnyView(FilmScreen(touch: dot) {
+                FilmSheet(shown: ease(t, open.up, open.up + 0.45)) {
+                    HomeView().environment(\.film, home)
+                } content: {
+                    HouseView().environment(\.film, sheet)
+                }
+            })
+        }
+    }
+
+    // MARK: Phim "Danh mục của bạn"
+
+    /// Nhấn giữ ô Cafe, chọn "Đổi biểu tượng, màu, tên", chọn cốc bia và màu vàng, Lưu: ô ở màn hình chính đổi theo
+    static func category(_ store: Store) -> Film {
+        let key = "cafe", beer = "🍺", yellow = 14
+        let hold = Tap(at: CGPoint(x: 290, y: 640), down: 0.8, up: 1.7)
+        let item = Tap(at: CGPoint(x: 190, y: 507), down: 2.8, up: 3.0)
+        let emoji = Tap(at: POINTS.emoji, down: 4.6, up: 4.8)
+        let drag = Drag(from: CGPoint(x: 200, y: 700), to: CGPoint(x: 200, y: 480), start: 5.6, end: 6.3)
+        let color = Tap(at: POINTS.color, down: 7.3, up: 7.5)
+        let save = Tap(at: CGPoint(x: 352, y: 100), down: 8.6, up: 8.8)
+        let original = Category.get(key)
+        var saved = false
+        return Film(length: 11.0) { t in
+            if !saved, t >= save.up {
+                saved = true
+                store.updateCategory(key, name: original.rawName, icon: beer, tone: yellow)
+            }
+            var home = FilmFrame(again: store.frequent())
+            home.pressed["tile-" + key] = press(Tap(at: hold.at, down: hold.down, up: hold.down + 0.45), t)
+            // Giữ 0,35 giây thì bảng bật ra; chọn xong thì bảng đóng
+            let menu = ease(t, hold.down + 0.35, hold.down + 0.6) * (1 - ease(t, item.up, item.up + 0.2))
+            home.menu = (key, menu)
+            home.pressed["menu-item"] = press(item, t)
+            var sheet = FilmFrame()
+            sheet.edit = .init(icon: t >= emoji.up ? beer : original.icon, tone: t >= color.up ? yellow : -1)
+            sheet.pressed["emoji-" + beer] = press(emoji, t)
+            sheet.pressed["tone-\(yellow)"] = press(color, t)
+            sheet.pressed["save"] = press(save, t)
+            sheet.scroll = 220 * ease(t, drag.start, drag.end) + 40 * ease(t, drag.end, drag.end + 0.6)
+            let shown = ease(t, item.up + 0.15, item.up + 0.6) * (1 - ease(t, save.up, save.up + 0.4))
+            let dot = touch([hold, item, emoji, color, save], t) ?? touch([drag], t)
+            return AnyView(FilmScreen(touch: dot) {
+                FilmSheet(shown: shown) {
+                    HomeView().environment(\.film, home)
+                } content: {
+                    CategoryEditor(editing: CustomCat(k: key, name: original.rawName, icon: original.icon, tone: -1, on: true, u: 0))
+                        .environment(\.film, sheet)
+                }
+            })
+        }
+    }
+
+    /// Chỗ chạm trong màn sửa danh mục (đo trên khung hình đã vẽ)
+    private enum POINTS {
+        static let emoji = CGPoint(x: 282, y: 601)
+        static let color = CGPoint(x: 302, y: 662)
     }
 }
 #endif

@@ -17,6 +17,12 @@ struct FilmFrame {
     var time: Double = 0
     /// Thẻ ghi bằng giọng nói đang hiện (nil = không)
     var voice: Voice? = nil
+    /// Bảng nhấn giữ của một danh mục đang hiện ở màn hình chính: mã danh mục, mức hiện 0…1
+    var menu: (key: String, shown: CGFloat)? = nil
+    /// Màn sửa danh mục: đang chọn biểu tượng, màu nào
+    var edit: Edit? = nil
+
+    struct Edit { var icon: String; var tone: Int }
 
     struct Voice {
         /// Thẻ trượt lên tới đâu (0…1)

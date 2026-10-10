@@ -72,13 +72,9 @@ struct HomeView: View {
                 .padding(.bottom, Self.nativeEdge && film == nil ? 16 : 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
-            // Thanh "Đã xoá · Hoàn tác" nằm dưới lớp mờ và hai nút: trồi lên từ sau dải nút, ẩn thì chui xuống lại sau đó,
-            // không bao giờ đè lên nút. iOS 26 dải nút là safeAreaBar nên đáy lớp này đã nằm ngay trên dải nút
-            .overlay(alignment: .bottom) {
-                ToastView()
-                    .padding(.bottom, Self.nativeEdge && film == nil ? 10 : 108 + (film == nil ? 0 : FilmScreen<EmptyView>.insets.bottom))
-            }
-            .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil)
+            // Thanh "Đã xoá · Hoàn tác" nằm trên lớp mờ nhưng dưới hai nút: trồi lên từ sau dải nút, ẩn thì chui xuống lại sau
+            // đó, không bao giờ đè lên nút. iOS 26 dải nút là safeAreaBar nên đáy lớp này đã nằm ngay trên dải nút
+            .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil) { ToastView() }
         }
         .appMenu($menu)
         .overlay {
@@ -633,16 +629,20 @@ struct BigButton: View {
 
 extension View {
     /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
-    @ViewBuilder func withDock<D: View, B: View>(dock: D, fallbackBlur: B, film: Bool = false) -> some View {
+    /// above: lớp đặt ngay trên dải nút, nằm sau hai nút nhưng trên lớp mờ (vd thanh "Đã xoá · Hoàn tác"): gắn vào mặt sau
+    /// dải nút, đáy cách mép trên dải nút 8 điểm, nên trượt xuống là chui sau hai nút chứ không đè lên
+    @ViewBuilder func withDock<D: View, B: View, A: View>(dock: D, fallbackBlur: B, film: Bool = false,
+                                                          @ViewBuilder above: () -> A = { EmptyView() }) -> some View {
+        let bar = dock.background(alignment: .top) { above().alignmentGuide(.top) { $0[.bottom] + 8 } }
         if film {
-            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; bar.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
         } else if #available(iOS 26.0, *) {
             // Mép mờ của hệ thống quá nhẹ trên máy thật, nên phủ thêm lớp mờ tự làm phía dưới thanh nút
             overlay(alignment: .bottom) { fallbackBlur }
-                .safeAreaBar(edge: .bottom) { dock }
+                .safeAreaBar(edge: .bottom) { bar }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
-            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; dock } }
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; bar } }
         }
     }
 }
@@ -713,7 +713,7 @@ struct ToastView: View {
     /// trước đây chỉ lúc tự ẩn sau 5 giây là mượt, còn lúc hiện ("Đã xoá") và lúc bấm Hoàn tác thì bật / tắt phụt.
     var body: some View {
         ZStack(alignment: .bottom) { bar }
-            .animation(film == nil ? .spring(response: 0.28, dampingFraction: 0.75) : nil, value: store.toast?.id)
+            .animation(film == nil ? .spring(response: 0.38, dampingFraction: 0.6) : nil, value: store.toast?.id)   // nảy rõ khi hiện
     }
 
     @ViewBuilder private var bar: some View {
@@ -729,6 +729,7 @@ struct ToastView: View {
                     Button { undo(); store.toast = nil } label: {
                         Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
                             .font(.system(size: 16, weight: .semibold))
+                            .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài
                             .padding(.horizontal, 18).frame(height: 48)
                             .background(Palette.ctaInk.opacity(0.14), in: Capsule())
                             .contentShape(Capsule())
@@ -745,10 +746,14 @@ struct ToastView: View {
             .padding(.horizontal, 16)   // thanh dài hết cỡ vẫn cách hai mép màn hình, bằng lề của nội dung
             .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
             // Trồi lên từ sau dải nút, ẩn thì trượt xuống chui lại sau đó (thanh nằm dưới lớp dải nút, xem HomeView)
-            .transition(.offset(y: 90).combined(with: .opacity))
+            .transition(.asymmetric(
+                insertion: .offset(y: 90).combined(with: .opacity.animation(.easeOut(duration: 0.22))),
+                removal: .offset(y: 90).combined(with: .opacity.animation(.easeIn(duration: 0.18)))))
             .task(id: t.id) {
-                try? await Task.sleep(for: .seconds(3))   // đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình
-                if store.toast?.id == t.id { withAnimation { store.toast = nil } }
+                // 3 giây: đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình. Bị huỷ giữa chừng (thanh được dựng lại, vd lúc màn
+                // hình Sửa vừa đóng) thì thôi, task mới sẽ đếm lại: không kiểm tra thì thanh vừa hiện đã tắt ngay
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                if store.toast?.id == t.id { store.toast = nil }
             }
         }
     }

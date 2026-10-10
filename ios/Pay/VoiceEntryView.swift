@@ -319,10 +319,14 @@ struct VoiceEntryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         // Đang biến hình từ nút (bare): thẻ không vẽ nền, viền, bóng của riêng nó — khối biến hình chính là nền. Vẽ cả hai thì
         // lúc mở và lúc thu về thấy hai cửa sổ chồng nhau (nền thẻ mờ dần ở cỡ đầy đủ, khối thì đang lớn / đang co).
-        .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: 42, style: .continuous))
+        // Bóng chỉ đổ từ nền thẻ, không đổ từ chữ và nút bên trong (gắn bóng cho cả khối thì hai nút Quét QR / Xong cũng có
+        // bóng, hiện ra trễ sau khi thẻ đã mở xong)
+        .background {
+            RoundedRectangle(cornerRadius: 42, style: .continuous).fill(Palette.surface.opacity(bare ? 0 : 1))
+                .shadow(color: .black.opacity(bare ? 0 : 0.18), radius: 24, y: 8)
+        }
         // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
         .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(bare ? 0 : 0.08), lineWidth: 1))
-        .shadow(color: .black.opacity(bare ? 0 : 0.18), radius: 24, y: 8)
         // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
         // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
         // xuống dưới mép thẻ rồi mới mờ đi.) Nội dung đi cùng khung lúc bật lên là nhờ thẻ có đủ nội dung từ đầu (xem `starting`).

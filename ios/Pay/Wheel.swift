@@ -40,12 +40,24 @@ struct WheelColumn: View {
 
     var body: some View {
         WheelStrip(pos: Double(pos), count: count, style: style, label: label)
-            .contentShape(Rectangle())
-            .gesture(drag)
-            // Đọc chỗ chạm chứ không gắn cử chỉ lên từng hàng: hàng đang trượt, gắn lên thứ đang chạy thì bắt được hay không tuỳ lúc.
-            .onTapGesture(count: 1, coordinateSpace: .local) { point in
-                let row = ((point.y - style.height / 2) / style.pitch).rounded()
-                if row != 0 { turn(Int(row)) }
+            // Kéo và chạm bắt bằng cử chỉ của UIKit (xem WheelTouch): cử chỉ của SwiftUI không chặn được cử chỉ kéo của bảng
+            // trượt, kéo bánh xe là cả bảng bị kéo theo.
+            .overlay {
+                WheelTouch(
+                    // Kéo dọc. Cứ đủ một hàng thì nhích một nấc, phần lẻ để dành cho nấc sau nên kéo chậm vẫn đi được
+                    // từng nấc một. Kéo xuống là số nhỏ lại: bánh xe đi theo tay.
+                    drag: { y in
+                        let notches = Int((y - spent) / style.pitch)
+                        guard notches != 0 else { return }
+                        spent += CGFloat(notches) * style.pitch
+                        turn(-notches)
+                    },
+                    end: { spent = 0 },
+                    // Đọc chỗ chạm chứ không gắn cử chỉ lên từng hàng: hàng đang trượt, gắn lên thứ đang chạy thì bắt được hay không tuỳ lúc.
+                    tap: { y in
+                        let row = ((y - style.height / 2) / style.pitch).rounded()
+                        if row != 0 { turn(Int(row)) }
+                    })
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.82), value: pos)
             // Giá trị đổi từ chỗ khác (vd bị kéo về hiện tại vì chọn giờ trong tương lai) thì quay tới đó theo đường ngắn nhất.
@@ -58,23 +70,50 @@ struct WheelColumn: View {
             }
     }
 
-    /// Kéo dọc. Cứ đủ một hàng thì nhích một nấc, phần lẻ để dành cho nấc sau nên kéo chậm vẫn đi được từng nấc một.
-    /// Kéo xuống là số nhỏ lại: bánh xe đi theo tay.
-    private var drag: some Gesture {
-        DragGesture(minimumDistance: 2)
-            .onChanged { value in
-                let notches = Int((value.translation.height - spent) / style.pitch)
-                guard notches != 0 else { return }
-                spent += CGFloat(notches) * style.pitch
-                turn(-notches)
-            }
-            .onEnded { _ in spent = 0 }
-    }
-
     private func turn(_ step: Int) {
         pos += step
         UISelectionFeedbackGenerator().selectionChanged()
         pick(((pos % count) + count) % count)
+    }
+}
+
+/// Lớp trong suốt nhận kéo dọc và chạm cho một cột bánh xe. Cử chỉ kéo của nó bắt mọi cử chỉ khác (kể cả cử chỉ kéo của
+/// bảng trượt đang chứa nó) phải chờ nó thua mới được chạy, nên quay bánh xe không kéo theo bảng.
+private struct WheelTouch: UIViewRepresentable {
+    let drag: (CGFloat) -> Void
+    let end: () -> Void
+    let tap: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView()
+        v.backgroundColor = .clear
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.pan(_:)))
+        pan.delegate = context.coordinator
+        v.addGestureRecognizer(pan)
+        v.addGestureRecognizer(UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap(_:))))
+        return v
+    }
+
+    func updateUIView(_ v: UIView, context: Context) { context.coordinator.owner = self }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var owner: WheelTouch?
+
+        @objc func pan(_ g: UIPanGestureRecognizer) {
+            switch g.state {
+            case .changed: owner?.drag(g.translation(in: g.view).y)
+            case .ended, .cancelled, .failed: owner?.end()
+            default: break
+            }
+        }
+
+        @objc func tap(_ g: UITapGestureRecognizer) { owner?.tap(g.location(in: g.view).y) }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+            other is UIPanGestureRecognizer
+        }
     }
 }
 

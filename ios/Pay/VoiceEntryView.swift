@@ -558,7 +558,10 @@ struct VoiceEntryView: View {
     private func retry() {
         notUnderstood = false
         undone = false
-        Task { await mic.start() }
+        // Trong lúc micro bật lại (xin quyền, dựng phiên âm thanh) thẻ đã hiện như đang nghe. Không thì có một nhịp thẻ không ở
+        // trạng thái nào: mất sóng âm và cả hàng nút, co lại rồi lại nở ra khi micro chạy — nội dung nhảy xuống rồi lên.
+        starting = true
+        Task { await mic.start(); starting = false }
     }
 
     private func close() {

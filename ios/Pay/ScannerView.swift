@@ -14,14 +14,22 @@ struct ScannerView: View {
             Color.black.ignoresSafeArea()
             CameraView(onCode: found, onError: { error = $0 }).ignoresSafeArea()
 
-            // Khung ngắm
+            // Khung ngắm: chỉ trong khung thấy camera sáng, bên ngoài phủ tối để chữ và hai nút dễ đọc
             GeometryReader { g in
                 let side = min(g.size.width, g.size.height) * 0.68
-                RoundedRectangle(cornerRadius: 36, style: .continuous)
-                    .strokeBorder(.white.opacity(0.9), lineWidth: 3)
+                let hole = RoundedRectangle(cornerRadius: 36, style: .continuous)
+                ZStack {
+                    Color.black.opacity(0.72)
+                    hole.frame(width: side, height: side)
+                        .position(x: g.size.width / 2, y: g.size.height * 0.45)
+                        .blendMode(.destinationOut)
+                }
+                .compositingGroup()
+                hole.strokeBorder(.white.opacity(0.9), lineWidth: 3)
                     .frame(width: side, height: side)
                     .position(x: g.size.width / 2, y: g.size.height * 0.45)
             }
+            .ignoresSafeArea()
             .allowsHitTesting(false)
 
             VStack {

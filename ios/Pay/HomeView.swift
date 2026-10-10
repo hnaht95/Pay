@@ -381,7 +381,8 @@ struct HomeView: View {
         GlassGroup {
             HStack(spacing: 12) {
                 BigButton(title: L("Nhập"), icon: "plus", primary: false) { entry = .new(cat: nil) }
-                BigButton(title: L("Quét QR"), icon: "qrcode.viewfinder", primary: true) { scanning = true }
+                // Chạm: quét QR. Nhấn giữ: nói để ghi luôn
+                BigButton(title: L("Quét QR"), icon: "qrcode.viewfinder", primary: true, hold: { listening = true }) { scanning = true }
             }
         }
         .padding(.horizontal, 16).padding(.bottom, 8)
@@ -492,10 +493,16 @@ struct BigButton: View {
     let title: String
     let icon: String
     let primary: Bool
+    /// Việc làm khi nhấn giữ (nếu có); lần nhả tay ngay sau đó không tính là chạm
+    var hold: (() -> Void)? = nil
     let action: () -> Void
+    @State private var heldAt = Date.distantPast
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            guard Date().timeIntervalSince(heldAt) > 0.8 else { return }
+            action()
+        } label: {
             // Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với đầu nút bo tròn).
             // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
             HStack(spacing: 10) {
@@ -518,6 +525,13 @@ struct BigButton: View {
             .glassCapsule(tint: primary ? Palette.cta : nil)
         }
         .buttonStyle(Pressable())
+        .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in
+            guard let hold else { return }
+            heldAt = Date()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            hold()
+        })
+        .accessibilityActions { if let hold { Button(L("Nói để ghi"), action: hold) } }
     }
 }
 

@@ -72,10 +72,13 @@ struct HomeView: View {
                 .padding(.bottom, Self.nativeEdge && film == nil ? 16 : 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
+            // Thanh "Đã xoá · Hoàn tác" nằm dưới lớp mờ và hai nút: trồi lên từ sau dải nút, ẩn thì chui xuống lại sau đó,
+            // không bao giờ đè lên nút. iOS 26 dải nút là safeAreaBar nên đáy lớp này đã nằm ngay trên dải nút
+            .overlay(alignment: .bottom) {
+                ToastView()
+                    .padding(.bottom, Self.nativeEdge && film == nil ? 10 : 108 + (film == nil ? 0 : FilmScreen<EmptyView>.insets.bottom))
+            }
             .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil)
-
-            ToastView()
-                .padding(.bottom, 108 + (film == nil ? 0 : FilmScreen<EmptyView>.insets.bottom))
         }
         .appMenu($menu)
         .overlay {
@@ -711,9 +714,6 @@ struct ToastView: View {
     var body: some View {
         ZStack(alignment: .bottom) { bar }
             .animation(film == nil ? .spring(response: 0.28, dampingFraction: 0.75) : nil, value: store.toast?.id)
-            // Cắt ở mép dưới (ngay trên hai nút Nhập / Quét QR): thanh trượt xuống chui vào mép này rồi biến mất, trồi lên từ
-            // đây khi hiện, không đè lên hai nút. Chừa 12 điểm cho bóng đổ, phía trên để thoáng cho độ nảy
-            .mask(Rectangle().padding(.top, -200).padding(.bottom, -12))
     }
 
     @ViewBuilder private var bar: some View {
@@ -744,8 +744,8 @@ struct ToastView: View {
             .shadow(color: .black.opacity(0.18 * shown), radius: 16, y: 6)
             .padding(.horizontal, 16)   // thanh dài hết cỡ vẫn cách hai mép màn hình, bằng lề của nội dung
             .offset(y: ((1 - shown) * 14).rounded())   // lùi xuống một chút rồi mờ đi, không chạm hai nút bên dưới
-            // Bật lên từ dưới, hơi phóng to, nảy nhẹ; ẩn thì trượt xuống, thu nhỏ, mờ đi (lệch 14 điểm như trước thì gần như không thấy)
-            .transition(.offset(y: 70).combined(with: .scale(scale: 0.85, anchor: .bottom)).combined(with: .opacity))
+            // Trồi lên từ sau dải nút, ẩn thì trượt xuống chui lại sau đó (thanh nằm dưới lớp dải nút, xem HomeView)
+            .transition(.offset(y: 90).combined(with: .opacity))
             .task(id: t.id) {
                 try? await Task.sleep(for: .seconds(3))   // đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình
                 if store.toast?.id == t.id { withAnimation { store.toast = nil } }

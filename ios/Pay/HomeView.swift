@@ -706,7 +706,14 @@ struct ToastView: View {
     /// Mức hiện của thanh khi dựng phim (0…1); dùng app thì luôn 1, hiệu ứng do transition lo
     private var shown: Double { Double(film?.toast ?? 1) }
 
+    /// Hiện / ẩn / đổi thông báo luôn có hiệu ứng (trượt lên + hiện dần) dù chỗ gọi có bọc withAnimation hay không:
+    /// trước đây chỉ lúc tự ẩn sau 5 giây là mượt, còn lúc hiện ("Đã xoá") và lúc bấm Hoàn tác thì bật / tắt phụt.
     var body: some View {
+        ZStack(alignment: .bottom) { bar }
+            .animation(film == nil ? .snappy(duration: 0.32) : nil, value: store.toast?.id)
+    }
+
+    @ViewBuilder private var bar: some View {
         if let t = store.toast {
             HStack(spacing: 14) {
                 // Báo lỗi (vd lưu khoản chung thất bại) thì không vẽ dấu tích thành công

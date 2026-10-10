@@ -25,14 +25,17 @@ struct EntryView: View {
             Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
             HStack(alignment: .firstTextBaseline) {
                 Text(amount > 0 ? fmt(amount) : "0")
-                    .font(.system(size: 56, weight: .bold)).kerning(-2)
+                    .font(.system(size: 40, weight: .bold)).kerning(-1)
                     .foregroundStyle(amount > 0 ? .primary : .tertiary)
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 Spacer()
-                Text("đ").font(.system(size: 22, weight: .semibold)).foregroundStyle(.secondary)
+                Text("đ").font(.system(size: 20, weight: .semibold)).foregroundStyle(.secondary)
             }
-            Rectangle().fill(.primary).frame(height: 2).padding(.top, 4)
+            // Ô số tiền đóng khung nền nhạt, cùng kiểu với ô ghi chú bên dưới
+            .padding(.horizontal, 18).padding(.vertical, 12)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.top, 8)
 
             chips.padding(.top, 14)
 

@@ -234,7 +234,8 @@ struct VoiceEntryView: View {
                                    width: from.width + (to.width - from.width) * morph, height: from.height + (to.height - from.height) * morph)
                     let shape = RoundedRectangle(cornerRadius: from.height / 2 + (42 - from.height / 2) * morph, style: .continuous)
                     shape.fill(Palette.cta)
-                        .overlay(shape.fill(Palette.surface).opacity(Double(morph)))
+                        // Đổi màu nhanh ở đầu (xong khi khối mới lớn được 40%): đổi đều suốt quãng thì khối cứ xám lửng lơ, trông như khựng
+                        .overlay(shape.fill(Palette.surface).opacity(Double(min(1, max(0, morph) * 2.5))))
                         .frame(width: r.width, height: r.height)
                         .position(x: r.midX - o.x, y: r.midY - o.y)
                         .opacity(blob ? 1 : 0)
@@ -276,6 +277,10 @@ struct VoiceEntryView: View {
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) { morph = 1 }
                 withAnimation(.easeOut(duration: 0.22).delay(0.16)) { filled = true }
                 Task { try? await Task.sleep(for: .milliseconds(520)); if filled { blob = false } }
+                // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy
+                // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng. Chờ hiệu ứng xong rồi mới bật.
+                try? await Task.sleep(for: .milliseconds(430))
+                guard !Task.isCancelled else { return }
             }
             await mic.start()
             starting = false

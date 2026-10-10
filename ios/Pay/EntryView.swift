@@ -61,6 +61,7 @@ struct EntryView: View {
         .sheet(isPresented: $addingCat) {
             CategoryEditor { k in cat = k; catPicked = true; chosen = true }
                 .environmentObject(store)
+                .sheetGrabber()
         }
     }
 

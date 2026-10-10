@@ -86,14 +86,14 @@ struct HomeView: View {
         }) {
             ScannerView { code in scanned = code; scanning = false }
         }
-        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
-        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store) }
+        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store).sheetGrabber() }
+        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store).sheetGrabber() }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store) }
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
-        .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store) }
-        .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store) }
+        .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
+        .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store).sheetGrabber() }
         .fullScreenCover(isPresented: $listening) {
             VoiceEntryView(onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }

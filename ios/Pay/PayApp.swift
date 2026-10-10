@@ -29,6 +29,8 @@ struct PayApp: App {
                     FilmTouches.install()
                     await FilmExport.runIfAsked(store: store, quick: quick)
                     #endif
+                    // Tải trước sổ Nhóm chung ngay khi mở app, để lúc bấm vào đã có sẵn (không hỏi quyền thông báo ở đây)
+                    await House.shared.load(prompt: false)
                 }
                 #if DEBUG
                 // "-filmVoiceOnWake YES": app được gọi lên lại (vd từ màn hình khoá) thì mở luôn "nói để ghi", như bấm nút Tác vụ —

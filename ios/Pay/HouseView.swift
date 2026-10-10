@@ -80,7 +80,7 @@ struct HouseView: View {
             if UserDefaults.standard.bool(forKey: "houseDemoAdd") { adding = true }   // máy ảo không bấm được nút nổi
             #endif
         }
-        .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store) }
+        .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
         .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
             TextField(L("Tên"), text: $newMember)
             Button(L("Huỷ"), role: .cancel) { newMember = "" }
@@ -114,7 +114,7 @@ struct HouseView: View {
                                         : L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from)))
             }
         }
-        .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store) }
+        .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store).sheetGrabber() }
         .onDisappear { if film == nil { house.open(nil) } }   // (phim vẽ lại màn hình mỗi khung: không tính là đóng)
         .appMenu($menu)   // mở lại thì về danh sách nhóm
         // Trả qua app ngân hàng xong quay lại Pay: hỏi đã chuyển xong chưa
@@ -205,7 +205,7 @@ struct HouseView: View {
         }
         .padding(.top, 14).padding(.bottom, 14)
         .sheet(isPresented: $showInbox) { inbox }
-        .sheet(item: $editingGroup) { HouseGroupEditor(group: $0) }
+        .sheet(item: $editingGroup) { HouseGroupEditor(group: $0).sheetGrabber() }
     }
 
     private func circleButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {

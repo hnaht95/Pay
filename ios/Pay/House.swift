@@ -283,7 +283,8 @@ final class House: ObservableObject {
     // MARK: Tải
 
     /// Tải mọi nhóm: vùng mình tạo và vùng người khác chia sẻ cho mình.
-    func load() async {
+    /// prompt = false (tải trước lúc mở app): không hỏi quyền thông báo, việc đó để tới khi người dùng mở màn Nhóm chung
+    func load(prompt: Bool = true) async {
         if demo { if groups.isEmpty { loadDemo() }; return }
         if phase != .ready { phase = .loading }
         do {
@@ -309,7 +310,7 @@ final class House: ObservableObject {
             if let id = currentID, !groups.contains(where: { $0.id == id }) { currentID = nil }
             phase = .ready
             for i in groups.indices { notifyChanges(i) }
-            if !groups.isEmpty { await enableNotifications() }
+            if !groups.isEmpty, prompt { await enableNotifications() }
         } catch let e as CKError where e.code == .notAuthenticated {
             dropCache(); phase = .noAccount
         } catch {

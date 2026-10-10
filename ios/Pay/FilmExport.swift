@@ -76,10 +76,10 @@ enum FilmExport {
 
     static func again(_ store: Store) -> Film {
         let chips = store.frequent()
-        let taps = [Tap(at: CGPoint(x: 225, y: 453), down: 1.0, up: 1.25), Tap(at: CGPoint(x: 83, y: 453), down: 3.6, up: 3.85)]
+        let taps = [Tap(at: CGPoint(x: 225, y: 453), down: 1.0, up: 1.25), Tap(at: CGPoint(x: 83, y: 453), down: 5.2, up: 5.45)]   // thanh báo đầu hiện đủ 4 giây rồi mới chạm tiếp
         let order = [1, 0]   // chạm "cà phê" rồi "ăn trưa"
         var done = 0
-        return Film(length: 7.0) { t in
+        return Film(length: 10.2) { t in
             // Tới lúc nhấc tay: ghi khoản và hiện thanh báo như app thật
             while done < taps.count, t >= taps[done].up {
                 let f = chips[order[done]]
@@ -89,7 +89,7 @@ enum FilmExport {
             }
             var frame = FilmFrame(again: chips)
             for (i, tap) in taps.enumerated() { frame.pressed["again-" + chips[order[i]].id] = press(tap, t) }
-            frame.toast = ease(t, taps[0].up + 0.05, taps[0].up + 0.4) * (1 - ease(t, 6.0, 6.35))
+            frame.toast = ease(t, taps[0].up + 0.05, taps[0].up + 0.4) * (1 - ease(t, 9.2, 9.55))
             return AnyView(FilmScreen(touch: touch(taps, t)) { HomeView() }.environment(\.film, frame))
         }
     }

@@ -19,6 +19,7 @@ struct EntryView: View {
     @State private var ready = false
     /// Ngày giờ của khoản đang sửa
     @State private var when = Date()
+    @State private var pickingDate = false
     /// Đang nhập / sửa. Mở một khoản đã ghi thì ban đầu chỉ xem (bàn phím mờ), bấm Sửa mới sửa
     @State private var editing = true
     @FocusState private var noteFocused: Bool
@@ -85,6 +86,15 @@ struct EntryView: View {
         .edgeBack(slides: { true }) { dismiss() }
         .swipeDownToClose { dismiss() }
         .onAppear(perform: setup)
+        .sheet(isPresented: $pickingDate) {
+            // Lịch và giờ của iOS (không cho chọn ngày trong tương lai); kéo xuống là xong
+            DatePicker(L("Ngày giờ"), selection: $when, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
+                .datePickerStyle(.graphical).labelsHidden()
+                .environment(\.locale, Lang.locale)
+                .padding(.horizontal, 16).padding(.top, 24)
+                .presentationDetents([.height(500)])
+                .sheetGrabber()
+        }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
             CategoryEditor { k in cat = k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } }
@@ -107,11 +117,20 @@ struct EntryView: View {
                 Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
             }
             if isEdit && editing {
-                // Đang sửa một khoản đã ghi: đổi được cả ngày giờ (không cho chọn ngày trong tương lai)
-                DatePicker(L("Ngày giờ"), selection: $when, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
-                    .labelsHidden().datePickerStyle(.compact)
-                    .environment(\.locale, Lang.locale)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 48).padding(.top, 2)
+                // Đang sửa một khoản đã ghi: đổi được cả ngày giờ. Viên thuốc cùng kiểu với các nút khác của màn này, chạm mở bảng chọn
+                Button { noteFocused = false; pickingDate = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar").font(.system(size: 14, weight: .semibold))
+                        Text(stamp(when)).font(.system(size: 15, weight: .medium))
+                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 14).frame(height: 36)
+                    .foregroundStyle(.primary)
+                    .background(Palette.pill, in: Capsule())
+                }
+                .buttonStyle(Pressable())
+                .accessibilityLabel(L("Ngày giờ"))
+                .padding(.leading, 56).padding(.top, 4)
             } else if let sub { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 56).lineLimit(2) }
         }
         .padding(.top, 8)
@@ -135,11 +154,14 @@ struct EntryView: View {
         case .new: return nil
         case .scan(let q): return [q.bank, q.acct ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         case .raw(let s): return String(s.prefix(80))
-        case .edit(let e), .editNow(let e):
-            let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
-            if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }
-            return f.string(from: e.date)
+        case .edit(let e), .editNow(let e): return stamp(e.date)
         }
+    }
+
+    private func stamp(_ d: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
+        if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }
+        return f.string(from: d)
     }
 
     // MARK: Danh mục

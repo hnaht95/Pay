@@ -282,8 +282,9 @@ struct HomeView: View {
     }
 
     private func tiles(_ now: Date) -> some View {
-        var perCat: [String: Int] = [:]
-        for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a }
+        var perCat: [String: Int] = [:], counts: [String: Int] = [:]
+        for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a; counts[e.c, default: 0] += 1 }
+        let monthTotal = perCat.values.reduce(0, +)
         // Mỗi danh mục dài cả hàng hoặc nửa hàng (đổi trong bảng nhấn giữ). Ô nửa hàng đứng lẻ ngay trước một ô dài
         // thì giãn ra cho kín hàng. Ô dấu + luôn ở cuối, nửa hàng.
         var rows: [[Category?]] = [], half: [Category?] = []   // nil = ô dấu +
@@ -304,7 +305,7 @@ struct HomeView: View {
                         if let c {
                             // Chạm: nhập khoản mới; nhấn giữ: bảng tuỳ chọn tự vẽ (thay menu mặc định của iOS)
                             TapHold(tap: { entry = .new(cat: c.k) }, hold: { menu = categoryMenu(c) }) {
-                                tile(c, total: perCat[c.k] ?? 0)
+                                tile(c, total: perCat[c.k] ?? 0, count: counts[c.k] ?? 0, of: monthTotal)
                             }
                             .filmPressed(film?.pressed["tile-" + c.k] ?? 0)
                         } else {
@@ -322,27 +323,33 @@ struct HomeView: View {
             Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
                 .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
                 .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, minHeight: 124)
-                .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .frame(maxWidth: .infinity, minHeight: 132)
+                .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
         }
         .buttonStyle(Pressable())
         .accessibilityLabel(L("Thêm danh mục"))
     }
 
-    /// Ô danh mục: chỉ tên và số tiền trên nền màu (bỏ biểu tượng và dấu +, thử theo ảnh mẫu); ô dài thì số to hơn
-    private func tile(_ c: Category, total: Int) -> some View {
+    /// Bo góc của ô danh mục (tự đặt, không phải mặc định của iOS)
+    private static let tileRadius: CGFloat = 20
+
+    /// Ô danh mục: tên, số tiền tháng này, và dòng phụ số khoản · phần trăm trong tổng chi tháng. Ô dài thì số to hơn
+    private func tile(_ c: Category, total: Int, count: Int, of month: Int) -> some View {
         let wide = store.isWide(c.k)
+        let share = month > 0 ? Int((Double(total) / Double(month) * 100).rounded()) : 0
+        let sub = count == 0 ? L("Chưa chi") : (count == 1 ? L("1 khoản") : L("%d khoản", count)) + " · \(share)%"
         return VStack(alignment: .leading, spacing: 0) {
             Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.75).lineLimit(1)
-            Spacer(minLength: 14)
+            Spacer(minLength: 12)
             Text(fmt(total)).font(.system(size: wide ? 44 : 28, weight: .bold)).kerning(wide ? -1.5 : -0.5)
                 .lineLimit(1).minimumScaleFactor(0.5)
+            Text(sub).font(.system(size: 14)).opacity(0.7).lineLimit(1).padding(.top, 2)
         }
         .foregroundStyle(c.ink)
         .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
-        .background(c.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
+        .background(c.color, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
     }
 
     /// Bảng nhấn giữ của một danh mục

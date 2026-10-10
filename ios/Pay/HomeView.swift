@@ -481,13 +481,19 @@ struct ExpenseRow: View {
     var now = Date()
     /// Khoản định kỳ (app tự ghi hằng tháng): hiện biểu tượng lặp
     var repeats = false
+    /// Danh sách của riêng một danh mục: không cần biểu tượng, chỉ một chấm tròn màu danh mục ở đầu hàng
+    var dot = false
 
     var body: some View {
         let c = Category.get(e.c)
         HStack(spacing: 14) {
-            CategoryIcon(c: c, size: 30)
-                .frame(width: 56, height: 56)
-                .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            if dot {
+                Circle().fill(c.color).frame(width: 12, height: 12).padding(.leading, 6)
+            } else {
+                CategoryIcon(c: c, size: 30)
+                    .frame(width: 56, height: 56)
+                    .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
@@ -507,7 +513,7 @@ struct ExpenseRow: View {
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
-        .frame(minHeight: Self.rowHeight - 10)
+        .frame(minHeight: dot ? 64 : Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 

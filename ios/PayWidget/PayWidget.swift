@@ -130,20 +130,7 @@ struct SpendView: View {
                     totals
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                VStack(spacing: 8) {
-                    Link(destination: QuickKind.scan.url) {
-                        Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
-                            .font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
-                            .foregroundStyle(e.tone.onInk)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(ink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    HStack(spacing: 8) {
-                        iconAction("mic.fill", .voice, L("Nói để ghi"))
-                        iconAction("plus", .add, L("Nhập"))
-                    }
-                }
-                .frame(width: 118)
+                QuickButtons(tone: e.tone).frame(width: 118)
             }
         case .accessoryCircular:
             // Có ngân sách: vòng tròn đầy dần theo phần đã tiêu trong tháng, giữa là biểu tượng quét
@@ -210,14 +197,35 @@ struct SpendView: View {
             }
         }
     }
+}
 
-    private func iconAction(_ icon: String, _ k: QuickKind, _ label: String) -> some View {
+/// Ba nút vào nhanh của widget cỡ vừa: Quét QR (nút chính), dưới là Nói để ghi và Nhập
+private struct QuickButtons: View {
+    let tone: WidgetTone
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Link(destination: QuickKind.scan.url) {
+                Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
+                    .font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                    .foregroundStyle(tone.onInk)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(tone.ink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            HStack(spacing: 8) {
+                icon("mic.fill", .voice, L("Nói để ghi"))
+                icon("plus", .add, L("Nhập"))
+            }
+        }
+    }
+
+    private func icon(_ name: String, _ k: QuickKind, _ label: String) -> some View {
         Link(destination: k.url) {
-            Image(systemName: icon)
+            Image(systemName: name)
                 .font(.system(size: 18, weight: .semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(ink.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .foregroundStyle(ink)
+                .background(tone.ink.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .foregroundStyle(tone.ink)
         }
         .accessibilityLabel(label)
     }
@@ -326,12 +334,8 @@ struct MyQRView: View {
     /// Bốn số cuối của tài khoản, đủ để nhận ra mà không phơi cả số ra màn hình chính
     private var tail: String { e.qr.acct.count > 4 ? "••" + e.qr.acct.suffix(4) : e.qr.acct }
 
-    /// Mã QR trên ô trắng bo góc: nền widget có màu, mã vẫn cần nền trắng và lề trắng để máy quét đọc được
-    private var code: some View {
-        MyQRCode(qr: e.qr)
-            .padding(family == .systemLarge ? 12 : 7)
-            .background(.white, in: RoundedRectangle(cornerRadius: family == .systemLarge ? 18 : 12, style: .continuous))
-    }
+    /// Mã QR không nền, vẽ thẳng lên nền widget: ô màu đen trên nền sáng, màu trắng trên nền tối
+    private var code: some View { MyQRCode(qr: e.qr, ink: e.tone.dark ? .white : .black) }
 
     @ViewBuilder private var content: some View {
         if !e.qr.ready {
@@ -342,19 +346,10 @@ struct MyQRView: View {
                     .multilineTextAlignment(.center).minimumScaleFactor(0.8)
             }
         } else if family == .systemMedium {
-            HStack(spacing: 16) {
+            // Cỡ vừa: mã QR nhận tiền bên trái, bên phải là ba nút vào nhanh như widget Chi tiêu hôm nay
+            HStack(spacing: 14) {
                 code
-                VStack(alignment: .leading, spacing: 3) {
-                    CardMarks(ink: ink)
-                    Spacer(minLength: 4)
-                    Text(L("Quét để chuyển cho")).font(.system(size: 13, weight: .medium)).foregroundStyle(soft).lineLimit(1)
-                    if !e.qr.name.isEmpty {
-                        Text(e.qr.name).font(.system(size: 17, weight: .bold)).foregroundStyle(ink).lineLimit(2).minimumScaleFactor(0.7)
-                    }
-                    Text(e.qr.bank).font(.system(size: 14, weight: .semibold)).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.7)
-                    Text(e.qr.acct).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(soft).lineLimit(1).minimumScaleFactor(0.6)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                QuickButtons(tone: e.tone).frame(maxWidth: .infinity)
             }
         } else {
             VStack(spacing: family == .systemLarge ? 10 : 5) {

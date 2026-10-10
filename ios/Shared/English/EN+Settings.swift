@@ -7,7 +7,6 @@ extension English {
         "Thêm widget \"Mã QR nhận tiền\" ra màn hình chính: người khác quét là chuyển khoản cho bạn, không phải mở app ngân hàng.": "Add the \"Receive-money QR\" widget to your Home Screen: others scan it to send you money, without you opening your bank app.",
         "Mã VietQR của bạn ngay trên màn hình chính, người khác quét là chuyển khoản.": "Your VietQR code on the Home Screen. Others scan it to send you money.",
         "Mở Pay > Cài đặt để thêm tài khoản nhận tiền": "Open Pay > Settings to add your receiving account",
-        "Quét để chuyển cho": "Scan to pay",
         // Cài đặt
         "Cài đặt": "Settings",
         "Xong": "Done",

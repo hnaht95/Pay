@@ -44,21 +44,39 @@ struct MyQR: Equatable {
     }
 
     /// Ảnh mã QR, mỗi ô một điểm ảnh (vẽ phóng to không làm mịn để ô vuông sắc nét)
-    var image: CGImage? {
+    var image: CGImage? { image(clear: false) }
+
+    /// clear = true: chỉ có các ô của mã, phần còn lại trong suốt (để tô mã bằng một màu, đặt thẳng lên nền có sẵn)
+    func image(clear: Bool) -> CGImage? {
         guard let payload else { return nil }
         let f = CIFilter.qrCodeGenerator()
         f.message = Data(payload.utf8)
         f.correctionLevel = "M"
-        guard let out = f.outputImage else { return nil }
+        guard var out = f.outputImage else { return nil }
+        if clear {
+            let c = CIFilter.falseColor()
+            c.inputImage = out
+            c.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: 1)   // ô đen của mã
+            c.color1 = CIColor(red: 0, green: 0, blue: 0, alpha: 0)   // nền trắng -> trong suốt
+            guard let t = c.outputImage else { return nil }
+            out = t
+        }
         return CIContext().createCGImage(out, from: out.extent)
     }
 }
 
-/// Mã QR đen trên nền trắng, có lề trắng quanh mã để máy quét đọc được
+/// Mã QR: mặc định đen trên nền trắng; trong widget thì không nền, tô một màu theo nền widget
 struct MyQRCode: View {
     let qr: MyQR
+    /// Có màu: mã không nền, các ô tô bằng màu này (đặt thẳng lên nền của widget). nil: mã đen trên nền trắng
+    var ink: Color? = nil
+
     var body: some View {
-        if let img = qr.image {
+        if let ink, let img = qr.image(clear: true) {
+            Image(decorative: img, scale: 1).renderingMode(.template).interpolation(.none).resizable().scaledToFit()
+                .foregroundStyle(ink)
+                .accessibilityLabel(L("Mã QR nhận tiền"))
+        } else if let img = qr.image {
             Image(decorative: img, scale: 1).interpolation(.none).resizable().scaledToFit()
                 .accessibilityLabel(L("Mã QR nhận tiền"))
         }

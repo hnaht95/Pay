@@ -433,8 +433,8 @@ extension View {
 }
 
 struct ExpenseRow: View {
-    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 80pt: biểu tượng 56 + lề 2×12).
-    static let rowHeight: CGFloat = 90
+    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 86pt: vừa tên hai dòng + dòng phụ).
+    static let rowHeight: CGFloat = 96
     let e: Expense
     var showDay = false
     var now = Date()
@@ -449,23 +449,32 @@ struct ExpenseRow: View {
                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text((e.n?.isEmpty == false ? e.n! : c.name)).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                    // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
+                    Text((e.n?.isEmpty == false ? e.n! : c.name)).font(.system(size: 17, weight: .semibold))
+                        .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                     if repeats {
                         Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
                             .accessibilityLabel(L("Hằng tháng"))
                     }
                 }
-                Text(sub(c)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                // Không đủ chỗ thì bỏ tên danh mục (đã có biểu tượng bên trái), giữ ngày giờ đọc được trọn
+                ViewThatFits(in: .horizontal) {
+                    Text(sub(c)).lineLimit(1)
+                    Text(sub(c, category: false)).lineLimit(1)
+                }
+                .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1)
+            // Số tiền luôn hiện đủ: phần tên nhường chỗ
+            Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1).fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
+        .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    private func sub(_ c: Category) -> String {
+    private func sub(_ c: Category, category: Bool = true) -> String {
         let tf = DateFormatter(); tf.dateFormat = "HH:mm"
         var parts: [String] = []
         if showDay {
@@ -475,7 +484,7 @@ struct ExpenseRow: View {
             else { let d = cal.dateComponents([.day, .month], from: e.date); parts.append("\(d.day!)/\(d.month!)") }
         }
         parts.append(tf.string(from: e.date))
-        parts.append(c.name)
+        if category { parts.append(c.name) }
         return parts.joined(separator: " · ")
     }
 }

@@ -285,24 +285,27 @@ struct VoiceView: View {
 struct MyQREntry: TimelineEntry {
     let date: Date
     let qr: MyQR
+    var tone: WidgetTone = .green
 }
 
-struct MyQRProvider: TimelineProvider {
+struct MyQRProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> MyQREntry {
         MyQREntry(date: Date(), qr: MyQR(bin: "970416", bank: "ACB", acct: "123456789", name: "NGUYEN VAN A"))
     }
-    func getSnapshot(in context: Context, completion: @escaping (MyQREntry) -> Void) {
+    func snapshot(for look: WidgetLook, in context: Context) async -> MyQREntry {
         let q = MyQR.load()
-        completion(context.isPreview && !q.ready ? placeholder(in: context) : MyQREntry(date: Date(), qr: q))
+        var e = context.isPreview && !q.ready ? placeholder(in: context) : MyQREntry(date: Date(), qr: q)
+        e.tone = look.tone
+        return e
     }
-    func getTimeline(in context: Context, completion: @escaping (Timeline<MyQREntry>) -> Void) {
-        completion(Timeline(entries: [MyQREntry(date: Date(), qr: MyQR.load())], policy: .never))
+    func timeline(for look: WidgetLook, in context: Context) async -> Timeline<MyQREntry> {
+        Timeline(entries: [MyQREntry(date: Date(), qr: MyQR.load(), tone: look.tone)], policy: .never)
     }
 }
 
 struct MyQRWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "MyQRWidget", provider: MyQRProvider()) { MyQRView(e: $0) }
+        AppIntentConfiguration(kind: "MyQRWidget", intent: WidgetLook.self, provider: MyQRProvider()) { MyQRView(e: $0) }
             .configurationDisplayName(L("Mã QR nhận tiền"))
             .description(L("Mã VietQR của bạn ngay trên màn hình chính, người khác quét là chuyển khoản."))
             .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
@@ -312,44 +315,52 @@ struct MyQRWidget: Widget {
 struct MyQRView: View {
     let e: MyQREntry
     @Environment(\.widgetFamily) private var family
-    private let ink = Color(red: 0x0E / 255, green: 0x14 / 255, blue: 0x10 / 255)
+    /// Cùng bộ màu với các widget khác của Pay (mặc định thẻ xanh lá, đổi được trong Sửa tiện ích)
+    private var ink: Color { e.tone.ink }
+    private var soft: Color { e.tone.ink.opacity(0.62) }
 
     var body: some View {
-        // Nền trắng ở cả nền sáng lẫn nền tối: mã QR cần nền trắng để máy quét đọc được
-        content.containerBackground(for: .widget) { Color.white }
+        content.containerBackground(for: .widget) { e.tone.bg }
     }
 
     /// Bốn số cuối của tài khoản, đủ để nhận ra mà không phơi cả số ra màn hình chính
     private var tail: String { e.qr.acct.count > 4 ? "••" + e.qr.acct.suffix(4) : e.qr.acct }
+
+    /// Mã QR trên ô trắng bo góc: nền widget có màu, mã vẫn cần nền trắng và lề trắng để máy quét đọc được
+    private var code: some View {
+        MyQRCode(qr: e.qr)
+            .padding(family == .systemLarge ? 12 : 7)
+            .background(.white, in: RoundedRectangle(cornerRadius: family == .systemLarge ? 18 : 12, style: .continuous))
+    }
 
     @ViewBuilder private var content: some View {
         if !e.qr.ready {
             VStack(spacing: 8) {
                 Image(systemName: "qrcode").font(.system(size: 34, weight: .semibold)).foregroundStyle(ink)
                 Text(L("Mở Pay > Cài đặt để thêm tài khoản nhận tiền"))
-                    .font(.system(size: 13, weight: .medium)).foregroundStyle(ink.opacity(0.62))
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(soft)
                     .multilineTextAlignment(.center).minimumScaleFactor(0.8)
             }
         } else if family == .systemMedium {
             HStack(spacing: 16) {
-                MyQRCode(qr: e.qr)
+                code
                 VStack(alignment: .leading, spacing: 3) {
-                    Circle().fill(ink).frame(width: 11, height: 11).accessibilityHidden(true)
+                    CardMarks(ink: ink)
                     Spacer(minLength: 4)
-                    Text(L("Quét để chuyển cho")).font(.system(size: 13, weight: .medium)).foregroundStyle(ink.opacity(0.62)).lineLimit(1)
+                    Text(L("Quét để chuyển cho")).font(.system(size: 13, weight: .medium)).foregroundStyle(soft).lineLimit(1)
                     if !e.qr.name.isEmpty {
                         Text(e.qr.name).font(.system(size: 17, weight: .bold)).foregroundStyle(ink).lineLimit(2).minimumScaleFactor(0.7)
                     }
                     Text(e.qr.bank).font(.system(size: 14, weight: .semibold)).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.7)
-                    Text(e.qr.acct).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(ink.opacity(0.62)).lineLimit(1).minimumScaleFactor(0.6)
+                    Text(e.qr.acct).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(soft).lineLimit(1).minimumScaleFactor(0.6)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
         } else {
-            VStack(spacing: family == .systemLarge ? 10 : 4) {
-                MyQRCode(qr: e.qr)
+            VStack(spacing: family == .systemLarge ? 10 : 5) {
+                code
                 Text(e.qr.bank.isEmpty ? tail : e.qr.bank + " · " + tail)
-                    .font(.system(size: family == .systemLarge ? 15 : 11, weight: .semibold)).foregroundStyle(ink.opacity(0.7))
+                    .font(.system(size: family == .systemLarge ? 15 : 11, weight: .semibold)).foregroundStyle(ink)
                     .lineLimit(1).minimumScaleFactor(0.6)
             }
         }

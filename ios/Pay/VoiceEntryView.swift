@@ -304,7 +304,7 @@ struct VoiceEntryView: View {
             let settle = film?.voice?.settle ?? 0
             if isListening || (film != nil && settle < 1) {
                 // Điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không — dịch lẻ thì chữ và nền lệch nhau
-                let room = (74 * (1 - settle)).rounded()   // 56 sóng âm + 18 khoảng cách
+                let room = (92 * (1 - settle)).rounded()   // 74 sóng âm + 18 khoảng cách
                 Waveform(meter: mic.meter, film: film)
                     .frame(height: max(0, room - 18), alignment: .center).clipped()
                     .opacity(Double(1 - settle))
@@ -619,8 +619,8 @@ struct VoiceEntryView: View {
     }
 }
 
-/// Sóng âm: dải sáng gradient mờ (vài đốm màu nhoè, trôi qua lại), kiểu giao diện giọng nói AI. Nói to thì các đốm nở
-/// to và đậm lên theo độ to thật của giọng; im lặng chỉ còn vệt sáng nhỏ thở nhẹ để biết vẫn đang nghe.
+/// Sóng âm: ba dải sóng phát sáng (đường sóng dày tô gradient màu, nhoè) gợn lên xuống, chạy ngược nhịp nhau, kiểu giao diện
+/// giọng nói AI. Nói to thì sóng cao theo độ to thật của giọng; im lặng chỉ còn gợn nhẹ để biết vẫn đang nghe.
 private struct Waveform: View {
     @ObservedObject var meter: MicLevel
     /// Dựng phim: độ to và thời điểm lấy từ phim
@@ -636,37 +636,41 @@ private struct Waveform: View {
         }
     }
 
-    /// Các đốm màu: màu, vị trí ngang (0…1), tốc độ trôi, lệch pha
-    private static let blobs: [(color: Color, x: Double, speed: Double, phase: Double)] = [
-        (Color(hex: 0x8EE6B0), 0.30, 0.9, 0.0),    // xanh bạc hà
-        (Color(hex: 0x5FD08C), 0.50, 1.3, 2.1),    // xanh lá
-        (Color(hex: 0x8CC8FF), 0.70, 1.1, 4.2),    // xanh trời
-        (Color(hex: 0xB8A6FF), 0.42, 0.7, 5.3),    // tím nhạt
+    /// Mỗi dải: màu gradient từ trái sang phải, số gợn trên bề ngang, tốc độ chạy (âm = chạy ngược), lệch pha
+    private static let waves: [(colors: [Color], cycles: Double, speed: Double, phase: Double)] = [
+        ([Color(hex: 0x8EE6B0), Color(hex: 0x5FD08C), Color(hex: 0x8CC8FF)], 1.6, 2.4, 0.0),
+        ([Color(hex: 0xB8A6FF), Color(hex: 0x8CC8FF), Color(hex: 0x8EE6B0)], 2.3, -3.0, 1.9),
+        ([Color(hex: 0x5FD08C), Color(hex: 0xB8A6FF), Color(hex: 0x8CC8FF)], 1.1, 1.7, 3.8),
     ]
+    /// Số điểm dọc theo mỗi dải (đủ mịn để sóng không gãy khúc)
+    private static let samples = 90
 
     private func glow(level: CGFloat, time: Double) -> some View {
         Canvas { ctx, size in
-            let lv: CGFloat = 0.12 + 0.88 * min(level, 1)   // im lặng vẫn còn vệt sáng nhỏ
-            // Nhoè theo chiều cao dải; đốm không cao quá ~60% dải để phần nhoè không bị cắt phẳng ở mép trên dưới
-            ctx.addFilter(.blur(radius: size.height * 0.26))
-            for b in Self.blobs {
-                let drift: Double = sin(time * b.speed + b.phase)
-                let breathe: Double = sin(time * 2.1 + b.phase * 1.7)
-                let w: CGFloat = size.width * (0.22 + 0.2 * lv) * CGFloat(1 + 0.08 * breathe)
-                // Giữ cả đốm (kèm phần nhoè) trong khung: trôi ra sát mép thì phần nhoè bị cắt thành mép thẳng
-                let margin: CGFloat = w / 2 + size.height * 0.4
-                let cx: CGFloat = min(max(size.width * CGFloat(b.x + 0.12 * drift), margin), size.width - margin)
-                let h: CGFloat = size.height * (0.18 + 0.42 * lv) * CGFloat(1 + 0.12 * breathe)
-                let rect = CGRect(x: cx - w / 2, y: (size.height - h) / 2, width: w, height: h)
-                ctx.fill(Path(ellipseIn: rect), with: .color(b.color.opacity(Double(0.45 + 0.5 * lv))))
+            let lv: CGFloat = 0.12 + 0.88 * min(level, 1)   // im lặng vẫn còn gợn nhẹ
+            let mid = size.height / 2
+            let thick: CGFloat = size.height * (0.13 + 0.07 * lv)
+            let blur: CGFloat = size.height * 0.11
+            // Sóng cao nhất vẫn chừa chỗ cho bề dày dải và phần nhoè, không chạm mép khung
+            let amp: CGFloat = (mid - thick / 2 - blur) * lv
+            ctx.addFilter(.blur(radius: blur))
+            for w in Self.waves {
+                var path = Path()
+                for k in 0...Self.samples {
+                    let u: Double = Double(k) / Double(Self.samples)
+                    let env: Double = pow(sin(Double.pi * u), 1.5)   // hai đầu về đường giữa, giữa nhấp nhô mạnh nhất
+                    let wave: Double = sin(u * 2 * Double.pi * w.cycles + time * w.speed + w.phase)
+                    let pt = CGPoint(x: size.width * CGFloat(u), y: mid + amp * CGFloat(env * wave))
+                    if k == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+                }
+                ctx.stroke(path, with: .linearGradient(Gradient(colors: w.colors.map { $0.opacity(Double(0.55 + 0.4 * lv)) }),
+                                                       startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
+                           style: StrokeStyle(lineWidth: thick, lineCap: .round, lineJoin: .round))
             }
         }
-        // Phần nhoè tràn khỏi khung vẽ bị cắt phẳng ở mép trên dưới (thành dải chữ nhật): mờ dần hai mép cho vệt sáng tan vào nền
-        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.32),
-                                     .init(color: .black, location: 0.68), .init(color: .clear, location: 1)],
-                             startPoint: .top, endPoint: .bottom))
-        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.15),
-                                     .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
+        // Hai đầu dải mờ dần vào nền thẻ
+        .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.12),
+                                     .init(color: .black, location: 0.88), .init(color: .clear, location: 1)],
                              startPoint: .leading, endPoint: .trailing))
     }
 

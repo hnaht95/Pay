@@ -22,7 +22,7 @@ struct HistoryView: View {
                     Section {
                         ForEach(list) { e in
                             TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .edit(e) } }) {
-                                ExpenseRow(e: e, repeats: store.rule(for: e) != nil, dot: category != nil)
+                                ExpenseRow(e: e, repeats: store.rule(for: e) != nil, compact: true)
                             }
                             .expenseSwipe(delete: { store.remove(id: e.id) })
                         }

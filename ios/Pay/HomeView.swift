@@ -481,17 +481,12 @@ struct ExpenseRow: View {
     var now = Date()
     /// Khoản định kỳ (app tự ghi hằng tháng): hiện biểu tượng lặp
     var repeats = false
-    /// Danh sách của riêng một danh mục: không cần biểu tượng, chỉ một vạch dọc màu danh mục ở đầu hàng
-    var dot = false
+    /// Hàng thấp (màn Lịch sử, danh sách của một danh mục). Mục "Gần đây" ở màn chính để cao cố định vì List ở đó cao theo số hàng
+    var compact = false
 
     var body: some View {
         let c = Category.get(e.c)
         HStack(spacing: 14) {
-            if !dot {
-                CategoryIcon(c: c, size: 30)
-                    .frame(width: 56, height: 56)
-                    .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
@@ -502,22 +497,21 @@ struct ExpenseRow: View {
                             .accessibilityLabel(L("Hằng tháng"))
                     }
                 }
-                // Chỉ ngày giờ: danh mục đã có biểu tượng ở đầu hàng, khỏi nhắc lại bằng chữ
+                // Chỉ ngày giờ: danh mục đã có vạch màu ở đầu hàng, khỏi nhắc lại bằng chữ
                 Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
-            // Vạch dọc màu danh mục, cao bằng đúng khối chữ (tên hai dòng thì vạch dài theo)
-            .padding(.leading, dot ? 20 : 0)   // vạch cách chữ 14pt, bằng khoảng từ mép khung tới vạch
-            .overlay(alignment: .leading) {
-                if dot { Capsule().fill(c.color).frame(width: 4).padding(.leading, 2) }
-            }
+            // Vạch dọc màu danh mục thay cho biểu tượng, cao bằng đúng khối chữ (tên hai dòng thì vạch dài theo);
+            // vạch cách chữ 14pt, bằng khoảng từ mép khung tới vạch
+            .padding(.leading, 20)
+            .overlay(alignment: .leading) { Capsule().fill(c.color).frame(width: 4).padding(.leading, 2) }
             Spacer(minLength: 8)
             // Số tiền luôn hiện đủ: phần tên nhường chỗ
             Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1).fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
-        .frame(minHeight: dot ? 64 : Self.rowHeight - 10)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: dot ? 14 : 24, style: .continuous))
+        .frame(minHeight: compact ? 64 : Self.rowHeight - 10)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var sub: String {

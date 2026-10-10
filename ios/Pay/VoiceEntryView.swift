@@ -199,8 +199,6 @@ struct VoiceEntryView: View {
     /// Khối biến hình còn vẽ không (thành thẻ xong thì ẩn, để thẻ đổi cỡ về sau không lộ khối phía dưới)
     @State private var blob = true
     @State private var cardRect: CGRect = .zero
-    /// Bấm "Nói lại": ẩn tạm phần chữ trong lúc thẻ giãn ra (xem `retry`)
-    @State private var veiled = false
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
@@ -299,17 +297,21 @@ struct VoiceEntryView: View {
         // Khoảng cách 18 giữa các phần tự đặt (không dùng spacing của VStack) để phần sóng âm co về 0 được cả khoảng cách
         // của nó: ghi xong thẻ thu gọn dần, nội dung phía trên hạ xuống theo (phim: theo `settle`; app: theo animation bên dưới)
         VStack(alignment: .leading, spacing: 0) {
-            header.opacity(veiled ? 0 : 1)
-            amountBlock.padding(.top, 18).opacity(veiled ? 0 : 1)
+            header
+            // Một khối như dòng trạng thái: chữ gợi ý mới hiện ngay trong khối đang trượt cùng thẻ, không nhảy sẵn tới chỗ đích
+            // trong lúc chữ cũ và số tiền còn đang trượt (hai dòng gợi ý chồng nhau, đè lên số tiền)
+            amountBlock.geometryGroup().padding(.top, 18)
             let settle = film?.voice?.settle ?? 0
             if isListening || (film != nil && settle < 1) {
                 // Điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không — dịch lẻ thì chữ và nền lệch nhau
                 let room = (74 * (1 - settle)).rounded()   // 56 sóng âm + 18 khoảng cách
                 Waveform(meter: mic.meter, film: film)
                     .frame(height: max(0, room - 18), alignment: .center).clipped()
-                    .opacity(Double(1 - settle) * (veiled ? 0 : 1))
+                    .opacity(Double(1 - settle))
                     .padding(.top, min(18, room))
-                    .transition(Self.swap)
+                    // Bấm Nói lại: hiện trễ một chút, đợi phần chữ phía trên trượt lên nhường chỗ (hiện ngay thì dòng gợi ý chưa kịp
+                    // lên còn nằm đè lên nó). Nghe xong thì biến mất nhanh, kẻo phần trên hạ xuống đè lên nó
+                    .transition(.asymmetric(insertion: .opacity.animation(Self.waveIn), removal: Self.swap))
             }
             buttons.padding(.top, 18)
         }
@@ -330,30 +332,34 @@ struct VoiceEntryView: View {
     /// Phần đổi theo trạng thái (dòng trạng thái, sóng âm, hàng nút): cái cũ biến mất và cái mới hiện ra gần như tức thì, tại chỗ.
     /// Mờ dần chậm thì chữ cũ và mới chồng lên nhau, sóng âm còn nằm lại trong lúc phần trên đã hạ xuống đè lên nó.
     private static let swap: AnyTransition = .opacity.animation(.easeOut(duration: 0.09))
-    /// Nghe xong thẻ thu gọn
-    private static let settle: Animation = .snappy(duration: 0.35)
+    /// Nghe xong thẻ thu gọn; bấm Nói lại thẻ giãn ra
+    private static let settle: Animation = .snappy(duration: 0.35 * pace)
+    /// Sóng âm hiện ra khi bấm Nói lại (xem chỗ dùng)
+    private static let waveIn: Animation = .easeOut(duration: 0.2 * pace).delay(0.15 * pace)
+    /// Nhân thời gian hiệu ứng thẻ, để xem chậm khi chỉnh (để 1)
+    private static let pace: Double = 1
 
+    /// Dòng trạng thái là một dòng chữ duy nhất, chỉ đổi nội dung (mờ từ chữ cũ sang chữ mới) chứ không thay bằng dòng khác:
+    /// nhờ vậy chữ đổi ngay trong lúc cả dòng di chuyển cùng thẻ (lên khi bấm Nói lại, xuống khi ghi xong). Thay bằng dòng
+    /// khác thì dòng cũ nằm lại chỗ cũ trong lúc dòng mới đã ở chỗ mới, hai dòng chồng lên nhau.
     private var header: some View {
         HStack(spacing: 8) {
-            Group {
-            if savedNow != nil {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text(L("Đã ghi")).foregroundStyle(.secondary)
-            } else if isListening {
-                PulseDot(time: film?.time)
-                Text(L("Đang nghe")).foregroundStyle(.secondary)
-            } else if undone {
-                Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary)
-                Text(L("Đã hoàn tác, chưa ghi gì")).foregroundStyle(.secondary)
-            } else if notUnderstood {
-                Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange)
-                Text(L("Chưa nghe rõ số tiền")).foregroundStyle(.secondary)
-            } else {
-                Image(systemName: "mic.fill").foregroundStyle(.secondary)
-                Text(statusText).foregroundStyle(.secondary).lineLimit(2)
+            ZStack {
+                if savedNow != nil {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).transition(.opacity)
+                } else if isListening {
+                    PulseDot(time: film?.time).transition(.opacity)
+                } else if undone {
+                    Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary).transition(.opacity)
+                } else if notUnderstood {
+                    Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange).transition(.opacity)
+                } else {
+                    Image(systemName: "mic.fill").foregroundStyle(.secondary).transition(.opacity)
+                }
             }
-            }
-            .transition(Self.swap)
+            .frame(minWidth: 18)
+            Text(headerTitle).foregroundStyle(.secondary).lineLimit(2)
+                .contentTransition(.opacity)
             Spacer()
             Button { close() } label: {
                 Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
@@ -367,6 +373,14 @@ struct VoiceEntryView: View {
         // Dòng trạng thái là một khối: chữ mới ("Đã ghi") hiện ra ngay trong dòng đang hạ xuống cùng thẻ,
         // không hiện sẵn ở chỗ đích rồi bị số tiền trôi ngang qua
         .geometryGroup()
+    }
+
+    private var headerTitle: String {
+        if savedNow != nil { return L("Đã ghi") }
+        if isListening { return L("Đang nghe") }
+        if undone { return L("Đã hoàn tác, chưa ghi gì") }
+        if notUnderstood { return L("Chưa nghe rõ số tiền") }
+        return statusText
     }
 
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
@@ -429,7 +443,9 @@ struct VoiceEntryView: View {
                     }
                 }
             } else {
+                // Cùng một dòng chữ, chỉ đổi nội dung ("Đã nghe: …" -> "Nói ví dụ: …"): mờ sang chữ mới trong lúc trượt lên cùng thẻ
                 Text(hint).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(2)
+                    .contentTransition(.opacity)
             }
         }
     }
@@ -557,22 +573,17 @@ struct VoiceEntryView: View {
         }
     }
 
-    /// Sang dạng "Đang nghe" như lúc mới mở thẻ (`starting`: micro chưa kịp bật cũng hiện như đang nghe, không nháy qua
-    /// dạng trung gian). Chữ cũ ("Chưa nghe rõ", "Đã nghe: …") mờ đi trước, thẻ giãn ra cho sóng âm trong lúc phần chữ
-    /// đang ẩn, rồi chữ mới mới hiện: để chữ cũ và mới cùng hiện trong lúc thẻ giãn thì chúng mờ vào nhau, đè lên sóng âm;
-    /// còn đổi tức thì thẻ nhảy cao lên một khúc, trông giật.
+    /// Sang dạng "Đang nghe" như lúc mới mở thẻ (`starting`): micro chưa kịp bật cũng đã hiện như đang nghe. Không thì có một
+    /// nhịp thẻ không ở trạng thái nào: mất sóng âm và cả hàng nút, co lại rồi lại nở ra khi micro chạy.
+    /// Mọi thứ đổi trong cùng một nhịp hiệu ứng: thẻ giãn ra cho sóng âm, dòng trạng thái và dòng gợi ý vừa mờ sang chữ mới
+    /// vừa trượt lên theo thẻ, sóng âm hiện dần.
     private func retry() {
-        withAnimation(.easeOut(duration: 0.1)) { veiled = true }
+        withAnimation(Self.settle) {
+            notUnderstood = false
+            undone = false
+            starting = true
+        }
         Task {
-            try? await Task.sleep(for: .milliseconds(100))
-            // Trong lúc micro bật lại (xin quyền, dựng phiên âm thanh) thẻ đã hiện như đang nghe. Không thì có một nhịp thẻ không ở
-            // trạng thái nào: mất sóng âm và cả hàng nút, co lại rồi lại nở ra khi micro chạy — nội dung nhảy xuống rồi lên.
-            withAnimation(Self.settle) {
-                notUnderstood = false
-                undone = false
-                starting = true
-            }
-            withAnimation(.easeOut(duration: 0.18).delay(0.3)) { veiled = false }
             await mic.start()
             starting = false
         }

@@ -277,13 +277,17 @@ struct VoiceEntryView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 // Số đổi: app dùng hiệu ứng số của iOS; phim tự vẽ số cũ trôi lên, số mới trồi lên
-                let shift = film?.voice?.shift ?? 1
+                let now = live.map { fmt($0.amount) } ?? "0"
                 ZStack(alignment: .leading) {
-                    if let prev = film?.voice?.previous, shift < 1 {
-                        number(prev, dim: prev == "0").opacity(Double(max(0, 1 - shift * 1.6))).offset(y: (-26 * shift).rounded())
+                    if let prev = film?.voice?.previous, let t = film?.voice?.elapsed, t < 0.95 {
+                        digits(prev, dim: prev == "0", elapsed: t, leaving: true)
+                        digits(now, dim: live == nil, elapsed: t, leaving: false)
+                    } else if film != nil {
+                        // Phim: giữ cùng cách xếp chữ số như lúc đang chuyển, để chuyển xong con số không nhảy chỗ
+                        digits(now, dim: live == nil, elapsed: 10, leaving: false)
+                    } else {
+                        number(now, dim: live == nil)
                     }
-                    number(live.map { fmt($0.amount) } ?? "0", dim: live == nil)
-                        .opacity(Double(min(1, shift * 1.4))).offset(y: (26 * (1 - shift)).rounded())
                 }
                 Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }
@@ -335,6 +339,22 @@ struct VoiceEntryView: View {
             .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
             .contentTransition(.numericText())
             .minimumScaleFactor(0.5).lineLimit(1)
+    }
+
+    /// Phim: con số đang chuyển, từng chữ số một (xem FilmFrame.Voice.previous)
+    private func digits(_ s: String, dim: Bool, elapsed: Double, leaving: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: -2) {
+            ForEach(Array(s.enumerated()), id: \.offset) { i, ch in
+                let p = FilmFrame.spring((elapsed - 0.035 * Double(i)) / 0.42)
+                Text(String(ch)).font(.system(size: 46, weight: .bold))
+                    .padding(.horizontal, ch == "." || ch == "," ? -2 : 0)   // dấu chấm ôm sát hai số bên cạnh như khi viết liền
+                    .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
+                    .scaleEffect(leaving ? 1 - 0.3 * min(1, p) : 0.7 + 0.3 * min(1, p))
+                    .opacity(Double(leaving ? max(0, 1 - 2 * p) : min(1, 1.6 * p)))
+                    .offset(y: (leaving ? -22 * p : 22 * (1 - p)).rounded())
+            }
+        }
+        .lineLimit(1).fixedSize()
     }
 
     private var hint: String {

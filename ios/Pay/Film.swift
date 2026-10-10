@@ -27,11 +27,19 @@ struct FilmFrame {
         var level: CGFloat = 0
         /// Khoản đã ghi xong (nil = còn đang nghe)
         var saved: Expense? = nil
-        /// Số tiền vừa đổi: số cũ và mức chuyển sang số mới (0…1) — số cũ trôi lên mờ đi, số mới trồi lên
+        /// Số tiền vừa đổi: số cũ, và đã đổi được bao nhiêu giây. Vẽ như hiệu ứng số của iOS (numericText):
+        /// từng chữ số cũ trôi lên mờ đi, từng chữ số mới trượt từ dưới lên rồi nảy nhẹ, chữ sau trễ hơn chữ trước một nhịp
         var previous: String? = nil
-        var shift: CGFloat = 1
+        var elapsed: Double? = nil
         /// Ghi xong: thẻ thu gọn lại (sóng âm xẹp dần), 0…1
         var settle: CGFloat = 0
+    }
+}
+
+extension FilmFrame {
+    /// Như lò xo .snappy: 0 lúc x = 0, vọt quá 1 một chút rồi nảy về 1 (x = 1 là gần xong)
+    static func spring(_ x: Double) -> CGFloat {
+        x <= 0 ? 0 : x >= 1.6 ? 1 : CGFloat(1 - exp(-5.5 * x) * cos(7.5 * x))
     }
 }
 

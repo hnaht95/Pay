@@ -169,8 +169,7 @@ enum FilmExport {
             func amount(_ k: Int) -> String { QuickParse.spoken(said.prefix(k).joined(separator: " ")).map { fmt($0.amount) } ?? "0" }
             if n > 0, amount(n) != amount(n - 1) {
                 v.previous = amount(n - 1)
-                let since = first + gap * Double(n - 1)
-                v.shift = spring(t, since, 0.42)   // trượt lên rồi nảy nhẹ, như hiệu ứng số của app
+                v.elapsed = t - (first + gap * Double(n - 1))
             }
             // Giọng nói theo nhịp từng tiếng: mỗi tiếng bật lên nhanh rồi lắng xuống, tiếng nhấn mạnh to hơn,
             // giữa hai tiếng có quãng lặng ngắn; nói xong thì im (trước là một dải đều đều)

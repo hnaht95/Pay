@@ -25,7 +25,7 @@ struct StatsView: View {
     var body: some View {
         let items = store.monthItems(month)
         let prev = comparable(store.monthItems(cal.date(byAdding: .month, value: -1, to: month)!))
-        if let film {
+        if film != nil {
             // Phim: thanh tiêu đề và vùng cuộn tự vẽ (xem Film.swift)
             VStack(spacing: 0) {
                 FilmNavBar(title: L("Thống kê"), grabber: true)
@@ -36,7 +36,6 @@ struct StatsView: View {
         NavigationStack {
             ScrollView { content(items, prev) }
             .background(Self.page.ignoresSafeArea())
-            .edgeBack { dismiss() }
             .navigationTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
         }

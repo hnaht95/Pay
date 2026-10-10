@@ -72,7 +72,7 @@ struct EntryView: View {
         .padding(.horizontal, 18).padding(.bottom, 8)
         .background(Palette.surface.ignoresSafeArea())
         // Vuốt từ mép trái để quay lại, vuốt xuống để ẩn (màn hình này mở toàn màn hình nên iOS không có sẵn)
-        .edgeBack { dismiss() }
+        .edgeBack(slides: { true }) { dismiss() }
         .swipeDownToClose { dismiss() }
         .onAppear(perform: setup)
         .sheet(isPresented: $addingCat) {

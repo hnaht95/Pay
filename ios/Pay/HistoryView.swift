@@ -40,7 +40,6 @@ struct HistoryView: View {
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
-            .edgeBack { dismiss() }
             .navigationTitle(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -56,6 +55,7 @@ struct HistoryView: View {
         .fullScreenCover(item: $editing) { EntryView(mode: $0).environmentObject(store) }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .appMenu($menu)
+        .sheetGrabber()
     }
 
     private func grouped() -> [(Date, [Expense])] {

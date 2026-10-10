@@ -86,8 +86,8 @@ struct HomeView: View {
         }) {
             ScannerView { code in scanned = code; scanning = false }
         }
-        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store).sheetGrabber() }
-        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store).sheetGrabber() }
+        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
+        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store) }
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store) }

@@ -68,11 +68,11 @@ struct HouseView: View {
         }
         .overlay { if house.busy { ProgressView().controlSize(.large) } }
         .sheetGrabber()
-        // Vuốt từ mép trái: đang trong nhóm thì về danh sách nhóm, không thì đóng (như nút ở góc trái)
+        // Vuốt từ mép trái: đang trong nhóm (hoặc đang tạo nhóm) thì về danh sách nhóm, như nút mũi tên ở góc trái.
+        // Ở danh sách nhóm thì không làm gì: bảng có vạch ngang, đóng bằng vuốt xuống
         .edgeBack {
             if inGroup { withAnimation(.snappy) { house.open(nil) } }
             else if creating && !house.groups.isEmpty { withAnimation(.snappy) { creating = false } }
-            else { dismiss() }
         }
         .task {
             await house.load()

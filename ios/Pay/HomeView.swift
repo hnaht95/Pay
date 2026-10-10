@@ -506,7 +506,7 @@ struct ExpenseRow: View {
                 Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
             // Vạch dọc màu danh mục, cao bằng đúng khối chữ (tên hai dòng thì vạch dài theo)
-            .padding(.leading, dot ? 14 : 0)
+            .padding(.leading, dot ? 20 : 0)   // vạch cách chữ 14pt, bằng khoảng từ mép khung tới vạch
             .overlay(alignment: .leading) {
                 if dot { Capsule().fill(c.color).frame(width: 4).padding(.leading, 2) }
             }

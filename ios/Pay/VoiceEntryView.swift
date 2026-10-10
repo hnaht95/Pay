@@ -275,11 +275,11 @@ struct VoiceEntryView: View {
                 try? await Task.sleep(for: .milliseconds(30))
                 withAnimation(.easeOut(duration: 0.1)) { faced = false }
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) { morph = 1 }
-                withAnimation(.easeOut(duration: 0.22).delay(0.16)) { filled = true }
-                Task { try? await Task.sleep(for: .milliseconds(520)); if filled { blob = false } }
+                withAnimation(.easeOut(duration: 0.2).delay(0.24)) { filled = true }   // chữ hiện khi khối đã lớn gần đủ, không tràn ra ngoài khối
+                Task { try? await Task.sleep(for: .milliseconds(560)); if filled { blob = false } }
                 // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy
                 // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng. Chờ hiệu ứng xong rồi mới bật.
-                try? await Task.sleep(for: .milliseconds(430))
+                try? await Task.sleep(for: .milliseconds(470))
                 guard !Task.isCancelled else { return }
             }
             await mic.start()
@@ -289,6 +289,9 @@ struct VoiceEntryView: View {
     }
 
     // MARK: Thẻ
+
+    /// Mở từ nút Quét QR và khối biến hình còn đang hiện: nền của thẻ do khối đó lo
+    private var bare: Bool { from != nil && blob }
 
     private var card: some View {
         // Khoảng cách 18 giữa các phần tự đặt (không dùng spacing của VStack) để phần sóng âm co về 0 được cả khoảng cách
@@ -310,10 +313,12 @@ struct VoiceEntryView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
+        // Đang biến hình từ nút (bare): thẻ không vẽ nền, viền, bóng của riêng nó — khối biến hình chính là nền. Vẽ cả hai thì
+        // lúc mở và lúc thu về thấy hai cửa sổ chồng nhau (nền thẻ mờ dần ở cỡ đầy đủ, khối thì đang lớn / đang co).
+        .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: 42, style: .continuous))
         // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
-        .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
-        .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
+        .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(bare ? 0 : 0.08), lineWidth: 1))
+        .shadow(color: .black.opacity(bare ? 0 : 0.18), radius: 24, y: 8)
         // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
         // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
         // xuống dưới mép thẻ rồi mới mờ đi.) Nội dung đi cùng khung lúc bật lên là nhờ thẻ có đủ nội dung từ đầu (xem `starting`).
@@ -569,7 +574,7 @@ struct VoiceEntryView: View {
         if from != nil {
             // Thu về nút: nội dung mờ đi trước, rồi khối co lại thành nút
             blob = true
-            withAnimation(.easeIn(duration: 0.12)) { filled = false }
+            withAnimation(.easeIn(duration: 0.1)) { filled = false }
             withAnimation(.spring(response: 0.36, dampingFraction: 0.9).delay(0.08)) { morph = 0 }
             withAnimation(.easeIn(duration: 0.3).delay(0.1)) { shown = false }
             // Khối co về gần xong thì mặt nút hiện lại trên khối: tới lúc gỡ lớp này, khối đã y hệt nút thật bên dưới

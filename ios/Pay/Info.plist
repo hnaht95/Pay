@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CKSharingSupported</key>
+	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -79,6 +81,10 @@
 	<string>Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Pay chuyển giọng nói thành chữ để ghi khoản chi.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

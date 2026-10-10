@@ -1,18 +1,44 @@
 import AppIntents
 import SwiftUI
+import WidgetKit
 
 @main
 struct PayApp: App {
     @StateObject private var store = Store.shared
     @StateObject private var quick = QuickAction.shared
+    /// Nhận lời mời vào Nhà chung (iOS gọi qua scene delegate)
+    @UIApplicationDelegateAdaptor(PayAppDelegate.self) private var appDelegate
+    /// Đổi ngôn ngữ trong Cài đặt: dựng lại toàn bộ giao diện bằng ngôn ngữ mới, widget vẽ lại theo
+    @State private var lang = Lang.current
 
     var body: some Scene {
         WindowGroup {
             HomeView()
+                .id(lang)
+                .environment(\.locale, Lang.locale)
+                .onReceive(NotificationCenter.default.publisher(for: Lang.changed)) { _ in
+                    lang = Lang.current
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
                 .environmentObject(store)
                 .environmentObject(quick)
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app
                 .onOpenURL { url in if let k = QuickKind(url: url) { quick.pending = k } }
+                .task {
+                    #if DEBUG
+                    FilmTouches.install()
+                    await FilmExport.runIfAsked(store: store, quick: quick)
+                    #endif
+                    // Tải trước sổ Nhóm chung ngay khi mở app, để lúc bấm vào đã có sẵn (không hỏi quyền thông báo ở đây)
+                    await House.shared.load(prompt: false)
+                }
+                #if DEBUG
+                // "-filmVoiceOnWake YES": app được gọi lên lại (vd từ màn hình khoá) thì mở luôn "nói để ghi", như bấm nút Tác vụ —
+                // để quay phim giới thiệu với hiệu ứng mở khoá thật của iOS
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    if UserDefaults.standard.bool(forKey: "filmVoiceOnWake") { quick.pending = .voice }
+                }
+                #endif
         }
     }
 }
@@ -43,12 +69,14 @@ struct LogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = Store.shared
+        // Câu trả lời ghép lúc chạy nên đi qua L() được (tiêu đề và câu hỏi ở trên là chữ tĩnh của hệ thống, giữ tiếng Việt):
+        // từng câu trọn vẹn một khoá, không ghép nửa Việt nửa Anh với tên danh mục / nhãn ngân sách đã dịch
         guard let e = store.quickAdd(text, spoken: true) else {
-            throw $text.needsValueError(IntentDialog("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe"))
+            throw $text.needsValueError(IntentDialog(stringLiteral: L("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe")))
         }
-        var reply = "Đã ghi \(fmt(e.a))đ \(Category.get(e.c).name)."
-        if let b = store.budgetStatus() { reply += " \(b.label) trong tháng." }
-        else { reply += " Hôm nay đã chi \(fmt(store.total(on: Date())))đ." }
+        var reply = L("Đã ghi %@đ %@.", fmt(e.a), Category.get(e.c).name)
+        if let b = store.budgetStatus() { reply += " " + L("%@ trong tháng.", b.label) }
+        else { reply += " " + L("Hôm nay đã chi %@đ.", fmt(store.total(on: Date()))) }
         return .result(dialog: IntentDialog(stringLiteral: reply))
     }
 }

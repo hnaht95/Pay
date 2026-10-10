@@ -12,7 +12,7 @@ final class Cloud {
     private var observers: [NSObjectProtocol] = []
     private var onChange: (@MainActor (Backup?) -> Void)?
     private var waitingFirstPush = false
-    /// Gọi mỗi lần đọc / ghi iCloud xong, để hiện "Đã đồng bộ lúc ..."
+    /// Gọi khi iCloud đã nhận đủ bản đang có trên máy (xem `uploaded`), để hiện "Đã đồng bộ lúc ..."
     var onSynced: (@MainActor () -> Void)?
     nonisolated private static let io = DispatchQueue(label: "pay.cloud")
 
@@ -54,7 +54,12 @@ final class Cloud {
     /// Đọc bản trên iCloud và gộp vào máy.
     func pull() async {
         guard let url else { return }
-        if let b = await Cloud.read(url) { onChange?(b); onSynced?(); return }
+        if let b = await Cloud.read(url) {
+            guard self.url == url else { return }   // đã tắt đồng bộ trong lúc đang đọc
+            onChange?(b)
+            if Cloud.uploaded(url) { onSynced?() }
+            return
+        }
 
         // Chưa thấy file trên iCloud. Máy mới / vừa cài lại thường chưa tải xong danh sách file,
         // nên đợi rồi kiểm tra lại; tạo file mới ngay có thể che mất bản đang có của máy khác
@@ -67,7 +72,7 @@ final class Cloud {
     }
 
     /// Ghi lên iCloud: đọc bản đang có (kèm bản xung đột, bản trùng tên), gộp với bản máy này rồi mới ghi,
-    /// để không đè mất dữ liệu máy khác; ghi xong thì dọn bản xung đột và bản trùng tên.
+    /// để không đè mất dữ liệu máy khác; ghi xong thì dọn những bản xung đột và bản trùng tên đã gộp được.
     func push(_ mine: Backup) {
         guard let url else { return }
         Cloud.io.async {
@@ -80,18 +85,25 @@ final class Cloud {
                 let extras = Cloud.siblings(of: u)
 
                 var merged = existing.map { Backup.merge(mine, $0) } ?? mine
-                for b in conflicts.compactMap({ (try? Data(contentsOf: $0.url)).flatMap(Cloud.decode) }) { merged = Backup.merge(merged, b) }
-                for x in extras { if let b = Cloud.readFile(x) { merged = Backup.merge(merged, b) } }
+                // Nhớ bản nào đọc được: bản chưa tải về (mất mạng) hay đọc hỏng thì chưa gộp, dọn nó đi là mất hẳn dữ liệu chỉ nằm trong đó
+                var readConflicts: [NSFileVersion] = [], readExtras: [URL] = []
+                for v in conflicts {
+                    if let b = (try? Data(contentsOf: v.url)).flatMap(Cloud.decode) { merged = Backup.merge(merged, b); readConflicts.append(v) }
+                }
+                for x in extras {
+                    if let b = Cloud.readFile(x) { merged = Backup.merge(merged, b); readExtras.append(x) }
+                }
 
-                if let existing, conflicts.isEmpty, extras.isEmpty, merged.same(as: existing) { ok = true; return }
+                if let existing, readConflicts.isEmpty, readExtras.isEmpty, merged.same(as: existing) { ok = true; return }
                 guard let out = try? JSONEncoder().encode(merged), (try? out.write(to: u, options: .atomic)) != nil else { return }
                 ok = true
-                // Dữ liệu của các bản này đã nằm trong file vừa ghi: dọn đi
-                for v in conflicts { v.isResolved = true }
-                if !conflicts.isEmpty { try? NSFileVersion.removeOtherVersionsOfItem(at: u) }
-                for x in extras { Cloud.remove(x) }
+                // Dữ liệu của các bản đọc được đã nằm trong file vừa ghi: dọn đi. Bản chưa đọc được để nguyên, lần sau gộp tiếp
+                for v in readConflicts { v.isResolved = true }
+                if !conflicts.isEmpty, readConflicts.count == conflicts.count { try? NSFileVersion.removeOtherVersionsOfItem(at: u) }
+                for x in readExtras { Cloud.remove(x) }
             }
-            if ok { Task { @MainActor [weak self] in self?.onSynced?() } }
+            // Vừa ghi thì iCloud chưa nhận: tải lên xong NSMetadataQuery báo, pull() mới báo "Đã đồng bộ"
+            if ok, Cloud.uploaded(url) { Task { @MainActor [weak self] in if self?.url == url { self?.onSynced?() } } }
         }
     }
 
@@ -116,6 +128,14 @@ final class Cloud {
     }
 
     nonisolated private static func decode(_ data: Data) -> Backup? { try? JSONDecoder().decode(Backup.self, from: data) }
+
+    /// iCloud đã nhận bản đang có trên máy chưa. Ghi được vào thư mục iCloud trên máy chưa phải là đã tải lên
+    /// (mất mạng, iCloud hết chỗ), nên chỉ khi đúng mới báo "Đã đồng bộ". Không hỏi được thì coi như chưa.
+    nonisolated private static func uploaded(_ url: URL) -> Bool {
+        var u = url
+        u.removeAllCachedResourceValues()   // URL giữ lại giá trị đã hỏi lần trước
+        return (try? u.resourceValues(forKeys: [.ubiquitousItemIsUploadedKey]))?.ubiquitousItemIsUploaded ?? false
+    }
 
     /// Đọc một file trong iCloud (tự tải về nếu mới chỉ có tên).
     nonisolated private static func readFile(_ url: URL) -> Backup? {

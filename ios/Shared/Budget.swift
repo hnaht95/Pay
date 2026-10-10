@@ -27,7 +27,7 @@ struct BudgetStatus {
     }
 
     /// "Còn 1.200.000đ" hoặc "Vượt 300.000đ"
-    var label: String { remaining >= 0 ? "Còn \(fmt(remaining))đ" : "Vượt \(fmt(-remaining))đ" }
+    var label: String { remaining >= 0 ? L("Còn %@đ", fmt(remaining)) : L("Vượt %@đ", fmt(-remaining)) }
 }
 
 /// Thanh tiến độ ngân sách.

@@ -3,26 +3,37 @@ import Foundation
 /// Đọc câu nhập nhanh kiểu bản web: "35k cafe" -> 35000 + "cafe".
 enum QuickParse {
     /// "35k" -> 35000, "1tr2" -> 1200000, "1.5tr" -> 1500000, "35.000" -> 35000, "35000" -> 35000
+    /// Chỉ nhận chữ số 0-9: \d của Swift khớp cả chữ số Unicode ("３５", "٣٥") mà Double() không đọc được.
     static func amount(_ raw: String) -> Int? {
         let s = strip(raw).replacingOccurrences(of: " ", with: "")
-        if let m = s.wholeMatch(of: #/(\d+(?:[.,]\d+)?)(tr|trieu|m|cu)(\d+)?/#) {
-            var v = Double(m.1.replacingOccurrences(of: ",", with: "."))!
-            if let extra = m.3 { v += Double("0." + extra)! }
-            return Int((v * 1e6).rounded())
+        if let m = s.wholeMatch(of: #/([0-9]+(?:[.,][0-9]+)?)(tr|trieu|m|cu)([0-9]+)?/#) {
+            guard var v = Double(m.1.replacingOccurrences(of: ",", with: ".")) else { return nil }
+            if let extra = m.3 { v += Double("0." + extra) ?? 0 }
+            return whole(v * 1e6)
         }
-        if let m = s.wholeMatch(of: #/(\d+(?:[.,]\d+)?)(k|nghin|ngan|ng|n)/#) {
-            return Int((Double(m.1.replacingOccurrences(of: ",", with: "."))! * 1e3).rounded())
+        if let m = s.wholeMatch(of: #/([0-9]+(?:[.,][0-9]+)?)(k|nghin|ngan|ng|n)/#) {
+            return Double(m.1.replacingOccurrences(of: ",", with: ".")).flatMap { whole($0 * 1e3) }
         }
-        if s.wholeMatch(of: #/\d{1,3}(?:[.,]\d{3})+/#) != nil {
-            return Int(s.filter(\.isNumber))
+        if s.wholeMatch(of: #/[0-9]{1,3}(?:[.,][0-9]{3})+/#) != nil {
+            return Double(s.filter(\.isNumber)).flatMap(whole)
         }
-        if s.wholeMatch(of: #/\d+/#) != nil { return Int(s) }
+        if s.wholeMatch(of: #/[0-9]+/#) != nil { return Double(s).flatMap(whole) }
         return nil
+    }
+
+    /// Số tiền lớn nhất còn nhận: 12 chữ số, bằng bàn phím ở màn hình nhập. Dãy số dài hơn lẫn trong câu là mã giao dịch /
+    /// số tài khoản chứ không phải tiền, và Double vượt Int.max mà ép sang Int thì app văng.
+    private static let maxAmount = 999_999_999_999.0
+
+    /// Làm tròn thành số đồng; ngoài khoảng 0…maxAmount (kể cả vô cực / không phải số) thì nil.
+    private static func whole(_ v: Double) -> Int? {
+        let r = v.rounded()
+        return r >= 0 && r <= maxAmount ? Int(r) : nil
     }
 
     /// "35k cafe sáng" -> (35000, "cafe sáng"); bỏ chữ "đồng" Siri hay thêm vào. Không thấy số tiền thì nil.
     static func expense(_ text: String) -> (amount: Int, note: String)? {
-        let re = #/(?i)(^|\s)(\d+(?:[.,]\d+)*)\s*(k|tr|triệu|trieu|củ|cu|m|nghìn|ngàn|nghin|ngan)?(\d+)?(?:\s*(?:đồng|dong|vnđ|vnd|đ))?(?![\p{L}\d])/#
+        let re = #/(?i)(^|\s)([0-9]+(?:[.,][0-9]+)*)\s*(k|tr|triệu|trieu|củ|cu|m|nghìn|ngàn|nghin|ngan)?([0-9]+)?(?:\s*(?:đồng|dong|vnđ|vnd|đ))?(?![\p{L}\d])/#
         guard let m = text.firstMatch(of: re),
               let a = amount(String(m.2) + String(m.3 ?? "") + String(m.4 ?? "")), a > 0 else { return nil }
         let note = (text[..<m.range.lowerBound] + " " + text[m.range.upperBound...])
@@ -35,7 +46,15 @@ enum QuickParse {
     /// Câu nói (Siri / nhận dạng giọng nói) -> số tiền + ghi chú. Hiểu cả số bằng chữ và kiểu nói tắt:
     /// "ba mươi lăm nghìn cà phê", "ba lăm cafe", "hai trăm rưỡi", "một triệu hai", "nửa triệu", "3 củ".
     /// Không có đơn vị và số dưới 1.000 thì hiểu là nghìn ("35 cafe" = 35.000đ).
+    /// Hiểu cả tiếng Anh ("200k for gas", "forty five thousand coffee"): dùng trước khi app đang ở tiếng Anh
+    /// hoặc câu có chữ tiếng Anh rõ ràng; ngược lại chỉ dùng khi đọc kiểu tiếng Việt không ra số.
+    /// Câu có đơn vị tiền tiếng Việt thì luôn đọc kiểu tiếng Việt trước (xem `hasVietnameseUnit`).
     static func spoken(_ text: String) -> (amount: Int, note: String)? {
+        if !hasVietnameseUnit(text), (Lang.isEnglish && !looksVietnamese(text)) || looksEnglish(text) { return english(text) ?? vietnamese(text) }
+        return vietnamese(text) ?? english(text)
+    }
+
+    private static func vietnamese(_ text: String) -> (amount: Int, note: String)? {
         let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
         // Siri luôn viết có dấu, nên so khớp theo chữ có dấu để chữ thường không bị hiểu là số:
         // "tháng sau" ≠ sáu, "máy bay" ≠ bảy, "tôi/tối" ≠ tỷ, "làm" ≠ lăm. Câu gõ không dấu mới so theo chữ không dấu.
@@ -57,14 +76,13 @@ enum QuickParse {
             let run = toks[i..<j].compactMap { $0 }
             let v = isLoneWord(run) ? 0 : value(run)
             let strong = run.contains { $0.isStrong }
-            if v > 0, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
+            if v > 0, v <= maxAmount, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
                 best = (i..<j, v, strong)
             }
             i = j
         }
-        guard let b = best else { return nil }
-        var amount = Int(b.value.rounded())
-        if amount < 1000 { amount *= 1000 }
+        // Dưới 1.000 là nghìn; nhân trước rồi mới làm tròn, để "35 rưỡi" / "35,5" ra 35.500 chứ không phải 36.000
+        guard let b = best, let amount = whole(b.value < 1000 ? b.value * 1000 : b.value) else { return nil }
         let note = words.enumerated().filter { !b.range.contains($0.offset) }.map(\.element).joined(separator: " ")
         return (amount, note)
     }
@@ -187,7 +205,7 @@ enum QuickParse {
             case .num(let v, _, _):
                 if let p = pending, last == .num, p < 10, v < 10, pendingAfter != .hundreds, pendingAfter != .linh {
                     group += p * 10 + v          // "ba lăm" = 35
-                    pending = nil; last = .tens
+                    pending = nil; last = .none  // không phải .tens: "ba lăm rưỡi" là 35,5 chứ không phải "chục rưỡi" (+5)
                 } else if let p = pending, last == .num, p >= 1000, v < 10, p.truncatingRemainder(dividingBy: impliedScale(p)) == 0 {
                     // Siri hay viết "1 triệu 2" thành "1.000.000 2": số tròn nghìn/triệu + một chữ số = nói tắt
                     // -> 1.200.000; "10.000 5" (mười nghìn năm) -> 10.500
@@ -214,7 +232,15 @@ enum QuickParse {
                 if last == .scale { total += lastScale / 2 }
                 else if last == .hundreds { group += 50 }
                 else if last == .tens { group += 5 }
-                else if let p = pending { pending = p + 0.5 }
+                else if let p = pending {
+                    // Sau một số trơn. Siri viết "hai trăm rưỡi" thành "200 rưỡi", "một triệu rưỡi" thành "1.000.000 rưỡi":
+                    // số tròn trăm / nghìn / triệu thì rưỡi là nửa hàng đó; số không tròn từ 1.000 trở lên thì bỏ qua
+                    if p >= 1000 {
+                        if p.truncatingRemainder(dividingBy: impliedScale(p)) == 0 { pending = p + impliedScale(p) / 2 }
+                    } else if p >= 100, p.truncatingRemainder(dividingBy: 100) == 0 { pending = p + 50 }
+                    else { pending = p + 0.5 }                // "35 rưỡi", "bảy rưỡi" = 35,5 / 7,5 (nghìn)
+                }
+                else if group > 0 { group += 0.5 }            // "ba lăm rưỡi" = 35,5
                 last = .none
             case .halfPrefix:
                 if pending != nil { group = flush() }
@@ -235,5 +261,209 @@ enum QuickParse {
         }
         return total + flush()
     }
-}
 
+    // MARK: Giọng nói tiếng Anh
+
+    /// Chữ chỉ có trong câu tiếng Anh (không trùng chữ tiếng Việt gõ không dấu như "on" = ôn, "ten" = tên, "a" = à)
+    private static let englishMarkers: Set<String> = [
+        "thousand", "thousands", "million", "millions", "billion", "hundred", "grand", "for", "and", "half",
+        "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "eleven", "twelve", "fifteen", "twenty",
+        "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "bucks", "spent", "paid", "mil",
+    ]
+
+    /// Câu tiếng Việt (có dấu, hoặc có đơn vị gõ không dấu) thì đọc kiểu tiếng Việt trước, kể cả khi app ở tiếng Anh
+    private static func looksVietnamese(_ text: String) -> Bool {
+        if text.lowercased() != strip(text) { return true }
+        let units: Set<String> = ["nghin", "ngan", "trieu", "tr", "cu", "ty", "muoi", "tram", "ruoi", "nua"]
+        return text.split(whereSeparator: \.isWhitespace).contains {
+            units.contains($0.lowercased().trimmingCharacters(in: .punctuationCharacters))
+        }
+    }
+
+    private static func looksEnglish(_ text: String) -> Bool {
+        text.split(whereSeparator: \.isWhitespace).contains {
+            englishMarkers.contains($0.lowercased().trimmingCharacters(in: .punctuationCharacters))
+        }
+    }
+
+    /// Câu có đơn vị tiền tiếng Việt thì số tiền được nói kiểu Việt, dù lẫn chữ tiếng Anh (tên hàng, thương hiệu:
+    /// "mua Number One 2 triệu", "seven eleven 9 nghìn"). Bộ đọc tiếng Anh không hiểu các đơn vị này: nó đọc "2 triệu" thành 2.000đ
+    /// và để lại chữ "triệu" trong ghi chú. (Không có "tram" gõ không dấu: trùng chữ tiếng Anh.)
+    /// Trừ khi câu có luôn đơn vị tiếng Anh: lúc đó số tiền nói kiểu Anh, chữ Việt kia là chữ thường ("mười cái bánh 45 thousand").
+    private static func hasVietnameseUnit(_ text: String) -> Bool {
+        let units: Set<String> = ["nghìn", "ngàn", "triệu", "tỷ", "tỉ", "trăm", "mươi", "mười", "chục", "rưỡi", "củ",
+                                  "nghin", "ngan", "trieu", "muoi", "chuc", "ruoi"]
+        let english: Set<String> = ["thousand", "thousands", "million", "millions", "billion", "hundred"]
+        let words = text.split(whereSeparator: \.isWhitespace).map {
+            $0.lowercased().precomposedStringWithCanonicalMapping.trimmingCharacters(in: .punctuationCharacters)
+        }
+        return words.contains(where: units.contains) && !words.contains(where: english.contains)
+    }
+
+    /// Chữ thừa ở đầu / cuối ghi chú: "200k for gas" -> "gas", "lunch for 45k" -> "lunch"
+    private static let englishFillers: Set<String> = [
+        "for", "on", "at", "of", "and", "spent", "paid", "dong", "dongs", "vnd", "vnđ", "đ", "₫",
+    ]
+
+    private enum ETok {
+        /// word: số viết bằng chữ ("five"); số bằng chữ số thì word = false
+        case num(Double, word: Bool)
+        case tens(Double), hundred, scale(Double), article, and, half, full(Double), end
+
+        var isStrong: Bool {
+            switch self {
+            case .scale, .full, .hundred, .tens: true
+            case .num(let v, _): v >= 10
+            default: false
+            }
+        }
+    }
+
+    private static let englishWords: [String: ETok] = [
+        "zero": .num(0, word: true), "one": .num(1, word: true), "two": .num(2, word: true), "three": .num(3, word: true),
+        "four": .num(4, word: true), "five": .num(5, word: true), "six": .num(6, word: true), "seven": .num(7, word: true),
+        "eight": .num(8, word: true), "nine": .num(9, word: true), "ten": .num(10, word: true), "eleven": .num(11, word: true),
+        "twelve": .num(12, word: true), "thirteen": .num(13, word: true), "fourteen": .num(14, word: true),
+        "fifteen": .num(15, word: true), "sixteen": .num(16, word: true), "seventeen": .num(17, word: true),
+        "eighteen": .num(18, word: true), "nineteen": .num(19, word: true),
+        "twenty": .tens(20), "thirty": .tens(30), "forty": .tens(40), "fourty": .tens(40), "fifty": .tens(50),
+        "sixty": .tens(60), "seventy": .tens(70), "eighty": .tens(80), "ninety": .tens(90),
+        "hundred": .hundred,
+        "thousand": .scale(1e3), "thousands": .scale(1e3), "grand": .scale(1e3), "k": .scale(1e3),
+        "million": .scale(1e6), "millions": .scale(1e6), "mil": .scale(1e6), "m": .scale(1e6),
+        "billion": .scale(1e9), "bn": .scale(1e9),
+        "a": .article, "an": .article, "and": .and, "half": .half,
+        "dong": .end, "dongs": .end, "vnd": .end, "vnđ": .end, "đ": .end, "₫": .end,
+    ]
+
+    private static func etok(_ raw: String) -> ETok? {
+        var w = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
+        if w.hasPrefix("$") { w.removeFirst() }
+        if let t = englishWords[w] { return t }
+        let n = w.replacing(#/(đ|₫|vnđ|vnd)$/#, with: "")
+        if n.wholeMatch(of: #/[0-9]{1,3}(?:,[0-9]{3})+/#) != nil || n.wholeMatch(of: #/[0-9]{1,3}(?:\.[0-9]{3})+/#) != nil {
+            return .num(Double(n.filter { $0.isASCII && $0.isNumber })!, word: false)   // "45,000", "35.000"
+        }
+        if let m = n.wholeMatch(of: #/([0-9]+)(?:[.,]([0-9]+))?/#) {
+            return .num(Double(String(m.1) + (m.2.map { "." + $0 } ?? ""))!, word: false)   // "45", "1.2"
+        }
+        if n.contains(where: \.isLetter), let a = amount(n) { return .full(Double(a)) }   // "200k", "1.2m"
+        return nil
+    }
+
+    /// Từ sau có nối tiếp được cụm số đang đọc không ("forty" + "five" được, "two" + "five" thì không).
+    private static func continues(_ a: ETok, _ b: ETok) -> Bool {
+        switch (a, b) {
+        case (.full, .end), (.num, .end), (.tens, .end), (.hundred, .end), (.scale, .end): return true
+        case (_, .full), (.full, _), (.end, _): return false
+        case let (.tens, .num(v, word)): return word && v >= 1 && v <= 9    // "forty five"
+        case (.num, .num), (.num, .tens), (.tens, .tens): return false
+        case (.hundred, .num), (.hundred, .tens), (.scale, .num), (.scale, .tens), (.and, .num), (.and, .tens): return true
+        case (_, .num), (_, .tens): return false
+        case (.num, .hundred), (.tens, .hundred), (.article, .hundred): return true
+        case (_, .hundred): return false
+        case (.num, .scale), (.tens, .scale), (.hundred, .scale), (.article, .scale), (.half, .scale): return true
+        case (_, .scale): return false
+        case (.num, .and), (.tens, .and), (.hundred, .and), (.scale, .and): return true
+        case (_, .and): return false
+        case (.and, .article), (.half, .article): return true                // "and a half", "half a million"
+        case (_, .article): return false
+        case (.article, .half), (.and, .half): return true
+        default: return false
+        }
+    }
+
+    private static func english(_ text: String) -> (amount: Int, note: String)? {
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        let toks = words.map(etok)
+        var best: (range: Range<Int>, value: Double, strong: Bool)?
+        var i = 0
+        while i < toks.count {
+            guard let t = toks[i] else { i += 1; continue }
+            switch t {
+            case .scale, .and, .end: i += 1; continue    // "k", "thousand" phải có số đứng trước
+            default: break
+            }
+            var j = i + 1
+            while j < toks.count, let u = toks[j], continues(toks[j - 1]!, u) {
+                j += 1
+                if case .end = u { break }
+            }
+            // Không để "and" / "a" thừa ở cuối cụm ("35k and a coffee")
+            while j > i + 1, let last = toks[j - 1] {
+                if case .and = last { j -= 1 } else if case .article = last { j -= 1 } else { break }
+            }
+            let run = Array(toks[i..<j].compactMap { $0 })
+            let v = isLoneEnglish(run) ? 0 : englishValue(run)
+            let strong = run.contains { $0.isStrong }
+            if v > 0, v <= maxAmount, best == nil || (strong && !best!.strong) || (strong == best!.strong && v > best!.value) {
+                best = (i..<j, v, strong)
+            }
+            i = j
+        }
+        guard let b = best, let amount = whole(b.value < 1000 ? b.value * 1000 : b.value) else { return nil }   // như bản tiếng Việt
+        var note = words.enumerated().filter { !b.range.contains($0.offset) }.map(\.element)
+        let isFiller = { (w: String) in englishFillers.contains(w.lowercased().trimmingCharacters(in: .punctuationCharacters)) }
+        while let f = note.first, isFiller(f) { note.removeFirst() }
+        while let l = note.last, isFiller(l) { note.removeLast() }
+        return (amount, note.joined(separator: " "))
+    }
+
+    /// "one", "a", "half" đứng một mình là chữ thường ("one coffee"), không phải số tiền.
+    private static func isLoneEnglish(_ run: [ETok]) -> Bool {
+        guard run.count == 1 else { return false }
+        switch run[0] {
+        case .num(let v, true): return v < 10
+        case .article, .half: return true
+        default: return false
+        }
+    }
+
+    /// Đọc một cụm số tiếng Anh. Phần lẻ sau đơn vị hiểu theo kiểu nói tắt như tiếng Việt:
+    /// "a million two" = 1,2 triệu, "one million two hundred" = 1,2 triệu (không ai trả 200đ lẻ).
+    private static func englishValue(_ toks: [ETok]) -> Double {
+        enum Last { case none, num, tens, hundred, scale }
+        var total = 0.0, group = 0.0, lastScale = 0.0
+        var halfNext = false, last = Last.none
+        /// Một chữ số đứng ngay sau đơn vị ("a million two")
+        var digitAfterScale = false
+
+        loop: for (k, t) in toks.enumerated() {
+            switch t {
+            case .num(let v, _):
+                digitAfterScale = last == .scale && v < 10
+                if last == .scale { group = v } else { group += v }
+                last = .num
+            case .tens(let v):
+                digitAfterScale = false
+                group += v; last = .tens
+            case .hundred:
+                digitAfterScale = false
+                group = (group == 0 ? 1 : group) * 100; last = .hundred
+            case .scale(let s):
+                var g = group == 0 ? 1 : group
+                if halfNext { g *= 0.5; halfNext = false }
+                total += g * s
+                group = 0; lastScale = s; last = .scale; digitAfterScale = false
+            case .and:
+                continue
+            case .article:
+                if k + 1 < toks.count, case .half = toks[k + 1] { continue }   // "and a half"
+                group += 1; last = .num
+            case .half:
+                if last == .scale && group == 0 { total += lastScale / 2 }       // "a million and a half"
+                else if group > 0 { group += 0.5 }                              // "two and a half million"
+                else { halfNext = true }                                         // "half a million"
+            case .full(let v):
+                total += v; group = 0; last = .scale; lastScale = v >= 1e6 ? 1e6 : 1e3
+            case .end:
+                break loop
+            }
+        }
+        if lastScale > 0 && group > 0 {
+            if digitAfterScale { return total + group * lastScale / 10 }
+            if group < 1000 { return total + group * max(lastScale / 1000, 1) }
+        }
+        return total + group
+    }
+}

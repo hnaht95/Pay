@@ -32,12 +32,31 @@ let cases: [(String, Int?, String)] = [
   ("tiền điện tháng tư", nil, ""), ("năm nay", nil, ""), ("ba mẹ", nil, ""),
   // gõ không dấu
   ("ba muoi lam nghin cafe", 35000, "cafe"), ("ve may bay 2 trieu", 2000000, "ve may bay"), ("toi an pho 50k", 50000, "toi an pho"),
+  // "rưỡi" sau số trơn; số lẻ nhân 1.000 rồi mới làm tròn
+  ("ba lăm rưỡi", 35500, ""), ("hai lăm rưỡi", 25500, ""), ("35 rưỡi cà phê", 35500, "cà phê"), ("25 rưỡi trà sữa", 25500, "trà sữa"),
+  ("mười hai rưỡi gửi xe", 12500, "gửi xe"), ("bảy rưỡi", 7500, ""), ("200 rưỡi tiền chợ", 250000, "tiền chợ"), ("100 rưỡi", 150000, ""),
+  ("1.000.000 rưỡi", 1500000, ""), ("10.000 rưỡi", 10500, ""), ("35,5 cà phê", 35500, "cà phê"), ("ba lăm nghìn rưỡi", 35500, ""),
+  ("thirty five and a half coffee", 35500, "coffee"), ("35.5 coffee", 35500, "coffee"),
+  // câu tiếng Việt lẫn chữ tiếng Anh (tên hàng, thương hiệu): có đơn vị tiếng Việt thì đọc kiểu tiếng Việt
+  ("mua Number One 2 triệu", 2000000, "mua Number One"), ("sửa xe Grand i10 2 triệu", 2000000, "sửa xe Grand i10"),
+  ("bath and body works 1 triệu rưỡi", 1500000, "bath and body works"), ("H and M 2 triệu", 2000000, "H and M"),
+  ("Fish and chips 1 triệu 2", 1200000, "Fish and chips"), ("seven eleven 9 nghìn", 9000, "seven eleven"),
+  ("mua Number One 10 nghìn", 10000, "mua Number One"), ("mua number one 2 trieu", 2000000, "mua number one"),
+  // câu tiếng Anh vẫn đọc kiểu tiếng Anh
+  ("200k for gas", 200000, "gas"), ("forty five thousand coffee", 45000, "coffee"), ("a million two rent", 1200000, "rent"),
+  ("cà phê 2 million", 2000000, "cà phê"), ("phở 45 thousand", 45000, "phở"), ("mười cái bánh 45 thousand", 45000, "mười cái bánh"),
+  // số quá dài (mã giao dịch) và chữ số không phải 0-9: trả nil hoặc bỏ qua, không được văng
+  ("12345678901234567890 cafe", nil, ""), ("99999999999999999999tr", nil, ""), ("9999999999999999k cafe", nil, ""),
+  ("３５k cafe", nil, ""), ("٣٥k cafe", nil, ""),
+  ("ma GD 98765432109876543210 chuyen tien 50k", 50000, "ma GD 98765432109876543210 chuyen tien"),
 ]
 var bad = 0
 for (t, a, n) in cases {
   let r = QuickParse.spoken(t)
   let ok = r?.amount == a && (a == nil || r?.note == n)
   if !ok { bad += 1; print("SAI", t, "->", r.map { "\($0.amount) '\($0.note)'" } ?? "nil", " (mong đợi \(a.map(String.init) ?? "nil") '\(n)')") }
+  // Câu không ra số tiền còn đi tiếp qua bộ đọc câu gõ (Store.quickAdd): ở đó cũng phải nil, không văng
+  if a == nil, let e = QuickParse.expense(t) { bad += 1; print("SAI (gõ)", t, "->", e.amount, "'\(e.note)'", " (mong đợi nil)") }
 }
 print(bad == 0 ? "TẤT CẢ \(cases.count) CÂU ĐÚNG" : "\(bad)/\(cases.count) SAI")
 exit(bad == 0 ? 0 : 1)

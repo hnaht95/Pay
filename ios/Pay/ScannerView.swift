@@ -8,24 +8,34 @@ struct ScannerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var photo: PhotosPickerItem?
     @State private var error: String?
+    /// Lần mở này đã xong (đã có mã, hoặc đã bấm Đóng): camera và ảnh cùng đổ về `found`, mã tới sau đó bị bỏ qua
+    @State private var done = false
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraView(onCode: found, onError: { error = $0 }).ignoresSafeArea()
 
-            // Khung ngắm
+            // Khung ngắm: chỉ trong khung thấy camera sáng, bên ngoài phủ tối để chữ và hai nút dễ đọc
             GeometryReader { g in
                 let side = min(g.size.width, g.size.height) * 0.68
-                RoundedRectangle(cornerRadius: 36, style: .continuous)
-                    .strokeBorder(.white.opacity(0.9), lineWidth: 3)
+                let hole = RoundedRectangle(cornerRadius: 36, style: .continuous)
+                ZStack {
+                    Color.black.opacity(0.72)
+                    hole.frame(width: side, height: side)
+                        .position(x: g.size.width / 2, y: g.size.height * 0.45)
+                        .blendMode(.destinationOut)
+                }
+                .compositingGroup()
+                hole.strokeBorder(.white.opacity(0.9), lineWidth: 3)
                     .frame(width: side, height: side)
                     .position(x: g.size.width / 2, y: g.size.height * 0.45)
             }
+            .ignoresSafeArea()
             .allowsHitTesting(false)
 
             VStack {
-                Text("Đưa mã QR của quán vào khung")
+                Text(L("Đưa mã QR của quán vào khung"))
                     .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
                     .padding(.top, 20)
                 if let error {
@@ -34,20 +44,23 @@ struct ScannerView: View {
                 }
                 Spacer()
                 HStack(spacing: 12) {
-                    PhotosPicker(selection: $photo, matching: .images) { pill("Chọn ảnh QR") }
-                    Button { dismiss() } label: { pill("Đóng") }
+                    PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh QR")) }
+                    Button { done = true; dismiss() } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
                 }
                 .padding(.horizontal, 16).padding(.bottom, 12)
             }
         }
-        .onChange(of: photo) { _, item in
-            guard let item else { return }
-            Task {
-                guard let data = try? await item.loadTransferable(type: Data.self), let code = decodeQR(data) else {
-                    error = "Không đọc được mã QR trong ảnh"; return
-                }
-                found(code)
+        // Việc đọc ảnh gắn với màn quét: màn hình đóng (hoặc chọn ảnh khác) thì bị huỷ. Để Task rời thì ảnh tải chậm
+        // (còn trên iCloud) vẫn bắn onCode sau khi màn quét đã đóng, và mã đó nằm lại ở màn hình chính tới lần quét sau
+        .task(id: photo) {
+            guard let item = photo else { return }
+            let data = try? await item.loadTransferable(type: Data.self)
+            // loadTransferable không chắc dừng ngay khi bị huỷ
+            guard !Task.isCancelled else { return }
+            guard let data, let code = decodeQR(data) else {
+                error = L("Không đọc được mã QR trong ảnh"); return
             }
+            found(code)
         }
     }
 
@@ -58,6 +71,10 @@ struct ScannerView: View {
     }
 
     private func found(_ code: String) {
+        // Mỗi lần mở chỉ đưa ra một mã: camera bắt được mã trong lúc ảnh đang đọc (hoặc ngược lại) thì mã tới sau
+        // không được ghi đè mã màn hình chính đang xử lý
+        guard !done else { return }
+        done = true
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         onCode(code)
     }
@@ -94,13 +111,13 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
         super.viewDidLoad()
         view.backgroundColor = .black
         AVCaptureDevice.requestAccess(for: .video) { ok in
-            DispatchQueue.main.async { ok ? self.configure() : self.onError?("Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".") }
+            DispatchQueue.main.async { ok ? self.configure() : self.onError?(L("Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".")) }
         }
     }
 
     private func configure() {
         guard let device = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
-            onError?("Không mở được camera. Bấm \"Chọn ảnh QR\" để dùng ảnh chụp màn hình.")
+            onError?(L("Không mở được camera. Bấm \"Chọn ảnh QR\" để dùng ảnh chụp màn hình."))
             return
         }
         session.addInput(input)

@@ -23,13 +23,64 @@ struct Memo: Codable, Hashable {
     var u: Double? = nil
 }
 
+/// Danh mục người dùng tự tạo. Không xoá hẳn (on = false) để xoá cũng đồng bộ được sang máy khác.
+struct CustomCat: Codable, Hashable {
+    var k: String
+    var name: String
+    var icon: String     // emoji
+    var tone: Int        // chỉ số trong CategoryTone
+    var on: Bool
+    var u: Double
+    /// Ô ở màn hình chính chiếm cả hàng (nil / false: nửa hàng). Giữ cả khi `on` = false (danh mục có sẵn chưa sửa gì khác)
+    var wide: Bool? = nil
+    /// Lúc tạo (ms), để xếp thứ tự ô. Tách khỏi `u` vì `u` đổi theo mỗi lần sửa (đổi tên, kéo dài ô là ô nhảy xuống cuối).
+    /// nil: chưa sửa lần nào từ khi có trường này, lúc đó `u` vẫn là mốc xếp thứ tự
+    var made: Double? = nil
+
+    /// Đánh dấu vừa sửa. Chốt mốc xếp thứ tự trước khi `u` đổi, để ô không đổi chỗ
+    mutating func touch(_ t: Double) { made = made ?? u; u = t }
+
+    /// tone < 0: giữ màu gốc của danh mục có sẵn
+    var category: Category {
+        if let base = Category.builtin.first(where: { $0.k == k }) {
+            // Danh mục có sẵn đã chỉnh: giữ từ khoá gốc, thêm tên mới làm từ khoá
+            let kw = base.kw + [Store.noteKey(name)].filter { !$0.isEmpty && !base.kw.contains($0) }
+            var c = Category(k: k, icon: icon, name: name, color: tone < 0 ? base.color : CategoryTone.bg(tone),
+                             art: base.art && icon == base.icon, kw: kw, customChart: tone < 0 ? nil : CategoryTone.chart(tone))
+            c.onDark = CategoryTone.dark(tone)
+            return c
+        }
+        var c = Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },
+                         customChart: CategoryTone.chart(tone))
+        c.onDark = CategoryTone.dark(tone)
+        return c
+    }
+}
+
+/// Khoản định kỳ: app tự ghi mỗi tháng vào ngày `day` (tiền nhà, điện, internet…).
+struct Rule: Codable, Hashable, Identifiable {
+    var id: String
+    var a: Int
+    var n: String?
+    var c: String
+    var day: Int          // ngày trong tháng; tháng ngắn hơn thì ghi vào ngày cuối tháng
+    var minute: Int       // giờ ghi, tính bằng phút từ 0:00
+    var start: String     // "yyyy-MM": tháng đầu tiên được tự ghi
+    var src: String?      // khoản chi gốc đã chọn "Lặp hằng tháng"
+    var on: Bool          // false = đã bỏ lặp
+    var u: Double         // lần sửa cuối (ms), để gộp giữa các máy
+}
+
 struct Backup: Codable {
     var items: [Expense]
     var memo: [String: Memo]?
     var deleted: [String: Double]? = nil   // id -> lúc xoá (ms), để xoá cũng đồng bộ sang máy khác
+    var rules: [String: Rule]? = nil       // khoản định kỳ
+    var cats: [String: CustomCat]? = nil   // danh mục tự tạo
 
     func same(as o: Backup) -> Bool {
         Set(items) == Set(o.items) && (memo ?? [:]) == (o.memo ?? [:]) && (deleted ?? [:]) == (o.deleted ?? [:])
+            && (rules ?? [:]) == (o.rules ?? [:]) && (cats ?? [:]) == (o.cats ?? [:])
     }
 
     /// Gộp hai bản (máy này + iCloud). Bản sửa sau thắng; khoản đã xoá bị bỏ trừ khi được sửa/khôi phục sau lúc xoá.
@@ -57,12 +108,27 @@ struct Backup: Codable {
             if let old = memo[k], !wins(m, over: old) { continue }
             memo[k] = m
         }
-        return Backup(items: items, memo: memo, deleted: deleted)
+        var rules = a.rules ?? [:]
+        for (k, r) in b.rules ?? [:] {
+            if let old = rules[k], !wins(r, over: old) { continue }
+            rules[k] = r
+        }
+        var cats = a.cats ?? [:]
+        for (k, c) in b.cats ?? [:] {
+            if let old = cats[k], old.u > c.u || (old.u == c.u && "\(old.on)\(old.name)" >= "\(c.on)\(c.name)") { continue }
+            cats[k] = c
+        }
+        return Backup(items: items, memo: memo, deleted: deleted, rules: rules, cats: cats)
     }
 
     private static func wins(_ x: Expense, over y: Expense) -> Bool {
         if x.stamp != y.stamp { return x.stamp > y.stamp }
         return "\(x.a)|\(x.c)|\(x.n ?? "")|\(x.acct ?? "")|\(x.t)" > "\(y.a)|\(y.c)|\(y.n ?? "")|\(y.acct ?? "")|\(y.t)"
+    }
+
+    private static func wins(_ x: Rule, over y: Rule) -> Bool {
+        if x.u != y.u { return x.u > y.u }
+        return "\(x.on)|\(x.a)|\(x.day)|\(x.c)" > "\(y.on)|\(y.a)|\(y.day)|\(y.c)"
     }
 
     private static func wins(_ x: Memo, over y: Memo) -> Bool {
@@ -76,13 +142,20 @@ enum CloudState: Equatable {
     case off                 // người dùng tắt
     case connecting
     case unavailable         // máy chưa đăng nhập iCloud / bản build không có quyền iCloud
-    case on(last: Date?)     // đang đồng bộ; lần đọc/ghi gần nhất
+    case on(last: Date?)     // đang đồng bộ; lần gần nhất iCloud đã nhận đủ bản trên máy
+}
+
+extension String {
+    /// Viết hoa chữ đầu để hiển thị ("cà phê" -> "Cà phê"); dữ liệu lưu giữ nguyên như người dùng nhập / nói
+    var capFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
 struct Toast: Identifiable {
     let id = UUID()
     let message: String
     let undo: (() -> Void)?
+    /// Báo lỗi: hiện biểu tượng cảnh báo thay cho dấu tích
+    var error = false
 }
 
 @MainActor
@@ -107,6 +180,20 @@ final class Store: ObservableObject {
     /// Mức ngân sách theo tháng đặt ("2026-10" -> 8.000.000), để xem tháng cũ không bị so với mức hiện tại
     private var budgetHistory: [String: Int] = UserDefaults.standard.dictionary(forKey: "budgetHistory") as? [String: Int] ?? [:]
     private var deleted: [String: Double] = [:]
+    /// Khoản định kỳ theo mã
+    @Published private(set) var rules: [String: Rule] = [:]
+    /// Các kỳ máy này tự ghi từ lúc mở app. Lúc ghi, dữ liệu trên máy có thể cũ hơn iCloud (máy khác đã bỏ lặp mà chưa gộp về),
+    /// nên gộp xong phải xem lại riêng các khoản này: xem `retractStale`
+    private var autoWritten: Set<String> = []
+    /// Danh mục tự tạo theo mã
+    @Published private(set) var cats: [String: CustomCat] = [:] {
+        didSet {
+            let on = cats.values.filter(\.on)
+            // Theo lúc tạo; trùng mốc (vd cùng khôi phục từ một file) thì theo mã, không thì thứ tự đổi theo từng lần mở app
+            Category.custom = on.filter { !Category.isBuiltin($0.k) }.sorted { ($0.made ?? $0.u, $0.k) < ($1.made ?? $1.u, $1.k) }.map(\.category)
+            Category.edited = Dictionary(uniqueKeysWithValues: on.filter { Category.isBuiltin($0.k) }.map { ($0.k, $0.category) })
+        }
+    }
     private let cloud = Cloud()
     @Published private(set) var cloudState: CloudState = .connecting
     @Published var cloudOn: Bool = UserDefaults.standard.object(forKey: "cloudSync") as? Bool ?? true {
@@ -126,7 +213,17 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: fileURL), let b = try? JSONDecoder().decode(Backup.self, from: data) {
             apply(b)
         }
+        #if DEBUG
+        // "-filmSeed YES": sáu tháng chi tiêu mẫu, không đồng bộ iCloud (để quay phim giới thiệu)
+        if UserDefaults.standard.bool(forKey: "filmSeed") { items = Self.filmSeed(); cats = [:];
+            // "-filmFlat YES": xem thử bộ màu phẳng trên các danh mục có sẵn
+            if UserDefaults.standard.bool(forKey: "filmFlat") {
+                for (i, c) in Category.builtin.enumerated() { cats[c.k] = CustomCat(k: c.k, name: c.rawName, icon: c.icon, tone: [16, 17, 19, 18, 20, 22][i], on: true, u: 1, wide: i == 0) }
+            }
+            budget = 9_000_000; cloudOn = false; return }   // danh mục gốc, không sửa gì
+        #endif
         if budget > 0 && budgetHistory.isEmpty { rememberBudget() }   // máy đã đặt ngân sách từ trước khi có ghi nhớ theo tháng
+        if runRecurring() { writeLocal() }   // ghi các khoản định kỳ đã tới hạn khi app tắt
         refreshWidget()
         cloud.onSynced = { [weak self] in self?.cloudState = .on(last: Date()) }
         Task { await applyCloud() }
@@ -149,21 +246,43 @@ final class Store: ObservableObject {
         await cloud.pull()
     }
 
-    private var snapshot: Backup { Backup(items: items, memo: memo, deleted: deleted) }
+    private var snapshot: Backup { Backup(items: items, memo: memo, deleted: deleted, rules: rules, cats: cats) }
     private var now: Double { Date().timeIntervalSince1970 * 1000 }
 
     private func apply(_ b: Backup) {
         items = b.items
         memo = b.memo ?? [:]
         deleted = b.deleted ?? [:]
+        rules = b.rules ?? [:]
+        cats = b.cats ?? [:]
     }
 
     /// Có bản mới trên iCloud (từ máy khác): gộp vào máy này, máy này có gì mới hơn thì đẩy ngược lên.
     private func absorb(_ remote: Backup?) {
         guard let remote else { cloud.push(snapshot); return }
-        let merged = Backup.merge(snapshot, remote)
-        if !merged.same(as: snapshot) { apply(merged); writeLocal() }
+        var merged = Backup.merge(snapshot, remote)
+        if !merged.same(as: snapshot) {
+            apply(merged)
+            let retracted = retractStale()
+            if runRecurring() || retracted { merged = snapshot }   // khoản định kỳ máy khác vừa thêm
+            writeLocal()
+        }
         if !merged.same(as: remote) { cloud.push(merged) }
+    }
+
+    /// Rút lại khoản định kỳ máy này vừa tự ghi theo danh sách cũ: gộp iCloud xong mới biết khoản định kỳ đó đã được bỏ lặp
+    /// (hoặc "Xoá tất cả") ở máy khác TRƯỚC lúc tới hạn. Chỉ đụng tới khoản chính máy này ghi từ lúc mở app và chưa ai sửa,
+    /// không dọn lại dữ liệu cũ; để lại dấu xoá cho máy nào đã lỡ nhận khoản đó.
+    private func retractStale() -> Bool {
+        let off = rules.values.filter { !$0.on }
+        let stale = Set(items.filter { e in
+            e.u == nil && autoWritten.contains(e.id) && off.contains { e.id.hasPrefix("r-\($0.id)-") && e.t > $0.u }
+        }.map(\.id))
+        guard !stale.isEmpty else { return false }
+        let t = now
+        for id in stale { deleted[id] = t }
+        items.removeAll { stale.contains($0.id) }
+        return true
     }
 
     var bankApp: BankApp { BankData.apps.first { $0.id == appId } ?? BankData.apps[0] }
@@ -187,19 +306,20 @@ final class Store: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    func add(amount: Int, note: String, cat: String, acct: String? = nil) {
+    /// toast: false khi màn hình tự có nút Hoàn tác (thẻ giọng nói)
+    func add(amount: Int, note: String, cat: String, acct: String? = nil, toast: Bool = true) {
         let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct)
         items.append(e)
         persist()
-        show("Đã lưu \(fmt(amount))đ") { [weak self] in self?.remove(id: e.id, toast: false) }
+        if toast { show(L("Đã lưu %@đ", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
     }
 
     /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.
     /// spoken: câu từ giọng nói, hiểu thêm số bằng chữ ("ba lăm nghìn") và số dưới 1.000 là nghìn.
     @discardableResult
-    func quickAdd(_ text: String, spoken: Bool = false) -> Expense? {
+    func quickAdd(_ text: String, spoken: Bool = false, toast: Bool = true) -> Expense? {
         guard let q = spoken ? (QuickParse.spoken(text) ?? QuickParse.expense(text)) : QuickParse.expense(text) else { return nil }
-        add(amount: q.amount, note: q.note, cat: Category.guess(q.note))
+        add(amount: q.amount, note: q.note, cat: guessCategory(q.note), toast: toast)
         return items.last
     }
 
@@ -222,7 +342,7 @@ final class Store: ObservableObject {
         UserDefaults.standard.set(budgetHistory, forKey: "budgetHistory")
     }
 
-    private static func monthKey(_ d: Date) -> String {
+    static func monthKey(_ d: Date) -> String {
         let c = Calendar.current.dateComponents([.year, .month], from: d)
         return String(format: "%04d-%02d", c.year!, c.month!)
     }
@@ -241,7 +361,7 @@ final class Store: ObservableObject {
         deleted[id] = now
         persist()
         if toast {
-            show("Đã xoá") { [weak self] in
+            show(L("Đã xoá")) { [weak self] in
                 guard let self else { return }
                 e.u = self.now
                 self.deleted[id] = nil
@@ -256,8 +376,10 @@ final class Store: ObservableObject {
         let t = now
         for e in items { deleted[e.id] = t }
         items = []
+        // Không để tháng sau tự hiện lại khoản định kỳ
+        for (k, var r) in rules where r.on { r.on = false; r.u = t; rules[k] = r }
         persist()
-        show("Đã xoá tất cả khoản chi")
+        show(L("Đã xoá tất cả khoản chi"))
     }
 
     func remember(_ key: String, _ m: Memo) {
@@ -269,6 +391,11 @@ final class Store: ObservableObject {
 
     func show(_ message: String, undo: (() -> Void)? = nil) {
         toast = Toast(message: message, undo: undo)
+    }
+
+    /// Báo việc không làm được: thông báo có biểu tượng cảnh báo, không có Hoàn tác
+    func showError(_ message: String) {
+        toast = Toast(message: message, undo: nil, error: true)
     }
 
     // MARK: Tổng
@@ -292,7 +419,7 @@ final class Store: ObservableObject {
 
     func exportJSON() -> URL? {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).json")
-        guard let data = try? JSONEncoder().encode(Backup(items: items, memo: memo)), (try? data.write(to: url)) != nil else { return nil }
+        guard let data = try? JSONEncoder().encode(Backup(items: items, memo: memo, rules: rules, cats: cats)), (try? data.write(to: url)) != nil else { return nil }
         return url
     }
 
@@ -300,7 +427,7 @@ final class Store: ObservableObject {
         let df = DateFormatter(); df.dateFormat = "dd/MM/yyyy"
         let tf = DateFormatter(); tf.dateFormat = "HH:mm"
         let q = { (s: String) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
-        var rows = [["Ngày", "Giờ", "Số tiền", "Danh mục", "Ghi chú"].map(q).joined(separator: ",")]
+        var rows = [[L("Ngày"), L("Giờ"), L("Số tiền"), L("Danh mục"), L("Ghi chú")].map(q).joined(separator: ",")]
         for e in items.sorted(by: { $0.t < $1.t }) {
             rows.append([df.string(from: e.date), tf.string(from: e.date), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
         }
@@ -313,7 +440,7 @@ final class Store: ObservableObject {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         guard let data = try? Data(contentsOf: url), let b = try? JSONDecoder().decode(Backup.self, from: data) else {
-            show("File sao lưu không hợp lệ"); return
+            showError(L("File sao lưu không hợp lệ")); return
         }
         let ids = Set(items.map(\.id))
         let t = now
@@ -327,8 +454,190 @@ final class Store: ObservableObject {
         for e in add { deleted[e.id] = nil }
         items += add
         memo = (b.memo ?? [:]).merging(memo) { _, mine in mine }
+        // Khoản định kỳ trong file: thêm cái còn thiếu, bật lại cái đã bỏ (như khoản chi đã xoá cũng được khôi phục)
+        let cal = Calendar.current
+        let thisMonth = cal.dateInterval(of: .month, for: Date())!.start
+        for (k, var r) in b.rules ?? [:] where r.on && rules[k]?.on != true {
+            if rules[k] != nil {
+                // Đã bỏ lặp trên máy này: bật lại từ kỳ tới (như repeatMonthly). Giữ `start` cũ thì runRecurring
+                // ghi bù mọi tháng nó đang tắt, thành một loạt khoản chi không có thật
+                let first = due(r, in: thisMonth) > Date() ? thisMonth : cal.date(byAdding: .month, value: 1, to: thisMonth)!
+                r.start = max(r.start, Self.monthKey(first))
+            }
+            r.u = t
+            rules[k] = r
+        }
+        for (k, c) in b.cats ?? [:] where c.on && cats[k]?.on != true { var c = c; c.touch(t); cats[k] = c }
+        runRecurring()
         persist()
-        show("Đã khôi phục \(add.count) khoản")
+        show(L("Đã khôi phục %ld khoản", add.count))
+    }
+
+    // MARK: Tự học danh mục
+
+    /// Ghi chú chuẩn hoá để so khớp: "Phúc Long  (Q1)" -> "phuc long q1"
+    nonisolated static func noteKey(_ s: String) -> String {
+        strip(s).split(whereSeparator: { !$0.isLetter && !$0.isNumber }).joined(separator: " ")
+    }
+
+    /// Danh mục cho một ghi chú: ưu tiên danh mục đã tự chọn trước đây cho tên đó, không có thì đoán theo từ khoá.
+    func guessCategory(_ note: String) -> String {
+        let k = Self.noteKey(note)
+        guard !k.isEmpty else { return Category.guess(note) }
+        // Danh mục đã học mà đã xoá thì coi như chưa học, nếu không khoản mới tiếp tục mang mã danh mục không còn dùng.
+        // Ghi nhớ vẫn giữ: Hoàn tác xoá danh mục / khôi phục từ file là dùng lại được
+        let live = Set(Category.all.map(\.k))
+        if let c = memo["note:" + k]?.c, live.contains(c) { return c }
+        // Ghi chú dài hơn có chứa tên đã học: "phuc long sang nay" dùng danh mục đã học cho "phuc long"
+        let padded = " \(k) "
+        let hit = memo.keys.filter { $0.hasPrefix("note:") && padded.contains(" \($0.dropFirst(5)) ") && live.contains(memo[$0]?.c ?? "") }.max { $0.count < $1.count }
+        return hit.flatMap { memo[$0]?.c } ?? Category.guess(note)
+    }
+
+    /// Nhớ danh mục đã tự chọn cho ghi chú này, chỉ khi khác với cách app đang đoán (đồng bộ iCloud cùng ghi nhớ người nhận).
+    func learnCategory(_ note: String, _ cat: String) {
+        let k = Self.noteKey(note)
+        guard !k.isEmpty, guessCategory(note) != cat else { return }
+        remember("note:" + k, Memo(c: cat, n: nil))
+    }
+
+    // MARK: Danh mục tự tạo
+
+    /// Thêm danh mục mới, trả về mã để chọn luôn.
+    @discardableResult
+    func addCategory(name: String, icon: String, tone: Int) -> String {
+        let k = "u-" + UUID().uuidString.prefix(8).lowercased()
+        cats[k] = CustomCat(k: k, name: name, icon: icon, tone: tone, on: true, u: now)
+        persist()
+        return k
+    }
+
+    /// Sửa danh mục; danh mục có sẵn thì lưu thành bản chỉnh (đổi lại được về mặc định).
+    func updateCategory(_ k: String, name: String, icon: String, tone: Int) {
+        var c = cats[k] ?? CustomCat(k: k, name: name, icon: icon, tone: tone, on: true, u: now)
+        c.name = name; c.icon = icon; c.tone = tone; c.on = true; c.touch(now)
+        cats[k] = c
+        persist()
+    }
+
+    /// Ô danh mục ở màn hình chính dài cả hàng hay nửa hàng
+    func isWide(_ k: String) -> Bool { cats[k]?.wide == true }
+
+    func setWide(_ k: String, _ wide: Bool) {
+        let base = Category.get(k)
+        var c = cats[k] ?? CustomCat(k: k, name: base.rawName, icon: base.icon, tone: -1, on: false, u: now)
+        c.wide = wide; c.touch(now)
+        cats[k] = c
+        persist()
+    }
+
+    /// Danh mục có sẵn về lại tên, biểu tượng, màu gốc.
+    func resetCategory(_ k: String) {
+        guard var c = cats[k], c.on else { return }
+        c.on = false; c.u = now
+        cats[k] = c
+        persist()
+    }
+
+    /// Xoá danh mục tự tạo: các khoản đã ghi hiện là "Khác"; khôi phục được bằng cách tạo lại cùng tên thì không, nên có Hoàn tác.
+    func removeCategory(_ k: String) {
+        guard !Category.isBuiltin(k), var c = cats[k], c.on else { return }
+        c.on = false; c.touch(now)
+        cats[k] = c
+        persist()
+        show(L("Đã xoá danh mục %@", c.name)) { [weak self] in
+            guard let self, var c = self.cats[k] else { return }
+            c.on = true; c.touch(self.now)
+            self.cats[k] = c
+            self.persist()
+        }
+    }
+
+    // MARK: Khoản định kỳ
+
+    /// Khoản định kỳ đang bật mà khoản chi này thuộc về: khoản app tự ghi, khoản gốc, hoặc khoản ghi tay giống hệt.
+    func rule(for e: Expense) -> Rule? {
+        let on = rules.values.filter(\.on)
+        if on.isEmpty { return nil }
+        if e.id.hasPrefix("r-"), let r = on.first(where: { e.id.hasPrefix("r-\($0.id)-") }) { return r }
+        let k = Self.noteKey(e.n ?? ""), c = Category.get(e.c).k   // danh mục đã xoá tính là "Khác", như hasSame
+        return on.first { $0.src == e.id } ?? on.first { $0.a == e.a && Category.get($0.c).k == c && Self.noteKey($0.n ?? "") == k }
+    }
+
+    /// "Lặp hằng tháng": cứ đến ngày đó (giờ đó) mỗi tháng, app tự ghi một khoản giống hệt.
+    /// Bắt đầu từ lần tới hạn kế tiếp, không ghi bù các tháng trước.
+    func repeatMonthly(_ e: Expense) {
+        let cal = Calendar.current
+        let c = cal.dateComponents([.day, .hour, .minute], from: e.date)
+        var r = Rule(id: UUID().uuidString, a: e.a, n: e.n, c: e.c, day: c.day!, minute: c.hour! * 60 + c.minute!,
+                     start: "", src: e.id, on: true, u: now)
+        let thisMonth = cal.dateInterval(of: .month, for: Date())!.start
+        let first = due(r, in: thisMonth) > Date() ? thisMonth : cal.date(byAdding: .month, value: 1, to: thisMonth)!
+        r.start = Self.monthKey(first)
+        rules[r.id] = r
+        persist()
+        let d = cal.dateComponents([.day, .month], from: due(r, in: first))
+        show(L("Sẽ tự ghi ngày %1$ld hằng tháng, lần tới %2$ld/%3$ld", r.day, d.day!, d.month!))
+    }
+
+    /// Lúc tới hạn của khoản định kỳ trong tháng bắt đầu bằng `month`; tháng ngắn hơn thì ngày cuối tháng.
+    private func due(_ r: Rule, in month: Date) -> Date {
+        let cal = Calendar.current
+        let last = cal.range(of: .day, in: .month, for: month)!.count
+        let day = cal.date(byAdding: .day, value: min(r.day, last) - 1, to: month)!
+        return cal.date(byAdding: .minute, value: r.minute, to: day)!
+    }
+
+    func stopRepeating(_ r: Rule) {
+        var r = r
+        r.on = false
+        r.u = now
+        rules[r.id] = r
+        persist()
+        show(L("Đã bỏ lặp %@", r.n?.isEmpty == false ? r.n! : Category.get(r.c).name))
+    }
+
+    /// Ghi các kỳ đã tới hạn. Mã khoản cố định theo (khoản định kỳ, tháng) nên nhiều máy cùng ghi vẫn không trùng;
+    /// kỳ đã xoá thì không ghi lại; tháng đã có khoản giống hệt (ghi tay, hoặc chính khoản gốc) thì bỏ qua.
+    /// Trả về true khi có gì cần lưu (khoản mới ghi, hoặc kỳ vừa được đánh dấu bỏ qua).
+    @discardableResult
+    private func runRecurring() -> Bool {
+        let cal = Calendar.current, today = Date()
+        var ids = Set(items.map(\.id))
+        var changed = false
+        for r in rules.values where r.on {
+            let parts = r.start.split(separator: "-").compactMap { Int($0) }
+            guard parts.count == 2, var m = cal.date(from: DateComponents(year: parts[0], month: parts[1], day: 1)) else { continue }
+            while m <= today {
+                let id = "r-\(r.id)-\(Self.monthKey(m))"
+                let at = due(r, in: m)
+                if at <= today, !ids.contains(id), deleted[id] == nil {
+                    if hasSame(r, inMonthOf: m) {
+                        // Kỳ này đã có khoản ghi tay thay thế: ghi nhớ lại, nếu không về sau sửa / xoá khoản ghi tay đó
+                        // là app ghi bù một khoản vào tháng cũ. Dấu 0 cũ hơn mọi khoản nên chỉ chặn việc tự ghi,
+                        // không xoá khoản của kỳ này mà máy khác đã ghi (khi gộp, khoản đó thắng dấu này)
+                        deleted[id] = 0
+                    } else {
+                        items.append(Expense(id: id, t: at.timeIntervalSince1970 * 1000, a: r.a, n: r.n, c: r.c, acct: nil))
+                        ids.insert(id)
+                        autoWritten.insert(id)
+                    }
+                    changed = true
+                }
+                m = cal.date(byAdding: .month, value: 1, to: m)!
+            }
+        }
+        return changed
+    }
+
+    /// Mở lại app (vd sáng ngày mùng 5): ghi các khoản định kỳ vừa tới hạn.
+    func catchUpRecurring() {
+        if runRecurring() { persist() }
+    }
+
+    private func hasSame(_ r: Rule, inMonthOf m: Date) -> Bool {
+        let k = Self.noteKey(r.n ?? ""), c = Category.get(r.c).k   // danh mục đã xoá tính là "Khác", như mọi chỗ gộp theo danh mục
+        return monthItems(m).contains { $0.a == r.a && Category.get($0.c).k == c && Self.noteKey($0.n ?? "") == k }
     }
 
     private func stamp() -> String {
@@ -336,3 +645,40 @@ final class Store: ObservableObject {
         return f.string(from: Date())
     }
 }
+
+#if DEBUG
+extension Store {
+    /// Chi tiêu mẫu cố định cho phim giới thiệu: 5 tháng trước đủ các danh mục, tháng này tới hôm qua; hôm nay chưa ghi gì.
+    static func filmSeed() -> [Expense] {
+        var rng = SeedRandom(seed: 7)
+        let cal = Calendar.current, now = Date()
+        let today = cal.startOfDay(for: now)
+        let daily: [(String, String, ClosedRange<Int>)] = [
+            ("an", L("ăn trưa"), 45...45), ("cafe", L("cà phê"), 35...35), ("an", L("ăn sáng"), 30...30),
+            ("di", "grab", 30...90), ("an", L("ăn tối"), 60...180), ("cafe", L("trà sữa"), 35...60), ("mua", L("đi chợ"), 120...380)]
+        var out: [Expense] = []
+        func add(_ d: Date, _ c: String, _ n: String, _ a: Int) {
+            let t = d.timeIntervalSince1970 * 1000
+            out.append(Expense(id: "seed-\(out.count)", t: t, a: a, n: n, c: c, acct: nil, u: t))
+        }
+        for back in stride(from: 160, through: 1, by: -1) {
+            let day = cal.date(byAdding: .day, value: -back, to: today)!
+            for (i, item) in daily.enumerated() where rng.next() % 100 < [85, 70, 40, 35, 30, 20, 18][i] {
+                add(day.addingTimeInterval(Double(7 + i * 2) * 3600), item.0, item.1, Int(rng.next() % UInt64(item.2.count) + UInt64(item.2.lowerBound)) * 1000)
+            }
+            if cal.component(.day, from: day) == 5 {
+                add(day.addingTimeInterval(9 * 3600), "hd", L("tiền nhà"), 3_500_000)
+                add(day.addingTimeInterval(10 * 3600), "hd", L("điện nước"), Int(rng.next() % 300 + 450) * 1000)
+                add(day.addingTimeInterval(11 * 3600), "hd", "internet", 220_000)
+            }
+            if rng.next() % 100 < 6 { add(day.addingTimeInterval(20 * 3600), "mua", "shopee", Int(rng.next() % 600 + 150) * 1000) }
+        }
+        return out.sorted { $0.t > $1.t }
+    }
+}
+
+private struct SeedRandom {
+    var seed: UInt64
+    mutating func next() -> UInt64 { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return seed >> 33 }
+}
+#endif

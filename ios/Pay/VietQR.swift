@@ -10,7 +10,7 @@ struct VietQR: Hashable {
     var name: String
     var purpose: String
 
-    var bank: String { bin.map { BankData.names[$0] ?? "Ngân hàng \($0)" } ?? "" }
+    var bank: String { bin.map { BankData.names[$0] ?? L("Ngân hàng %@", $0) } ?? "" }
     var memoKey: String? { bin.flatMap { b in acct.map { "\(b):\($0)" } } }
 
     /// Đọc chuỗi kiểu ID(2) + độ dài(2) + giá trị
@@ -19,7 +19,8 @@ struct VietQR: Hashable {
         var out: [String: String] = [:], i = 0
         while i + 4 <= ch.count {
             let id = String(ch[i..<i + 2])
-            guard let len = Int(String(ch[i + 2..<i + 4])), i + 4 + len <= ch.count else { break }
+            // Mã QR là dữ liệu từ ngoài: độ dài "-1" vẫn qua được Int() và phép so ở sau, rồi làm khoảng cắt bị ngược (dừng app)
+            guard let len = Int(String(ch[i + 2..<i + 4])), len >= 0, i + 4 + len <= ch.count else { break }
             out[id] = String(ch[i + 4..<i + 4 + len])
             i += 4 + len
         }
@@ -29,7 +30,10 @@ struct VietQR: Hashable {
     static func parse(_ text: String) -> VietQR? {
         guard text.hasPrefix("000201") else { return nil }
         let top = tlv(text)
-        var q = VietQR(raw: text, amount: top["54"].flatMap { Double($0) }.map { Int($0.rounded()) },
+        // Số tiền: "nan", "inf", "1e30" hay 20 chữ số đều qua được Double() rồi làm Int() dừng app,
+        // nên chỉ nhận số dương không quá 12 chữ số (bằng giới hạn của bàn phím số), còn lại coi như mã không ghi số tiền
+        let amount = top["54"].flatMap { Double($0) }.map { $0.rounded() }.flatMap { $0 >= 1 && $0 < 1e12 ? Int($0) : nil }
+        var q = VietQR(raw: text, amount: amount,
                        name: (top["59"] ?? "").trimmingCharacters(in: .whitespaces), purpose: "")
         for id in ["38", "26", "27", "28"] {
             guard let v = top[id] else { continue }

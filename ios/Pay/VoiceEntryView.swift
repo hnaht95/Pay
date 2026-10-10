@@ -24,6 +24,8 @@ final class VoiceListener: ObservableObject {
     private var task: SFSpeechRecognitionTask?
     private var silence: Task<Void, Never>?
     private var starting = false
+    /// Thẻ đã bị đóng (xem `cancel`): từ đây không ghi gì nữa, không bật lại micro
+    private var cancelled = false
 
     func start() async {
         // Bấm "Nói lại" liên tiếp: không bật micro hai lần (installTap lần hai làm app văng)
@@ -35,6 +37,23 @@ final class VoiceListener: ObservableObject {
         // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
         if let demo = UserDefaults.standard.string(forKey: "voiceDemo") {
             phase = .listening; text = demo; meter.value = 0.7
+            // Thêm "-voiceDemoPlay YES": hiện từng chữ như đang nói rồi tự ghi (để quay phim giới thiệu)
+            if UserDefaults.standard.bool(forKey: "voiceDemoPlay") {
+                text = ""
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(900))
+                    for w in demo.split(separator: " ") {
+                        text += (text.isEmpty ? "" : " ") + w
+                        meter.value = .random(in: 0.45...0.95)
+                        try? await Task.sleep(for: .milliseconds(380))
+                    }
+                    meter.value = 0.1
+                    try? await Task.sleep(for: .milliseconds(1100))
+                    guard phase == .listening else { return }
+                    meter.value = 0; phase = .idle
+                    onFinish?(text)
+                }
+            }
             return
         }
         #endif
@@ -42,9 +61,10 @@ final class VoiceListener: ObservableObject {
             SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0 == .authorized) }
         }
         let micOK = await AVAudioApplication.requestRecordPermission()
+        guard !cancelled else { return }   // đóng thẻ khi micro chưa kịp bật: không bật nữa
         guard speechOK, micOK else { phase = .denied; return }
-        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "vi-VN")), recognizer.isAvailable else {
-            phase = .failed("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR.")
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: Lang.isEnglish ? "en-US" : "vi-VN")), recognizer.isAvailable else {
+            phase = .failed(L("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR."))
             return
         }
         do {
@@ -55,8 +75,11 @@ final class VoiceListener: ObservableObject {
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults = true
             // Báo trước những từ hay nói để nhận dạng số tiền chuẩn hơn
-            req.contextualStrings = ["nghìn", "ngàn", "triệu", "trăm", "mươi", "rưỡi", "nửa triệu", "đồng", "củ",
-                                     "cà phê", "cafe", "trà sữa", "ăn sáng", "ăn trưa", "phở", "cơm", "grab", "xăng", "gửi xe", "shopee"]
+            req.contextualStrings = Lang.isEnglish
+                ? ["thousand", "million", "hundred", "k", "half a million", "dong", "coffee", "lunch", "breakfast", "dinner",
+                   "groceries", "gas", "parking", "grab", "rent", "shopee", "bubble tea", "pho"]
+                : ["nghìn", "ngàn", "triệu", "trăm", "mươi", "rưỡi", "nửa triệu", "đồng", "củ",
+                   "cà phê", "cafe", "trà sữa", "ăn sáng", "ăn trưa", "phở", "cơm", "grab", "xăng", "gửi xe", "shopee"]
             req.taskHint = .dictation
             if recognizer.supportsOnDeviceRecognition { req.requiresOnDeviceRecognition = true }   // không gửi giọng lên mạng nếu máy tự làm được
             request = req
@@ -66,7 +89,7 @@ final class VoiceListener: ObservableObject {
             // Không có micro dùng được (vd máy ảo, micro đang bị app khác chiếm): báo lỗi thay vì để app văng
             guard format.sampleRate > 0, format.channelCount > 0 else {
                 stop()
-                phase = .failed("Không dùng được micro lúc này. Thử lại, hoặc quét QR.")
+                phase = .failed(L("Không dùng được micro lúc này. Thử lại, hoặc quét QR."))
                 return
             }
             input.removeTap(onBus: 0)   // phòng còn tap cũ
@@ -89,7 +112,7 @@ final class VoiceListener: ObservableObject {
 
             task = recognizer.recognitionTask(with: req) { [weak self] result, error in
                 Task { @MainActor in
-                    guard let self, self.phase == .listening else { return }
+                    guard let self, !self.cancelled, self.phase == .listening else { return }
                     if let result {
                         self.text = result.bestTranscription.formattedString
                         if result.isFinal { self.finish() } else { self.waitForSilence() }
@@ -101,7 +124,7 @@ final class VoiceListener: ObservableObject {
             waitForSilence()
         } catch {
             stop()
-            phase = .failed("Không bật được micro.")
+            phase = .failed(L("Không bật được micro."))
         }
     }
 
@@ -117,11 +140,21 @@ final class VoiceListener: ObservableObject {
     }
 
     func finish() {
-        guard phase == .listening else { return }
+        guard !cancelled, phase == .listening else { return }
         meter.value = 0
         stop()
         phase = .idle
         onFinish?(text)
+    }
+
+    /// Người dùng đóng thẻ (X, chạm nền tối, chuyển sang quét QR): dừng micro và bỏ luôn câu đang nghe.
+    /// stop() không đủ: sau task.cancel() iOS vẫn gọi lại kết quả / báo lỗi một lần nữa, lúc đó `phase` còn là .listening
+    /// nên khoản chi vẫn bị ghi âm thầm trong lúc thẻ đang đóng. Không đổi `phase` ở đây, để thẻ đang trượt đi
+    /// giữ nguyên dạng "Đang nghe" chứ không nháy sang dạng khác.
+    func cancel() {
+        cancelled = true
+        onFinish = nil   // closure này giữ view (và qua view giữ lại chính listener): gỡ ra để listener được giải phóng
+        stop()
     }
 
     func stop() {
@@ -144,22 +177,91 @@ struct VoiceEntryView: View {
     @StateObject private var mic = VoiceListener()
     @State private var saved: Expense?
     @State private var notUnderstood = false
+    /// Vừa bấm Hoàn tác: khoản vừa ghi đã xoá
+    @State private var undone = false
     @State private var autoClose: Task<Void, Never>?
     @State private var shown = false
+    /// Thẻ vừa mở, micro chưa kịp chạy
+    @State private var starting = true
+    /// Mở bằng vuốt lên từ nút Quét QR: khung của nút (toạ độ màn hình). Thẻ biến hình từ chính nút đó ra
+    /// (khối màu nút lớn dần thành khung thẻ, nội dung thẻ hiện dần lên) và thu về lại nút khi đóng
+    var from: CGRect? = nil
+    /// Mặt của nút đó (biểu tượng + chữ): vẽ trên khối khi khối còn là nút, mờ đi khi khối lớn thành thẻ
+    var face: AnyView? = nil
+    @State private var faced = true
+    /// Thẻ đang nằm ngay trên màn hình chính (không qua fullScreenCover, để không dính hiệu ứng trượt lên của iOS):
+    /// đóng thì gọi cái này thay cho dismiss
+    var onClose: (() -> Void)? = nil
+    /// Mức biến hình: 0 = còn là nút, 1 = đã thành thẻ
+    @State private var morph: CGFloat = 0
+    /// Nội dung thẻ đã hiện chưa (hiện sau khi khối đã lớn gần xong, ẩn trước khi khối thu về)
+    @State private var filled = false
+    /// Khối biến hình còn vẽ không (thành thẻ xong thì ẩn, để thẻ đổi cỡ về sau không lộ khối phía dưới)
+    @State private var blob = true
+    @State private var cardRect: CGRect = .zero
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
     var onEdit: (Expense) -> Void = { _ in }
+    /// Đang dựng phim giới thiệu (xem Film.swift): trạng thái lấy từ phim thay vì micro
+    @Environment(\.film) private var film
+
+    private var heard: String { film?.voice?.text ?? mic.text }
+    /// Micro đang khởi động (vài phần mười giây đầu) cũng hiện như đang nghe: thẻ bật lên đã đủ nội dung, không đổi giữa chừng
+    private var isListening: Bool { film?.voice.map { $0.saved == nil } ?? (mic.phase == .listening || starting) }
+    private var savedNow: Expense? { film != nil ? film?.voice?.saved : saved }
 
     var body: some View {
+        if let v = film?.voice {
+            // Phim: nền tối dần và thẻ trượt lên theo mức `shown`
+            ZStack(alignment: .bottom) {
+                Color.black.opacity(0.35 * Double(v.shown))
+                card.padding(.horizontal, 12).padding(.bottom, 34).offset(y: ((1 - v.shown) * 460).rounded())
+            }
+        } else { live }
+    }
+
+    private var live: some View {
         ZStack(alignment: .bottom) {
             Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
                 .onTapGesture { close() }
-            if shown {
-                // Cách đáy màn hình bằng lề hai bên (12pt), bỏ khoảng an toàn của vạch Home
+            if let from {
+                // Khối biến hình: từ khung và màu của nút tới khung và màu của thẻ
+                GeometryReader { g in
+                    let o = g.frame(in: .global).origin
+                    let to = cardRect == .zero ? from : cardRect
+                    let r = CGRect(x: from.minX + (to.minX - from.minX) * morph, y: from.minY + (to.minY - from.minY) * morph,
+                                   width: from.width + (to.width - from.width) * morph, height: from.height + (to.height - from.height) * morph)
+                    let shape = RoundedRectangle(cornerRadius: from.height / 2 + (42 - from.height / 2) * morph, style: .continuous)
+                    shape.fill(Palette.cta)
+                        // Đổi màu nhanh ở đầu (xong khi khối mới lớn được 40%): đổi đều suốt quãng thì khối cứ xám lửng lơ, trông như khựng
+                        .overlay(shape.fill(Palette.surface).opacity(Double(min(1, max(0, morph) * 2.5))))
+                        .frame(width: r.width, height: r.height)
+                        .position(x: r.midX - o.x, y: r.midY - o.y)
+                        .opacity(blob ? 1 : 0)
+                    if let face {
+                        face.frame(width: from.width, height: from.height)
+                            .position(x: from.midX - o.x, y: from.midY - o.y)
+                            .opacity(faced && blob ? 1 : 0)
+                    }
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                if shown {
+                    card
+                        .padding(.horizontal, 12).padding(.bottom, 34)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global).insetBy(dx: 12, dy: 0).divided(atDistance: 34, from: .maxYEdge).remainder } action: { cardRect = $0 }
+                        // Chỉ mờ dần, không scaleEffect: scaleEffect gom cả thẻ thành một khối có toạ độ riêng, làm lúc nghe xong
+                        // khung thẻ nhảy tức thì còn các nút cũ rơi xuống dưới mép thẻ (cách mở từ nút Tác vụ không bị vì không có nó)
+                        .opacity(filled ? 1 : 0)
+                        .transition(.identity)
+                }
+            } else if shown {
+                // Nâng lên khỏi đáy để thẻ không dính vào góc bo màn hình và các ô phía sau
                 card
-                    .padding(.horizontal, 12).padding(.bottom, 12)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.horizontal, 12).padding(.bottom, 34)
+                    // Chỉ trượt, không mờ dần: thẻ mờ nửa chừng đè lên các ô phía sau trông như bóng ma
+                    .transition(.move(edge: .bottom))
             }
         }
         .ignoresSafeArea(.container, edges: .bottom)
@@ -168,78 +270,160 @@ struct VoiceEntryView: View {
         .task {
             shown = true
             mic.onFinish = { said in handle(said) }
+            if from != nil {
+                // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
+                try? await Task.sleep(for: .milliseconds(30))
+                withAnimation(.easeOut(duration: 0.1)) { faced = false }
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) { morph = 1 }
+                withAnimation(.easeOut(duration: 0.2).delay(0.24)) { filled = true }   // chữ hiện khi khối đã lớn gần đủ, không tràn ra ngoài khối
+                Task { try? await Task.sleep(for: .milliseconds(560)); if filled { blob = false } }
+                // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy
+                // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng. Chờ hiệu ứng xong rồi mới bật.
+                try? await Task.sleep(for: .milliseconds(470))
+                guard !Task.isCancelled else { return }
+            }
             await mic.start()
+            starting = false
         }
-        .onDisappear { mic.stop() }
+        .onDisappear { mic.cancel() }
     }
 
     // MARK: Thẻ
 
+    /// Mở từ nút Quét QR và khối biến hình còn đang hiện: nền của thẻ do khối đó lo
+    private var bare: Bool { from != nil && blob }
+
     private var card: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        // Khoảng cách 18 giữa các phần tự đặt (không dùng spacing của VStack) để phần sóng âm co về 0 được cả khoảng cách
+        // của nó: ghi xong thẻ thu gọn dần, nội dung phía trên hạ xuống theo (phim: theo `settle`; app: theo animation bên dưới)
+        VStack(alignment: .leading, spacing: 0) {
             header
-            amountBlock
-            if mic.phase == .listening { Waveform(meter: mic.meter).frame(height: 56) }
-            buttons
+            amountBlock.padding(.top, 18)
+            let settle = film?.voice?.settle ?? 0
+            if isListening || (film != nil && settle < 1) {
+                // Điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không — dịch lẻ thì chữ và nền lệch nhau
+                let room = (74 * (1 - settle)).rounded()   // 56 sóng âm + 18 khoảng cách
+                Waveform(meter: mic.meter, film: film)
+                    .frame(height: max(0, room - 18), alignment: .center).clipped()
+                    .opacity(Double(1 - settle))
+                    .padding(.top, min(18, room))
+                    .transition(Self.swap)
+            }
+            buttons.padding(.top, 18)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))   // ôm theo góc bo màn hình
-        .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
+        // Đang biến hình từ nút (bare): thẻ không vẽ nền, viền, bóng của riêng nó — khối biến hình chính là nền. Vẽ cả hai thì
+        // lúc mở và lúc thu về thấy hai cửa sổ chồng nhau (nền thẻ mờ dần ở cỡ đầy đủ, khối thì đang lớn / đang co).
+        .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: 42, style: .continuous))
+        // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
+        .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(bare ? 0 : 0.08), lineWidth: 1))
+        .shadow(color: .black.opacity(bare ? 0 : 0.18), radius: 24, y: 8)
+        // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
+        // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
+        // xuống dưới mép thẻ rồi mới mờ đi.) Nội dung đi cùng khung lúc bật lên là nhờ thẻ có đủ nội dung từ đầu (xem `starting`).
+        .animation(Self.settle, value: isListening)
     }
+
+    /// Phần đổi theo trạng thái (dòng trạng thái, sóng âm, hàng nút): cái cũ biến mất và cái mới hiện ra gần như tức thì, tại chỗ.
+    /// Mờ dần chậm thì chữ cũ và mới chồng lên nhau, sóng âm còn nằm lại trong lúc phần trên đã hạ xuống đè lên nó.
+    private static let swap: AnyTransition = .opacity.animation(.easeOut(duration: 0.09))
+    /// Nghe xong thẻ thu gọn
+    private static let settle: Animation = .snappy(duration: 0.35)
 
     private var header: some View {
         HStack(spacing: 8) {
-            if saved != nil {
+            Group {
+            if savedNow != nil {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("Đã ghi").foregroundStyle(.secondary)
-            } else if mic.phase == .listening {
-                PulseDot()
-                Text("Đang nghe").foregroundStyle(.secondary)
+                Text(L("Đã ghi")).foregroundStyle(.secondary)
+            } else if isListening {
+                PulseDot(time: film?.time)
+                Text(L("Đang nghe")).foregroundStyle(.secondary)
+            } else if undone {
+                Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary)
+                Text(L("Đã hoàn tác, chưa ghi gì")).foregroundStyle(.secondary)
             } else if notUnderstood {
                 Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange)
-                Text("Chưa nghe rõ số tiền").foregroundStyle(.secondary)
+                Text(L("Chưa nghe rõ số tiền")).foregroundStyle(.secondary)
             } else {
                 Image(systemName: "mic.fill").foregroundStyle(.secondary)
                 Text(statusText).foregroundStyle(.secondary).lineLimit(2)
             }
+            }
+            .transition(Self.swap)
             Spacer()
             Button { close() } label: {
                 Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
                     .frame(width: 30, height: 30).background(Palette.pill, in: Circle())
             }
+            .buttonStyle(Pressable())
             .foregroundStyle(.primary)
-            .accessibilityLabel("Đóng")
+            .accessibilityLabel(L("Đóng"))
         }
         .font(.system(size: 15, weight: .medium))
+        // Dòng trạng thái là một khối: chữ mới ("Đã ghi") hiện ra ngay trong dòng đang hạ xuống cùng thẻ,
+        // không hiện sẵn ở chỗ đích rồi bị số tiền trôi ngang qua
+        .geometryGroup()
     }
 
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
     @ViewBuilder private var amountBlock: some View {
-        let live = saved.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? QuickParse.spoken(mic.text).map { (amount: $0.amount, note: $0.note, cat: Category.guess($0.note)) }
+        // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
+        let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
+            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(live.map { fmt($0.amount) } ?? "0")
-                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
-                    .foregroundStyle(live == nil ? Color.secondary.opacity(0.5) : .primary)
-                    .contentTransition(.numericText())
-                    .minimumScaleFactor(0.5).lineLimit(1)
+                // Số đổi: app dùng hiệu ứng số của iOS; phim tự vẽ số cũ trôi lên, số mới trồi lên
+                let now = live.map { fmt($0.amount) } ?? "0"
+                ZStack(alignment: .leading) {
+                    if let prev = film?.voice?.previous, let t = film?.voice?.elapsed, t < 0.95 {
+                        digits(prev, dim: prev == "0", elapsed: t, leaving: true)
+                        digits(now, dim: live == nil, elapsed: t, leaving: false)
+                    } else if film != nil {
+                        // Phim: giữ cùng cách xếp chữ số như lúc đang chuyển, để chuyển xong con số không nhảy chỗ
+                        digits(now, dim: live == nil, elapsed: 10, leaving: false)
+                    } else {
+                        number(now, dim: live == nil)
+                    }
+                }
                 Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }
             .animation(.snappy, value: live?.amount)
             if let l = live {
                 let c = Category.get(l.cat)
-                HStack(spacing: 8) {
-                    HStack(spacing: 6) {
-                        CategoryIcon(c: c, size: 18)
-                        Text(c.name).font(.system(size: 14, weight: .semibold))
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            CategoryIcon(c: c, size: 18)
+                            Text(c.name).font(.system(size: 14, weight: .semibold))
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(c.color, in: Capsule())
+                        .foregroundStyle(c.ink)
+                        if !l.note.isEmpty {
+                            Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(c.color, in: Capsule())
-                    .foregroundStyle(.black)
-                    if !l.note.isEmpty {
-                        Text(l.note).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                    // Câu nhắc tới nhiều danh mục ("mua cát cho mèo"): hiện các danh mục còn lại, chạm là đổi
+                    let others = Category.matches(l.note).filter { $0 != l.cat }.prefix(3)
+                    if !others.isEmpty {
+                        HStack(spacing: 6) {
+                            Text(L("Hay là")).font(.system(size: 14)).foregroundStyle(.secondary)
+                            ForEach(Array(others), id: \.self) { k in
+                                let o = Category.get(k)
+                                Button { switchCategory(to: k) } label: {
+                                    HStack(spacing: 5) {
+                                        CategoryIcon(c: o, size: 16)
+                                        Text(o.name).font(.system(size: 14, weight: .medium))
+                                    }
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(Palette.pill, in: Capsule())
+                                    .foregroundStyle(.primary)
+                                }
+                                .buttonStyle(Pressable())
+                            }
+                        }
                     }
                 }
             } else {
@@ -248,92 +432,180 @@ struct VoiceEntryView: View {
         }
     }
 
+    private func number(_ s: String, dim: Bool) -> some View {
+        Text(s).font(.system(size: 46, weight: .bold)).kerning(-1.5)
+            .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
+            .contentTransition(.numericText())
+            .minimumScaleFactor(0.5).lineLimit(1)
+    }
+
+    /// Phim: con số đang chuyển, từng chữ số một (xem FilmFrame.Voice.previous)
+    private func digits(_ s: String, dim: Bool, elapsed: Double, leaving: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: -2) {
+            ForEach(Array(s.enumerated()), id: \.offset) { i, ch in
+                let p = FilmFrame.spring((elapsed - 0.035 * Double(i)) / 0.42)
+                Text(String(ch)).font(.system(size: 46, weight: .bold))
+                    .padding(.horizontal, ch == "." || ch == "," ? -2 : 0)   // dấu chấm ôm sát hai số bên cạnh như khi viết liền
+                    .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
+                    .scaleEffect(leaving ? 1 - 0.3 * min(1, p) : 0.7 + 0.3 * min(1, p))
+                    .opacity(Double(leaving ? max(0, 1 - 2 * p) : min(1, 1.6 * p)))
+                    .offset(y: (leaving ? -22 * p : 22 * (1 - p)).rounded())
+            }
+        }
+        .lineLimit(1).fixedSize()
+    }
+
     private var hint: String {
-        if notUnderstood { return mic.text.isEmpty ? "Không nghe thấy gì." : "Đã nghe: \"\(mic.text)\"" }
-        if mic.phase == .listening { return mic.text.isEmpty ? "Nói ví dụ: \"ba lăm nghìn cà phê\"" : mic.text }
-        if mic.phase == .denied { return "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói." }
+        if undone { return L("Bấm Nói lại để nói khoản khác.") }
+        if notUnderstood { return mic.text.isEmpty ? L("Không nghe thấy gì.") : L("Đã nghe: \"%@\"", mic.text) }
+        if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : heard }
+        if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
         return ""
     }
 
     private var statusText: String {
         switch mic.phase {
-        case .denied: return "Cần quyền micro"
+        case .denied: return L("Cần quyền micro")
         case .failed(let why): return why
-        default: return "Đang bật micro…"
+        default: return L("Đang bật micro…")
         }
     }
 
     // MARK: Nút
 
+    /// Nút chính (bên phải) theo trạng thái: tên, việc làm, có đang tắt không
+    private var primaryButton: (title: String, off: Bool, run: () -> Void)? {
+        if savedNow != nil { return (L("Xong"), false, { autoClose?.cancel(); leave() }) }
+        if isListening { return (L("Xong"), heard.isEmpty, { mic.finish() }) }          // ngừng nghe ngay, không chờ im lặng
+        if mic.phase == .denied {
+            return (L("Mở Cài đặt"), false, { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } })
+        }
+        if notUnderstood || undone || mic.phase != .idle { return (L("Nói lại"), false, { retry() }) }
+        return nil
+    }
+
+    /// Nút chính là cùng một nút qua mọi trạng thái (nghe xong nó chỉ hẹp lại, không biến mất rồi hiện lại);
+    /// chỉ các nút phụ bên trái đổi: "Quét QR" khi chưa ghi, "Hoàn tác" + "Sửa" khi đã ghi.
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 10) {
-            if let e = saved {
-                pill("Sửa", primary: false) { autoClose?.cancel(); dismiss(); onEdit(e) }
-                pill("Xong", primary: true) { autoClose?.cancel(); dismiss() }
-            } else if mic.phase == .listening {
-                pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
-                pill("Xong", primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
-                    .disabled(mic.text.isEmpty).opacity(mic.text.isEmpty ? 0.4 : 1)
-            } else if mic.phase == .denied {
-                pill("Quét QR", primary: false) { dismiss(); onScan() }
-                pill("Mở Cài đặt", primary: true) {
-                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+            Group {
+                if let e = savedNow {
+                    // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
+                    pill(L("Hoàn tác"), primary: false) { undo(e) }
+                    pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
+                } else if primaryButton != nil {
+                    pill(L("Quét QR"), primary: false) { mic.cancel(); leave(); onScan() }
                 }
-            } else if notUnderstood || mic.phase != .idle {
-                pill("Quét QR", primary: false) { mic.stop(); dismiss(); onScan() }
-                pill("Nói lại", primary: true) { retry() }
+            }
+            .transition(Self.swap)
+            if let p = primaryButton {
+                pill(p.title, primary: true, p.run).disabled(p.off).opacity(p.off ? 0.4 : 1)
             }
         }
     }
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 18, weight: .semibold))
+            Text(title).font(.system(size: 18, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity, minHeight: 64)   // cao cho dễ nhấn
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.pill, in: Capsule())
         }
         .buttonStyle(Pressable())
+        .filmPressed(primary ? film?.pressed["voice-primary"] ?? 0 : 0)
     }
 
     // MARK: Xử lý
 
     private func handle(_ said: String) {
-        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true) else {
+        guard !said.isEmpty, let e = store.quickAdd(said, spoken: true, toast: false) else {
             notUnderstood = true
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
             return
         }
         saved = e
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        // Để 3 giây cho kịp nhìn số tiền rồi tự đóng; bấm Sửa / Xong thì đóng ngay
+        // Để 5 giây cho kịp nhìn số tiền và bấm Hoàn tác rồi tự đóng; bấm Sửa / Xong thì đóng ngay
         autoClose = Task {
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(5))
             guard !Task.isCancelled else { return }
-            dismiss()
+            leave()
+        }
+    }
+
+    /// Xoá khoản vừa ghi, thẻ vẫn mở để nói lại hoặc quét QR
+    private func undo(_ e: Expense) {
+        autoClose?.cancel()
+        store.remove(id: e.id, toast: false)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.snappy) { saved = nil; undone = true }
+    }
+
+    /// Chọn danh mục khác trong số được nhắc tới: đổi luôn khoản vừa ghi (hoặc khoản đang nghe) và nhớ cho lần sau.
+    private func switchCategory(to k: String) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        if var e = saved {
+            autoClose?.cancel()
+            e.c = k
+            store.update(e)
+            store.learnCategory(e.n ?? "", k)
+            withAnimation(.snappy) { saved = e }
+        } else if let q = QuickParse.spoken(mic.text) {
+            store.learnCategory(q.note, k)
         }
     }
 
     private func retry() {
         notUnderstood = false
+        undone = false
         Task { await mic.start() }
     }
 
     private func close() {
         autoClose?.cancel()
-        mic.stop()
-        dismiss()
+        mic.cancel()
+        leave()
+    }
+
+    /// Đóng thẻ: tự trượt thẻ xuống và mờ nền trước, xong mới gỡ màn hình (không hiệu ứng).
+    /// Để hệ thống tự kéo cả màn hình xuống thì nền tối tắt phụt và bóng đổ của thẻ bị vệt.
+    private func leave() {
+        guard shown else { return }
+        if from != nil {
+            // Thu về nút: nội dung mờ đi trước, rồi khối co lại thành nút
+            blob = true
+            withAnimation(.easeIn(duration: 0.1)) { filled = false }
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.9).delay(0.08)) { morph = 0 }
+            withAnimation(.easeIn(duration: 0.3).delay(0.1)) { shown = false }
+            // Khối co về gần xong thì mặt nút hiện lại trên khối: tới lúc gỡ lớp này, khối đã y hệt nút thật bên dưới
+            withAnimation(.easeOut(duration: 0.14).delay(0.26)) { faced = true }
+        } else {
+            withAnimation(.easeIn(duration: 0.25)) { shown = false }
+        }
+        Task {
+            try? await Task.sleep(for: .milliseconds(from != nil ? 470 : 270))
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { if let onClose { onClose() } else { dismiss() } }
+        }
     }
 }
 
 /// Sóng âm: độ cao chung theo độ to thật của giọng; hình dáng (giữa cao, rung nhẹ) là trang trí.
 private struct Waveform: View {
     @ObservedObject var meter: MicLevel
+    /// Dựng phim: độ to và thời điểm lấy từ phim
+    var film: FilmFrame? = nil
 
     var body: some View {
-        let level = meter.value
-        TimelineView(.animation) { t in
-            let time = t.date.timeIntervalSinceReferenceDate
+        if let film, let v = film.voice { bars(level: v.level, time: film.time) }
+        else {
+            let level = meter.value
+            TimelineView(.animation) { t in bars(level: level, time: t.date.timeIntervalSinceReferenceDate).animation(.easeOut(duration: 0.12), value: level) }
+        }
+    }
+
+    private func bars(level: CGFloat, time: Double) -> some View {
             HStack(alignment: .center, spacing: 4) {
                 ForEach(0..<28, id: \.self) { i in
                     let center = 1 - abs(CGFloat(i) - 13.5) / 14          // giữa cao, hai bên thấp
@@ -344,18 +616,18 @@ private struct Waveform: View {
                         .frame(height: max(4, 56 * min(h, 1)))
                 }
             }
-            .animation(.easeOut(duration: 0.12), value: level)
-        }
     }
 }
 
 /// Chấm đỏ nhấp nháy cạnh chữ "Đang nghe".
 private struct PulseDot: View {
     @State private var on = false
+    /// Dựng phim: nhấp nháy theo thời điểm của phim
+    var time: Double? = nil
 
     var body: some View {
         Circle().fill(Color.red).frame(width: 9, height: 9)
-            .opacity(on ? 1 : 0.35)
+            .opacity(time.map { 0.675 + 0.325 * sin($0 * .pi / 0.7) } ?? (on ? 1 : 0.35))
             .onAppear { withAnimation(.easeInOut(duration: 0.7).repeatForever()) { on = true } }
     }
 }

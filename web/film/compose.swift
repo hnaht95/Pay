@@ -20,9 +20,11 @@ let frameImage = NSImage(contentsOfFile: a[2])!
 let out = URL(fileURLWithPath: a[3])
 try? FileManager.default.removeItem(at: out)
 
-let scale: CGFloat = 0.5                       // khung 1350x2760 -> 675x1380
-let pad: CGFloat = 40                          // lề mỗi bên, chỗ cho vạch nhấn nút cạnh máy
-let render = CGSize(width: 676 + 2 * pad, height: 1380)  // H.264 cần cạnh chẵn
+let scale: CGFloat = 0.75                      // khung 1350x2760 -> 1013x2070: đủ nét trên màn Retina (khung hiện rộng ~400pt)
+let k = scale / 0.5                            // các số đo vạch nhấn viết theo cỡ 0,5
+let pad: CGFloat = 40 * k                      // lề mỗi bên, chỗ cho vạch nhấn nút cạnh máy
+let frameW: CGFloat = 1014, frameH: CGFloat = 2070       // H.264 cần cạnh chẵn
+let render = CGSize(width: frameW + 2 * pad, height: frameH)
 let hole = CGPoint(x: 72, y: 69)               // góc trên trái của màn hình trong khung (điểm ảnh khung)
 let actionButton = (x: 20.0, top: 581.0, bottom: 706.0)   // nút Tác vụ ở cạnh trái khung (điểm ảnh khung)
 let paper = CGColor(red: 1, green: 1, blue: 1, alpha: 1)   // nền trắng tinh: trang web hoà video vào nền (mix-blend-mode: multiply), khỏi phải khớp màu
@@ -142,19 +144,19 @@ Task {
     let parent = CALayer(), video = CALayer(), overlay = CALayer()
     for l in [parent, video, overlay] { l.frame = CGRect(origin: .zero, size: render) }
     overlay.contents = frameImage.cgImage(forProposedRect: nil, context: nil, hints: nil)
-    overlay.frame = CGRect(x: pad, y: 0, width: 676, height: 1380)   // khung 675 giãn đủ 676: không chừa cột nào trống ở mép phải
+    overlay.frame = CGRect(x: pad, y: 0, width: frameW, height: frameH)   // khung 675 giãn đủ 676: không chừa cột nào trống ở mép phải
     parent.addSublayer(video); parent.addSublayer(overlay)
 
     // Vạch xanh lá nhấn giữ nút Tác vụ (toạ độ lớp: gốc ở dưới trái)
     if let t0 = ProcessInfo.processInfo.environment["PRESS"].flatMap(Double.init) {
-        let h = (actionButton.bottom - actionButton.top) * scale + 8, w: CGFloat = 7
+        let h = (actionButton.bottom - actionButton.top) * scale + 8 * k, w: CGFloat = 7 * k
         let midY = render.height - (actionButton.top + actionButton.bottom) / 2 * scale
-        let touchX = pad + actionButton.x * scale - w / 2 - 9     // dừng cách nút một đoạn, không chạm vào
+        let touchX = pad + actionButton.x * scale - w / 2 - 9 * k     // dừng cách nút một đoạn, không chạm vào
         let pill = CALayer()
         pill.bounds = CGRect(x: 0, y: 0, width: w, height: h)
         pill.cornerRadius = w / 2
         pill.backgroundColor = CGColor(red: 0.18, green: 0.75, blue: 0.35, alpha: 1)
-        pill.position = CGPoint(x: touchX - 22, y: midY)
+        pill.position = CGPoint(x: touchX - 22 * k, y: midY)
         pill.opacity = 0
         func anim(_ key: String, _ times: [Double], _ values: [Any]) -> CAKeyframeAnimation {
             let k = CAKeyframeAnimation(keyPath: key)
@@ -169,7 +171,7 @@ Task {
         }
         // hiện ra (0,3s), chờ, trượt lại gần nút (0,35s), giữ (1,3s), mờ đi
         pill.add(anim("opacity", [0, 0.3, 2.25, 2.55], [0.0, 1.0, 1.0, 0.0]), forKey: "o")
-        pill.add(anim("position.x", [0, 0.6, 0.95, 2.55], [touchX - 22, touchX - 22, touchX, touchX]), forKey: "x")
+        pill.add(anim("position.x", [0, 0.6, 0.95, 2.55], [touchX - 22 * k, touchX - 22 * k, touchX, touchX]), forKey: "x")
         // lúc chạm: vạch dày lên một chút như ngón tay ấn xuống
         pill.add(anim("transform.scale.x", [0, 0.9, 1.05, 2.55], [1.0, 1.0, 1.35, 1.35]), forKey: "s")
         parent.addSublayer(pill)

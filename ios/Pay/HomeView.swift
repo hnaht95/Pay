@@ -135,7 +135,9 @@ struct HomeView: View {
 
     private func header(_ now: Date) -> some View {
         HStack(spacing: 2) {
-            Text("Pay").font(.system(size: 28, weight: .bold))
+            // Logo app (thẻ xanh) thay chữ "Pay"
+            Image("logo-pay").resizable().scaledToFit().frame(height: 30)
+                .accessibilityLabel("Pay").accessibilityAddTraits(.isHeader)
             Spacer()
             headerButton("person.2.crop.square.stack.fill", L("Nhóm chung")) { showHouse = true }
             headerButton("icon-dashboard", L("Thống kê"), asset: true) { showStats = true }

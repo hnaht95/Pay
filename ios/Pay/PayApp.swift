@@ -29,6 +29,13 @@ struct PayApp: App {
                     FilmTouches.install()
                     #endif
                 }
+                #if DEBUG
+                // "-filmVoiceOnWake YES": app được gọi lên lại (vd từ màn hình khoá) thì mở luôn "nói để ghi", như bấm nút Tác vụ —
+                // để quay phim giới thiệu với hiệu ứng mở khoá thật của iOS
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    if UserDefaults.standard.bool(forKey: "filmVoiceOnWake") { quick.pending = .voice }
+                }
+                #endif
         }
     }
 }

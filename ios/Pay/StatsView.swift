@@ -28,7 +28,7 @@ struct StatsView: View {
         if let film {
             // Phim: thanh tiêu đề và vùng cuộn tự vẽ (xem Film.swift)
             VStack(spacing: 0) {
-                FilmNavBar(title: L("Thống kê"), trailing: L("Xong"), trailingPressed: film.pressed["done"] ?? 0)
+                FilmNavBar(title: L("Thống kê"), grabber: true)
                 FilmScroll { content(items, prev) }
             }
             .background(Self.page)
@@ -39,10 +39,9 @@ struct StatsView: View {
             .edgeBack { dismiss() }
             .navigationTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button(L("Xong")) { dismiss() } }
-            }
         }
+        // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
+        .presentationDragIndicator(.visible)
         }
     }
 

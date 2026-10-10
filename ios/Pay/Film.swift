@@ -135,9 +135,15 @@ struct FilmNavBar: View {
     var trailing: String? = nil
     /// Mức nhấn của nút bên phải (0…1)
     var trailingPressed: CGFloat = 0
+    /// Vạch ngang trên cùng của bảng kéo xuống được (như presentationDragIndicator của iOS)
+    var grabber = false
 
     var body: some View {
         ZStack {
+            if grabber {
+                Capsule().fill(Color.primary.opacity(0.22)).frame(width: 36, height: 5)
+                    .frame(maxHeight: .infinity, alignment: .top).padding(.top, 5)
+            }
             Text(title).font(.system(size: 17, weight: .semibold))
             HStack {
                 if let leading { pill(leading, weight: .regular) }

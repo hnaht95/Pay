@@ -237,8 +237,9 @@ struct VoiceEntryView: View {
                     card
                         .padding(.horizontal, 12).padding(.bottom, 34)
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global).insetBy(dx: 12, dy: 0).divided(atDistance: 34, from: .maxYEdge).remainder } action: { cardRect = $0 }
+                        // Chỉ mờ dần, không scaleEffect: scaleEffect gom cả thẻ thành một khối có toạ độ riêng, làm lúc nghe xong
+                        // khung thẻ nhảy tức thì còn các nút cũ rơi xuống dưới mép thẻ (cách mở từ nút Tác vụ không bị vì không có nó)
                         .opacity(filled ? 1 : 0)
-                        .scaleEffect(filled ? 1 : 0.94, anchor: .bottom)
                         .transition(.identity)
                 }
             } else if shown {
@@ -298,12 +299,14 @@ struct VoiceEntryView: View {
         // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
         // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
         // xuống dưới mép thẻ rồi mới mờ đi.) Nội dung đi cùng khung lúc bật lên là nhờ thẻ có đủ nội dung từ đầu (xem `starting`).
-        .animation(.snappy(duration: 0.35), value: isListening)
+        .animation(Self.settle, value: isListening)
     }
 
     /// Phần đổi theo trạng thái (dòng trạng thái, sóng âm, hàng nút): cái cũ biến mất và cái mới hiện ra gần như tức thì, tại chỗ.
     /// Mờ dần chậm thì chữ cũ và mới chồng lên nhau, sóng âm còn nằm lại trong lúc phần trên đã hạ xuống đè lên nó.
     private static let swap: AnyTransition = .opacity.animation(.easeOut(duration: 0.09))
+    /// Nghe xong thẻ thu gọn
+    private static let settle: Animation = .snappy(duration: 0.35)
 
     private var header: some View {
         HStack(spacing: 8) {
@@ -447,29 +450,34 @@ struct VoiceEntryView: View {
 
     // MARK: Nút
 
+    /// Nút chính (bên phải) theo trạng thái: tên, việc làm, có đang tắt không
+    private var primaryButton: (title: String, off: Bool, run: () -> Void)? {
+        if savedNow != nil { return (L("Xong"), false, { autoClose?.cancel(); leave() }) }
+        if isListening { return (L("Xong"), heard.isEmpty, { mic.finish() }) }          // ngừng nghe ngay, không chờ im lặng
+        if mic.phase == .denied {
+            return (L("Mở Cài đặt"), false, { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } })
+        }
+        if notUnderstood || undone || mic.phase != .idle { return (L("Nói lại"), false, { retry() }) }
+        return nil
+    }
+
+    /// Nút chính là cùng một nút qua mọi trạng thái (nghe xong nó chỉ hẹp lại, không biến mất rồi hiện lại);
+    /// chỉ các nút phụ bên trái đổi: "Quét QR" khi chưa ghi, "Hoàn tác" + "Sửa" khi đã ghi.
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 10) {
             Group {
-            if let e = savedNow {
-                // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
-                pill(L("Hoàn tác"), primary: false) { undo(e) }
-                pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
-                pill(L("Xong"), primary: true) { autoClose?.cancel(); leave() }
-            } else if isListening {
-                pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
-                pill(L("Xong"), primary: true) { mic.finish() }          // ngừng nghe ngay, không chờ im lặng
-                    .disabled(heard.isEmpty).opacity(heard.isEmpty ? 0.4 : 1)
-            } else if mic.phase == .denied {
-                pill(L("Quét QR"), primary: false) { leave(); onScan() }
-                pill(L("Mở Cài đặt"), primary: true) {
-                    if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                if let e = savedNow {
+                    // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
+                    pill(L("Hoàn tác"), primary: false) { undo(e) }
+                    pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
+                } else if primaryButton != nil {
+                    pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
                 }
-            } else if notUnderstood || undone || mic.phase != .idle {
-                pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
-                pill(L("Nói lại"), primary: true) { retry() }
-            }
             }
             .transition(Self.swap)
+            if let p = primaryButton {
+                pill(p.title, primary: true, p.run).disabled(p.off).opacity(p.off ? 0.4 : 1)
+            }
         }
     }
 

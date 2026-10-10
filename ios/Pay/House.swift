@@ -140,7 +140,7 @@ final class House: ObservableObject {
     enum Phase: Equatable { case loading, ready, noAccount, failed(String) }
 
     @Published private(set) var phase: Phase = .loading
-    @Published private(set) var groups: [HouseGroup] = []
+    @Published private(set) var groups: [HouseGroup] = [] { didSet { scheduleSave() } }
     /// Nhóm đang mở; nil = đang xem danh sách nhóm
     @Published var currentID: String?
     @Published private(set) var busy = false
@@ -157,6 +157,61 @@ final class House: ObservableObject {
         #if DEBUG
         demo = UserDefaults.standard.bool(forKey: "houseDemo")
         #endif
+        if !demo { loadCache() }
+    }
+
+    // MARK: Bản lưu trên máy (mở màn Nhóm chung là thấy ngay, iCloud tải lại phía sau)
+
+    private static let cacheURL = URL.applicationSupportDirectory.appending(path: "house-cache.bin")
+
+    /// Đọc bản lưu của lần tải trước. Có nhóm thì coi như sẵn sàng; `load()` vẫn tải lại đầy đủ từ iCloud rồi thay vào.
+    private func loadCache() {
+        guard let data = try? Data(contentsOf: Self.cacheURL),
+              let list = try? NSKeyedUnarchiver.unarchivedObject(
+                ofClasses: [NSArray.self, NSDictionary.self, NSString.self, NSNumber.self, CKRecordZone.ID.self, CKRecord.self],
+                from: data) as? [[String: Any]] else { return }
+        var out: [HouseGroup] = []
+        for d in list {
+            guard let zone = d["zone"] as? CKRecordZone.ID, let records = d["records"] as? [CKRecord] else { continue }
+            let shared = (d["shared"] as? Bool) ?? false
+            var g = HouseGroup(zone: zone, scope: shared ? .shared : .private, isOwner: (d["owner"] as? Bool) ?? !shared)
+            g.records = Dictionary(records.map { ($0.recordID, $0) }, uniquingKeysWith: { a, _ in a })
+            Self.rebuild(&g)
+            g.me = UserDefaults.standard.string(forKey: "house.me.\(g.id)").flatMap { id in g.members.contains { $0.id == id } ? id : nil }
+            out.append(g)
+        }
+        guard !out.isEmpty else { return }
+        groups = out.sorted { $0.lastActivity > $1.lastActivity }
+        phase = .ready
+    }
+
+    private var saving: Task<Void, Never>?
+
+    /// Nhóm đổi (tải xong, thêm / sửa / xoá): lưu lại sau một nhịp, gộp các lần đổi liền nhau
+    private func scheduleSave() {
+        saving?.cancel()
+        saving = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(700))
+            if !Task.isCancelled { self?.saveCache() }
+        }
+    }
+
+    private func saveCache() {
+        guard !demo else { return }
+        let list: [[String: Any]] = groups.map {
+            ["zone": $0.zone, "shared": $0.scope == .shared, "owner": $0.isOwner, "records": Array($0.records.values)]
+        }
+        let url = Self.cacheURL
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let data = try? NSKeyedArchiver.archivedData(withRootObject: list, requiringSecureCoding: true) {
+            try? data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        }
+    }
+
+    /// Không còn đăng nhập iCloud: bỏ bản lưu để không hiện sổ của tài khoản cũ
+    private func dropCache() {
+        try? FileManager.default.removeItem(at: Self.cacheURL)
+        groups = []; currentID = nil
     }
 
     // MARK: Nhóm đang mở
@@ -229,18 +284,23 @@ final class House: ObservableObject {
         if demo { if groups.isEmpty { loadDemo() }; return }
         if phase != .ready { phase = .loading }
         do {
-            guard try await container.accountStatus() == .available else { phase = .noAccount; return }
+            guard try await container.accountStatus() == .available else { dropCache(); phase = .noAccount; return }
+            // Hai cơ sở dữ liệu (của mình, được chia sẻ) hỏi cùng lúc, rồi các nhóm cũng tải cùng lúc thay vì lần lượt
+            async let mine = container.privateCloudDatabase.allRecordZones()
+            async let theirs = container.sharedCloudDatabase.allRecordZones()
             var found: [(CKRecordZone.ID, CKDatabase.Scope)] = []
-            for scope in [CKDatabase.Scope.private, .shared] {
-                for z in try await container.database(with: scope).allRecordZones() where z.zoneID.zoneName.hasPrefix(Self.zonePrefix) {
-                    found.append((z.zoneID, scope))
-                }
+            for (zones, scope) in [(try await mine, CKDatabase.Scope.private), (try await theirs, .shared)] {
+                for z in zones where z.zoneID.zoneName.hasPrefix(Self.zonePrefix) { found.append((z.zoneID, scope)) }
             }
-            var next: [HouseGroup] = []
-            for (zid, scope) in found {
-                var g = groups.first { $0.id == zid.zoneName } ?? HouseGroup(zone: zid, scope: scope, isOwner: scope == .private)
-                if let fresh = try? await fetch(g) { g = fresh }
-                next.append(g)
+            let known = groups
+            let next = await withTaskGroup(of: HouseGroup.self) { tasks in
+                for (zid, scope) in found {
+                    let g = known.first { $0.id == zid.zoneName } ?? HouseGroup(zone: zid, scope: scope, isOwner: scope == .private)
+                    tasks.addTask { @MainActor in (try? await self.fetch(g)) ?? g }
+                }
+                var out: [HouseGroup] = []
+                for await g in tasks { out.append(g) }
+                return out
             }
             groups = next.sorted { $0.lastActivity > $1.lastActivity }
             if let id = currentID, !groups.contains(where: { $0.id == id }) { currentID = nil }
@@ -248,7 +308,7 @@ final class House: ObservableObject {
             for i in groups.indices { notifyChanges(i) }
             if !groups.isEmpty { await enableNotifications() }
         } catch let e as CKError where e.code == .notAuthenticated {
-            phase = .noAccount
+            dropCache(); phase = .noAccount
         } catch {
             phase = phase == .ready ? .ready : .failed(Self.describe(error))
         }

@@ -146,7 +146,8 @@ struct SettingsView: View {
         let list = store.rules.values.filter(\.on).sorted { ($0.day, $0.minute, $0.id) < ($1.day, $1.minute, $1.id) }
         return Section {
             if list.isEmpty {
-                Text(LocalizedStringKey(L("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")))
+                // "Lặp hằng tháng" tô dạ quang xanh lá bằng nét bút của Shot
+                HighlightedText(text: L("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng."))
                     .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             ForEach(list) { r in

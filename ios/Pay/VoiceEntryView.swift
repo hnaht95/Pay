@@ -636,8 +636,9 @@ private struct Waveform: View {
         }
     }
 
-    private static let count = 44
     private static let barWidth: CGFloat = 2
+    /// Khoảng cách cố định giữa các thanh; số thanh tự tính theo bề ngang cho vừa khít
+    private static let gap: CGFloat = 3
 
     /// Số giả ngẫu nhiên cố định 0…1 theo thứ tự thanh: dáng cao thấp riêng và nhịp nhảy riêng của từng thanh
     private static func hash(_ i: Int, _ salt: Double) -> Double {
@@ -645,18 +646,28 @@ private struct Waveform: View {
         return v - v.rounded(.down)
     }
 
+    /// Hai mép thấp dần (khoảng 1/5 dải mỗi bên), phần giữa giữ nguyên độ cao
+    private static func taper(_ i: Int, of n: Int) -> Double {
+        let ramp = max(1, Double(n) * 0.2)
+        let t = min(1, Double(min(i, n - 1 - i)) / ramp)
+        return 0.2 + 0.8 * t * t * (3 - 2 * t)
+    }
+
     private func bars(level: CGFloat, time: Double) -> some View {
         let lv: CGFloat = 0.1 + 0.9 * min(level, 1)   // im lặng vẫn còn vạch ngắn
-        return HStack(alignment: .center, spacing: 0) {
-            ForEach(0..<Self.count, id: \.self) { i in
-                let shape: Double = 0.35 + 0.65 * Self.hash(i, 1)                       // dáng: thanh cao, thanh thấp
-                let speed: Double = 5 + 7 * Self.hash(i, 2)                             // mỗi thanh nhảy nhịp riêng
-                let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
-                let h: CGFloat = lv * CGFloat(shape * (0.55 + 0.45 * jitter))
-                Capsule().fill(Palette.cta.opacity(0.85))
-                    .frame(width: Self.barWidth, height: max(Self.barWidth * 2, 56 * min(h, 1)))
-                    .frame(maxWidth: .infinity)
+        return GeometryReader { g in
+            let n = max(1, Int((g.size.width + Self.gap) / (Self.barWidth + Self.gap)))
+            HStack(alignment: .center, spacing: Self.gap) {
+                ForEach(0..<n, id: \.self) { i in
+                    let shape: Double = (0.35 + 0.65 * Self.hash(i, 1)) * Self.taper(i, of: n)   // dáng: cao thấp xen kẽ, hai mép thấp
+                    let speed: Double = 5 + 7 * Self.hash(i, 2)                                   // mỗi thanh nhảy nhịp riêng
+                    let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
+                    let h: CGFloat = lv * CGFloat(shape * (0.55 + 0.45 * jitter))
+                    Capsule().fill(Palette.cta.opacity(0.85))
+                        .frame(width: Self.barWidth, height: max(Self.barWidth * 2, g.size.height * min(h, 1)))
+                }
             }
+            .frame(width: g.size.width, height: g.size.height)
         }
     }
 

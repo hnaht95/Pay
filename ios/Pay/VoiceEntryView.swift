@@ -285,23 +285,29 @@ struct VoiceEntryView: View {
                     .frame(height: max(0, room - 18), alignment: .center).clipped()
                     .opacity(Double(1 - settle))
                     .padding(.top, min(18, room))
-                    .transition(.opacity)
+                    .transition(Self.swap)
             }
             buttons.padding(.top, 18)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(.snappy(duration: 0.35), value: isListening)
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 42, style: .continuous))
         // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
         .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
-        // Cả thẻ là một khối khi bật lên / thu về: chữ và sóng âm đi cùng khung, không tự hiện tại chỗ
-        .geometryGroup()
+        // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
+        // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
+        // xuống dưới mép thẻ rồi mới mờ đi.) Nội dung đi cùng khung lúc bật lên là nhờ thẻ có đủ nội dung từ đầu (xem `starting`).
+        .animation(.snappy(duration: 0.35), value: isListening)
     }
+
+    /// Phần đổi theo trạng thái (dòng trạng thái, sóng âm, hàng nút): cái cũ biến mất và cái mới hiện ra gần như tức thì, tại chỗ.
+    /// Mờ dần chậm thì chữ cũ và mới chồng lên nhau, sóng âm còn nằm lại trong lúc phần trên đã hạ xuống đè lên nó.
+    private static let swap: AnyTransition = .opacity.animation(.easeOut(duration: 0.09))
 
     private var header: some View {
         HStack(spacing: 8) {
+            Group {
             if savedNow != nil {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 Text(L("Đã ghi")).foregroundStyle(.secondary)
@@ -318,6 +324,8 @@ struct VoiceEntryView: View {
                 Image(systemName: "mic.fill").foregroundStyle(.secondary)
                 Text(statusText).foregroundStyle(.secondary).lineLimit(2)
             }
+            }
+            .transition(Self.swap)
             Spacer()
             Button { close() } label: {
                 Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
@@ -328,6 +336,9 @@ struct VoiceEntryView: View {
             .accessibilityLabel(L("Đóng"))
         }
         .font(.system(size: 15, weight: .medium))
+        // Dòng trạng thái là một khối: chữ mới ("Đã ghi") hiện ra ngay trong dòng đang hạ xuống cùng thẻ,
+        // không hiện sẵn ở chỗ đích rồi bị số tiền trôi ngang qua
+        .geometryGroup()
     }
 
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
@@ -438,6 +449,7 @@ struct VoiceEntryView: View {
 
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 10) {
+            Group {
             if let e = savedNow {
                 // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
                 pill(L("Hoàn tác"), primary: false) { undo(e) }
@@ -456,6 +468,8 @@ struct VoiceEntryView: View {
                 pill(L("Quét QR"), primary: false) { mic.stop(); leave(); onScan() }
                 pill(L("Nói lại"), primary: true) { retry() }
             }
+            }
+            .transition(Self.swap)
         }
     }
 

@@ -31,7 +31,7 @@ struct SettingsView: View {
 
                 Section {
                     NavigationLink { QuickAccessHelp() } label: {
-                        row(L("Widget, nút Tác vụ, Phím tắt"), "bolt.fill", .orange)
+                        row(L("Widget, nút Tác vụ, Phím tắt"))
                     }
                 } header: {
                     Text(L("Truy cập nhanh"))
@@ -41,7 +41,7 @@ struct SettingsView: View {
 
                 Section {
                     LabeledContent { Text(version).foregroundStyle(.secondary) } label: {
-                        row(L("Phiên bản"), "info.circle.fill", .gray)
+                        row(L("Phiên bản"))
                     }
                 } footer: {
                     Text(L("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR."))
@@ -146,12 +146,8 @@ struct SettingsView: View {
         let list = store.rules.values.filter(\.on).sorted { ($0.day, $0.minute, $0.id) < ($1.day, $1.minute, $1.id) }
         return Section {
             if list.isEmpty {
-                Label {
-                    Text(LocalizedStringKey(L("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")))
-                        .font(.system(size: 15)).foregroundStyle(.secondary)
-                } icon: {
-                    icon("repeat", .purple)
-                }
+                Text(LocalizedStringKey(L("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng.")))
+                    .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             ForEach(list) { r in
                 let c = Category.get(r.c)
@@ -183,7 +179,7 @@ struct SettingsView: View {
 
     private var cloudSection: some View {
         Section {
-            Toggle(isOn: $store.cloudOn) { row(L("Đồng bộ iCloud"), "icloud.fill", .blue) }
+            Toggle(isOn: $store.cloudOn) { row(L("Đồng bộ iCloud")) }
             if store.cloudOn {
                 HStack { Text(L("Trạng thái")); Spacer(); cloudStatus }
                 if cloudReady {
@@ -252,7 +248,7 @@ struct SettingsView: View {
                     ForEach(BankData.apps.filter { !$0.fill }) { Text($0.name).tag($0.id) }
                 }
             } label: {
-                row(L("App ngân hàng"), "building.columns.fill", .green)
+                row(L("App ngân hàng"))
             }
             .pickerStyle(.navigationLink)
         } header: {
@@ -269,7 +265,7 @@ struct SettingsView: View {
             Picker(selection: Binding(get: { lang }, set: { lang = $0; Lang.set($0) })) {
                 ForEach(Lang.allCases, id: \.self) { Text($0.title).tag($0) }
             } label: {
-                row(L("Ngôn ngữ app"), "globe", .blue)
+                row(L("Ngôn ngữ app"))
             }
             .pickerStyle(.navigationLink)
         } header: {
@@ -284,14 +280,14 @@ struct SettingsView: View {
     private var dataSection: some View {
         Section {
             if let jsonURL {
-                ShareLink(item: jsonURL) { row(L("Sao lưu ra file"), "square.and.arrow.up.fill", .indigo) }
+                ShareLink(item: jsonURL) { row(L("Sao lưu ra file")) }
             }
-            Button { importing = true } label: { row(L("Khôi phục từ file sao lưu"), "arrow.down.doc.fill", .teal) }
+            Button { importing = true } label: { row(L("Khôi phục từ file sao lưu")) }
             if let csvURL {
-                ShareLink(item: csvURL) { row(L("Xuất CSV (Excel)"), "tablecells.fill", .green) }
+                ShareLink(item: csvURL) { row(L("Xuất CSV (Excel)")) }
             }
             Button(role: .destructive) { confirmErase = true } label: {
-                row(L("Xoá tất cả khoản chi"), "trash.fill", .red, destructive: true)
+                row(L("Xoá tất cả khoản chi"), destructive: true)
             }
             .disabled(store.items.isEmpty)
         } header: {
@@ -303,21 +299,9 @@ struct SettingsView: View {
 
     // MARK: Phụ
 
-    private func row(_ title: String, _ symbol: String, _ color: Color, destructive: Bool = false) -> some View {
-        Label {
-            Text(title).foregroundStyle(destructive ? Color.red : Color.primary)
-        } icon: {
-            icon(symbol, color)
-        }
-    }
-
-    /// Ô vuông màu có biểu tượng trắng, kiểu Cài đặt của iPhone.
-    private func icon(_ symbol: String, _ color: Color) -> some View {
-        Image(systemName: symbol)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: 29, height: 29)
-            .background(color, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+    /// Một hàng chỉ có chữ (trước có ô biểu tượng màu ở đầu, đã bỏ cho gọn)
+    private func row(_ title: String, destructive: Bool = false) -> some View {
+        Text(title).foregroundStyle(destructive ? Color.red : Color.primary)
     }
 
     private var version: String {

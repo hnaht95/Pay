@@ -621,7 +621,7 @@ struct HouseView: View {
                 .frame(width: 52, height: 52)
                 .background(c.color, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text(e.note.isEmpty ? c.name : e.note).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                 Text(L("%@ ứng · chia %d người · %@", e.payer == house.me ? L("Bạn") : payer, Set(e.shares).count, day(e.date)))
                     .font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
             }
@@ -640,7 +640,7 @@ struct HouseView: View {
             let c = Category.get(e.cat)
             menu = AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
                                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
-                               title: "\(e.note.isEmpty ? c.name : e.note) · \(fmt(e.amount))",
+                               title: "\(e.note.isEmpty ? c.name : e.note.capFirst) · \(fmt(e.amount))",
                                subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
                                items: [AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
                                    Task { await house.delete(e.id) }

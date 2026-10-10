@@ -194,7 +194,7 @@ struct SettingsView: View {
                         .frame(width: 34, height: 34)
                         .background(c.color, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.n?.isEmpty == false ? r.n! : c.name).lineLimit(1)
+                        Text(r.n?.isEmpty == false ? r.n!.capFirst : c.name).lineLimit(1)
                         Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 14)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)

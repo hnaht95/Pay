@@ -270,7 +270,7 @@ struct VoiceEntryView: View {
                         .background(c.color, in: Capsule())
                         .foregroundStyle(.black)
                         if !l.note.isEmpty {
-                            Text(l.note).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                            Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     // Câu nhắc tới nhiều danh mục ("mua cát cho mèo"): hiện các danh mục còn lại, chạm là đổi

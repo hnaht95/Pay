@@ -255,7 +255,7 @@ struct HomeView: View {
 
     private func againChip(_ f: Store.Frequent) -> some View {
         let c = Category.get(f.cat)
-        let name = f.note.isEmpty ? c.name : f.note
+        let name = f.note.isEmpty ? c.name : f.note.capFirst
         return HStack(spacing: 10) {
             CategoryIcon(c: c, size: 24)
                 .frame(width: 44, height: 44)
@@ -450,7 +450,7 @@ struct ExpenseRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                    Text((e.n?.isEmpty == false ? e.n! : c.name)).font(.system(size: 17, weight: .semibold))
+                    Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
                         .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                     if repeats {
                         Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)

@@ -133,6 +133,11 @@ enum CloudState: Equatable {
     case on(last: Date?)     // đang đồng bộ; lần đọc/ghi gần nhất
 }
 
+extension String {
+    /// Viết hoa chữ đầu để hiển thị ("cà phê" -> "Cà phê"); dữ liệu lưu giữ nguyên như người dùng nhập / nói
+    var capFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
 struct Toast: Identifiable {
     let id = UUID()
     let message: String

@@ -395,7 +395,7 @@ struct StatsView: View {
                         CategoryIcon(c: c, size: 20).frame(width: 34, height: 34)
                             .background(c.color, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(e.n?.isEmpty == false ? e.n! : c.name).font(.system(size: 15, weight: .medium)).lineLimit(1)
+                            Text(e.n?.isEmpty == false ? e.n!.capFirst : c.name).font(.system(size: 15, weight: .medium)).lineLimit(1)
                             Text(when(e.date)).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer()

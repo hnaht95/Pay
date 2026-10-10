@@ -405,7 +405,7 @@ struct BudgetSlider: View {
     @State private var valueWidth: CGFloat = 40
 
     /// Vạch tay nắm lúc đang kéo: màu Peek dùng khi rê chuột lên thanh
-    private static let handleActive = Color(.sRGB, red: 0.62, green: 0.85, blue: 0.10)
+    private static let handleActive = Color(hex: 0x111114)   // đang kéo: vạch đậm hẳn (trước là xanh nõn chuối, chìm trên nền xanh)
     private static let height: CGFloat = 48
     /// Bo nhẹ thôi, không phải viên thuốc: đúng tỉ lệ Peek (bo 11 trên cao 34)
     private static let radius: CGFloat = 14
@@ -420,9 +420,10 @@ struct BudgetSlider: View {
     private static let valueInset: CGFloat = 11
     // Giao diện tối đúng màu Peek (mảng trắng 0,92 trên rãnh trắng 0,10); giao diện sáng thì đảo lại
     private static let track = Color(light: 0xDCDCE2, dark: 0x2E2E31)
-    private static let fill = Color.primary.opacity(0.92)
-    /// Chữ và vạch nằm trên mảng sáng
-    private static let ink = Color(light: 0xFFFFFF, dark: 0x000000)
+    /// Mảng đã kéo: xanh lá của icon app
+    private static let fill = Color(hex: 0x61BE6E)
+    /// Chữ và vạch nằm trên mảng xanh: đen như các nét trên icon (trắng trên xanh này khó đọc)
+    private static let ink = Color(hex: 0x111114)
 
     /// Các mức kéo được: 0 (chưa đặt), mỗi nấc 500 nghìn đến 10 triệu, rồi mỗi nấc 1 triệu đến 30 triệu.
     /// Nửa trái thanh dành cho 0–10 triệu cho dễ chỉnh mức hay dùng.

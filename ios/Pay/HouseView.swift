@@ -1224,10 +1224,11 @@ struct HouseSpendEditor: View {
                         .buttonStyle(Pressable())
                         .font(.system(size: 15, weight: .semibold)).padding(.top, 22)
                     }
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    // Cùng kiểu viên thuốc với "Ai ứng tiền": chọn thì nền đậm, không chọn nền nhạt; xếp ngang, hết chỗ thì xuống dòng
+                    ChipFlow(spacing: 8) {
                         ForEach(house.members) { m in
                             let on = shares.contains(m.id)
-                            personChip(m, on: on, sub: on && amount > 0 ? fmt(parts[m.id] ?? 0) : nil, wide: true) {
+                            personChip(m, on: on, sub: on && amount > 0 ? fmt(parts[m.id] ?? 0) : nil) {
                                 if on { shares.remove(m.id) } else { shares.insert(m.id) }
                             }
                         }
@@ -1302,7 +1303,7 @@ struct HouseSpendEditor: View {
         .padding(.horizontal, -18)
     }
 
-    private func personChip(_ m: HouseMember, on: Bool, sub: String?, wide: Bool = false, _ tap: @escaping () -> Void) -> some View {
+    private func personChip(_ m: HouseMember, on: Bool, sub: String?, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
             HStack(spacing: 10) {
                 HouseAvatar(id: m.id, name: m.name, size: 36)
@@ -1310,14 +1311,8 @@ struct HouseSpendEditor: View {
                     Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
                     if let line = sub { Text(line).font(.system(size: 13)).foregroundStyle(on ? Palette.ctaInk.opacity(0.7) : .secondary).lineLimit(1) }
                 }
-                if wide { Spacer(minLength: 0) }
-                if wide {
-                    Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.system(size: 20))
-                        .foregroundStyle(on ? Palette.ctaInk : .secondary)
-                }
             }
             .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 6)
-            .frame(maxWidth: wide ? .infinity : nil, alignment: .leading)
             .foregroundStyle(on ? Palette.ctaInk : .primary)
             .background(on ? Palette.cta : Color.primary.opacity(0.05), in: Capsule())
         }
@@ -1335,5 +1330,44 @@ struct HouseSpendEditor: View {
             if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c) }
             dismiss()
         }
+    }
+}
+
+/// Xếp các viên thuốc theo hàng ngang, hết bề ngang thì xuống dòng.
+struct ChipFlow: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(width: proposal.width ?? .infinity, subviews)
+        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(0, rows.count - 1))
+        return CGSize(width: proposal.width ?? rows.map(\.width).max() ?? 0, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(width: bounds.width, subviews) {
+            var x = bounds.minX
+            for i in row.items {
+                let size = subviews[i].sizeThatFits(.unspecified)
+                subviews[i].place(at: CGPoint(x: x, y: y + (row.height - size.height) / 2), proposal: .unspecified)
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private func arrange(width: CGFloat, _ subviews: Subviews) -> [(items: [Int], width: CGFloat, height: CGFloat)] {
+        var rows: [(items: [Int], width: CGFloat, height: CGFloat)] = []
+        for i in subviews.indices {
+            let size = subviews[i].sizeThatFits(.unspecified)
+            if let last = rows.last, last.width + spacing + size.width <= width {
+                rows[rows.count - 1].items.append(i)
+                rows[rows.count - 1].width += spacing + size.width
+                rows[rows.count - 1].height = max(last.height, size.height)
+            } else {
+                rows.append(([i], size.width, size.height))
+            }
+        }
+        return rows
     }
 }

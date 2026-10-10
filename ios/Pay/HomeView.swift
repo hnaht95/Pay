@@ -659,20 +659,22 @@ struct BigButton: View {
 
 extension View {
     /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
-    /// above: lớp đặt ngay trên dải nút, nằm sau hai nút nhưng trên lớp mờ (vd thanh "Đã xoá · Hoàn tác"): gắn vào mặt sau
-    /// dải nút, đáy cách mép trên dải nút 8 điểm, nên trượt xuống là chui sau hai nút chứ không đè lên
+    /// above: lớp nằm trên lớp mờ, dưới hai nút, sát mép trên dải nút (vd thanh "Đã xoá · Hoàn tác"). iOS 26: là lớp phủ riêng
+    /// của màn hình (safeAreaBar đẩy đáy vùng an toàn lên tới mép trên dải nút), không gắn vào dải nút: gắn vào dải thì lớp mờ
+    /// cạnh cuộn của hệ thống tính theo cả nó, thanh biến mất là lớp mờ đổi theo
     @ViewBuilder func withDock<D: View, B: View, A: View>(dock: D, fallbackBlur: B, film: Bool = false,
                                                           @ViewBuilder above: () -> A = { EmptyView() }) -> some View {
-        let bar = dock.background(alignment: .top) { above().alignmentGuide(.top) { $0[.bottom] + 8 } }
+        let attached = dock.background(alignment: .top) { above().alignmentGuide(.top) { $0[.bottom] + 8 } }
         if film {
-            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; bar.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
         } else if #available(iOS 26.0, *) {
             // Mép mờ của hệ thống quá nhẹ trên máy thật, nên phủ thêm lớp mờ tự làm phía dưới thanh nút
             overlay(alignment: .bottom) { fallbackBlur }
-                .safeAreaBar(edge: .bottom) { bar }
+                .overlay(alignment: .bottom) { above().padding(.bottom, 8) }
+                .safeAreaBar(edge: .bottom) { dock }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
-            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; bar } }
+            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached } }
         }
     }
 }

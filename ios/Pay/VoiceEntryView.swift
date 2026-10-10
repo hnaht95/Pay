@@ -254,7 +254,10 @@ struct VoiceEntryView: View {
                     card
                         // Đo khung của chính thẻ (trước khi thêm lề), không tự trừ lề: trừ lề lệch vài điểm làm khối biến hình dừng
                         // to hơn thẻ, lúc thẻ thay chỗ khối thì trông như thẻ co thêm một nhịp
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { cardRect = $0 }
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { r in
+                            // Thẻ đổi cỡ (nghe xong thu gọn…): khối làm nền co giãn theo, cùng nhịp với thẻ
+                            if cardRect == .zero { cardRect = r } else { withAnimation(Self.settle) { cardRect = r } }
+                        }
                         .padding(.horizontal, 12).padding(.bottom, 34)
                         // Chỉ mờ dần, không scaleEffect: scaleEffect gom cả thẻ thành một khối có toạ độ riêng, làm lúc nghe xong
                         // khung thẻ nhảy tức thì còn các nút cũ rơi xuống dưới mép thẻ (cách mở từ nút Tác vụ không bị vì không có nó)
@@ -279,14 +282,14 @@ struct VoiceEntryView: View {
                 // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
                 try? await Task.sleep(for: .milliseconds(30))
                 withAnimation(.easeOut(duration: 0.1)) { faced = false }
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) { morph = 1 }   // nảy nhẹ khi xuất hiện
+                // Nảy nhẹ khi xuất hiện. Khối biến hình ở lại làm nền thẻ luôn, không đổi sang nền riêng của thẻ: đổi lớp thì khối và
+                // nền thẻ lệch nhau vài điểm, lúc đổi trông như thẻ co thêm một nhịp (đổi mờ chéo thì nháy)
+                withAnimation(Self.pop) { morph = 1 }
                 withAnimation(.easeOut(duration: 0.2).delay(0.24)) { filled = true }   // chữ hiện khi khối đã lớn gần đủ, không tràn ra ngoài khối
-                // Khối nhường chỗ cho thẻ bằng cách mờ chéo (khối mờ đi, nền thẻ hiện lên), không tắt phụt: khối dừng lệch thẻ vài
-                // điểm, tắt phụt thì trông như thẻ co thêm một nhịp
-                Task { try? await Task.sleep(for: .milliseconds(560)); if filled { withAnimation(.easeInOut(duration: 0.25)) { blob = false } } }
                 // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy
-                // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng. Chờ hiệu ứng xong rồi mới bật.
-                try? await Task.sleep(for: .milliseconds(470))
+                // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng: lò xo đang nảy đứng hình ở chỗ vọt quá, xong mới chạy
+                // nốt, trông như thẻ co thêm một nhịp. Chờ lò xo dừng hẳn rồi mới bật.
+                try? await Task.sleep(for: .milliseconds(700))
                 guard !Task.isCancelled else { return }
             }
             await mic.start()
@@ -339,6 +342,8 @@ struct VoiceEntryView: View {
     /// Phần đổi theo trạng thái (dòng trạng thái, sóng âm, hàng nút): cái cũ biến mất và cái mới hiện ra gần như tức thì, tại chỗ.
     /// Mờ dần chậm thì chữ cũ và mới chồng lên nhau, sóng âm còn nằm lại trong lúc phần trên đã hạ xuống đè lên nó.
     private static let swap: AnyTransition = .opacity.animation(.easeOut(duration: 0.09))
+    /// Nút Quét QR phình thành thẻ: nảy nhẹ, dừng hẳn trong ~0,6 giây (trước khi bật micro, xem chỗ dùng)
+    private static let pop: Animation = .spring(duration: 0.42, bounce: 0.2)
     /// Nghe xong thẻ thu gọn; bấm Nói lại thẻ giãn ra
     private static let settle: Animation = .snappy(duration: 0.35 * pace)
     /// Sóng âm hiện ra khi bấm Nói lại (xem chỗ dùng)

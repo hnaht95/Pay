@@ -396,12 +396,11 @@ struct HomeView: View {
             HStack(spacing: 12) {
                 BigButton(title: L("Nhập"), icon: "plus", primary: false) { entry = .new(cat: nil) }
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
-                BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, swipeUp: { frame in
+                // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
+                BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in
                     voiceFrom = frame
                     // Thẻ hiện ngay trên màn hình chính (xem lớp phủ bên dưới), không qua fullScreenCover
                 }) { scanning = true }
-                // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật ẩn đi, chỉ còn khối biến hình — không thành hai nút
-                .opacity(voiceFrom == nil ? 1 : 0)
             }
         }
         .padding(.horizontal, 16).padding(.bottom, 8)
@@ -513,6 +512,8 @@ struct BigButton: View {
     let icon: String
     let primary: Bool
     /// Việc làm khi vuốt lên từ nút (nếu có)
+    /// Giữ chỗ nhưng không vẽ gì, kể cả nền kính (opacity không ẩn được nền kính của iOS 26)
+    var ghost = false
     var swipeUp: ((CGRect) -> Void)? = nil
     /// Khung của nút trên màn hình, để thẻ nói để ghi biến hình từ đúng chỗ này ra
     @State private var frame: CGRect = .zero
@@ -563,10 +564,14 @@ struct BigButton: View {
         }
     }
 
-    private var label: some View {
-        Self.face(title: title, icon: icon, primary: primary)
-            .contentShape(Capsule())
-            .glassCapsule(tint: primary ? Palette.cta : nil)
+    @ViewBuilder private var label: some View {
+        if ghost {
+            Self.face(title: title, icon: icon, primary: primary).hidden()
+        } else {
+            Self.face(title: title, icon: icon, primary: primary)
+                .contentShape(Capsule())
+                .glassCapsule(tint: primary ? Palette.cta : nil)
+        }
     }
 
     /// Mặt nút (vòng biểu tượng + chữ), chưa có nền. Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với

@@ -47,7 +47,7 @@ enum FilmExport {
         var frame: (Double) -> AnyView
     }
 
-    static let scenes: [String: (Store) -> Film] = ["stats": stats, "voice": voice, "group": group, "category": category]
+    static let scenes: [String: (Store) -> Film] = ["stats": stats, "voice": voice, "group": group, "category": category, "widget": widget]
 
     // MARK: Công cụ
 
@@ -184,6 +184,114 @@ enum FilmExport {
                 .frame(width: size.width, height: size.height)
             })
         }
+    }
+
+    // MARK: Phim "Widget"
+
+    /// Màn hình chính của iPhone với ba widget của Pay (hình do chính code widget vẽ, xem Shared/WidgetViews.swift):
+    /// bấm micro trên widget, Pay mở ra nghe luôn, nói một câu, ghi xong quay về thì số trên widget đã đổi;
+    /// cuối phim các widget lần lượt đổi màu (chọn trong Sửa tiện ích).
+    static func widget(_ store: Store) -> Film {
+        let said = (Lang.isEnglish ? "35k coffee" : "ba mươi lăm nghìn cà phê").split(separator: " ").map(String.init)
+        let size = FilmScreen<EmptyView>.size
+        let mic = Tap(at: WIDGETS.mic, down: 1.1, up: 1.3)
+        let open = mic.up, card = open + 0.45, first = card + 0.8, gap = 0.36
+        let heardAll = first + gap * Double(said.count - 1)
+        let save = heardAll + 0.9
+        let done = Tap(at: CGPoint(x: 316, y: 785), down: save + 1.5, up: save + 1.7)
+        let close = done.up + 0.45
+        let recolor = [close + 1.5, close + 2.7, close + 3.9]
+        let qr = MyQR(bin: "970416", bank: "ACB", acct: "123456789", name: "NGUYEN VAN A")
+        var saved: Expense?
+        func summary() -> Summary {
+            let now = Date()
+            return Summary(today: store.total(on: now), month: store.monthItems(now).reduce(0) { $0 + $1.a },
+                           count: store.count(on: now), day: now, budget: store.budget)
+        }
+        return Film(length: recolor[2] + 1.8) { t in
+            if saved == nil, t >= save { saved = store.quickAdd(said.joined(separator: " "), spoken: true, toast: false) }
+            // Thẻ ghi âm, như phim "Nói là ghi" nhưng gọn hơn
+            var v = FilmFrame.Voice()
+            v.shown = ease(t, card, card + 0.4) * (1 - ease(t, done.up, done.up + 0.28))
+            let n = t < first ? 0 : min(said.count, Int((t - first) / gap) + 1)
+            v.text = said.prefix(n).joined(separator: " ")
+            func amount(_ k: Int) -> String { QuickParse.spoken(said.prefix(k).joined(separator: " ")).map { fmt($0.amount) } ?? "0" }
+            if n > 0, amount(n) != amount(n - 1) { v.previous = amount(n - 1); v.elapsed = t - (first + gap * Double(n - 1)) }
+            var level: CGFloat = 0.06
+            for i in said.indices {
+                let at = first - 0.22 + gap * Double(i)
+                level += CGFloat([0.78, 1.0, 0.62, 0.92, 0.7][i % 5]) * ease(t, at, at + 0.07) * (1 - ease(t, at + 0.1, at + 0.34))
+            }
+            v.level = min(1, level); v.saved = saved; v.settle = ease(t, save, save + 0.38)
+            var home = FilmFrame(); home.time = t
+            var cardFrame = home
+            cardFrame.voice = v
+            cardFrame.pressed["voice-primary"] = press(done, t)
+            // App phóng ra từ chỗ chạm trên widget rồi thu về lại đó
+            let k = ease(t, open, open + 0.42) * (1 - ease(t, close, close + 0.42))
+            // Màu của từng widget theo thời gian: (màu trước, màu sau, mức chuyển)
+            @MainActor func tone(_ seq: [WidgetTone], _ delay: Double) -> (WidgetTone, WidgetTone, CGFloat) {
+                var i = 0
+                for (j, at) in recolor.enumerated() where t >= at + delay { i = j + 1 }
+                guard i > 0 else { return (seq[0], seq[0], 1) }
+                return (seq[i - 1], seq[i], ease(t, recolor[i - 1] + delay, recolor[i - 1] + delay + 0.35))
+            }
+            let s = summary()
+            return AnyView(FilmScreen(lightStatus: k < 0.5, touch: touch([mic, done], t)) {
+                ZStack(alignment: .topLeading) {
+                    // Hình nền màn hình chính
+                    LinearGradient(colors: [Color(hex: 0x2A1B4D), Color(hex: 0x6B3F8C), Color(hex: 0xD98BB4)], startPoint: .top, endPoint: .bottom)
+                    widgetCard(WIDGETS.spend, tone([.green, .black, .pPurple, .green], 0)) { SpendView(e: SpendEntry(date: Date(), s: s, tone: $0), size: .systemMedium) }
+                        .scaleEffect(1 - 0.03 * press(mic, t))
+                    widgetCard(WIDGETS.qr, tone([.green, .pYellow, .white, .green], 0.12)) { MyQRView(e: MyQREntry(date: Date(), qr: qr, tone: $0, s: s), size: .systemMedium) }
+                    widgetCard(WIDGETS.voice, tone([.green, .pBlue, .orange, .green], 0.24)) { VoiceView(e: SpendEntry(date: Date(), s: s, tone: $0), size: .systemSmall) }
+                    widgetCard(WIDGETS.small, tone([.green, .cream, .forest, .green], 0.36)) { SpendView(e: SpendEntry(date: Date(), s: s, tone: $0), size: .systemSmall) }
+                    // Thanh Dock
+                    RoundedRectangle(cornerRadius: 34, style: .continuous).fill(.white.opacity(0.22))
+                        .frame(width: 350, height: 92).position(x: size.width / 2, y: size.height - 66)
+                    HStack(spacing: 24) {
+                        Image("logo-pay").resizable().scaledToFit().padding(9).frame(width: 60, height: 60)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                        ForEach([0x34C759, 0x0A84FF, 0xFF9F0A], id: \.self) { c in
+                            RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Color(hex: UInt32(c))).frame(width: 60, height: 60)
+                        }
+                    }
+                    .position(x: size.width / 2, y: size.height - 66)
+                    if k > 0 {
+                        ZStack {
+                            HomeView().environment(\.film, home)
+                            if v.shown > 0 { VoiceEntryView(onScan: {}).environment(\.film, cardFrame) }
+                        }
+                        .frame(width: size.width, height: size.height)
+                        .background(Palette.bg)
+                        .clipShape(RoundedRectangle(cornerRadius: (56 * (1 - k)).rounded(), style: .continuous))
+                        .scaleEffect(0.12 + 0.88 * k, anchor: UnitPoint(x: mic.at.x / size.width, y: mic.at.y / size.height))
+                    }
+                }
+                .frame(width: size.width, height: size.height)
+            })
+        }
+    }
+
+    /// Chỗ đặt các widget trên màn hình chính của phim (cỡ vừa 338x158, cỡ nhỏ 158x158) và nút micro của widget đầu
+    private enum WIDGETS {
+        static let spend = CGRect(x: 32, y: 84, width: 338, height: 158)
+        static let qr = CGRect(x: 32, y: 264, width: 338, height: 158)
+        static let voice = CGRect(x: 32, y: 444, width: 158, height: 158)
+        static let small = CGRect(x: 212, y: 444, width: 158, height: 158)
+        static let mic = CGPoint(x: 264, y: 196)
+    }
+
+    /// Một widget trên màn hình chính: nền bo góc màu của widget (đang đổi màu thì màu mới phủ dần lên), nội dung lề 16pt
+    private static func widgetCard<V: View>(_ r: CGRect, _ tone: (WidgetTone, WidgetTone, CGFloat), @ViewBuilder _ content: (WidgetTone) -> V) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
+        return ZStack {
+            shape.fill(tone.0.bg)
+            shape.fill(tone.1.bg.opacity(Double(tone.2)))
+            content(tone.2 > 0.5 ? tone.1 : tone.0).padding(16)
+        }
+        .frame(width: r.width, height: r.height)
+        .offset(x: r.minX, y: r.minY)
     }
 
     // MARK: Phim "Nhóm chung"

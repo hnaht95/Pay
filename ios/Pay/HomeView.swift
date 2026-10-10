@@ -27,6 +27,8 @@ struct HomeView: View {
     @State private var showStats = false
     @State private var showHouse = false
     @State private var listening = false
+    /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: phóng ra từ nút thay vì trượt lên từ đáy
+    @State private var voiceFromButton = false
     @State private var scanned: String?
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
     /// mở lại sáng hôm sau vẫn hiện số của hôm qua
@@ -94,8 +96,8 @@ struct HomeView: View {
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store).sheetGrabber() }
-        .fullScreenCover(isPresented: $listening) {
-            VoiceEntryView(onScan: {
+        .fullScreenCover(isPresented: $listening, onDismiss: { voiceFromButton = false }) {
+            VoiceEntryView(fromButton: voiceFromButton, onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
             }, onEdit: { e in
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
@@ -381,8 +383,13 @@ struct HomeView: View {
         GlassGroup {
             HStack(spacing: 12) {
                 BigButton(title: L("Nhập"), icon: "plus", primary: false) { entry = .new(cat: nil) }
-                // Chạm: quét QR. Nhấn giữ: nói để ghi luôn
-                BigButton(title: L("Quét QR"), icon: "qrcode.viewfinder", primary: true, hold: { listening = true }) { scanning = true }
+                // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
+                BigButton(title: L("Quét QR"), icon: "qrcode.viewfinder", primary: true, swipeUp: {
+                    voiceFromButton = true
+                    // Không dùng hiệu ứng trượt lên của iOS: thẻ tự phóng ra từ nút
+                    var t = Transaction(animation: nil); t.disablesAnimations = true
+                    withTransaction(t) { listening = true }
+                }) { scanning = true }
             }
         }
         .padding(.horizontal, 16).padding(.bottom, 8)
@@ -493,63 +500,51 @@ struct BigButton: View {
     let title: String
     let icon: String
     let primary: Bool
-    /// Việc làm khi nhấn giữ (nếu có)
-    var hold: (() -> Void)? = nil
+    /// Việc làm khi vuốt lên từ nút (nếu có)
+    var swipeUp: (() -> Void)? = nil
     let action: () -> Void
-    /// Nút có nhấn giữ thì tự theo dõi ngón tay: đang nhấn, và lần nhấn này đã tính là nhấn giữ chưa
+    /// Nút có vuốt lên thì tự theo dõi ngón tay: đang nhấn, đang kéo lên, và lần nhấn này đã ra việc gì chưa
     @State private var down = false
-    @State private var held = false
-    @State private var timer: Task<Void, Never>?
+    @State private var lifting = false
+    @State private var fired = false
     /// Ngón tay còn trên nút không; iOS tự đưa về false cả khi cử chỉ bị huỷ (vd màn hình khác vừa mở đè lên)
     @GestureState private var touching = false
 
     var body: some View {
-        if let hold {
-            // Tự xử lý chạm / nhấn giữ thay cho Button + LongPressGesture: hai cái đó chạy song song nên giữ lâu rồi nhả
-            // vẫn bị tính thêm một lần chạm. Ở đây một lần nhấn chỉ ra đúng một việc: giữ đủ lâu là nhấn giữ (nhả tay
-            // không làm gì nữa), nhả sớm trong nút là chạm, kéo ra ngoài rồi nhả là bỏ.
+        if let swipeUp {
+            // Tự xử lý bằng một cử chỉ, mỗi lần nhấn chỉ ra đúng một việc: kéo lên quá 30pt là vuốt lên (làm ngay,
+            // nhả tay không làm gì nữa), nhả tại chỗ là chạm, kéo đi hướng khác rồi nhả là bỏ.
             label
                 .scaleEffect(down ? 0.94 : 1).opacity(down ? 0.72 : 1)
                 .animation(down ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35), value: down)
                 .gesture(DragGesture(minimumDistance: 0)
                     .updating($touching) { _, on, _ in on = true }
                     .onChanged { v in
-                        let inside = abs(v.translation.width) < 60 && abs(v.translation.height) < 60
-                        if !down && !held && timer == nil && inside {
-                            down = true
-                            timer = Task { @MainActor in
-                                try? await Task.sleep(for: .milliseconds(380))
-                                guard !Task.isCancelled else { return }
-                                // Đủ lâu: rung, biểu tượng đổi thành micro, một nhịp sau mới mở nói để ghi (để kịp thấy biểu tượng đổi)
-                                held = true
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                try? await Task.sleep(for: .milliseconds(240))
-                                down = false
-                                hold()
-                            }
-                        } else if !inside, !held {
-                            timer?.cancel(); down = false   // kéo ra ngoài: bỏ lần nhấn này
+                        guard !fired else { return }
+                        down = true
+                        let up = -v.translation.height
+                        lifting = up > 10 && abs(v.translation.width) < 50   // bắt đầu kéo lên: biểu tượng đổi thành micro
+                        if up > 30, abs(v.translation.width) < 50 {
+                            fired = true; down = false
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            swipeUp()
                         }
                     }
                     .onEnded { v in
-                        let tapped = down && !held   // đã tính là nhấn giữ thì nhả tay không làm gì: micro vẫn mở
-                        if !held { timer?.cancel(); down = false }
-                        timer = nil
+                        let tapped = !fired && abs(v.translation.width) < 24 && abs(v.translation.height) < 24
+                        down = false
                         if tapped { action() }
                     })
                 // Ngón tay rời nút (nhả hoặc bị huỷ): dọn trạng thái để lần nhấn sau bắt đầu lại từ đầu
                 .onChange(of: touching) { _, on in
                     guard !on else { return }
-                    // Đã tính là nhấn giữ thì để nó chạy nốt (mở nói để ghi), biểu tượng về lại sau đó
-                    if !held { timer?.cancel() }
-                    timer = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { if !touching { held = false; down = false } }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !touching { fired = false; lifting = false; down = false } }
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(title)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { action() }
-                .accessibilityAction(named: Text(L("Nói để ghi")), hold)
+                .accessibilityAction(named: Text(L("Nói để ghi")), swipeUp)
         } else {
             Button(action: action) { label }.buttonStyle(Pressable())
         }
@@ -559,10 +554,10 @@ struct BigButton: View {
     // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
     private var label: some View {
         HStack(spacing: 10) {
-            // Nhấn giữ đủ lâu: biểu tượng đổi thành micro (sắp mở nói để ghi)
-            Image(systemName: held ? "mic.fill" : icon).font(.system(size: 24, weight: .semibold))
+            // Đang kéo lên: biểu tượng đổi thành micro (sắp mở nói để ghi)
+            Image(systemName: lifting || fired ? "mic.fill" : icon).font(.system(size: 24, weight: .semibold))
                 .contentTransition(.symbolEffect(.replace))
-                .animation(.snappy(duration: 0.2), value: held)
+                .animation(.snappy(duration: 0.2), value: lifting || fired)
                 .frame(width: 56, height: 56)
                 .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
             if primary { Spacer(minLength: 0) }

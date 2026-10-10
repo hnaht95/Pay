@@ -168,6 +168,8 @@ struct VoiceEntryView: View {
     @State private var undone = false
     @State private var autoClose: Task<Void, Never>?
     @State private var shown = false
+    /// Mở bằng vuốt lên từ nút Quét QR (nút đen góc dưới phải): thẻ phóng ra từ nút đó và thu về đó
+    var fromButton = false
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
@@ -198,7 +200,7 @@ struct VoiceEntryView: View {
                 card
                     .padding(.horizontal, 12).padding(.bottom, 34)
                     // Chỉ trượt, không mờ dần: thẻ mờ nửa chừng đè lên các ô phía sau trông như bóng ma
-                    .transition(.move(edge: .bottom))
+                    .transition(fromButton ? .scale(scale: 0.08, anchor: UnitPoint(x: 0.76, y: 0.94)) : .move(edge: .bottom))
             }
         }
         .ignoresSafeArea(.container, edges: .bottom)

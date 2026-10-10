@@ -103,7 +103,8 @@ final class VoiceListener: ObservableObject {
                 var sum: Float = 0
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
-                let v = CGFloat(pow(min(max((db + 55) / 30, 0), 1), 0.7))
+                // Dải -52…-30 dB: nói bình thường đã gần mức cao nhất (dải rộng hơn thì phải nói rất to mới lên cao)
+                let v = CGFloat(pow(min(max((db + 52) / 22, 0), 1), 0.6))
                 Task { @MainActor in meter.value = v }   // làm mượt ở Waveform, theo từng khung hình
             }
             engine.prepare()
@@ -682,11 +683,12 @@ private struct Waveform: View {
             let y0 = (size.height - (CGFloat(Self.rows) * step - Self.dotGap)) / 2
             let mid = Self.rows / 2
             for i in 0..<n {
-                let shape: Double = (0.35 + 0.65 * Self.hash(i, 1)) * Self.taper(i, of: n)
+                let shape: Double = (0.6 + 0.4 * Self.hash(i, 1)) * Self.taper(i, of: n)
                 let speed: Double = 5 + 7 * Self.hash(i, 2)
                 let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
-                let h: Double = Double(lv) * shape * (0.55 + 0.45 * jitter)
-                let reach = Int((min(h, 1) * (Double(mid) + 0.5)).rounded(.down))   // số chấm sáng mỗi phía hàng giữa
+                // ×1,5: nói bình thường các cột giữa lên tới hàng trên cùng hoặc sát đó
+                let h: Double = 1.5 * Double(lv) * shape * (0.6 + 0.4 * jitter)
+                let reach = Int((min(h, 1) * Double(mid)).rounded())   // số chấm sáng mỗi phía hàng giữa
                 for r in 0..<Self.rows {
                     let rect = CGRect(x: x0 + CGFloat(i) * step, y: y0 + CGFloat(r) * step, width: Self.dot, height: Self.dot)
                     let on = abs(r - mid) <= reach

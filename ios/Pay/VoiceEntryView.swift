@@ -104,7 +104,8 @@ final class VoiceListener: ObservableObject {
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
                 let v = CGFloat(pow(min(max((db + 55) / 30, 0), 1), 0.7))
-                Task { @MainActor in meter.value = v }
+                // Làm mượt (mỗi lần chỉ tiến gần 45% tới độ to mới): nét sóng vẽ lại từng khung hình, đổi thẳng thì giật
+                Task { @MainActor in meter.value += (v - meter.value) * 0.45 }
             }
             engine.prepare()
             try engine.start()
@@ -619,36 +620,42 @@ struct VoiceEntryView: View {
     }
 }
 
-/// Sóng âm: độ cao chung theo độ to thật của giọng; hình dáng (giữa cao, rung nhẹ) là trang trí.
+/// Sóng âm: một nét liền mảnh uốn lượn (không phải dải thanh dọc). Độ cao sóng theo độ to thật của giọng; hình dáng
+/// (hai đầu thu nhỏ, phồng ở giữa, uốn qua lại) là trang trí.
 private struct Waveform: View {
     @ObservedObject var meter: MicLevel
     /// Dựng phim: độ to và thời điểm lấy từ phim
     var film: FilmFrame? = nil
 
     var body: some View {
-        if let film, let v = film.voice { bars(level: v.level, time: film.time) }
+        if let film, let v = film.voice { line(level: v.level, time: film.time) }
         else {
             let level = meter.value
-            TimelineView(.animation) { t in bars(level: level, time: t.date.timeIntervalSinceReferenceDate).animation(.easeOut(duration: 0.12), value: level) }
+            TimelineView(.animation) { t in line(level: level, time: t.date.timeIntervalSinceReferenceDate) }
         }
     }
 
-    /// Số thanh và độ dày mỗi thanh: thanh mảnh cố định, khoảng trống giữa các thanh chia đều theo bề ngang thẻ
-    private static let count = 36
-    private static let barWidth: CGFloat = 3
+    /// Số điểm dọc theo nét (đủ mịn để nét cong không gãy khúc)
+    private static let samples = 140
 
-    private func bars(level: CGFloat, time: Double) -> some View {
-            HStack(alignment: .center, spacing: 0) {
-                ForEach(0..<Self.count, id: \.self) { i in
-                    let mid = CGFloat(Self.count - 1) / 2
-                    let center = 1 - abs(CGFloat(i) - mid) / (mid + 0.5)   // giữa cao, hai bên thấp
-                    let wobble = (sin(time * 9 + Double(i) * 0.55) + 1) / 2  // dao động nhẹ cho tự nhiên
-                    let h = 0.12 + 1.25 * level * center * (0.55 + 0.45 * CGFloat(wobble))   // ×1,25: nói thường đã gần đỉnh
-                    Capsule().fill(Palette.cta.opacity(0.85))
-                        .frame(width: Self.barWidth, height: max(Self.barWidth, 56 * min(h, 1)))
-                        .frame(maxWidth: .infinity)
-                }
+    private func line(level: CGFloat, time: Double) -> some View {
+        Canvas { ctx, size in
+            let midY = size.height / 2
+            // Im lặng vẫn còn gợn nhẹ để biết đang nghe; nói thường gần chạm mép trên dưới
+            let amp: CGFloat = (midY - 2) * min(1, 0.08 + 1.1 * level)
+            var path = Path()
+            for k in 0...Self.samples {
+                let u: Double = Double(k) / Double(Self.samples)
+                let env: Double = pow(sin(Double.pi * u), 2)                      // 0 ở hai đầu, cao nhất ở giữa
+                let a: Double = sin(u * 19 + time * 6.5)                          // hai sóng khác nhịp chồng lên nhau,
+                let b: Double = sin(u * 33 - time * 9.3)                          // chạy ngược chiều nên nét uốn tự nhiên
+                let y: CGFloat = midY + amp * CGFloat(env * (0.65 * a + 0.35 * b))
+                let pt = CGPoint(x: size.width * CGFloat(u), y: y)
+                if k == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
             }
+            ctx.stroke(path, with: .color(Palette.cta.opacity(0.85)),
+                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        }
     }
 }
 

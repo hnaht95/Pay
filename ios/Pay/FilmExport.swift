@@ -79,14 +79,18 @@ enum FilmExport {
         let taps = [Tap(at: CGPoint(x: 225, y: 453), down: 1.0, up: 1.25), Tap(at: CGPoint(x: 83, y: 453), down: 5.2, up: 5.45)]   // thanh báo đầu hiện đủ 4 giây rồi mới chạm tiếp
         let order = [1, 0]   // chạm "cà phê" rồi "ăn trưa"
         var done = 0
+        var message: String?
         return Film(length: 10.2) { t in
             // Tới lúc nhấc tay: ghi khoản và hiện thanh báo như app thật
             while done < taps.count, t >= taps[done].up {
                 let f = chips[order[done]]
                 store.add(amount: f.amount, note: f.note, cat: f.cat, toast: false)
-                store.toast = Toast(message: L("Đã lưu %@đ", fmt(f.amount)), undo: {})
+                message = L("Đã lưu %@đ", fmt(f.amount))
+                store.toast = nil
                 done += 1
             }
+            // App thật đang chạy phía sau tự tắt thanh báo sau 5 giây: phim giữ thanh của mình tới khi nó trượt đi hẳn
+            if let message, store.toast?.message != message { store.toast = Toast(message: message, undo: {}) }
             var frame = FilmFrame(again: chips)
             for (i, tap) in taps.enumerated() { frame.pressed["again-" + chips[order[i]].id] = press(tap, t) }
             frame.toast = ease(t, taps[0].up + 0.05, taps[0].up + 0.4) * (1 - ease(t, 9.2, 9.55))

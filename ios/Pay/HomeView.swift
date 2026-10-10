@@ -589,6 +589,9 @@ struct ToastView: View {
     @EnvironmentObject var store: Store
     @Environment(\.film) private var film
 
+    /// Mức hiện của thanh khi dựng phim (0…1); dùng app thì luôn 1, hiệu ứng do transition lo
+    private var shown: Double { Double(film?.toast ?? 1) }
+
     var body: some View {
         if let t = store.toast {
             HStack(spacing: 14) {
@@ -608,9 +611,11 @@ struct ToastView: View {
             }
             .foregroundStyle(Palette.ctaInk)
             .padding(.leading, 20).padding(.trailing, t.undo == nil ? 22 : 7).padding(.vertical, t.undo == nil ? 15 : 7)
-            .background(Palette.cta, in: Capsule())
-            .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
-            .offset(y: (1 - (film?.toast ?? 1)) * 70).opacity(Double(film?.toast ?? 1))
+            // Phim: mờ từng phần (chữ, nền, bóng) thay vì mờ cả khối — khối có bóng mà mờ thì không vẽ ra PDF được
+            .opacity(shown)
+            .background(Palette.cta.opacity(shown), in: Capsule())
+            .shadow(color: .black.opacity(0.18 * shown), radius: 16, y: 6)
+            .offset(y: (1 - shown) * 70)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .task(id: t.id) {
                 try? await Task.sleep(for: .seconds(5))

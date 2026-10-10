@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Ngày giờ": "Date and time",
         "Chưa chi": "Nothing yet",
         "Thu ô về nửa hàng": "Make tile half width",
         "Kéo ô dài cả hàng": "Make tile full width",

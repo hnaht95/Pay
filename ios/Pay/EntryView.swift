@@ -17,6 +17,8 @@ struct EntryView: View {
     @State private var note = ""
     @State private var addingCat = false
     @State private var ready = false
+    /// Ngày giờ của khoản đang sửa
+    @State private var when = Date()
     /// Đang nhập / sửa. Mở một khoản đã ghi thì ban đầu chỉ xem (bàn phím mờ), bấm Sửa mới sửa
     @State private var editing = true
     @FocusState private var noteFocused: Bool
@@ -104,9 +106,19 @@ struct EntryView: View {
                 .foregroundStyle(.primary)
                 Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
             }
-            if let sub { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 56).lineLimit(2) }
+            if isEdit && editing {
+                // Đang sửa một khoản đã ghi: đổi được cả ngày giờ (không cho chọn ngày trong tương lai)
+                DatePicker(L("Ngày giờ"), selection: $when, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden().datePickerStyle(.compact)
+                    .environment(\.locale, Lang.locale)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 48).padding(.top, 2)
+            } else if let sub { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 56).lineLimit(2) }
         }
         .padding(.top, 8)
+    }
+
+    private var isEdit: Bool {
+        switch mode { case .edit, .editNow: return true; default: return false }
     }
 
     private var title: String {
@@ -235,6 +247,8 @@ struct EntryView: View {
                 if editing {
                     primary(L("Lưu thay đổi")) {
                         e.a = amount; e.n = trimmed; e.c = finalCat
+                        // Chỉ ghi lại thời điểm khi người dùng thật sự đổi (so theo phút), kẻo lệch mili giây làm xáo thứ tự
+                        if abs(when.timeIntervalSince(e.date)) >= 60 { e.t = when.timeIntervalSince1970 * 1000 }
                         learn(); store.update(e); dismiss()
                     }
                 } else {
@@ -307,7 +321,7 @@ struct EntryView: View {
             catPicked = m?.c != nil
             baseCat = cat
         case .edit(let e), .editNow(let e):
-            digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true
+            digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date
             // Chạm vào một khoản thì ban đầu chỉ xem; đã bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ) thì vào sửa luôn
             if case .edit = mode { editing = false }
         }

@@ -457,12 +457,8 @@ struct ExpenseRow: View {
                             .accessibilityLabel(L("Hằng tháng"))
                     }
                 }
-                // Không đủ chỗ thì bỏ tên danh mục (đã có biểu tượng bên trái), giữ ngày giờ đọc được trọn
-                ViewThatFits(in: .horizontal) {
-                    Text(sub(c)).lineLimit(1)
-                    Text(sub(c, category: false)).lineLimit(1)
-                }
-                .font(.system(size: 15)).foregroundStyle(.secondary)
+                // Chỉ ngày giờ: danh mục đã có biểu tượng ở đầu hàng, khỏi nhắc lại bằng chữ
+                Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             // Số tiền luôn hiện đủ: phần tên nhường chỗ
@@ -474,7 +470,7 @@ struct ExpenseRow: View {
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    private func sub(_ c: Category, category: Bool = true) -> String {
+    private var sub: String {
         let tf = DateFormatter(); tf.dateFormat = "HH:mm"
         var parts: [String] = []
         if showDay {
@@ -484,7 +480,6 @@ struct ExpenseRow: View {
             else { let d = cal.dateComponents([.day, .month], from: e.date); parts.append("\(d.day!)/\(d.month!)") }
         }
         parts.append(tf.string(from: e.date))
-        if category { parts.append(c.name) }
         return parts.joined(separator: " · ")
     }
 }

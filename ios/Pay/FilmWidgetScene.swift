@@ -53,6 +53,8 @@ extension FilmExport {
         let gallery = asset("w-sheet-gallery.jpg"), search = asset("w-sheet-search.jpg")
         let pages = (1...5).map { asset("w-sheet-\($0).jpg") }
         let qr = MyQR(bin: "970416", bank: "ACB", acct: "123456789", name: "NGUYEN VAN A")
+        // Mã QR trong phim: một mã vô hại (quét ra trang của Pay), vẽ bằng hình cho nét
+        MyQR.filmPayload = "https://peakapp.vn/pay"; MyQRCode.vector = true
         let now = Date()
         let sum = Summary(today: 35_000, month: store.monthItems(now).reduce(0) { $0 + $1.a } + 35_000, count: 1, day: now, budget: store.budget)
 
@@ -72,6 +74,21 @@ extension FilmExport {
         let landed = plus.up + 0.1
         let done = Tap(at: CGPoint(x: 330, y: 33), down: landed + 2.0, up: landed + 2.2)
         let band = CGRect(x: 0, y: 330, width: size.width, height: 400)   // dải widget lướt ngang trong trang của Pay
+        // Năm widget của trang đó, do chính code widget vẽ (nét, và không dính mép widget bên cạnh như trong ảnh chụp)
+        let spend = SpendEntry(date: now, s: sum, tone: .green), mine = MyQREntry(date: now, qr: qr, tone: .green, s: sum)
+        func tile<V: View>(_ w: CGFloat, @ViewBuilder _ v: () -> V) -> (CGFloat, AnyView) {
+            (w, AnyView(ZStack {
+                RoundedRectangle(cornerRadius: 26, style: .continuous).fill(WidgetTone.green.bg)
+                v().padding(16)
+            }.frame(width: w, height: 158)))
+        }
+        let tiles = [tile(158) { SpendView(e: spend, size: .systemSmall) }, tile(338) { SpendView(e: spend, size: .systemMedium) },
+                     tile(158) { VoiceView(e: spend, size: .systemSmall) }, tile(158) { MyQRView(e: mine, size: .systemSmall) },
+                     tile(338) { MyQRView(e: mine, size: .systemMedium) }]
+        // Tâm của từng widget trên dải (cách nhau 34pt), widget đang xem nằm giữa màn hình
+        var centers: [CGFloat] = [], x: CGFloat = 0
+        for (i, tl) in tiles.enumerated() { if i > 0 { x += tiles[i - 1].0 / 2 + 34 + tl.0 / 2 }; centers.append(x) }
+        let pageColor = Color(red: 41 / 255, green: 41 / 255, blue: 42 / 255)
         let fieldColor = Color(red: 29 / 255, green: 29 / 255, blue: 28 / 255), sheetColor = Color(red: 35 / 255, green: 34 / 255, blue: 34 / 255)
 
         return Film(length: done.up + 1.6) { t in
@@ -150,15 +167,17 @@ extension FilmExport {
                                 sheet(search, top: sheetTop).opacity(Double(1 - inPage))
                                 Group {
                                     sheet(pages[page], top: p(256))
-                                    if k > 0 {
-                                        sheet(pages[page + 1], top: p(256)).opacity(Double(k))
-                                        ZStack {
-                                            full(pages[page]).offset(x: (-size.width * k).rounded())
-                                            full(pages[page + 1]).offset(x: (size.width * (1 - k)).rounded())
-                                        }
-                                        .mask { Rectangle().frame(width: band.width, height: band.height).position(x: band.midX, y: band.midY) }
+                                    if k > 0 { sheet(pages[page + 1], top: p(256)).opacity(Double(k)) }
+                                    // Dải widget: che phần ảnh chụp, vẽ lại các widget và cho lướt ngang
+                                    pageColor.frame(width: band.width, height: band.height).offset(y: band.minY)
+                                    let at = centers[page] + (centers[min(page + 1, 4)] - centers[page]) * k
+                                    ForEach(Array(tiles.enumerated()), id: \.offset) { i, tl in
+                                        tl.1.scaleEffect(0.94)
+                                            .position(x: (size.width / 2 + centers[i] - at).rounded(), y: band.midY - 14)
                                     }
                                 }
+                                .frame(width: size.width, height: size.height, alignment: .topLeading)
+                                .clipped()
                                 .opacity(Double(inPage))
                                 .offset(x: (40 * (1 - inPage)).rounded())
                             }

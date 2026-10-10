@@ -104,8 +104,7 @@ final class VoiceListener: ObservableObject {
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
                 let v = CGFloat(pow(min(max((db + 55) / 30, 0), 1), 0.7))
-                // Làm mượt (mỗi lần chỉ tiến gần 45% tới độ to mới): nét sóng vẽ lại từng khung hình, đổi thẳng thì giật
-                Task { @MainActor in meter.value += (v - meter.value) * 0.45 }
+                Task { @MainActor in meter.value = v }   // làm mượt ở Waveform, theo từng khung hình
             }
             engine.prepare()
             try engine.start()
@@ -626,12 +625,30 @@ private struct Waveform: View {
     @ObservedObject var meter: MicLevel
     /// Dựng phim: độ to và thời điểm lấy từ phim
     var film: FilmFrame? = nil
+    @State private var smooth = Smoother()
 
     var body: some View {
         if let film, let v = film.voice { line(level: v.level, time: film.time) }
         else {
-            let level = meter.value
-            TimelineView(.animation) { t in line(level: level, time: t.date.timeIntervalSinceReferenceDate) }
+            TimelineView(.animation) { t in
+                line(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
+            }
+        }
+    }
+
+    /// Độ to micro nhảy theo từng lần đo (~43 lần/giây, giọng nói lên xuống thất thường) và về 0 ngay khi ngừng nghe:
+    /// vẽ thẳng theo đó thì sóng giật lúc nói và tụt phụt lúc nói xong. Ở mỗi khung hình, độ cao sóng chỉ trôi dần tới
+    /// độ to mới: lên nhanh để bắt kịp giọng, xuống chậm cho êm.
+    private final class Smoother {
+        private var value: CGFloat = 0
+        private var last: Date?
+
+        func step(to target: CGFloat, at now: Date) -> CGFloat {
+            let dt = last.map { min(now.timeIntervalSince($0), 0.1) } ?? 0
+            last = now
+            let rate: Double = target > value ? 12 : 3.5   // lên nhanh, xuống chậm
+            value += (target - value) * CGFloat(1 - exp(-dt * rate))
+            return value
         }
     }
 

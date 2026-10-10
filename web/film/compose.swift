@@ -2,12 +2,14 @@
 //
 //   swift compose.swift <bản quay.mov> <khung.png> <ra.mp4> <đoạn>...
 //
-// <khung.png>: khung máy của Apple đã phủ nền (chỉ chừa lỗ màn hình), cỡ 1350x2760.
+// <khung.png>: khung máy của Apple đã phủ nền trắng (chỉ chừa lỗ màn hình), cỡ 1350x2760.
 // Mỗi <đoạn> là "từ-đến" hoặc "từ-đến@tốc độ" (giây trong bản quay), ví dụ 1.2-4.8 hay 5-9@2;
 // các đoạn nối liền nhau, bỏ phần chờ giữa các lần bấm. Đoạn lấy từ bản quay khác: "tệp.mov:từ-đến".
 //
 // PRESS=<giây> (biến môi trường): vạch xanh lá hiện cạnh nút Tác vụ (Action) lúc đó, trượt vào sát nút và giữ,
 // như ngón tay nhấn giữ — cho phim "Nói là ghi" bắt đầu từ màn hình khoá. Phim chừa lề hai bên cho vạch này.
+// UNLOCK=<giây>: đoạn đầu (màn hình khoá) mở khoá sang phần sau trong ngần ấy giây, kiểu iOS: màn hình khoá
+// trượt lên và mờ dần, app bên dưới hiện ra hơi to rồi thu về đúng cỡ.
 import AVFoundation
 import AppKit
 
@@ -23,7 +25,7 @@ let pad: CGFloat = 40                          // lề mỗi bên, chỗ cho v�
 let render = CGSize(width: 676 + 2 * pad, height: 1380)  // H.264 cần cạnh chẵn
 let hole = CGPoint(x: 72, y: 69)               // góc trên trái của màn hình trong khung (điểm ảnh khung)
 let actionButton = (x: 20.0, top: 581.0, bottom: 706.0)   // nút Tác vụ ở cạnh trái khung (điểm ảnh khung)
-let paper = CGColor(red: 247 / 255, green: 247 / 255, blue: 247 / 255, alpha: 1)   // nén xong ra 245, đúng nền trang
+let paper = CGColor(red: 1, green: 1, blue: 1, alpha: 1)   // nền trắng tinh: trang web hoà video vào nền (mix-blend-mode: multiply), khỏi phải khớp màu
 
 func constantRate(_ asset: AVAsset, to url: URL) async throws {
     let track = try await asset.loadTracks(withMediaType: .video)[0]
@@ -79,8 +81,11 @@ Task {
     let natural = try await track(a[1]).load(.naturalSize)
     let comp = AVMutableComposition()
     let vt = comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)!
+    let unlock = ProcessInfo.processInfo.environment["UNLOCK"].flatMap(Double.init).map { CMTime(seconds: $0, preferredTimescale: 600) }
+    let lockTrack = unlock == nil ? nil : comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
+    var lockEnd = CMTime.zero
     var at = CMTime.zero
-    for whole in a[4...] {
+    for (n, whole) in a[4...].enumerated() {
         let file = whole.contains(":") ? String(whole.split(separator: ":")[0]) : a[1]
         let spec = whole.contains(":") ? String(whole.split(separator: ":")[1]) : whole
         let track = try await track(file)
@@ -90,22 +95,48 @@ Task {
         // không quá cuối bản quay: phần thừa sẽ là màn đen
         let r = CMTimeRange(start: CMTime(seconds: range[0], preferredTimescale: 600),
                             end: min(CMTime(seconds: range[1], preferredTimescale: 600), try await track.load(.timeRange).end))
+        if n == 0, let lockTrack, let unlock {
+            // màn hình khoá nằm trên rãnh riêng, phần sau bắt đầu sớm hơn `unlock` giây để hai bên chồng lên nhau
+            try lockTrack.insertTimeRange(r, of: track, at: .zero)
+            lockEnd = r.duration
+            at = r.duration - unlock
+            continue
+        }
         try vt.insertTimeRange(r, of: track, at: at)
         if speed != 1 {
             vt.scaleTimeRange(CMTimeRange(start: at, duration: r.duration),
                               toDuration: CMTime(seconds: r.duration.seconds / speed, preferredTimescale: 600))
         }
-        at = comp.duration
+        at = vt.timeRange.end
     }
 
     // Màn hình máy ảo (1206x2622) thu nhỏ đặt vào lỗ của khung
     let s = (1206 * scale) / natural.width
     let li = AVMutableVideoCompositionLayerInstruction(assetTrack: vt)
-    li.setTransform(CGAffineTransform(scaleX: s, y: s)
-        .concatenating(CGAffineTransform(translationX: hole.x * scale + pad, y: hole.y * scale)), at: .zero)
+    let tx = hole.x * scale + pad, ty = hole.y * scale
+    let base = CGAffineTransform(scaleX: s, y: s).concatenating(CGAffineTransform(translationX: tx, y: ty))
+    li.setTransform(base, at: .zero)
+    var layers = [li]
+    if let lockTrack, let unlock {
+        let during = CMTimeRange(start: lockEnd - unlock, duration: unlock)
+        let w = natural.width * s, h = natural.height * s
+        // app: to hơn 7% quanh tâm rồi thu về
+        let z: CGFloat = 1.07
+        let big = CGAffineTransform(scaleX: s * z, y: s * z)
+            .concatenating(CGAffineTransform(translationX: tx - (z - 1) * w / 2, y: ty - (z - 1) * h / 2))
+        li.setTransformRamp(fromStart: big, toEnd: base, timeRange: during)
+        li.setOpacityRamp(fromStartOpacity: 0.6, toEndOpacity: 1, timeRange: during)
+        // màn hình khoá: trượt lên 40% chiều cao và mờ hẳn
+        let lock = AVMutableVideoCompositionLayerInstruction(assetTrack: lockTrack)
+        lock.setTransform(base, at: .zero)
+        lock.setTransformRamp(fromStart: base, toEnd: base.concatenating(CGAffineTransform(translationX: 0, y: -0.4 * h)), timeRange: during)
+        lock.setOpacityRamp(fromStartOpacity: 1, toEndOpacity: 0, timeRange: during)
+        lock.setOpacity(0, at: lockEnd)
+        layers = [lock, li]
+    }
     let ins = AVMutableVideoCompositionInstruction()
     ins.timeRange = CMTimeRange(start: .zero, duration: comp.duration)
-    ins.layerInstructions = [li]
+    ins.layerInstructions = layers
     ins.backgroundColor = paper
 
     let parent = CALayer(), video = CALayer(), overlay = CALayer()

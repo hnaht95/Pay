@@ -393,7 +393,19 @@ struct HomeView: View {
     static var nativeEdge: Bool { if #available(iOS 26.0, *) { true } else { false } }
 
     /// Lớp mờ dưới đáy (mọi phiên bản iOS): mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
-    private var bottomBlur: some View {
+    @ViewBuilder private var bottomBlur: some View {
+        if film != nil {
+            // Phim: cùng các mốc ấy, bằng dải màu đặc (xem FilmFade)
+            FilmFade(color: Palette.bg, stops: [(0, 1), (0.28, 1), (0.45, 0.85), (0.62, 0.55), (0.8, 0.25), (1, 0)], height: 170)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+        } else {
+            bottomGradient
+        }
+    }
+
+    private var bottomGradient: some View {
         // Chỉ chuyển dần sang màu nền, không dùng lớp kính mờ: kính mờ cộng lớp màu nền phủ lên trông đục như sữa.
         // Nhiều mốc theo đường cong êm để không thấy vạch ranh giới.
         LinearGradient(stops: [

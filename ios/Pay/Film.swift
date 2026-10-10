@@ -47,6 +47,37 @@ extension FilmFrame {
     }
 }
 
+/// Một lớp chuyển dần sang màu nền như LinearGradient từ dưới lên, vẽ bằng các dải mỏng màu đặc: dùng khi vẽ cho phim.
+/// Gradient có độ trong suốt ghi vào PDF bị mất phần trong suốt (CoreGraphics), cả lớp thành màu nền đặc và cắt ngang
+/// nội dung phía sau; màu đặc kèm độ trong suốt thì PDF giữ được. `stops`: (vị trí từ đáy 0…1, độ đậm 0…1), tăng dần.
+struct FilmFade: View {
+    var color: Color
+    var stops: [(Double, Double)]
+    var height: CGFloat
+    var band: CGFloat = 2
+
+    var body: some View {
+        let n = max(1, Int((height / band).rounded()))
+        VStack(spacing: 0) {
+            ForEach(0..<n, id: \.self) { i in
+                // Từ trên xuống: dải i ở vị trí (tính từ đáy) 1 − (i + ½)/n
+                color.opacity(Self.alpha(stops, 1 - (Double(i) + 0.5) / Double(n))).frame(height: height / CGFloat(n))
+            }
+        }
+        .frame(height: height)
+    }
+
+    static func alpha(_ stops: [(Double, Double)], _ x: Double) -> Double {
+        guard let first = stops.first, let last = stops.last else { return 0 }
+        if x <= first.0 { return first.1 }
+        for k in 1..<stops.count where x <= stops[k].0 {
+            let a = stops[k - 1], b = stops[k]
+            return a.1 + (b.1 - a.1) * (x - a.0) / max(1e-9, b.0 - a.0)
+        }
+        return last.1
+    }
+}
+
 extension EnvironmentValues {
     @Entry var film: FilmFrame? = nil
 }
@@ -100,9 +131,8 @@ struct FilmScreen<Content: View>: View {
             content
             if !bare { statusBar }
             if let touch {
-                Circle().fill(.black.opacity(0.16))
-                    .overlay { Circle().strokeBorder(.white.opacity(0.85), lineWidth: 2) }
-                    .frame(width: 46, height: 46)
+                Circle().fill(.white.opacity(0.3))
+                    .frame(width: 30, height: 30)
                     .scaleEffect(touch.scale).opacity(touch.alpha)
                     .position(touch.at)
             }

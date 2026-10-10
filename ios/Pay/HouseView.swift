@@ -167,10 +167,15 @@ struct HouseView: View {
     private var bottomFade: some View {
         Color.clear
             .overlay(alignment: .bottom) {
-                LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.3),
-                                       .init(color: Palette.bg.opacity(0.6), location: 0.6), .init(color: Palette.bg.opacity(0), location: 1)],
-                               startPoint: .bottom, endPoint: .top)
-                    .frame(height: 170)
+                if film != nil {
+                    // Phim: cùng các mốc ấy, bằng dải màu đặc (xem FilmFade)
+                    FilmFade(color: Palette.bg, stops: [(0, 1), (0.3, 1), (0.6, 0.6), (1, 0)], height: 170)
+                } else {
+                    LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.3),
+                                           .init(color: Palette.bg.opacity(0.6), location: 0.6), .init(color: Palette.bg.opacity(0), location: 1)],
+                                   startPoint: .bottom, endPoint: .top)
+                        .frame(height: 170)
+                }
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)

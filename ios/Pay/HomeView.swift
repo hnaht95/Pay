@@ -206,7 +206,7 @@ struct HomeView: View {
     /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
     private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            BudgetBar(s: b, height: 10, track: Palette.pill)
+            BudgetBar(s: b, height: 6, track: Palette.pill)
             HStack(spacing: 4) {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
                 if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }

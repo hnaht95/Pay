@@ -75,7 +75,7 @@ struct HomeView: View {
             // Phim: bảng nhấn giữ theo trạng thái phim đưa vào
             if let m = film?.menu, m.shown > 0 {
                 AppMenu(spec: categoryMenu(Category.get(m.key)), close: {}, shown: m.shown,
-                        pressed: film?.pressed["menu-item"].map { (1, $0) })
+                        pressed: film?.pressed["menu-item"].map { (0, $0) })
             }
         }
         .fullScreenCover(item: $entry) { EntryView(mode: $0) }
@@ -249,7 +249,7 @@ struct HomeView: View {
                 HStack(spacing: 12) {
                     ForEach(Array(row.enumerated()), id: \.offset) { _, c in
                         if let c {
-                            // Chạm: xem các khoản của danh mục; nhấn giữ: bảng tuỳ chọn tự vẽ (có "Nhập khoản…")
+                            // Chạm: xem các khoản của danh mục; nhấn giữ: bảng tuỳ chọn tự vẽ; dấu + ở góc: nhập khoản
                             TapHold(tap: { listing = c }, hold: { menu = categoryMenu(c) }) {
                                 tile(c, total: perCat[c.k] ?? 0)
                             }
@@ -311,7 +311,6 @@ struct HomeView: View {
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { $0.c == c.k }
         var items = [
-            AppMenuItem(icon: "plus", title: L("Nhập khoản %@", c.name)) { entry = .new(cat: c.k) },
             AppMenuItem(icon: "paintpalette.fill", title: L("Đổi biểu tượng, màu, tên")) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
                 ? AppMenuItem(icon: "rectangle.split.2x1", title: L("Thu ô về nửa hàng")) { withAnimation(.snappy) { store.setWide(c.k, false) } }

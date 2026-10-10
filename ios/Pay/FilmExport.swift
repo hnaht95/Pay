@@ -225,8 +225,8 @@ enum FilmExport {
     /// Nhấn giữ ô Cafe, chọn "Đổi biểu tượng, màu, tên", chọn cốc bia và màu vàng, Lưu: ô ở màn hình chính đổi theo
     static func category(_ store: Store) -> Film {
         let key = "cafe", beer = "🍺", yellow = 14
-        let hold = Tap(at: CGPoint(x: 290, y: 640), down: 0.8, up: 1.7)
-        let item = Tap(at: CGPoint(x: 190, y: 507), down: 2.8, up: 3.0)
+        let hold = Tap(at: CGPoint(x: 290, y: 509), down: 0.8, up: 1.7)
+        let item = Tap(at: CGPoint(x: 190, y: 450), down: 2.8, up: 3.0)
         let emoji = Tap(at: POINTS.emoji, down: 4.6, up: 4.8)
         let drag = Drag(from: CGPoint(x: 200, y: 700), to: CGPoint(x: 200, y: 480), start: 5.6, end: 6.3)
         let color = Tap(at: POINTS.color, down: 7.3, up: 7.5)

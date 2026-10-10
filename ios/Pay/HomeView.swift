@@ -31,8 +31,6 @@ struct HomeView: View {
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
     /// mở lại sáng hôm sau vẫn hiện số của hôm qua
     @State private var now = Date()
-    /// Các khoản "Chi lại" đang hiện; giữ nguyên thứ tự khi đang dùng để chạm hai lần liền không trúng khoản khác
-    @State private var again: [Store.Frequent] = []
     @State private var addingCat = false
     @State private var editingCat: CatEdit?
     /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
@@ -54,8 +52,6 @@ struct HomeView: View {
                     Button { showStats = true } label: { hero(now) }
                         .buttonStyle(Pressable())
                         .padding(.top, 14)
-
-                    againSection
 
                     sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }
                     tiles(now)
@@ -108,8 +104,6 @@ struct HomeView: View {
         }
         .onChange(of: scenePhase) { _, p in if p == .active { wake() } }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in wake() }
-        .onAppear { again = store.frequent() }
-        .onChange(of: store.items) { refreshAgain() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
             quick.pending = nil
@@ -117,18 +111,10 @@ struct HomeView: View {
         }
     }
 
-    /// App quay lại / qua nửa đêm: cập nhật "hôm nay", ghi khoản định kỳ vừa tới hạn, xếp lại "Chi lại".
+    /// App quay lại / qua nửa đêm: cập nhật "hôm nay", ghi khoản định kỳ vừa tới hạn.
     private func wake() {
         now = Date()
         store.catchUpRecurring()
-        again = store.frequent()
-    }
-
-    /// Có khoản mới / xoá: thêm bớt "Chi lại" nhưng không đảo chỗ các khoản đang hiện.
-    private func refreshAgain() {
-        let fresh = store.frequent()
-        let keep = again.filter { a in fresh.contains { $0.id == a.id } }
-        again = keep + fresh.filter { f in !keep.contains { $0.id == f.id } }
     }
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
@@ -242,52 +228,9 @@ struct HomeView: View {
         .padding(.top, 26).padding(.bottom, 12)
     }
 
-    /// Chi lại một chạm: những khoản hay chi, chạm là ghi luôn (có Hoàn tác ở dưới).
-    @ViewBuilder private var againSection: some View {
-        let again = film?.again ?? self.again
-        if !again.isEmpty {
-            sectionTitle(L("Chi lại")) { Text(L("Chạm là ghi")) }
-            FilmScroll(axes: .horizontal) {
-                HStack(spacing: 10) {
-                    ForEach(again) { f in
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            store.add(amount: f.amount, note: f.note, cat: f.cat)
-                        } label: { againChip(f) }
-                        .buttonStyle(Pressable())
-                        .filmPressed(film?.pressed["again-" + f.id] ?? 0)
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-            .padding(.horizontal, -16)
-        }
-    }
-
-    private func againChip(_ f: Store.Frequent) -> some View {
-        let c = Category.get(f.cat)
-        let name = f.note.isEmpty ? c.name : f.note.capFirst
-        return HStack(spacing: 10) {
-            CategoryIcon(c: c, size: 24)
-                .frame(width: 44, height: 44)
-                .background(c.color, in: Circle())
-            VStack(alignment: .leading, spacing: 1) {
-                Text(name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
-                Text(fmt(f.amount)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
-            }
-        }
-        .padding(.leading, 8).padding(.trailing, 18).padding(.vertical, 8)
-        .frame(maxWidth: 220, alignment: .leading)
-        .background(Palette.card, in: Capsule())
-        .foregroundStyle(.primary)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L("Ghi lại %@, %@ đồng", name, fmt(f.amount)))
-    }
-
     private func tiles(_ now: Date) -> some View {
-        var perCat: [String: Int] = [:], counts: [String: Int] = [:]
-        for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a; counts[e.c, default: 0] += 1 }
-        let monthTotal = perCat.values.reduce(0, +)
+        var perCat: [String: Int] = [:]
+        for e in store.monthItems(now) { perCat[e.c, default: 0] += e.a }
         // Mỗi danh mục dài cả hàng hoặc nửa hàng (đổi trong bảng nhấn giữ). Ô nửa hàng đứng lẻ ngay trước một ô dài
         // thì giãn ra cho kín hàng. Ô dấu + luôn ở cuối, nửa hàng.
         var rows: [[Category?]] = [], half: [Category?] = []   // nil = ô dấu +
@@ -308,13 +251,26 @@ struct HomeView: View {
                         if let c {
                             // Chạm: xem các khoản của danh mục; nhấn giữ: bảng tuỳ chọn tự vẽ (có "Nhập khoản…")
                             TapHold(tap: { listing = c }, hold: { menu = categoryMenu(c) }) {
-                                tile(c, total: perCat[c.k] ?? 0, count: counts[c.k] ?? 0, of: monthTotal)
+                                tile(c, total: perCat[c.k] ?? 0)
                             }
                             .filmPressed(film?.pressed["tile-" + c.k] ?? 0)
+                            // Dấu + ở góc: nhập khoản mới cho danh mục này
+                            .overlay(alignment: .topTrailing) {
+                                Button { entry = .new(cat: c.k) } label: {
+                                    Image(systemName: "plus").font(.system(size: 14, weight: .bold))
+                                        .frame(width: 30, height: 30).background(.white.opacity(0.6), in: Circle())
+                                        .foregroundStyle(Color(hex: 0x111114))
+                                        .padding(16).contentShape(Rectangle())
+                                }
+                                .buttonStyle(Pressable())
+                                .accessibilityLabel(L("Nhập khoản %@", c.name))
+                            }
                         } else {
                             addTile
                         }
                     }
+                    // Ô dấu + đứng một mình vẫn chỉ rộng nửa hàng
+                    if row.count == 1, row[0] == nil { Color.clear.frame(maxWidth: .infinity) }
                 }
             }
         }
@@ -326,7 +282,7 @@ struct HomeView: View {
             Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
                 .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
                 .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, minHeight: 152)
+                .frame(maxWidth: .infinity, minHeight: 140)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
         }
@@ -334,24 +290,20 @@ struct HomeView: View {
         .accessibilityLabel(L("Thêm danh mục"))
     }
 
-    /// Bo góc của ô danh mục (tự đặt, không phải mặc định của iOS)
-    private static let tileRadius: CGFloat = 20
+    private static let tileRadius: CGFloat = 28
 
-    /// Ô danh mục: tên, số tiền tháng này, và dòng phụ số khoản · phần trăm trong tổng chi tháng. Ô dài thì số to hơn
-    private func tile(_ c: Category, total: Int, count: Int, of month: Int) -> some View {
-        let wide = store.isWide(c.k)
-        let share = month > 0 ? Int((Double(total) / Double(month) * 100).rounded()) : 0
-        let sub = count == 0 ? L("Chưa chi") : (count == 1 ? L("1 khoản") : L("%d khoản", count)) + " · \(share)%"
-        return VStack(alignment: .leading, spacing: 0) {
-            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.75).lineLimit(1)
-            Spacer(minLength: 12)
-            Text(fmt(total)).font(.system(size: wide ? 44 : 28, weight: .bold)).kerning(wide ? -1.5 : -0.5)
-                .lineLimit(1).minimumScaleFactor(0.5)
-            Text(sub).font(.system(size: 14)).opacity(0.7).lineLimit(1).padding(.top, 2)
+    /// Ô danh mục: biểu tượng, tên, số tiền tháng này. Dấu + ở góc nhập khoản mới cho danh mục đó
+    private func tile(_ c: Category, total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            CategoryIcon(c: c, size: 30)
+                .frame(width: 52, height: 52).background(.white, in: Circle())
+            Spacer(minLength: 14)
+            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
+            Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
         }
         .foregroundStyle(c.ink)
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 152, alignment: .leading)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
         .background(c.color, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
     }
 
@@ -377,9 +329,6 @@ struct HomeView: View {
                            items: items)
     }
 
-    /// Chiều cao thật của từng hàng trong "Gần đây", để List cao vừa khít
-    @State private var rowHeights: [String: CGFloat] = [:]
-
     @ViewBuilder private var recent: some View {
         let list = Array(store.sorted.prefix(5))
         if list.isEmpty {
@@ -397,15 +346,13 @@ struct HomeView: View {
                     TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .edit(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeights[e.id] = $0 }
                     .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
             }
             .listStyle(.plain)
             .scrollDisabled(true)
             .scrollContentBackground(.hidden)
-            // Cao đúng bằng tổng các hàng đã đo (tên hai dòng thì hàng đó cao hơn), cộng 10pt khoảng cách mỗi hàng
-            .frame(height: list.reduce(0) { $0 + (rowHeights[$1.id] ?? ExpenseRow.minHeight) + 10 })
+            .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
         }
     }
 
@@ -479,8 +426,8 @@ extension View {
 }
 
 struct ExpenseRow: View {
-    /// Hàng một dòng tên cao chừng này; tên hai dòng thì hàng tự cao thêm
-    static let minHeight: CGFloat = 64
+    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 86pt: vừa tên hai dòng + dòng phụ).
+    static let rowHeight: CGFloat = 96
     let e: Expense
     var showDay = false
     var now = Date()
@@ -490,6 +437,9 @@ struct ExpenseRow: View {
     var body: some View {
         let c = Category.get(e.c)
         HStack(spacing: 14) {
+            CategoryIcon(c: c, size: 30)
+                .frame(width: 56, height: 56)
+                .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
@@ -500,21 +450,17 @@ struct ExpenseRow: View {
                             .accessibilityLabel(L("Hằng tháng"))
                     }
                 }
-                // Chỉ ngày giờ: danh mục đã có vạch màu ở đầu hàng, khỏi nhắc lại bằng chữ
+                // Chỉ ngày giờ: danh mục đã có biểu tượng ở đầu hàng, khỏi nhắc lại bằng chữ
                 Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
             }
-            // Vạch dọc màu danh mục thay cho biểu tượng, cao bằng đúng khối chữ (tên hai dòng thì vạch dài theo);
-            // vạch cách chữ 14pt, bằng khoảng từ mép khung tới vạch
-            .padding(.leading, 20)
-            .overlay(alignment: .leading) { Capsule().fill(c.mark).frame(width: 4).padding(.leading, 2) }
             Spacer(minLength: 8)
             // Số tiền luôn hiện đủ: phần tên nhường chỗ
             Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1).fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
-        .frame(minHeight: Self.minHeight)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(minHeight: Self.rowHeight - 10)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     private var sub: String {

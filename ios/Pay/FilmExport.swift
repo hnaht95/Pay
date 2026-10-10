@@ -47,7 +47,7 @@ enum FilmExport {
         var frame: (Double) -> AnyView
     }
 
-    static let scenes: [String: (Store) -> Film] = ["again": again, "stats": stats, "voice": voice, "group": group, "category": category]
+    static let scenes: [String: (Store) -> Film] = ["stats": stats, "voice": voice, "group": group, "category": category]
 
     // MARK: Công cụ
 
@@ -93,33 +93,6 @@ enum FilmExport {
         ease(t, tap.down, tap.down + 0.08) * (1 - ease(t, tap.up, tap.up + 0.25))
     }
 
-    // MARK: Phim "Chi lại một chạm"
-
-    static func again(_ store: Store) -> Film {
-        let chips = store.frequent()
-        let taps = [Tap(at: CGPoint(x: 225, y: 453), down: 1.0, up: 1.25), Tap(at: CGPoint(x: 83, y: 453), down: 4.0, up: 4.25)]
-        let order = [1, 0]   // chạm "cà phê" rồi "ăn trưa"
-        var done = 0
-        var message: String?
-        let hold = 2.0   // mỗi thanh báo hiện chừng này giây rồi tự đi, thanh sau không chồng lên thanh trước
-        return Film(length: 7.3) { t in
-            // Tới lúc nhấc tay: ghi khoản và hiện thanh báo như app thật
-            while done < taps.count, t >= taps[done].up {
-                let f = chips[order[done]]
-                store.add(amount: f.amount, note: f.note, cat: f.cat, toast: false)
-                message = L("Đã lưu %@đ", fmt(f.amount))
-                store.toast = nil
-                done += 1
-            }
-            // App thật đang chạy phía sau tự tắt thanh báo sau 5 giây: phim giữ thanh của mình tới khi nó trượt đi hẳn
-            if let message, store.toast?.message != message { store.toast = Toast(message: message, undo: {}) }
-            var frame = FilmFrame(again: chips)
-            for (i, tap) in taps.enumerated() { frame.pressed["again-" + chips[order[i]].id] = press(tap, t) }
-            frame.toast = taps.reduce(0) { $0 + ease(t, $1.up + 0.05, $1.up + 0.35) * (1 - ease(t, $1.up + hold, $1.up + hold + 0.3)) }
-            return AnyView(FilmScreen(touch: touch(taps, t)) { HomeView() }.environment(\.film, frame))
-        }
-    }
-
     // MARK: Phim "Thống kê"
 
     static func stats(_ store: Store) -> Film {
@@ -128,7 +101,7 @@ enum FilmExport {
         let drags = [Drag(from: CGPoint(x: 200, y: 700), to: CGPoint(x: 200, y: 280), start: 2.6, end: 3.5),
                      Drag(from: CGPoint(x: 200, y: 700), to: CGPoint(x: 200, y: 280), start: 5.0, end: 5.9)]
         return Film(length: 8.0) { t in
-            var home = FilmFrame(again: store.frequent())
+            var home = FilmFrame()
             home.pressed["stats"] = press(open, t)
             var sheet = FilmFrame()
             // Trang trôi theo ngón tay rồi trượt thêm một đoạn theo đà
@@ -157,11 +130,10 @@ enum FilmExport {
         let heardAll = first + gap * Double(said.count - 1)
         let save = heardAll + 1.1
         let done = Tap(at: CGPoint(x: 316, y: 785), down: save + 1.9, up: save + 2.1)
-        let chips = store.frequent()
         var saved: Expense?
         return Film(length: done.up + 1.8) { t in
             if saved == nil, t >= save { saved = store.quickAdd(said.joined(separator: " "), spoken: true, toast: false) }
-            var home = FilmFrame(again: chips)
+            var home = FilmFrame()
             home.time = t
             var v = FilmFrame.Voice()
             v.shown = ease(t, card, card + 0.4) * (1 - ease(t, done.up, done.up + 0.28))
@@ -231,7 +203,7 @@ enum FilmExport {
                 answered = true
                 Task { await house.respond(s.id, received: true) }
             }
-            var home = FilmFrame(again: store.frequent())
+            var home = FilmFrame()
             home.pressed["house"] = press(open, t)
             var sheet = FilmFrame()
             if let first { sheet.pressed["group-" + first.id] = press(pick, t) }
@@ -266,7 +238,7 @@ enum FilmExport {
                 saved = true
                 store.updateCategory(key, name: original.rawName, icon: beer, tone: yellow)
             }
-            var home = FilmFrame(again: store.frequent())
+            var home = FilmFrame()
             home.pressed["tile-" + key] = press(Tap(at: hold.at, down: hold.down, up: hold.down + 0.45), t)
             // Giữ 0,35 giây thì bảng bật ra; chọn xong thì bảng đóng
             let menu = ease(t, hold.down + 0.35, hold.down + 0.6) * (1 - ease(t, item.up, item.up + 0.2))

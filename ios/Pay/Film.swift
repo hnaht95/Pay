@@ -11,8 +11,6 @@ struct FilmFrame {
     var pressed: [String: CGFloat] = [:]
     /// Thanh báo "Đã lưu": 0 = chưa hiện, 1 = hiện hẳn
     var toast: CGFloat = 0
-    /// Các khoản "Chi lại" giữ nguyên thứ tự suốt phim
-    var again: [Store.Frequent]? = nil
     /// Thời điểm của phim (giây), cho những thứ tự chuyển động: sóng âm, chấm đỏ nhấp nháy
     var time: Double = 0
     /// Thẻ ghi bằng giọng nói đang hiện (nil = không)

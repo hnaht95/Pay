@@ -509,40 +509,6 @@ final class Store: ObservableObject {
         }
     }
 
-    // MARK: Chi lại một chạm
-
-    struct Frequent: Identifiable {
-        let id: String   // ghi chú chuẩn hoá | số tiền | danh mục: không đổi khi lần sau viết hoa / bỏ dấu khác
-        let note: String
-        let amount: Int
-        let cat: String
-    }
-
-    /// Một khoản phải lặp lại ít nhất chừng này lần trong `frequentDays` ngày mới vào "Chi lại":
-    /// chỉ những thứ chi thật sự thường xuyên (cà phê sáng, cơm trưa), không phải cứ ghi hai lần là hiện
-    static let frequentMin = 5
-    static let frequentDays = 30.0
-
-    /// Các khoản chi lặp lại nhiều trong 30 ngày qua (ít nhất 5 lần): nhiều lần trước, gần đây trước.
-    /// Bỏ qua khoản định kỳ (app đã tự ghi, không cần chạm).
-    func frequent(limit: Int = 6) -> [Frequent] {
-        let since = (Date().timeIntervalSince1970 - Self.frequentDays * 86_400) * 1000
-        let repeating = Set(rules.values.filter(\.on).map { "\(Self.noteKey($0.n ?? ""))|\($0.a)|\($0.c)" })
-        var groups: [String: (f: Frequent, count: Int, last: Double)] = [:]
-        for e in items where e.t >= since && !e.id.hasPrefix("r-") {
-            let note = (e.n ?? "").trimmingCharacters(in: .whitespaces)
-            let key = "\(Self.noteKey(note))|\(e.a)|\(e.c)"
-            if repeating.contains(key) { continue }
-            let g = groups[key]
-            let mine = Frequent(id: key, note: note, amount: e.a, cat: e.c)
-            let f = g.map { e.t >= $0.last ? mine : $0.f } ?? mine
-            groups[key] = (f, (g?.count ?? 0) + 1, max(g?.last ?? 0, e.t))
-        }
-        return groups.values.filter { $0.count >= Self.frequentMin }
-            .sorted { ($0.count, $0.last) > ($1.count, $1.last) }
-            .prefix(limit).map(\.f)
-    }
-
     // MARK: Khoản định kỳ
 
     /// Khoản định kỳ đang bật mà khoản chi này thuộc về: khoản app tự ghi, khoản gốc, hoặc khoản ghi tay giống hệt.

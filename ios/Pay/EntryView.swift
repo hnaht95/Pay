@@ -30,11 +30,10 @@ struct EntryView: View {
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 Spacer()
-                Text("đ").font(.system(size: 20, weight: .semibold)).foregroundStyle(.secondary)
             }
-            // Ô số tiền đóng khung nền nhạt, cùng kiểu với ô ghi chú bên dưới
+            // Ô số tiền: khung viền mảnh, nhạt, không nền
             .padding(.horizontal, 18).padding(.vertical, 12)
-            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1) }
             .padding(.top, 8)
 
             chips.padding(.top, 14)

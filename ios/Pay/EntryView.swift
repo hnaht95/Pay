@@ -402,7 +402,8 @@ struct DateSheet: View {
             Spacer(minLength: 0)
             // Giờ : phút bằng bánh xe của tab Lịch trong Peek, trên nền ô xám như ô chữ bên đó
             TimeWheel(time: cal.component(.hour, from: when) * 60 + cal.component(.minute, from: when)) { setTime($0) }
-                .frame(maxWidth: .infinity)
+                // Ô nền ôm vừa hai cột số (không trải hết bề ngang, hai bên khỏi thừa)
+                .padding(.horizontal, 22)
                 .background(Palette.pill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(L("Giờ"))

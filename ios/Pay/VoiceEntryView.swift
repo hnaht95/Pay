@@ -215,20 +215,22 @@ struct VoiceEntryView: View {
     // MARK: Thẻ
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        // Khoảng cách 18 giữa các phần tự đặt (không dùng spacing của VStack) để phần sóng âm co về 0 được cả khoảng cách
+        // của nó: ghi xong thẻ thu gọn dần, nội dung phía trên hạ xuống theo (phim: theo `settle`; app: theo animation bên dưới)
+        VStack(alignment: .leading, spacing: 0) {
             header
-            amountBlock
-            // Ghi xong thì sóng âm xẹp dần, thẻ thu gọn lại (phim: theo `settle`; app: theo animation bên dưới)
+            amountBlock.padding(.top, 18)
             let settle = film?.voice?.settle ?? 0
             if isListening || (film != nil && settle < 1) {
-                // Làm tròn về điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không —
-                // dịch lẻ thì chữ và nền của nó lệch nhau từng khung, trông giật
+                // Điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không — dịch lẻ thì chữ và nền lệch nhau
+                let room = (74 * (1 - settle)).rounded()   // 56 sóng âm + 18 khoảng cách
                 Waveform(meter: mic.meter, film: film)
-                    .frame(height: (56 * (1 - settle)).rounded(), alignment: .center).clipped()
-                    .opacity(Double(1 - settle)).padding(.bottom, -(18 * settle).rounded())
+                    .frame(height: max(0, room - 18), alignment: .center).clipped()
+                    .opacity(Double(1 - settle))
+                    .padding(.top, min(18, room))
                     .transition(.opacity)
             }
-            buttons
+            buttons.padding(.top, 18)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)

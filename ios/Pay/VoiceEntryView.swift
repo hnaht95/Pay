@@ -173,6 +173,9 @@ struct VoiceEntryView: View {
     /// Mở bằng vuốt lên từ nút Quét QR: khung của nút (toạ độ màn hình). Thẻ biến hình từ chính nút đó ra
     /// (khối màu nút lớn dần thành khung thẻ, nội dung thẻ hiện dần lên) và thu về lại nút khi đóng
     var from: CGRect? = nil
+    /// Mặt của nút đó (biểu tượng + chữ): vẽ trên khối khi khối còn là nút, mờ đi khi khối lớn thành thẻ
+    var face: AnyView? = nil
+    @State private var faced = true
     /// Thẻ đang nằm ngay trên màn hình chính (không qua fullScreenCover, để không dính hiệu ứng trượt lên của iOS):
     /// đóng thì gọi cái này thay cho dismiss
     var onClose: (() -> Void)? = nil
@@ -222,6 +225,11 @@ struct VoiceEntryView: View {
                         .frame(width: r.width, height: r.height)
                         .position(x: r.midX - o.x, y: r.midY - o.y)
                         .opacity(blob ? 1 : 0)
+                    if let face {
+                        face.frame(width: from.width, height: from.height)
+                            .position(x: from.midX - o.x, y: from.midY - o.y)
+                            .opacity(faced && blob ? 1 : 0)
+                    }
                 }
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -250,6 +258,7 @@ struct VoiceEntryView: View {
             if from != nil {
                 // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
                 try? await Task.sleep(for: .milliseconds(30))
+                withAnimation(.easeOut(duration: 0.1)) { faced = false }
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) { morph = 1 }
                 withAnimation(.easeOut(duration: 0.22).delay(0.16)) { filled = true }
                 Task { try? await Task.sleep(for: .milliseconds(520)); if filled { blob = false } }
@@ -523,8 +532,8 @@ struct VoiceEntryView: View {
             withAnimation(.easeIn(duration: 0.12)) { filled = false }
             withAnimation(.spring(response: 0.36, dampingFraction: 0.9).delay(0.08)) { morph = 0 }
             withAnimation(.easeIn(duration: 0.3).delay(0.1)) { shown = false }
-            // Khối đã co về đúng khung nút: mờ đi cho nút thật (có biểu tượng và chữ) lộ ra, không bị giật
-            withAnimation(.easeOut(duration: 0.12).delay(0.34)) { blob = false }
+            // Khối co về gần xong thì mặt nút hiện lại trên khối: tới lúc gỡ lớp này, khối đã y hệt nút thật bên dưới
+            withAnimation(.easeOut(duration: 0.14).delay(0.26)) { faced = true }
         } else {
             withAnimation(.easeIn(duration: 0.25)) { shown = false }
         }

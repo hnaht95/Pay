@@ -100,7 +100,7 @@ struct HomeView: View {
         // (fullScreenCover của iOS luôn trượt cả lớp từ đáy lên, làm hỏng hiệu ứng biến hình.)
         .overlay {
             if let voiceFrom {
-                VoiceEntryView(from: voiceFrom, onClose: { self.voiceFrom = nil }, onScan: {
+                VoiceEntryView(from: voiceFrom, face: AnyView(BigButton.face(title: L("Quét QR"), icon: "qrcode", primary: true)), onClose: { self.voiceFrom = nil }, onScan: {
                     Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
                 }, onEdit: { e in
                     Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
@@ -400,6 +400,8 @@ struct HomeView: View {
                     voiceFrom = frame
                     // Thẻ hiện ngay trên màn hình chính (xem lớp phủ bên dưới), không qua fullScreenCover
                 }) { scanning = true }
+                // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật ẩn đi, chỉ còn khối biến hình — không thành hai nút
+                .opacity(voiceFrom == nil ? 1 : 0)
             }
         }
         .padding(.horizontal, 16).padding(.bottom, 8)
@@ -561,9 +563,16 @@ struct BigButton: View {
         }
     }
 
-    // Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với đầu nút bo tròn).
-    // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
     private var label: some View {
+        Self.face(title: title, icon: icon, primary: primary)
+            .contentShape(Capsule())
+            .glassCapsule(tint: primary ? Palette.cta : nil)
+    }
+
+    /// Mặt nút (vòng biểu tượng + chữ), chưa có nền. Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với
+    /// đầu nút bo tròn). Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
+    /// Thẻ nói để ghi cũng vẽ mặt này lên khối biến hình, để nút và thẻ là một khối liền.
+    static func face(title: String, icon: String, primary: Bool) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                 .frame(width: 56, height: 56)
@@ -580,8 +589,6 @@ struct BigButton: View {
         .padding(.trailing, 14)
         .frame(maxWidth: primary ? .infinity : nil)
         .foregroundStyle(primary ? Palette.ctaInk : .primary)
-        .contentShape(Capsule())
-        .glassCapsule(tint: primary ? Palette.cta : nil)
     }
 }
 

@@ -679,7 +679,8 @@ private struct Waveform: View {
                 for r in 0..<Self.rows {
                     let rect = CGRect(x: x0 + CGFloat(i) * step, y: y0 + CGFloat(r) * step, width: Self.dot, height: Self.dot)
                     let on = abs(r - mid) <= reach
-                    ctx.fill(Path(ellipseIn: rect), with: .color(Self.green.opacity(on ? 1 : 0.16)))
+                    // Chấm sáng xanh lá; chấm nền đen nhạt (chế độ tối thành trắng nhạt)
+                    ctx.fill(Path(ellipseIn: rect), with: .color(on ? Self.green : Color.primary.opacity(0.1)))
                 }
             }
         }

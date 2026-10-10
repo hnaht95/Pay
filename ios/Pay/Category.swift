@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct Category: Identifiable, Hashable {
     let k: String
@@ -17,6 +18,24 @@ struct Category: Identifiable, Hashable {
     var onDark = false
     /// Màu chữ trên nền màu của danh mục
     var ink: Color { onDark ? .white : Color(hex: 0x111114) }
+
+    /// Màu danh mục dùng làm vạch/dấu nhỏ trên nền thẻ: giữ sắc màu, nhưng màu quá nhạt thì sậm lại ở nền sáng
+    /// và màu quá tối thì sáng lên ở nền tối, để theme nào cũng thấy rõ.
+    var mark: Color {
+        let base = UIColor(color)
+        return Color(UIColor { traits in
+            var h: CGFloat = 0, sat: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            guard base.getHue(&h, saturation: &sat, brightness: &b, alpha: &a) else { return base }
+            if traits.userInterfaceStyle == .dark {
+                return b < 0.6 ? UIColor(hue: h, saturation: min(sat, 0.6), brightness: 0.68, alpha: 1) : base
+            }
+            // Nền sáng: màu nhạt (sáng mà ít đậm) thì tăng độ đậm, hạ độ sáng
+            let pale = b > 0.75 && sat < 0.5
+            let black = b < 0.2 && sat < 0.2
+            if pale { return UIColor(hue: h, saturation: max(sat * 2.2, 0.5), brightness: 0.72, alpha: 1) }
+            return black ? UIColor(white: 0.1, alpha: 1) : base
+        })
+    }
     var id: String { k }
 
     init(k: String, icon: String, name: String, color: Color, art: Bool = false, kw: [String], customChart: Color? = nil) {

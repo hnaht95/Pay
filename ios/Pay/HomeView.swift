@@ -377,6 +377,9 @@ struct HomeView: View {
                            items: items)
     }
 
+    /// Chiều cao thật của từng hàng trong "Gần đây", để List cao vừa khít
+    @State private var rowHeights: [String: CGFloat] = [:]
+
     @ViewBuilder private var recent: some View {
         let list = Array(store.sorted.prefix(5))
         if list.isEmpty {
@@ -394,13 +397,15 @@ struct HomeView: View {
                     TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .edit(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeights[e.id] = $0 }
                     .expenseSwipe(delete: { store.remove(id: e.id) })
                 }
             }
             .listStyle(.plain)
             .scrollDisabled(true)
             .scrollContentBackground(.hidden)
-            .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
+            // Cao đúng bằng tổng các hàng đã đo (tên hai dòng thì hàng đó cao hơn), cộng 10pt khoảng cách mỗi hàng
+            .frame(height: list.reduce(0) { $0 + (rowHeights[$1.id] ?? ExpenseRow.minHeight) + 10 })
         }
     }
 
@@ -474,15 +479,13 @@ extension View {
 }
 
 struct ExpenseRow: View {
-    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 86pt: vừa tên hai dòng + dòng phụ).
-    static let rowHeight: CGFloat = 96
+    /// Hàng một dòng tên cao chừng này; tên hai dòng thì hàng tự cao thêm
+    static let minHeight: CGFloat = 64
     let e: Expense
     var showDay = false
     var now = Date()
     /// Khoản định kỳ (app tự ghi hằng tháng): hiện biểu tượng lặp
     var repeats = false
-    /// Hàng thấp (màn Lịch sử, danh sách của một danh mục). Mục "Gần đây" ở màn chính để cao cố định vì List ở đó cao theo số hàng
-    var compact = false
 
     var body: some View {
         let c = Category.get(e.c)
@@ -503,14 +506,14 @@ struct ExpenseRow: View {
             // Vạch dọc màu danh mục thay cho biểu tượng, cao bằng đúng khối chữ (tên hai dòng thì vạch dài theo);
             // vạch cách chữ 14pt, bằng khoảng từ mép khung tới vạch
             .padding(.leading, 20)
-            .overlay(alignment: .leading) { Capsule().fill(c.color).frame(width: 4).padding(.leading, 2) }
+            .overlay(alignment: .leading) { Capsule().fill(c.mark).frame(width: 4).padding(.leading, 2) }
             Spacer(minLength: 8)
             // Số tiền luôn hiện đủ: phần tên nhường chỗ
             Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1).fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
-        .frame(minHeight: compact ? 64 : Self.rowHeight - 10)
+        .frame(minHeight: Self.minHeight)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 

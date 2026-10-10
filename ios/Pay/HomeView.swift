@@ -493,45 +493,84 @@ struct BigButton: View {
     let title: String
     let icon: String
     let primary: Bool
-    /// Việc làm khi nhấn giữ (nếu có); lần nhả tay ngay sau đó không tính là chạm
+    /// Việc làm khi nhấn giữ (nếu có)
     var hold: (() -> Void)? = nil
     let action: () -> Void
-    @State private var heldAt = Date.distantPast
+    /// Nút có nhấn giữ thì tự theo dõi ngón tay: đang nhấn, và lần nhấn này đã tính là nhấn giữ chưa
+    @State private var down = false
+    @State private var held = false
+    @State private var timer: Task<Void, Never>?
+    /// Ngón tay còn trên nút không; iOS tự đưa về false cả khi cử chỉ bị huỷ (vd màn hình khác vừa mở đè lên)
+    @GestureState private var touching = false
 
     var body: some View {
-        Button {
-            guard Date().timeIntervalSince(heldAt) > 0.8 else { return }
-            action()
-        } label: {
-            // Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với đầu nút bo tròn).
-            // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
-            HStack(spacing: 10) {
-                Image(systemName: icon).font(.system(size: 24, weight: .semibold))
-                    .frame(width: 56, height: 56)
-                    .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
-                if primary { Spacer(minLength: 0) }
-                Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
-                    // Chữ được ưu tiên chỗ trước hai khoảng trống hai bên: không thì khi bật Chữ đậm (Trợ năng)
-                    // chữ rộng ra mà vẫn bị cắt thành "Quét…" dù nút còn trống
-                    .layoutPriority(1)
-                    .minimumScaleFactor(0.7)
-                if primary { Spacer(minLength: 0) }
-            }
-            .padding(BigButton.inset)
-            .padding(.trailing, 14)
-            .frame(maxWidth: primary ? .infinity : nil)
-            .foregroundStyle(primary ? Palette.ctaInk : .primary)
-            .contentShape(Capsule())
-            .glassCapsule(tint: primary ? Palette.cta : nil)
+        if let hold {
+            // Tự xử lý chạm / nhấn giữ thay cho Button + LongPressGesture: hai cái đó chạy song song nên giữ lâu rồi nhả
+            // vẫn bị tính thêm một lần chạm. Ở đây một lần nhấn chỉ ra đúng một việc: giữ đủ lâu là nhấn giữ (nhả tay
+            // không làm gì nữa), nhả sớm trong nút là chạm, kéo ra ngoài rồi nhả là bỏ.
+            label
+                .scaleEffect(down ? 0.94 : 1).opacity(down ? 0.72 : 1)
+                .animation(down ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35), value: down)
+                .gesture(DragGesture(minimumDistance: 0)
+                    .updating($touching) { _, on, _ in on = true }
+                    .onChanged { v in
+                        let inside = abs(v.translation.width) < 60 && abs(v.translation.height) < 60
+                        if !down && !held && timer == nil && inside {
+                            down = true
+                            timer = Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(380))
+                                guard !Task.isCancelled else { return }
+                                held = true; down = false
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                hold()
+                            }
+                        } else if !inside, !held {
+                            timer?.cancel(); down = false   // kéo ra ngoài: bỏ lần nhấn này
+                        }
+                    }
+                    .onEnded { v in
+                        let tapped = down && !held
+                        timer?.cancel(); timer = nil
+                        down = false; held = false
+                        if tapped { action() }
+                    })
+                // Ngón tay rời nút (nhả hoặc bị huỷ): dọn trạng thái để lần nhấn sau bắt đầu lại từ đầu
+                .onChange(of: touching) { _, on in
+                    guard !on else { return }
+                    timer?.cancel(); timer = nil; held = false
+                    DispatchQueue.main.async { down = false }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(title)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { action() }
+                .accessibilityAction(named: Text(L("Nói để ghi")), hold)
+        } else {
+            Button(action: action) { label }.buttonStyle(Pressable())
         }
-        .buttonStyle(Pressable())
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in
-            guard let hold else { return }
-            heldAt = Date()
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            hold()
-        })
-        .accessibilityActions { if let hold { Button(L("Nói để ghi"), action: hold) } }
+    }
+
+    // Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với đầu nút bo tròn).
+    // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
+    private var label: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).font(.system(size: 24, weight: .semibold))
+                .frame(width: 56, height: 56)
+                .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
+            if primary { Spacer(minLength: 0) }
+            Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
+                // Chữ được ưu tiên chỗ trước hai khoảng trống hai bên: không thì khi bật Chữ đậm (Trợ năng)
+                // chữ rộng ra mà vẫn bị cắt thành "Quét…" dù nút còn trống
+                .layoutPriority(1)
+                .minimumScaleFactor(0.7)
+            if primary { Spacer(minLength: 0) }
+        }
+        .padding(BigButton.inset)
+        .padding(.trailing, 14)
+        .frame(maxWidth: primary ? .infinity : nil)
+        .foregroundStyle(primary ? Palette.ctaInk : .primary)
+        .contentShape(Capsule())
+        .glassCapsule(tint: primary ? Palette.cta : nil)
     }
 }
 

@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let stats: [String: String] = [
+        "Chi vào đâu": "Where it goes",
         "Đã dùng %ld%% hạn mức %@": "%ld%% of the %@ limit used",
         "Tổng chi": "Total",
         // ghi chú của dữ liệu mẫu quay phim (Store.filmSeed)

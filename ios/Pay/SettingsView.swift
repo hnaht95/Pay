@@ -13,7 +13,6 @@ struct SettingsView: View {
     @State private var typingBudget = false
     @State private var budgetText = ""
     /// Sửa / thêm danh mục tự tạo (nil k = thêm mới)
-    @State private var editingCat: CatEdit?
     /// Ngôn ngữ đang chọn trong Cài đặt
     @State private var lang = Lang.current
 
@@ -25,7 +24,6 @@ struct SettingsView: View {
                     .listRowBackground(Color.clear)
 
                 budgetSection
-                categorySection
                 recurringSection
                 cloudSection
                 bankSection
@@ -76,39 +74,10 @@ struct SettingsView: View {
         } message: {
             Text(L("Số tiền tiêu mỗi tháng. Để trống là bỏ ngân sách."))
         }
-        .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store) }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
     }
 
     // MARK: Danh mục tự tạo
-
-    private var categorySection: some View {
-        let list = store.cats.values.filter { $0.on && !Category.isBuiltin($0.k) }.sorted { $0.u < $1.u }
-        return Section {
-            ForEach(list, id: \.k) { c in
-                Button { editingCat = CatEdit(cat: c) } label: {
-                    HStack(spacing: 12) {
-                        Text(c.icon).font(.system(size: 18))
-                            .frame(width: 34, height: 34).background(CategoryTone.bg(c.tone), in: Circle())
-                        Text(c.name).foregroundStyle(.primary).lineLimit(1)
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
-                    }
-                }
-                .tint(.primary)   // tên chữ thường, không xanh như liên kết
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) { store.removeCategory(c.k) } label: { Image(systemName: "trash.fill") }
-                }
-            }
-            Button { editingCat = CatEdit(cat: nil) } label: { row(L("Thêm danh mục"), "plus", .orange) }
-        } header: {
-            Text(L("Danh mục"))
-        } footer: {
-            Text((list.isEmpty ? L("Ngoài 6 danh mục có sẵn, bạn tạo thêm được danh mục riêng như Thú cưng, Con nhỏ, Gym.")
-                               : L("Chạm để sửa, vuốt sang trái để xoá. Khoản đã ghi của danh mục bị xoá sẽ hiện là Khác."))
-                 + " " + L("Muốn đổi biểu tượng, màu của danh mục có sẵn thì nhấn giữ ô danh mục ở màn hình chính."))
-        }
-    }
 
     // MARK: Tổng quan
 

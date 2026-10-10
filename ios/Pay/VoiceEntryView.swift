@@ -304,7 +304,7 @@ struct VoiceEntryView: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(c.color, in: Capsule())
-                        .foregroundStyle(.black)
+                        .foregroundStyle(c.ink)
                         if !l.note.isEmpty {
                             Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
                         }

@@ -13,6 +13,10 @@ struct Category: Identifiable, Hashable {
     let kw: [String]
     /// Màu biểu đồ của danh mục tự tạo (danh mục có sẵn dùng bảng màu cố định bên dưới)
     var customChart: Color? = nil
+    /// Màu nền tối (xanh lá đậm, than): chữ trên ô dùng màu trắng
+    var onDark = false
+    /// Màu chữ trên nền màu của danh mục
+    var ink: Color { onDark ? .white : Color(hex: 0x111114) }
     var id: String { k }
 
     init(k: String, icon: String, name: String, color: Color, art: Bool = false, kw: [String], customChart: Color? = nil) {
@@ -120,9 +124,19 @@ enum CategoryTone {
         (0xFF7A7A, 0xC42F2F),   // đỏ
         (0xFFD43B, 0xA88400),   // vàng
         (0xFF8CC6, 0xC2387E),   // hồng
+        // Bộ màu phẳng, đậm (đo từ ảnh mẫu người dùng gửi 10/10/2026): hai màu tối dùng chữ trắng, xem `dark`
+        (0xF5491C, 0xD93A10),   // cam đỏ
+        (0xF4EDE1, 0xB59A6E),   // kem
+        (0xEEAC27, 0xB57C00),   // vàng nghệ
+        (0xADD3D4, 0x3E8E91),   // xanh ngọc nhạt
+        (0x134128, 0x1F6B42),   // xanh lá đậm
+        (0x141414, 0x55555C),   // than
+        (0xFBC1A9, 0xD9703F),   // đào
     ]
-    /// 8 màu đầu là nhạt, 8 màu sau là đậm
-    static let light = 0..<8, strong = 8..<16
+    /// 8 màu đầu là nhạt, 8 màu sau là đậm, 7 màu cuối là bộ màu phẳng
+    static let light = 0..<8, strong = 8..<16, flat = 16..<23
+    /// Màu tối: chữ và biểu tượng trên ô phải trắng
+    static func dark(_ i: Int) -> Bool { i == 20 || i == 21 }
     static func bg(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].bg) }
     static func chart(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].chart) }
 }

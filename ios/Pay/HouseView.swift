@@ -1107,7 +1107,7 @@ struct HouseSpendEditor: View {
                             Text(c.name).font(.system(size: 16, weight: on ? .semibold : .medium))
                         }
                         .padding(.leading, 5).padding(.trailing, 14).padding(.vertical, 5)
-                        .foregroundStyle(on ? Color.black : Color.primary)
+                        .foregroundStyle(on ? c.ink : Color.primary)
                         .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                     }
                     .buttonStyle(Pressable())

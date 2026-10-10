@@ -39,11 +39,15 @@ struct CustomCat: Codable, Hashable {
         if let base = Category.builtin.first(where: { $0.k == k }) {
             // Danh mục có sẵn đã chỉnh: giữ từ khoá gốc, thêm tên mới làm từ khoá
             let kw = base.kw + [Store.noteKey(name)].filter { !$0.isEmpty && !base.kw.contains($0) }
-            return Category(k: k, icon: icon, name: name, color: tone < 0 ? base.color : CategoryTone.bg(tone),
-                            art: base.art && icon == base.icon, kw: kw, customChart: tone < 0 ? nil : CategoryTone.chart(tone))
+            var c = Category(k: k, icon: icon, name: name, color: tone < 0 ? base.color : CategoryTone.bg(tone),
+                             art: base.art && icon == base.icon, kw: kw, customChart: tone < 0 ? nil : CategoryTone.chart(tone))
+            c.onDark = CategoryTone.dark(tone)
+            return c
         }
-        return Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },
-                        customChart: CategoryTone.chart(tone))
+        var c = Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },
+                         customChart: CategoryTone.chart(tone))
+        c.onDark = CategoryTone.dark(tone)
+        return c
     }
 }
 
@@ -199,7 +203,12 @@ final class Store: ObservableObject {
         }
         #if DEBUG
         // "-filmSeed YES": sáu tháng chi tiêu mẫu, không đồng bộ iCloud (để quay phim giới thiệu)
-        if UserDefaults.standard.bool(forKey: "filmSeed") { items = Self.filmSeed(); cats = [:]; budget = 9_000_000; cloudOn = false; return }   // danh mục gốc, không sửa gì
+        if UserDefaults.standard.bool(forKey: "filmSeed") { items = Self.filmSeed(); cats = [:];
+            // "-filmFlat YES": xem thử bộ màu phẳng trên các danh mục có sẵn
+            if UserDefaults.standard.bool(forKey: "filmFlat") {
+                for (i, c) in Category.builtin.enumerated() { cats[c.k] = CustomCat(k: c.k, name: c.rawName, icon: c.icon, tone: [16, 17, 19, 18, 20, 22][i], on: true, u: 1, wide: i == 0) }
+            }
+            budget = 9_000_000; cloudOn = false; return }   // danh mục gốc, không sửa gì
         #endif
         if budget > 0 && budgetHistory.isEmpty { rememberBudget() }   // máy đã đặt ngân sách từ trước khi có ghi nhớ theo tháng
         if runRecurring() { writeLocal() }   // ghi các khoản định kỳ đã tới hạn khi app tắt

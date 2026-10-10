@@ -215,7 +215,7 @@ final class House: ObservableObject {
     }
 
     /// Màu riêng cho mỗi người (theo mã), dùng cho ảnh đại diện
-    func tone(_ id: String) -> Int { Int(Settle.hash(id) % UInt32(CategoryTone.all.count)) }
+    func tone(_ id: String) -> Int { Int(Settle.hash(id) % 16) }   // 16 màu nhạt + đậm: thêm bộ màu mới không làm đổi màu ảnh đại diện đã quen
 
     var memberName: (String) -> String {
         let m = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0.name) })

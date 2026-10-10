@@ -116,7 +116,7 @@ struct EntryView: View {
                                 Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
                             }
                             .padding(.leading, 6).padding(.trailing, 16).padding(.vertical, 6)
-                            .foregroundStyle(on ? Color.black : Color.primary)
+                            .foregroundStyle(on ? c.ink : Color.primary)
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
                         .buttonStyle(Pressable())

@@ -322,7 +322,7 @@ struct HomeView: View {
             Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
                 .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
                 .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, minHeight: 140)
+                .frame(maxWidth: .infinity, minHeight: 124)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
@@ -330,22 +330,18 @@ struct HomeView: View {
         .accessibilityLabel(L("Thêm danh mục"))
     }
 
+    /// Ô danh mục: chỉ tên và số tiền trên nền màu (bỏ biểu tượng và dấu +, thử theo ảnh mẫu); ô dài thì số to hơn
     private func tile(_ c: Category, total: Int) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                CategoryIcon(c: c, size: 30)
-                    .frame(width: 52, height: 52).background(.white, in: Circle())
-                Spacer()
-                Image(systemName: "plus").font(.system(size: 14, weight: .bold))
-                    .frame(width: 30, height: 30).background(.white.opacity(0.6), in: Circle())
-            }
+        let wide = store.isWide(c.k)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.75).lineLimit(1)
             Spacer(minLength: 14)
-            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
-            Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(fmt(total)).font(.system(size: wide ? 44 : 28, weight: .bold)).kerning(wide ? -1.5 : -0.5)
+                .lineLimit(1).minimumScaleFactor(0.5)
         }
-        .foregroundStyle(Color(hex: 0x111114))
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
+        .foregroundStyle(c.ink)
+        .padding(18)
+        .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
         .background(c.color, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 

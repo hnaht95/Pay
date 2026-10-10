@@ -647,7 +647,7 @@ struct CategoryEditor: View {
                             .opacity(shownName.isEmpty ? 0.4 : 1)
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(Color(hex: 0x111114))
+                    .foregroundStyle(CategoryTone.dark(fTone) ? Color.white : Color(hex: 0x111114))
                     .padding(16)
                     .background(previewColor, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
@@ -680,6 +680,7 @@ struct CategoryEditor: View {
                     }
                     swatchRow(CategoryTone.light)
                     swatchRow(CategoryTone.strong)
+                    swatchRow(CategoryTone.flat)
     }
 
     /// Phim: bản tự vẽ trông như Form (Form của hệ thống không vẽ ra PDF được): cùng các phần, cùng thứ tự
@@ -784,7 +785,7 @@ struct CategoryEditor: View {
             }
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone }
-                else { tone = store.cats.count % CategoryTone.all.count; nameFocused = true }
+                else { tone = store.cats.count % 16; nameFocused = true }
             }
         }
     }

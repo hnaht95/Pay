@@ -199,6 +199,8 @@ struct VoiceEntryView: View {
     /// Khối biến hình còn vẽ không (thành thẻ xong thì ẩn, để thẻ đổi cỡ về sau không lộ khối phía dưới)
     @State private var blob = true
     @State private var cardRect: CGRect = .zero
+    /// Bấm "Nói lại": ẩn tạm phần chữ trong lúc thẻ giãn ra (xem `retry`)
+    @State private var veiled = false
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
@@ -297,15 +299,15 @@ struct VoiceEntryView: View {
         // Khoảng cách 18 giữa các phần tự đặt (không dùng spacing của VStack) để phần sóng âm co về 0 được cả khoảng cách
         // của nó: ghi xong thẻ thu gọn dần, nội dung phía trên hạ xuống theo (phim: theo `settle`; app: theo animation bên dưới)
         VStack(alignment: .leading, spacing: 0) {
-            header
-            amountBlock.padding(.top, 18)
+            header.opacity(veiled ? 0 : 1)
+            amountBlock.padding(.top, 18).opacity(veiled ? 0 : 1)
             let settle = film?.voice?.settle ?? 0
             if isListening || (film != nil && settle < 1) {
                 // Điểm nguyên: khi vẽ ra PDF chữ luôn nằm ở toạ độ nguyên, hình thì không — dịch lẻ thì chữ và nền lệch nhau
                 let room = (74 * (1 - settle)).rounded()   // 56 sóng âm + 18 khoảng cách
                 Waveform(meter: mic.meter, film: film)
                     .frame(height: max(0, room - 18), alignment: .center).clipped()
-                    .opacity(Double(1 - settle))
+                    .opacity(Double(1 - settle) * (veiled ? 0 : 1))
                     .padding(.top, min(18, room))
                     .transition(Self.swap)
             }
@@ -555,18 +557,20 @@ struct VoiceEntryView: View {
         }
     }
 
-    /// Đổi ngay sang dạng "Đang nghe" như lúc mới mở thẻ (`starting`), không hiệu ứng: để hiệu ứng thu/giãn của thẻ chạy
-    /// thì chữ cũ ("Chưa nghe rõ", "Đã nghe: …") và chữ mới mờ vào nhau tại chỗ, đè lên sóng âm. Micro chưa kịp bật
-    /// cũng đã hiện như đang nghe, nên không nháy qua dạng trung gian.
+    /// Sang dạng "Đang nghe" như lúc mới mở thẻ (`starting`: micro chưa kịp bật cũng hiện như đang nghe, không nháy qua
+    /// dạng trung gian). Chữ cũ ("Chưa nghe rõ", "Đã nghe: …") mờ đi trước, thẻ giãn ra cho sóng âm trong lúc phần chữ
+    /// đang ẩn, rồi chữ mới mới hiện: để chữ cũ và mới cùng hiện trong lúc thẻ giãn thì chúng mờ vào nhau, đè lên sóng âm;
+    /// còn đổi tức thì thẻ nhảy cao lên một khúc, trông giật.
     private func retry() {
-        var t = Transaction()
-        t.disablesAnimations = true
-        withTransaction(t) {
-            notUnderstood = false
-            undone = false
-            starting = true
-        }
+        withAnimation(.easeOut(duration: 0.1)) { veiled = true }
         Task {
+            try? await Task.sleep(for: .milliseconds(100))
+            withAnimation(Self.settle) {
+                notUnderstood = false
+                undone = false
+                starting = true
+            }
+            withAnimation(.easeOut(duration: 0.18).delay(0.3)) { veiled = false }
             await mic.start()
             starting = false
         }

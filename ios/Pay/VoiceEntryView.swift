@@ -252,8 +252,10 @@ struct VoiceEntryView: View {
                 .allowsHitTesting(false)
                 if shown {
                     card
+                        // Đo khung của chính thẻ (trước khi thêm lề), không tự trừ lề: trừ lề lệch vài điểm làm khối biến hình dừng
+                        // to hơn thẻ, lúc thẻ thay chỗ khối thì trông như thẻ co thêm một nhịp
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { cardRect = $0 }
                         .padding(.horizontal, 12).padding(.bottom, 34)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global).insetBy(dx: 12, dy: 0).divided(atDistance: 34, from: .maxYEdge).remainder } action: { cardRect = $0 }
                         // Chỉ mờ dần, không scaleEffect: scaleEffect gom cả thẻ thành một khối có toạ độ riêng, làm lúc nghe xong
                         // khung thẻ nhảy tức thì còn các nút cũ rơi xuống dưới mép thẻ (cách mở từ nút Tác vụ không bị vì không có nó)
                         .opacity(filled ? 1 : 0)
@@ -279,7 +281,9 @@ struct VoiceEntryView: View {
                 withAnimation(.easeOut(duration: 0.1)) { faced = false }
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.78)) { morph = 1 }   // nảy nhẹ khi xuất hiện
                 withAnimation(.easeOut(duration: 0.2).delay(0.24)) { filled = true }   // chữ hiện khi khối đã lớn gần đủ, không tràn ra ngoài khối
-                Task { try? await Task.sleep(for: .milliseconds(560)); if filled { blob = false } }
+                // Khối nhường chỗ cho thẻ bằng cách mờ chéo (khối mờ đi, nền thẻ hiện lên), không tắt phụt: khối dừng lệch thẻ vài
+                // điểm, tắt phụt thì trông như thẻ co thêm một nhịp
+                Task { try? await Task.sleep(for: .milliseconds(560)); if filled { withAnimation(.easeInOut(duration: 0.25)) { blob = false } } }
                 // Bật micro (dựng phiên âm thanh, chạy engine) chiếm luồng chính vài chục tới vài trăm mili giây: để nó chạy
                 // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng. Chờ hiệu ứng xong rồi mới bật.
                 try? await Task.sleep(for: .milliseconds(470))

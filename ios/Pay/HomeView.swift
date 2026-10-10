@@ -453,15 +453,31 @@ struct HomeView: View {
 // MARK: Thành phần dùng chung
 
 extension View {
-    /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (vuốt hết cỡ là xoá; chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
-    func expenseSwipe(delete: @escaping () -> Void) -> some View {
-        self
+    /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
+    func expenseSwipe(delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete)) }
+}
+
+/// Bấm Xoá: hàng trượt sang trái và mờ đi (nút đỏ mờ theo khi thao tác vuốt đóng lại), xong mới xoá để các hàng dưới
+/// trượt lên. Không dùng nút xoá kiểu destructive / vuốt hết cỡ của iOS: nó kéo nút đỏ dài hết hàng rồi cắt lẫn vào hàng dưới.
+private struct ExpenseSwipe: ViewModifier {
+    let delete: () -> Void
+    @State private var gone = false
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: gone ? -420 : 0)
+            .opacity(gone ? 0 : 1)
             .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
-                Button(role: .destructive, action: delete) { Image(systemName: "trash.fill") }.accessibilityLabel(L("Xoá"))
+                Button {
+                    withAnimation(.easeIn(duration: 0.22)) { gone = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { delete() }
+                } label: { Image(systemName: "trash.fill") }
+                .tint(.red)
+                .accessibilityLabel(L("Xoá"))
             }
     }
 }

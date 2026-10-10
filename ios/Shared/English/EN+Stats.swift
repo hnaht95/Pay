@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let stats: [String: String] = [
+        "Đã dùng %ld%% hạn mức %@": "%ld%% of the %@ limit used",
+        "Tổng chi": "Total",
         // ghi chú của dữ liệu mẫu quay phim (Store.filmSeed)
         "ăn trưa": "lunch", "cà phê": "coffee", "ăn sáng": "breakfast", "ăn tối": "dinner",
         "trà sữa": "milk tea", "đi chợ": "groceries", "tiền nhà": "rent", "điện nước": "power & water",

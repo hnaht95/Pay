@@ -45,7 +45,22 @@ struct EntryView: View {
                     }
                     .accessibilityHidden(true)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
+                if isEdit {
+                    // Ngày giờ của khoản, cùng hàng với số tiền: chạm để đổi (mở bảng lịch tự vẽ)
+                    Button { noteFocused = false; withAnimation(.snappy) { editing = true }; pickingDate = true } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "calendar").font(.system(size: 13, weight: .semibold))
+                            Text(stamp(when)).font(.system(size: 15, weight: .medium)).lineLimit(1)
+                        }
+                        .padding(.horizontal, 12).frame(height: 36)
+                        .foregroundStyle(.primary)
+                        .background(Palette.pill, in: Capsule())
+                        .fixedSize()
+                    }
+                    .buttonStyle(Pressable())
+                    .accessibilityLabel(L("Ngày giờ"))
+                }
             }
             // Ô số tiền: khung viền mảnh, nhạt, không nền
             .padding(.horizontal, 18).padding(.vertical, 12)
@@ -87,13 +102,7 @@ struct EntryView: View {
         .swipeDownToClose { dismiss() }
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            // Lịch và giờ của iOS (không cho chọn ngày trong tương lai); kéo xuống là xong
-            DatePicker(L("Ngày giờ"), selection: $when, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
-                .datePickerStyle(.graphical).labelsHidden()
-                .environment(\.locale, Lang.locale)
-                .padding(.horizontal, 16).padding(.top, 24)
-                .presentationDetents([.height(500)])
-                .sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(560)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -116,22 +125,8 @@ struct EntryView: View {
                 .foregroundStyle(.primary)
                 Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
             }
-            if isEdit && editing {
-                // Đang sửa một khoản đã ghi: đổi được cả ngày giờ. Viên thuốc cùng kiểu với các nút khác của màn này, chạm mở bảng chọn
-                Button { noteFocused = false; pickingDate = true } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "calendar").font(.system(size: 14, weight: .semibold))
-                        Text(stamp(when)).font(.system(size: 15, weight: .medium))
-                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 14).frame(height: 36)
-                    .foregroundStyle(.primary)
-                    .background(Palette.pill, in: Capsule())
-                }
-                .buttonStyle(Pressable())
-                .accessibilityLabel(L("Ngày giờ"))
-                .padding(.leading, 56).padding(.top, 4)
-            } else if let sub { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 56).lineLimit(2) }
+            // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
+            if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 56).lineLimit(2) }
         }
         .padding(.top, 8)
     }
@@ -356,4 +351,121 @@ struct KeyStyle: ButtonStyle {
             .foregroundStyle(.primary)
             .background(configuration.isPressed ? Palette.pill : .clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
+}
+
+/// Bảng chọn ngày giờ tự vẽ (không dùng DatePicker của iOS): lịch tháng bắt đầu từ thứ Hai, hai ô chỉnh giờ / phút, nút Xong.
+/// Không chọn được thời điểm trong tương lai.
+struct DateSheet: View {
+    @Binding var when: Date
+    @Environment(\.dismiss) private var dismiss
+    /// Tháng đang xem
+    @State private var month = Date()
+
+    private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
+    private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
+    private var isThisMonth: Bool { cal.isDate(month, equalTo: Date(), toGranularity: .month) }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Text(title).font(.system(size: 21, weight: .bold))
+                Spacer()
+                arrow("chevron.left", L("Tháng trước")) { shift(-1) }
+                arrow("chevron.right", L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
+            }
+            let names = Lang.isEnglish ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+            HStack(spacing: 0) {
+                ForEach(names, id: \.self) { Text($0).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
+            }
+            // Ô trống đầu tháng cho ngày 1 rơi đúng cột thứ của nó
+            let blanks = (cal.component(.weekday, from: first) + 5) % 7
+            let days = cal.range(of: .day, in: .month, for: first)!.count
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 4) {
+                // Mã âm cho ô trống, kẻo trùng mã với ngày 1, 2… (trùng thì các ngày đó không được vẽ)
+                ForEach((0..<blanks).map { -1 - $0 }, id: \.self) { _ in Color.clear.frame(height: 42) }
+                ForEach(1...days, id: \.self) { d in
+                    let date = cal.date(byAdding: .day, value: d - 1, to: first)!
+                    let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
+                    Button { pick(date) } label: {
+                        Text("\(d)").font(.system(size: 17, weight: on || today ? .bold : .regular))
+                            .foregroundStyle(on ? Palette.ctaInk : .primary)
+                            .frame(width: 42, height: 42)
+                            .background(on ? Palette.cta : .clear, in: Circle())
+                            .overlay { if today && !on { Circle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1.5) } }
+                            .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(future ? 0.25 : 1).disabled(future)
+                }
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 10) {
+                Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
+                Spacer()
+                dial(cal.component(.hour, from: when)) { bump(.hour, $0) }
+                Text(":").font(.system(size: 22, weight: .bold)).foregroundStyle(.secondary)
+                dial(cal.component(.minute, from: when)) { bump(.minute, $0 * 5) }
+            }
+            Button { dismiss() } label: {
+                Text(L("Xong")).font(.system(size: 19, weight: .semibold))
+                    .frame(maxWidth: .infinity, minHeight: 58)
+                    .foregroundStyle(Palette.ctaInk).background(Palette.cta, in: Capsule())
+            }
+            .buttonStyle(Pressable())
+        }
+        .padding(.horizontal, 20).padding(.top, 34).padding(.bottom, 12)
+        .background(Palette.surface.ignoresSafeArea())
+        .onAppear { month = when }
+    }
+
+    private var title: String {
+        let c = cal.dateComponents([.month, .year], from: month)
+        guard Lang.isEnglish else { return "Tháng \(c.month!), \(c.year!)" }
+        let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "LLLL yyyy"
+        return f.string(from: month)
+    }
+
+    private func arrow(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Image(systemName: symbol).font(.system(size: 14, weight: .bold)).foregroundStyle(.primary)
+                .frame(width: 38, height: 38).background(Palette.pill, in: Circle())
+        }
+        .buttonStyle(Pressable()).accessibilityLabel(label)
+    }
+
+    /// Một ô số có nút trừ / cộng hai bên
+    private func dial(_ value: Int, _ step: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: 2) {
+            Button { step(-1) } label: { Image(systemName: "minus").font(.system(size: 13, weight: .bold)).frame(width: 34, height: 40) }
+            Text(String(format: "%02d", value)).font(.system(size: 22, weight: .bold).monospacedDigit()).frame(width: 34)
+                .contentTransition(.numericText())
+            Button { step(1) } label: { Image(systemName: "plus").font(.system(size: 13, weight: .bold)).frame(width: 34, height: 40) }
+        }
+        .foregroundStyle(.primary).buttonStyle(Pressable())
+        .background(Palette.pill, in: Capsule())
+    }
+
+    private func shift(_ by: Int) {
+        guard let m = cal.date(byAdding: .month, value: by, to: first), m <= Date() else { return }
+        withAnimation(.snappy) { month = m }
+    }
+
+    /// Đổi ngày, giữ nguyên giờ phút
+    private func pick(_ day: Date) {
+        let t = cal.dateComponents([.hour, .minute], from: when)
+        UISelectionFeedbackGenerator().selectionChanged()
+        set(cal.date(bySettingHour: t.hour ?? 0, minute: t.minute ?? 0, second: 0, of: day) ?? day)
+    }
+
+    private func bump(_ unit: Calendar.Component, _ by: Int) {
+        // Giờ / phút xoay vòng trong chính ngày đó (không nhảy sang ngày khác)
+        var c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: when)
+        if unit == .hour { c.hour = ((c.hour ?? 0) + by + 24) % 24 }
+        else { c.minute = (((c.minute ?? 0) / 5 * 5) + by + 60) % 60 }
+        UISelectionFeedbackGenerator().selectionChanged()
+        if let d = cal.date(from: c) { set(d) }
+    }
+
+    private func set(_ d: Date) { withAnimation(.snappy(duration: 0.2)) { when = min(d, Date()) } }
 }

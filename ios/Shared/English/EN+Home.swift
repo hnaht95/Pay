@@ -2,6 +2,10 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Xong": "Done",
+        "Tháng sau": "Next month",
+        "Tháng trước": "Previous month",
+        "Giờ": "Time",
         "Ngày giờ": "Date and time",
         "Chưa chi": "Nothing yet",
         "Thu ô về nửa hàng": "Make tile half width",

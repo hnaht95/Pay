@@ -88,6 +88,8 @@ struct FilmScreen<Content: View>: View {
     var dark = false
     /// Thanh trạng thái của màn hình khoá: biểu tượng trắng trên nền tối, không có giờ ở góc trái
     var lightStatus = false
+    /// Nội dung là ảnh chụp cả màn hình (đã có sẵn thanh trạng thái): không vẽ thêm thanh trạng thái
+    var bare = false
     /// Chấm chạm: vị trí và độ rõ (0…1)
     var touch: (at: CGPoint, alpha: CGFloat, scale: CGFloat)? = nil
     @ViewBuilder let content: Content
@@ -96,7 +98,7 @@ struct FilmScreen<Content: View>: View {
         ZStack(alignment: .top) {
             Palette.bg
             content
-            statusBar
+            if !bare { statusBar }
             if let touch {
                 Circle().fill(.black.opacity(0.16))
                     .overlay { Circle().strokeBorder(.white.opacity(0.85), lineWidth: 2) }

@@ -168,8 +168,21 @@ struct VoiceEntryView: View {
     @State private var undone = false
     @State private var autoClose: Task<Void, Never>?
     @State private var shown = false
-    /// Mở bằng vuốt lên từ nút Quét QR (nút đen góc dưới phải): thẻ phóng ra từ nút đó và thu về đó
-    var fromButton = false
+    /// Thẻ vừa mở, micro chưa kịp chạy
+    @State private var starting = true
+    /// Mở bằng vuốt lên từ nút Quét QR: khung của nút (toạ độ màn hình). Thẻ biến hình từ chính nút đó ra
+    /// (khối màu nút lớn dần thành khung thẻ, nội dung thẻ hiện dần lên) và thu về lại nút khi đóng
+    var from: CGRect? = nil
+    /// Thẻ đang nằm ngay trên màn hình chính (không qua fullScreenCover, để không dính hiệu ứng trượt lên của iOS):
+    /// đóng thì gọi cái này thay cho dismiss
+    var onClose: (() -> Void)? = nil
+    /// Mức biến hình: 0 = còn là nút, 1 = đã thành thẻ
+    @State private var morph: CGFloat = 0
+    /// Nội dung thẻ đã hiện chưa (hiện sau khi khối đã lớn gần xong, ẩn trước khi khối thu về)
+    @State private var filled = false
+    /// Khối biến hình còn vẽ không (thành thẻ xong thì ẩn, để thẻ đổi cỡ về sau không lộ khối phía dưới)
+    @State private var blob = true
+    @State private var cardRect: CGRect = .zero
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
@@ -178,7 +191,8 @@ struct VoiceEntryView: View {
     @Environment(\.film) private var film
 
     private var heard: String { film?.voice?.text ?? mic.text }
-    private var isListening: Bool { film?.voice.map { $0.saved == nil } ?? (mic.phase == .listening) }
+    /// Micro đang khởi động (vài phần mười giây đầu) cũng hiện như đang nghe: thẻ bật lên đã đủ nội dung, không đổi giữa chừng
+    private var isListening: Bool { film?.voice.map { $0.saved == nil } ?? (mic.phase == .listening || starting) }
     private var savedNow: Expense? { film != nil ? film?.voice?.saved : saved }
 
     var body: some View {
@@ -195,12 +209,36 @@ struct VoiceEntryView: View {
         ZStack(alignment: .bottom) {
             Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
                 .onTapGesture { close() }
-            if shown {
+            if let from {
+                // Khối biến hình: từ khung và màu của nút tới khung và màu của thẻ
+                GeometryReader { g in
+                    let o = g.frame(in: .global).origin
+                    let to = cardRect == .zero ? from : cardRect
+                    let r = CGRect(x: from.minX + (to.minX - from.minX) * morph, y: from.minY + (to.minY - from.minY) * morph,
+                                   width: from.width + (to.width - from.width) * morph, height: from.height + (to.height - from.height) * morph)
+                    let shape = RoundedRectangle(cornerRadius: from.height / 2 + (42 - from.height / 2) * morph, style: .continuous)
+                    shape.fill(Palette.cta)
+                        .overlay(shape.fill(Palette.surface).opacity(Double(morph)))
+                        .frame(width: r.width, height: r.height)
+                        .position(x: r.midX - o.x, y: r.midY - o.y)
+                        .opacity(blob ? 1 : 0)
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                if shown {
+                    card
+                        .padding(.horizontal, 12).padding(.bottom, 34)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global).insetBy(dx: 12, dy: 0).divided(atDistance: 34, from: .maxYEdge).remainder } action: { cardRect = $0 }
+                        .opacity(filled ? 1 : 0)
+                        .scaleEffect(filled ? 1 : 0.94, anchor: .bottom)
+                        .transition(.identity)
+                }
+            } else if shown {
                 // Nâng lên khỏi đáy để thẻ không dính vào góc bo màn hình và các ô phía sau
                 card
                     .padding(.horizontal, 12).padding(.bottom, 34)
                     // Chỉ trượt, không mờ dần: thẻ mờ nửa chừng đè lên các ô phía sau trông như bóng ma
-                    .transition(fromButton ? .scale(scale: 0.08, anchor: UnitPoint(x: 0.76, y: 0.94)) : .move(edge: .bottom))
+                    .transition(.move(edge: .bottom))
             }
         }
         .ignoresSafeArea(.container, edges: .bottom)
@@ -209,7 +247,15 @@ struct VoiceEntryView: View {
         .task {
             shown = true
             mic.onFinish = { said in handle(said) }
+            if from != nil {
+                // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
+                try? await Task.sleep(for: .milliseconds(30))
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.84)) { morph = 1 }
+                withAnimation(.easeOut(duration: 0.22).delay(0.16)) { filled = true }
+                Task { try? await Task.sleep(for: .milliseconds(520)); if filled { blob = false } }
+            }
             await mic.start()
+            starting = false
         }
         .onDisappear { mic.stop() }
     }
@@ -241,6 +287,8 @@ struct VoiceEntryView: View {
         // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
         .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(color: .black.opacity(0.18), radius: 24, y: 8)
+        // Cả thẻ là một khối khi bật lên / thu về: chữ và sóng âm đi cùng khung, không tự hiện tại chỗ
+        .geometryGroup()
     }
 
     private var header: some View {
@@ -469,12 +517,22 @@ struct VoiceEntryView: View {
     /// Để hệ thống tự kéo cả màn hình xuống thì nền tối tắt phụt và bóng đổ của thẻ bị vệt.
     private func leave() {
         guard shown else { return }
-        withAnimation(.easeIn(duration: 0.25)) { shown = false }
+        if from != nil {
+            // Thu về nút: nội dung mờ đi trước, rồi khối co lại thành nút
+            blob = true
+            withAnimation(.easeIn(duration: 0.12)) { filled = false }
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.9).delay(0.08)) { morph = 0 }
+            withAnimation(.easeIn(duration: 0.3).delay(0.1)) { shown = false }
+            // Khối đã co về đúng khung nút: mờ đi cho nút thật (có biểu tượng và chữ) lộ ra, không bị giật
+            withAnimation(.easeOut(duration: 0.12).delay(0.34)) { blob = false }
+        } else {
+            withAnimation(.easeIn(duration: 0.25)) { shown = false }
+        }
         Task {
-            try? await Task.sleep(for: .milliseconds(270))
+            try? await Task.sleep(for: .milliseconds(from != nil ? 470 : 270))
             var t = Transaction()
             t.disablesAnimations = true
-            withTransaction(t) { dismiss() }
+            withTransaction(t) { if let onClose { onClose() } else { dismiss() } }
         }
     }
 }

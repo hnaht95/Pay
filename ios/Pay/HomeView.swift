@@ -27,8 +27,8 @@ struct HomeView: View {
     @State private var showStats = false
     @State private var showHouse = false
     @State private var listening = false
-    /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: phóng ra từ nút thay vì trượt lên từ đáy
-    @State private var voiceFromButton = false
+    /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: khung của nút, thẻ biến hình từ đó ra thay vì trượt lên từ đáy
+    @State private var voiceFrom: CGRect?
     @State private var scanned: String?
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
     /// mở lại sáng hôm sau vẫn hiện số của hôm qua
@@ -96,8 +96,20 @@ struct HomeView: View {
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store).sheetGrabber() }
-        .fullScreenCover(isPresented: $listening, onDismiss: { voiceFromButton = false }) {
-            VoiceEntryView(fromButton: voiceFromButton, onScan: {
+        // Vuốt lên từ nút Quét QR: thẻ nói để ghi là một lớp ngay trên màn hình chính, biến hình từ nút ra.
+        // (fullScreenCover của iOS luôn trượt cả lớp từ đáy lên, làm hỏng hiệu ứng biến hình.)
+        .overlay {
+            if let voiceFrom {
+                VoiceEntryView(from: voiceFrom, onClose: { self.voiceFrom = nil }, onScan: {
+                    Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
+                }, onEdit: { e in
+                    Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
+                })
+                .environmentObject(store)
+            }
+        }
+        .fullScreenCover(isPresented: $listening, onDismiss: {}) {
+            VoiceEntryView(onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
             }, onEdit: { e in
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .edit(e) }
@@ -123,7 +135,7 @@ struct HomeView: View {
     private func run(_ k: QuickKind) async {
         let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || listening || listing != nil
         if (k == .scan && scanning) || (k == .voice && listening) { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false; listing = nil
+        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false; listing = nil; voiceFrom = nil
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true
@@ -384,11 +396,9 @@ struct HomeView: View {
             HStack(spacing: 12) {
                 BigButton(title: L("Nhập"), icon: "plus", primary: false) { entry = .new(cat: nil) }
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
-                BigButton(title: L("Quét QR"), icon: "qrcode.viewfinder", primary: true, swipeUp: {
-                    voiceFromButton = true
-                    // Không dùng hiệu ứng trượt lên của iOS: thẻ tự phóng ra từ nút
-                    var t = Transaction(animation: nil); t.disablesAnimations = true
-                    withTransaction(t) { listening = true }
+                BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, swipeUp: { frame in
+                    voiceFrom = frame
+                    // Thẻ hiện ngay trên màn hình chính (xem lớp phủ bên dưới), không qua fullScreenCover
                 }) { scanning = true }
             }
         }
@@ -501,11 +511,12 @@ struct BigButton: View {
     let icon: String
     let primary: Bool
     /// Việc làm khi vuốt lên từ nút (nếu có)
-    var swipeUp: (() -> Void)? = nil
+    var swipeUp: ((CGRect) -> Void)? = nil
+    /// Khung của nút trên màn hình, để thẻ nói để ghi biến hình từ đúng chỗ này ra
+    @State private var frame: CGRect = .zero
     let action: () -> Void
-    /// Nút có vuốt lên thì tự theo dõi ngón tay: đang nhấn, đang kéo lên, và lần nhấn này đã ra việc gì chưa
+    /// Nút có vuốt lên thì tự theo dõi ngón tay: đang nhấn, và lần nhấn này đã ra việc gì chưa
     @State private var down = false
-    @State private var lifting = false
     @State private var fired = false
     /// Ngón tay còn trên nút không; iOS tự đưa về false cả khi cử chỉ bị huỷ (vd màn hình khác vừa mở đè lên)
     @GestureState private var touching = false
@@ -515,6 +526,7 @@ struct BigButton: View {
             // Tự xử lý bằng một cử chỉ, mỗi lần nhấn chỉ ra đúng một việc: kéo lên quá 30pt là vuốt lên (làm ngay,
             // nhả tay không làm gì nữa), nhả tại chỗ là chạm, kéo đi hướng khác rồi nhả là bỏ.
             label
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
                 .scaleEffect(down ? 0.94 : 1).opacity(down ? 0.72 : 1)
                 .animation(down ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35), value: down)
                 .gesture(DragGesture(minimumDistance: 0)
@@ -523,11 +535,10 @@ struct BigButton: View {
                         guard !fired else { return }
                         down = true
                         let up = -v.translation.height
-                        lifting = up > 10 && abs(v.translation.width) < 50   // bắt đầu kéo lên: biểu tượng đổi thành micro
                         if up > 30, abs(v.translation.width) < 50 {
                             fired = true; down = false
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            swipeUp()
+                            swipeUp(frame)
                         }
                     }
                     .onEnded { v in
@@ -538,13 +549,13 @@ struct BigButton: View {
                 // Ngón tay rời nút (nhả hoặc bị huỷ): dọn trạng thái để lần nhấn sau bắt đầu lại từ đầu
                 .onChange(of: touching) { _, on in
                     guard !on else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !touching { fired = false; lifting = false; down = false } }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !touching { fired = false; down = false } }
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(title)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { action() }
-                .accessibilityAction(named: Text(L("Nói để ghi")), swipeUp)
+                .accessibilityAction(named: Text(L("Nói để ghi"))) { swipeUp(frame) }
         } else {
             Button(action: action) { label }.buttonStyle(Pressable())
         }
@@ -554,10 +565,7 @@ struct BigButton: View {
     // Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
     private var label: some View {
         HStack(spacing: 10) {
-            // Đang kéo lên: biểu tượng đổi thành micro (sắp mở nói để ghi)
-            Image(systemName: lifting || fired ? "mic.fill" : icon).font(.system(size: 24, weight: .semibold))
-                .contentTransition(.symbolEffect(.replace))
-                .animation(.snappy(duration: 0.2), value: lifting || fired)
+            Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                 .frame(width: 56, height: 56)
                 .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
             if primary { Spacer(minLength: 0) }

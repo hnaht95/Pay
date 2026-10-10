@@ -2,6 +2,12 @@ import Foundation
 
 extension English {
     static let stats: [String: String] = [
+        "Tháng trước": "Previous month",
+        "Tháng sau": "Next month",
+        "Tất cả danh mục": "All categories",
+        "TB mỗi khoản": "Average entry",
+        "Tăng %ld%%": "Up %ld%%",
+        "Giảm %ld%%": "Down %ld%%",
         "Chi vào đâu": "Where it goes",
         "Đã dùng %ld%% hạn mức %@": "%ld%% of the %@ limit used",
         "Tổng chi": "Total",

@@ -1,34 +1,33 @@
 import Charts
 import SwiftUI
 
-/// Thống kê theo tháng, kiểu bảng điều khiển tài chính nền tối (luôn tối, kể cả khi máy đang ở nền sáng): thẻ than viền mảnh,
-/// màu nhấn vàng chanh và xanh ngọc. Tổng chi + cột 6 tháng + bốn số liệu, hạn mức, chi vào đâu, các khoản gần đây.
+/// Thống kê theo tháng, kiểu "Analytics" nền sáng với màu nhấn vàng chanh: tên tháng có mũi tên lùi / tới, hàng lọc theo
+/// danh mục, cột 6 tháng (tháng đang xem màu chanh, có số ở đầu cột), hàng ô số liệu lướt ngang, hạn mức, chi vào đâu,
+/// các khoản gần đây.
 struct StatsView: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
     @State private var month = Date()
-    /// Trang 6 tháng đang hiện trên thanh chọn tháng (0 = 6 tháng gần nhất, 1 = 6 tháng trước đó, ...)
-    @State private var page: Int? = 0
+    /// Chỉ xem một danh mục (nil = tất cả)
+    @State private var cat: String?
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
 
     private let cal = Calendar.current
 
-    // Bảng màu của màn hình này (một bộ duy nhất: màn này luôn tối)
-    static let page = Color(hex: 0x0B0C0F)
-    static let card = Color(hex: 0x14161B)
-    static let line = Color.white.opacity(0.09)          // viền thẻ, vạch ngăn
-    static let lime = Color(hex: 0xD7F93B), cyan = Color(hex: 0x4FE0E6)
-    static let ink = Color(hex: 0xD7F93B)                // tab đang chọn
-    static let inkText = Color(hex: 0x0B0C0F)
-    static let chip = Color.white.opacity(0.07)
-    static let bad = Color(hex: 0xFF6B81)                // chi tăng
+    // Bảng màu của màn hình này
+    static let page = Color(light: 0xF2F2F2, dark: 0x0D0D10)
+    static let card = Color(light: 0xFFFFFF, dark: 0x1C1C1F)
+    static let lime = Color(hex: 0xC2F230)                         // màu nhấn; chữ trên nền này luôn màu mực
+    static let limeInk = Color(hex: 0x111114)
+    static let bar = Color(light: 0xC6C6C8, dark: 0x4A4A50)        // cột của các tháng khác
+    static let chip = Color(light: 0xF2F2F2, dark: 0x2A2A2E)
     /// Màu của các danh mục trong "Chi vào đâu", theo thứ hạng
-    static let slices: [Color] = [lime, cyan, Color(hex: 0xA78BFA), Color(hex: 0xFF9F43), Color(hex: 0xFF6B9D), Color(hex: 0x8A8F9C)]
+    static let slices: [Color] = [lime, Color(hex: 0x4FD1DB), Color(hex: 0xA78BFA), Color(hex: 0xFF9F43), Color(hex: 0xFF6B9D), Color(hex: 0x9AA0AB)]
 
     var body: some View {
-        let items = store.monthItems(month)
-        let prev = comparable(store.monthItems(cal.date(byAdding: .month, value: -1, to: month)!))
+        let items = only(store.monthItems(month))
+        let prev = comparable(only(store.monthItems(cal.date(byAdding: .month, value: -1, to: month)!)))
         if film != nil {
             // Phim: thanh tiêu đề và vùng cuộn tự vẽ (xem Film.swift)
             VStack(spacing: 0) {
@@ -36,227 +35,166 @@ struct StatsView: View {
                 FilmScroll { content(items, prev) }
             }
             .background(Self.page)
-            .environment(\.colorScheme, .dark)
         } else {
         NavigationStack {
             ScrollView { content(items, prev) }
             .background(Self.page.ignoresSafeArea())
             .navigationTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
-        .environment(\.colorScheme, .dark)
         }
     }
 
+    /// Các khoản của danh mục đang lọc (không lọc thì giữ nguyên)
+    private func only(_ items: [Expense]) -> [Expense] { cat.map { c in items.filter { $0.c == c } } ?? items }
+
     private func content(_ items: [Expense], _ prev: [Expense]) -> some View {
-        VStack(spacing: 14) {
-            monthTabs
-            hero(items, prev)
-            limitCard(items)
+        VStack(spacing: 12) {
+            chartCard(items)
+            figures(items, prev)
+            if cat == nil { limitCard(items) }
             if !items.isEmpty {
-                categoryCard(items)
+                if cat == nil { categoryCard(items) }
                 recentCard(items)
             }
         }
         .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 32)
     }
 
-    // MARK: Chọn tháng (dạng tab, tháng đang chọn là viên thuốc đậm)
+    // MARK: Thẻ chính: tên tháng, lọc danh mục, cột 6 tháng
 
-    /// Tháng cuối của trang đang xem.
-    private var windowEnd: Date { cal.date(byAdding: .month, value: -6 * (page ?? 0), to: Date())! }
-
-    /// 6 tháng của một trang, cũ trước mới sau.
-    private func months(page p: Int) -> [Date] {
-        let end = cal.date(byAdding: .month, value: -6 * p, to: Date())!
-        return (0..<6).reversed().map { cal.date(from: cal.dateComponents([.year, .month], from: cal.date(byAdding: .month, value: -$0, to: end)!))! }
+    /// 6 tháng kết thúc ở tháng đang xem, cũ trước mới sau
+    private var windowMonths: [Date] {
+        (0..<6).reversed().map { cal.date(from: cal.dateComponents([.year, .month], from: cal.date(byAdding: .month, value: -$0, to: month)!))! }
     }
 
-    private var windowMonths: [Date] { months(page: page ?? 0) }
-
-    /// Số trang: lùi đến tháng có khoản chi đầu tiên, ít nhất 2 trang (12 tháng).
-    private var pageCount: Int {
-        guard let first = store.items.min(by: { $0.t < $1.t })?.date else { return 2 }
-        let back = cal.dateComponents([.month], from: cal.date(from: cal.dateComponents([.year, .month], from: first))!,
-                                      to: cal.date(from: cal.dateComponents([.year, .month], from: Date()))!).month ?? 0
-        return max(2, back / 6 + 1)
+    private func step(_ by: Int) {
+        guard let m = cal.date(byAdding: .month, value: by, to: month), m <= Date() || cal.isDate(m, equalTo: Date(), toGranularity: .month) else { return }
+        withAnimation(.snappy) { month = m }
     }
 
-    @ViewBuilder private var monthTabs: some View {
-        if film != nil {
-            HStack(spacing: 6) { ForEach(months(page: 0), id: \.self) { m in monthTab(m) } }
-        } else { pagedMonthTabs }
-    }
-
-    private var pagedMonthTabs: some View {
-        // Vuốt ngang để đổi trang 6 tháng; mỗi trang vừa khít chiều ngang nên không bị cắt chữ
-        ScrollView(.horizontal) {
-            LazyHStack(spacing: 0) {
-                ForEach((0..<pageCount).reversed(), id: \.self) { p in
-                    HStack(spacing: 6) {
-                        ForEach(months(page: p), id: \.self) { m in monthTab(m) }
-                    }
-                    .padding(.horizontal, 1)
-                    .containerRelativeFrame(.horizontal)
-                    .id(p)
-                }
-            }
-            .scrollTargetLayout()
-        }
-        .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.paging)
-        .scrollPosition(id: $page)
-        .defaultScrollAnchor(.trailing)
-        .onChange(of: page) {
-            // Vuốt sang trang khác: tháng đang xem nhảy về tháng mới nhất của trang đó
-            if !windowMonths.contains(where: { isSelected($0) }) { month = windowMonths.last! }
-        }
-    }
-
-    private func monthTab(_ m: Date) -> some View {
-        let on = isSelected(m)
-        let otherYear = cal.component(.year, from: m) != cal.component(.year, from: Date())
-        return Button { month = m } label: {
-            VStack(spacing: 0) {
-                Text(shortMonth(m)).font(.system(size: 15, weight: on ? .semibold : .regular))
-                if otherYear { Text(String(cal.component(.year, from: m))).font(.system(size: 10)).opacity(0.8) }
-            }
-            .frame(maxWidth: .infinity, minHeight: 36)
-            .foregroundStyle(on ? Self.inkText : Color.secondary)
-            .background(on ? Self.ink : .clear, in: Capsule())
-            // Tháng chưa chọn: ô than viền mảnh
-            .background(on ? Color.clear : Self.card, in: Capsule())
-            .overlay { if !on { Capsule().strokeBorder(Self.line, lineWidth: 1) } }
-            .contentShape(Capsule())
-        }
-        .buttonStyle(Pressable())
-    }
-
-    // MARK: Thẻ chính: tổng chi tháng, cột 6 tháng, bốn số liệu
-
-    private struct MonthBar: Identifiable {
-        let date: Date
-        let bills: Int
-        let other: Int
-        var id: Date { date }
-        var total: Int { bills + other }
-    }
-
-    private func hero(_ items: [Expense], _ prev: [Expense]) -> some View {
-        let total = sum(items)
-        // Cùng khung 6 tháng với thanh chọn tháng; tháng đang xem được tô rõ
-        let bars: [MonthBar] = windowMonths.map { m in
-            let its = store.monthItems(m)
-            let bills = sum(its.filter { $0.c == "hd" })
-            return MonthBar(date: m, bills: bills, other: sum(its) - bills)
-        }
-        let top = max(bars.map(\.total).max() ?? 0, 1)
-        let gap = Double(top) * 0.025   // khe hở giữa hai đoạn của cùng một cột
-        let days = isRunning ? cal.component(.day, from: Date()) : cal.range(of: .day, in: .month, for: month)!.count
-        let prevDays = isRunning ? days : cal.range(of: .day, in: .month, for: cal.date(byAdding: .month, value: -1, to: month)!)!.count
-        let avg = total / max(days, 1), prevAvg = sum(prev) / max(prevDays, 1)
-        let biggest = items.max { $0.a < $1.a }
-        let today = store.total(on: Date()), yesterday = store.total(on: cal.date(byAdding: .day, value: -1, to: Date())!)
-        return card {
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(fmt(total)).font(.system(size: 34, weight: .bold)).kerning(-0.8).minimumScaleFactor(0.5).lineLimit(1)
-                Text("đ").font(.system(size: 18, weight: .semibold)).foregroundStyle(.secondary)
-                Spacer(minLength: 8)
-                if let d = delta(total, sum(prev)) { change(d, isRunning ? L("so với cùng kỳ") : L("so với tháng trước")) }
-            }
-            Text(L("Tổng chi %@", Lang.isEnglish ? monthName(month) : monthName(month).lowercased()))
-                .font(.system(size: 13)).foregroundStyle(.secondary)
-            HStack(spacing: 14) {
+    private func chartCard(_ items: [Expense]) -> some View {
+        let totals = windowMonths.map { sum(only(store.monthItems($0))) }
+        let top = max(totals.max() ?? 0, 1)
+        // Danh mục có chi trong 6 tháng này (nhiều tiền trước), để lọc
+        let spent = Dictionary(grouping: windowMonths.flatMap { store.monthItems($0) }, by: \.c).mapValues(sum)
+        let cats = Category.all.filter { (spent[$0.k] ?? 0) > 0 }.sorted { spent[$0.k]! > spent[$1.k]! }
+        return VStack(spacing: 14) {
+            // Tên tháng, hai bên là lùi / tới một tháng
+            HStack {
+                arrow("chevron.left", L("Tháng trước")) { step(-1) }.filmPressed(film?.pressed["stats-prev"] ?? 0)
                 Spacer()
-                legend(AnyShapeStyle(Self.cyan), L("Chi tiêu khác"))
-                legend(AnyShapeStyle(Self.lime), L("Hoá đơn"))
+                Text(monthName(month)).font(.system(size: 24, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer()
+                arrow("chevron.right", L("Tháng sau")) { step(1) }.opacity(isRunning ? 0.3 : 1).disabled(isRunning)
             }
-            .padding(.top, 6)
-            Chart(bars) { b in
-                if b.bills > 0 {
-                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", 0), yEnd: .value("Hoá đơn", b.bills), width: .ratio(0.72))
-                        .foregroundStyle(Self.lime)
-                        .cornerRadius(7)
-                        .opacity(isSelected(b.date) ? 1 : 0.4)
-                }
-                if b.other > 0 {
-                    let start = b.bills > 0 ? Double(b.bills) + gap : 0
-                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", start), yEnd: .value("Chi tiêu khác", start + Double(b.other)), width: .ratio(0.72))
-                        .foregroundStyle(Hatch.cyan)
-                        .cornerRadius(7)
-                        .opacity(isSelected(b.date) ? 1 : 0.4)
-                }
-            }
-            // Giữ đủ 6 tháng trên trục kể cả tháng chưa có khoản chi nào
-            .chartXScale(domain: bars.first!.date...cal.date(byAdding: .month, value: 1, to: bars.last!.date)!)
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .month)) { v in
-                    AxisValueLabel(centered: true) { if let d = v.as(Date.self) { Text(shortMonth(d)).foregroundStyle(Color.white.opacity(0.45)) } }
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { v in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Color.white.opacity(0.06))
-                    AxisValueLabel { if let n = v.as(Double.self) { Text(short(Int(n))).foregroundStyle(Color.white.opacity(0.45)) } }
-                }
-            }
-            .chartOverlay { proxy in
-                // Chạm cột để chuyển sang tháng đó (chỉ nhận chạm, vuốt vẫn cuộn trang)
-                GeometryReader { g in
-                    Rectangle().fill(.clear).contentShape(Rectangle())
-                        .onTapGesture { p in
-                            guard let plot = proxy.plotFrame, let d: Date = proxy.value(atX: p.x - g[plot].origin.x) else { return }
-                            if let b = bars.first(where: { cal.isDate($0.date, equalTo: d, toGranularity: .month) }) { month = b.date }
-                        }
-                }
-            }
-            .frame(height: 190)
-            .padding(.top, 4)
-
-            Rectangle().fill(Self.line).frame(height: 1).padding(.top, 10)
-            // Bốn số liệu, hai hàng hai cột, ngăn bằng vạch mảnh
-            Grid(horizontalSpacing: 16, verticalSpacing: 16) {
-                GridRow {
-                    if isRunning {
-                        figure(L("Hôm nay"), "\(fmt(today))đ", delta: delta(today, yesterday), note: L("chưa có để so"))
-                    } else {
-                        let active = Set(items.map { cal.component(.day, from: $0.date) }).count
-                        figure(L("Ngày có chi"), "\(active)/\(days)", delta: nil, note: L("%ld%% số ngày", active * 100 / max(days, 1)))
+            // Lọc: tất cả, hoặc một danh mục (đang chọn thì màu chanh, có dấu × để bỏ)
+            FilmScroll(axes: .horizontal) {
+                HStack(spacing: 8) {
+                    Button { withAnimation(.snappy) { cat = nil } } label: {
+                        Image(systemName: "square.grid.2x2").font(.system(size: 15, weight: .semibold))
+                            .frame(width: 40, height: 38)
+                            .foregroundStyle(cat == nil ? Self.limeInk : Color.secondary)
+                            .background(cat == nil ? Self.lime : Self.chip, in: Capsule())
                     }
-                    figure(L("TB mỗi ngày"), "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: L("chưa có để so"))
+                    .buttonStyle(Pressable()).accessibilityLabel(L("Tất cả danh mục"))
+                    ForEach(cats) { c in
+                        let on = cat == c.k
+                        Button { withAnimation(.snappy) { cat = on ? nil : c.k } } label: {
+                            HStack(spacing: 6) {
+                                Text(c.name).font(.system(size: 15, weight: on ? .semibold : .regular)).lineLimit(1)
+                                if on { Image(systemName: "xmark").font(.system(size: 11, weight: .bold)) }
+                            }
+                            .padding(.horizontal, 14).frame(height: 38)
+                            .foregroundStyle(on ? Self.limeInk : Color.secondary)
+                            .background(on ? Self.lime : Self.chip, in: Capsule())
+                        }
+                        .buttonStyle(Pressable())
+                        .filmPressed(film?.pressed["stats-cat-" + c.k] ?? 0)
+                    }
                 }
-                GridRow {
-                    figure(L("Lớn nhất"), biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil,
-                           note: biggest.map { $0.n?.isEmpty == false ? $0.n!.capFirst : Category.get($0.c).name } ?? L("chưa có"))
-                    figure(L("Số khoản"), "\(items.count)", delta: delta(items.count, prev.count), note: L("chưa có để so"))
+                .padding(.horizontal, 16)
+            }
+            .padding(.horizontal, -16)
+
+            // Cột 6 tháng: số tiền ở đầu cột, nối xuống bằng nét đứt; tháng đang xem màu chanh. Chạm cột để xem tháng đó
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(Array(windowMonths.enumerated()), id: \.offset) { i, m in
+                    let on = isSelected(m), v = totals[i]
+                    Button { withAnimation(.snappy) { month = m } } label: {
+                        VStack(spacing: 5) {
+                            Text(v > 0 ? short(v) : "0").font(.system(size: on ? 13 : 12, weight: on ? .bold : .regular))
+                                .foregroundStyle(on ? Color.primary : Color.secondary.opacity(0.7)).lineLimit(1).minimumScaleFactor(0.7)
+                            DashedStem().stroke(on ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                                .frame(width: 1, height: 22)
+                            UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 8, bottomTrailingRadius: 8, topTrailingRadius: 5, style: .continuous)
+                                .fill(on ? Self.lime : Self.bar)
+                                // Vạch ngang ở đỉnh cột, rộng hơn cột một chút
+                                .overlay(alignment: .top) { Capsule().fill(on ? Self.lime : Self.bar).frame(height: 4).padding(.horizontal, -4).offset(y: -2) }
+                                .frame(width: 30, height: (6 + 150 * CGFloat(v) / CGFloat(top)).rounded())
+                            Text(shortMonth(m)).font(.system(size: 14, weight: on ? .semibold : .regular))
+                                .foregroundStyle(on ? Color.primary : Color.secondary).padding(.top, 5)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(monthName(m)): \(fmt(v))")
                 }
             }
-            .padding(.top, 6)
+            .frame(height: 235, alignment: .bottom)
         }
+        .padding(16)
+        .background(Self.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
-    /// Một số liệu: tên nhỏ, con số, dòng thay đổi (hoặc ghi chú nếu không có gì để so)
-    private func figure(_ title: String, _ value: String, delta d: Int?, note: String) -> some View {
+    private func arrow(_ symbol: String, _ label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 15, weight: .semibold))
+                .frame(width: 38, height: 38).background(Self.chip, in: Circle()).foregroundStyle(.primary)
+        }
+        .buttonStyle(Pressable()).accessibilityLabel(label)
+    }
+
+    private struct DashedStem: Shape {
+        func path(in r: CGRect) -> Path { var p = Path(); p.move(to: CGPoint(x: r.midX, y: r.minY)); p.addLine(to: CGPoint(x: r.midX, y: r.maxY)); return p }
+    }
+
+    // MARK: Hàng ô số liệu, lướt ngang
+
+    private func figures(_ items: [Expense], _ prev: [Expense]) -> some View {
+        let total = sum(items)
+        let days = isRunning ? cal.component(.day, from: Date()) : cal.range(of: .day, in: .month, for: month)!.count
+        let biggest = items.max { $0.a < $1.a }
+        let d = delta(total, sum(prev))
+        return FilmScroll(axes: .horizontal) {
+            HStack(spacing: 10) {
+                figure("doc.text", items.isEmpty ? "0đ" : "\(short(total / items.count))", L("TB mỗi khoản"))
+                if let d {
+                    figure(d > 0 ? "arrow.up" : "arrow.down", (d > 0 ? L("Tăng %ld%%", d) : L("Giảm %ld%%", -d)), isRunning ? L("so với cùng kỳ") : L("so với tháng trước"))
+                }
+                figure("calendar", "\(short(total / max(days, 1) / 1000 * 1000))", L("TB mỗi ngày"))
+                figure("arrow.up.forward", biggest.map { short($0.a) } ?? "0", L("Lớn nhất"))
+                figure("list.bullet", "\(items.count)", L("Số khoản"))
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.horizontal, -16)
+    }
+
+    private func figure(_ icon: String, _ value: String, _ title: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
-            Text(value).font(.system(size: 20, weight: .bold)).minimumScaleFactor(0.5).lineLimit(1)
-            if let d { change(d, nil) } else { Text(note).font(.system(size: 12)).foregroundStyle(.tertiary).lineLimit(1) }
+            Image(systemName: icon).font(.system(size: 15, weight: .medium))
+                .frame(width: 38, height: 38).background(Self.chip, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .padding(.bottom, 10)
+            Text(value).font(.system(size: 20, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(title).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Phần trăm thay đổi. Chi tăng là xấu: mũi tên lên màu hồng đỏ, giảm thì vàng chanh (có mũi tên, không chỉ dựa vào màu).
-    private func change(_ d: Int, _ suffix: String?) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: d > 0 ? "arrow.up.right" : "arrow.down.right").font(.system(size: 10, weight: .bold))
-            Text("\(abs(d))%").font(.system(size: 12, weight: .semibold))
-            if let suffix { Text(suffix).font(.system(size: 12)).foregroundStyle(.secondary) }
-        }
-        .foregroundStyle(d > 0 ? Self.bad : Self.lime)
-        .lineLimit(1)
+        .padding(14)
+        .frame(width: 132, alignment: .leading)
+        .background(Self.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     // MARK: Hạn mức tháng
@@ -267,15 +205,14 @@ struct StatsView: View {
         let limit = store.budget(for: month)
         if limit != nil || isRunning {
             card {
-                Text(L("Hạn mức chi tháng")).font(.system(size: 16, weight: .semibold))
+                Text(L("Hạn mức chi tháng")).font(.system(size: 17, weight: .semibold))
                 if let limit {
                     let left = limit - spent
-                    Text(left >= 0 ? L("Còn %@đ", fmt(left)) : L("Vượt %@đ", fmt(-left))).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(left >= 0 ? L("Còn %@đ", fmt(left)) : L("Vượt %@đ", fmt(-left))).font(.system(size: 14)).foregroundStyle(.secondary)
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.08))
-                            Capsule().fill(spent > limit ? AnyShapeStyle(Self.bad)
-                                                         : AnyShapeStyle(LinearGradient(colors: [Self.cyan, Self.lime], startPoint: .leading, endPoint: .trailing)))
+                            Capsule().fill(Self.chip)
+                            Capsule().fill(spent > limit ? Color(hex: 0xE5484D) : Self.lime)
                                 .frame(width: max(20, g.size.width * min(Double(spent) / Double(max(limit, 1)), 1)))
                         }
                     }
@@ -283,9 +220,9 @@ struct StatsView: View {
                     HStack {
                         Text("\(fmt(spent))đ"); Spacer(); Text("\(fmt(limit))đ")
                     }
-                    .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 4)
+                    .font(.system(size: 13)).foregroundStyle(.secondary).padding(.top, 4)
                 } else {
-                    Text(L("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.")).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(L("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.")).font(.system(size: 14)).foregroundStyle(.secondary)
                 }
             }
         }
@@ -293,14 +230,7 @@ struct StatsView: View {
 
     private func isSelected(_ d: Date) -> Bool { cal.isDate(d, equalTo: month, toGranularity: .month) }
 
-    private func legend(_ style: AnyShapeStyle, _ title: String) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(style).frame(width: 8, height: 8)
-            Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
-        }
-    }
-
-    // MARK: Chi vào đâu: một dải nhiều màu theo danh mục, dưới là danh sách kèm phần trăm
+    // MARK: Chi vào đâu: một dải nhiều màu theo danh mục, dưới là danh sách (chạm một dòng để lọc theo danh mục đó)
 
     private func categoryCard(_ items: [Expense]) -> some View {
         let total = max(sum(items), 1)
@@ -308,10 +238,9 @@ struct StatsView: View {
         let ranked = Category.all.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }
         func color(_ i: Int) -> Color { Self.slices[min(i, Self.slices.count - 1)] }
         return card {
-            Text(L("Chi vào đâu")).font(.system(size: 16, weight: .semibold))
-            Text(L("Theo danh mục")).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(L("Chi vào đâu")).font(.system(size: 17, weight: .semibold))
             GeometryReader { g in
-                // Mỗi danh mục một đoạn, rộng theo phần trăm (ít nhất 6pt để vẫn thấy), cách nhau 3pt
+                // Mỗi danh mục một đoạn, rộng theo phần trăm (ít nhất 10pt để vẫn thấy), cách nhau 3pt
                 let room = g.size.width - 3 * CGFloat(max(ranked.count - 1, 0))
                 HStack(spacing: 3) {
                     ForEach(Array(ranked.enumerated()), id: \.offset) { i, c in
@@ -321,21 +250,26 @@ struct StatsView: View {
                 }
                 .frame(width: g.size.width, alignment: .leading).clipped()
             }
-            .frame(height: 24).padding(.top, 10)
-            VStack(spacing: 12) {
+            .frame(height: 24).padding(.top, 8)
+            VStack(spacing: 0) {
                 ForEach(Array(ranked.enumerated()), id: \.offset) { i, c in
                     let v = byCat[c.k]!
-                    HStack(spacing: 10) {
-                        Circle().fill(color(i)).frame(width: 8, height: 8)
-                        Text(c.name).font(.system(size: 15))
-                        Spacer()
-                        Text("\(fmt(v))đ").font(.system(size: 14)).foregroundStyle(.secondary)
-                        Text("\(Int((Double(v) / Double(total) * 100).rounded()))%").font(.system(size: 15, weight: .semibold))
-                            .frame(width: 44, alignment: .trailing)
+                    Button { withAnimation(.snappy) { cat = c.k } } label: {
+                        HStack(spacing: 10) {
+                            Circle().fill(color(i)).frame(width: 9, height: 9)
+                            Text(c.name).font(.system(size: 16))
+                            Text("\(Int((Double(v) / Double(total) * 100).rounded()))%").font(.system(size: 13)).foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(fmt(v))đ").font(.system(size: 15, weight: .semibold))
+                            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 13).contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    if i < ranked.count - 1 { Divider() }
                 }
             }
-            .padding(.top, 12)
+            .padding(.top, 6)
         }
     }
 
@@ -375,8 +309,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 6) { content() }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Self.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Self.line, lineWidth: 1) }
+            .background(Self.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
     private func iconChip(_ symbol: String, fg: Color, bg: Color) -> some View {

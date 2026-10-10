@@ -398,7 +398,7 @@ final class House: ObservableObject {
             phase = .ready
             await enableNotifications()
         } catch {
-            phase = .failed(Self.describe(error))
+            fail(error)
         }
     }
 
@@ -410,7 +410,7 @@ final class House: ObservableObject {
             currentID = metadata.share.recordID.zoneID.zoneName
             QuickAction.shared.openHouse = true
         } catch {
-            phase = .failed(Self.describe(error))
+            fail(error)
         }
     }
 
@@ -425,7 +425,7 @@ final class House: ObservableObject {
             groups.removeAll { $0.id == g.id }
             currentID = nil
         } catch {
-            phase = .failed(Self.describe(error))
+            fail(error)
         }
     }
 
@@ -502,7 +502,7 @@ final class House: ObservableObject {
             guard let j = groups.firstIndex(where: { $0.id == gid }) else { return }
             for (id, one) in res.saveResults { groups[j].records[id] = try one.get() }
             Self.rebuild(&groups[j])
-        } catch { phase = .failed(Self.describe(error)) }
+        } catch { fail(error) }
     }
 
     /// "Tôi là người này": nhớ trên máy và gắn Apple ID vào thành viên, lần sau máy khác tự nhận ra.
@@ -640,7 +640,7 @@ final class House: ObservableObject {
             _ = try await db.modifyRecords(saving: [], deleting: [rid])
             groups[i].records[rid] = nil
             Self.rebuild(&groups[i])
-        } catch { phase = .failed(Self.describe(error)) }
+        } catch { fail(error) }
     }
 
     private func record(_ id: String) -> CKRecord? {
@@ -650,7 +650,7 @@ final class House: ObservableObject {
 
     private func run(_ rs: [CKRecord]) async -> Bool {
         busy = true; defer { busy = false }
-        do { try await save(rs); return true } catch { phase = .failed(Self.describe(error)); return false }
+        do { try await save(rs); return true } catch { fail(error); return false }
     }
 
     private func save(_ rs: [CKRecord]) async throws {
@@ -661,6 +661,14 @@ final class House: ObservableObject {
             if !(saved is CKShare) { groups[i].records[id] = saved }
         }
         Self.rebuild(&groups[i])
+    }
+
+    /// Một thao tác (lưu, xoá, rời nhóm…) không thành: đang có sổ thì giữ nguyên màn hình, chỉ báo lỗi bằng thanh báo;
+    /// chưa có gì để hiện thì mới chuyển sang màn báo lỗi có nút Thử lại
+    private func fail(_ error: Error) {
+        if groups.isEmpty { phase = .failed(Self.describe(error)); return }
+        phase = .ready
+        Store.shared.show(Self.describe(error))
     }
 
     static func describe(_ e: Error) -> String {

@@ -118,12 +118,12 @@ Task {
     if let t0 = ProcessInfo.processInfo.environment["PRESS"].flatMap(Double.init) {
         let h = (actionButton.bottom - actionButton.top) * scale + 8, w: CGFloat = 7
         let midY = render.height - (actionButton.top + actionButton.bottom) / 2 * scale
-        let touchX = pad + actionButton.x * scale - w / 2 - 1     // sát mép ngoài của nút
+        let touchX = pad + actionButton.x * scale - w / 2 - 9     // dừng cách nút một đoạn, không chạm vào
         let pill = CALayer()
         pill.bounds = CGRect(x: 0, y: 0, width: w, height: h)
         pill.cornerRadius = w / 2
         pill.backgroundColor = CGColor(red: 0.18, green: 0.75, blue: 0.35, alpha: 1)
-        pill.position = CGPoint(x: touchX - 24, y: midY)
+        pill.position = CGPoint(x: touchX - 22, y: midY)
         pill.opacity = 0
         func anim(_ key: String, _ times: [Double], _ values: [Any]) -> CAKeyframeAnimation {
             let k = CAKeyframeAnimation(keyPath: key)
@@ -136,9 +136,9 @@ Task {
             k.fillMode = .both; k.isRemovedOnCompletion = false
             return k
         }
-        // hiện ra (0,3s), chờ, trượt vào sát nút (0,35s), giữ (1,3s), mờ đi
+        // hiện ra (0,3s), chờ, trượt lại gần nút (0,35s), giữ (1,3s), mờ đi
         pill.add(anim("opacity", [0, 0.3, 2.25, 2.55], [0.0, 1.0, 1.0, 0.0]), forKey: "o")
-        pill.add(anim("position.x", [0, 0.6, 0.95, 2.55], [touchX - 24, touchX - 24, touchX, touchX]), forKey: "x")
+        pill.add(anim("position.x", [0, 0.6, 0.95, 2.55], [touchX - 22, touchX - 22, touchX, touchX]), forKey: "x")
         // lúc chạm: vạch dày lên một chút như ngón tay ấn xuống
         pill.add(anim("transform.scale.x", [0, 0.9, 1.05, 2.55], [1.0, 1.0, 1.35, 1.35]), forKey: "s")
         parent.addSublayer(pill)

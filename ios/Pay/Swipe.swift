@@ -29,11 +29,9 @@ extension View {
 
     /// Vạch ngang trên cùng của bảng, cho biết kéo xuống là đóng (thay nút Xong). Tự vẽ thay cho vạch của iOS
     /// vì vạch của iOS nằm sát mép trên, không dời xuống được.
-    func sheetGrabber() -> some View {
-        overlay(alignment: .top) {
-            SheetGrabber().padding(.top, SheetGrabber.top).ignoresSafeArea().allowsHitTesting(false)
-        }
-    }
+    /// Không vẽ vạch ngang nữa: bảng không phủ kín màn hình (mép trên lộ màn hình phía sau) đã đủ cho biết vuốt xuống là đóng.
+    /// Giữ hàm để các chỗ gọi không phải đổi.
+    func sheetGrabber() -> some View { self }
 }
 
 struct SheetGrabber: View {

@@ -175,7 +175,7 @@ struct FilmNavBar: View {
     var body: some View {
         ZStack {
             if grabber {
-                SheetGrabber().frame(maxHeight: .infinity, alignment: .top).padding(.top, SheetGrabber.top)
+                // (bảng không còn vạch ngang, như trong app)
             }
             Text(title).font(.system(size: 17, weight: .semibold))
             HStack {

@@ -557,7 +557,7 @@ struct HouseView: View {
             HStack(spacing: 10) {
                 HStack(spacing: -10) {
                     ForEach(house.members.prefix(5)) { m in
-                        HouseAvatar(id: m.id, name: m.name, size: 32).overlay(Circle().stroke(Palette.surface, lineWidth: 2.5))
+                        HouseAvatar(id: m.id, name: m.name, size: 32).overlay(Circle().stroke(Palette.bg, lineWidth: 2.5))
                     }
                 }
                 if house.members.count > 5 {
@@ -575,10 +575,9 @@ struct HouseView: View {
             }
             .padding(.top, 18)
         }
-        .padding(20)
+        // Không bọc nền: nằm thẳng trên nền màn hình, chỉ các dòng từng người có nền (tránh lồng nhiều lớp nền)
+        .padding(.top, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .environment(\.colorScheme, .light)   // giống thẻ "Hôm nay đã chi" ở màn hình chính
     }
 
     /// Một người trong thẻ "Việc của bạn": bạn trả họ, hoặc họ trả bạn.

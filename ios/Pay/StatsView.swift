@@ -480,15 +480,20 @@ struct StatsView: View {
                                     .frame(width: 4, height: 48 * 0.44)
                                     .padding(.trailing, 13)
                             }
-                        HStack {
+                        // Chữ vẽ hai lớp: phần nằm trên mảng đen là chữ trắng, phần nằm trên rãnh là chữ tối —
+                        // mảng ngắn hay dài cỡ nào, chữ vắt ngang mép cũng đổi màu đúng chỗ nên luôn đọc được
+                        let fillW = max(w, 30)
+                        let labels = HStack {
                             Text(L("Đã chi %@", short(spent)))
-                                .foregroundStyle(Self.inkText)
                             Spacer()
                             Text(L("Hạn mức %@", short(limit)))
-                                .foregroundStyle(over ? Self.inkText : Color.primary.opacity(0.55))
                         }
                         .font(.system(size: 17, weight: .medium, design: .rounded)).monospacedDigit()
                         .padding(.horizontal, 18)
+                        labels.foregroundStyle(Color.primary.opacity(0.75))
+                            .mask(alignment: .trailing) { Rectangle().frame(width: max(0, g.size.width - fillW)) }
+                        labels.foregroundStyle(Self.inkText)
+                            .mask(alignment: .leading) { Rectangle().frame(width: fillW) }
                     }
                 }
                 .frame(height: 48)

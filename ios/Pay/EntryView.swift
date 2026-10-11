@@ -822,9 +822,10 @@ extension View {
         visualEffect { content, g in
             let f = g.frame(in: .scrollView(axis: .horizontal))
             let width = g.bounds(of: .scrollView(axis: .horizontal))?.width ?? f.maxX
-            let reach = max(f.width * 0.7, 1)
-            let left = min(max((inset - f.minX) / reach, 0), 1)
-            let right = min(max((f.maxX - (width - inset)) / reach, 0), 1)
+            // Chỉ nhoè sát mép: bắt đầu khi viên chạm mép dải (lề còn 4 pt), nhoè hết khi đã ra ngoài chừng 40% bề rộng viên
+            let reach = max(f.width * 0.4, 1), edge = min(inset, 4)
+            let left = min(max((edge - f.minX) / reach, 0), 1)
+            let right = min(max((f.maxX - (width - edge)) / reach, 0), 1)
             let t = max(left, right)
             return content.blur(radius: 6 * t).opacity(1 - 0.55 * t)
         }

@@ -753,6 +753,10 @@ extension View {
         if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.soft, for: .top) } else { self }
     }
 
+    @ViewBuilder func softBottomEdge() -> some View {
+        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.soft, for: .bottom) } else { self }
+    }
+
     /// Tiêu đề màn hình: cỡ 21 đậm, bằng "Sửa / Lưu khoản chi" (tiêu đề mặc định của iOS nhỏ quá)
     func screenTitle(_ title: String) -> some View {
         navigationTitle(title).toolbar {

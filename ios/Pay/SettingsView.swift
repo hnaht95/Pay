@@ -921,9 +921,12 @@ struct CategoryEditor: View {
                         .disabled(trimmed.isEmpty || duplicate)
                         .opacity(trimmed.isEmpty || duplicate ? 0.4 : 1)
                 }
-                .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
-                .background(Color(.systemGroupedBackground).ignoresSafeArea())
+                // Sát đáy như màn nhập: cách mép dưới 16 bằng lề hai bên (vùng an toàn 34, lùi xuống 18)
+                .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
+            // Mép trên và dưới vùng cuộn mờ dần (không cắt ngang dưới tiêu đề, không dải nền đặc sau hai nút)
+            .softTopEdge()
+            .softBottomEdge()
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone }
                 else { tone = store.cats.count % 16; nameFocused = true }

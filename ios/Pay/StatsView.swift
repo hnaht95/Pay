@@ -125,10 +125,15 @@ struct StatsView: View {
                     Text(calendarLabel)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.55))
+                    // Mũi tên nhỏ cho biết chạm vào là mở / thu cả tháng
+                    Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.primary.opacity(0.4))
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
                 }
                 .padding(.horizontal, 10)
                 .frame(height: Self.headerHeight)
-                .contentShape(Rectangle())
+                .background(Capsule().fill(Color.primary.opacity(0.05)))
+                .contentShape(Capsule())
             }
             .buttonStyle(Pressable())
             Spacer(minLength: 8)
@@ -180,8 +185,11 @@ struct StatsView: View {
         let start = Self.wcal.dateInterval(of: .weekOfYear, for: cal.dateInterval(of: .month, for: calMonth)!.start)!.start
         let end = cal.dateInterval(of: .month, for: calMonth)!.end
         let weeks = Int(ceil(Double(cal.dateComponents([.day], from: start, to: end).day!) / 7))
-        return VStack(spacing: 4) {
-            HStack(spacing: 4) {
+        let top = max(spending(in: cal.dateInterval(of: .month, for: calMonth)!).reduce(into: [Date: Int]()) { m, e in
+            m[cal.startOfDay(for: e.date), default: 0] += e.a
+        }.values.max() ?? 1, 1)
+        return VStack(spacing: 6) {
+            HStack(spacing: 6) {
                 ForEach(0..<7, id: \.self) { i in
                     Text(weekdayShort(cal.date(byAdding: .day, value: i, to: start)!))
                         .font(.system(size: 11, weight: .medium))
@@ -189,21 +197,62 @@ struct StatsView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.bottom, 4)
             ForEach(0..<weeks, id: \.self) { w in
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     ForEach(0..<7, id: \.self) { i in
                         let d = cal.date(byAdding: .day, value: w * 7 + i, to: start)!
                         if cal.isDate(d, equalTo: calMonth, toGranularity: .month) {
-                            dayColumn(d, weekday: false)
+                            heatTile(d, top: top)
                         } else {
                             Color.clear.frame(maxWidth: .infinity)
                         }
                     }
                 }
-                .frame(height: 44)
+                .frame(height: 46)
             }
+            // Chú thích thang màu
+            HStack(spacing: 4) {
+                Spacer()
+                Text(L("Ít")).font(.system(size: 11)).foregroundStyle(.secondary)
+                ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { r in
+                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(heat(r)).frame(width: 12, height: 12)
+                }
+                Text(L("Nhiều")).font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            .padding(.top, 4)
         }
+    }
+
+    /// Nền ô theo mức chi trong tháng: không chi = xám rất nhạt, chi càng nhiều xanh lá càng đậm
+    private func heat(_ r: Double) -> Color {
+        r <= 0 ? Color.primary.opacity(0.04) : Color(hex: 0x3FA65A).opacity(0.16 + 0.74 * r)
+    }
+
+    /// Ô ngày của lịch tháng: viên vuông to, dễ chạm; màu nói ngày đó chi nhiều hay ít (căn bậc hai cho ngày nhỏ vẫn thấy màu).
+    /// Đang chọn: nền đậm, chữ trắng. Hôm nay: số đậm.
+    private func heatTile(_ d: Date, top: Int) -> some View {
+        let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
+        let future = d > Date()
+        let today = cal.isDateInToday(d)
+        let r = future ? 0 : sqrt(Double(store.total(on: d)) / Double(top))
+        return Button {
+            withAnimation(.snappy(duration: 0.2)) {
+                if on { day = nil } else {
+                    day = d
+                    week = Self.wcal.dateInterval(of: .weekOfYear, for: d)!.start
+                }
+            }
+        } label: {
+            Text("\(cal.component(.day, from: d))")
+                .font(.system(size: 16, weight: today || on ? .bold : .medium, design: .rounded)).monospacedDigit()
+                .foregroundStyle(on ? Self.inkText : r > 0.6 ? .white : today ? Self.todayTint : Color.primary.opacity(0.75))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Self.ink : heat(r)))
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .opacity(future ? 0.4 : 1)
+        }
+        .buttonStyle(Pressable())
+        .disabled(future)
     }
 
     private func toggleExpanded() {
@@ -855,38 +904,7 @@ enum Hatch {
     }
 }
 
-/// Nền khung Tổng chi: gradient loang chủ đạo xanh lá của app (#61BE6E) — đậm góc dưới trái, sáng dần lên góc trên phải,
-/// điểm giữa lệch khỏi lưới cho mảng màu không đều — phủ một lớp hạt nhiễu mịn như ảnh in.
+/// Nền khung Tổng chi: một màu xanh lá phẳng, đúng màu icon app — không gradient, không hạt nhiễu.
 private struct HeroGreen: View {
-    var body: some View {
-        ZStack {
-            if #available(iOS 18.0, *) {
-                MeshGradient(width: 3, height: 3, points: [
-                    [0, 0], [0.5, 0], [1, 0],
-                    [0, 0.5], [0.58, 0.42], [1, 0.5],
-                    [0, 1], [0.45, 1], [1, 1],
-                ], colors: [
-                    Color(hex: 0x45AE60), Color(hex: 0x7ACF86), Color(hex: 0xB4E6AE),
-                    Color(hex: 0x2F9852), Color(hex: 0x61BE6E), Color(hex: 0x95DA98),
-                    Color(hex: 0x1C7A3E), Color(hex: 0x2E9A55), Color(hex: 0x5CBB6C),
-                ])
-            } else {
-                LinearGradient(colors: [Color(hex: 0x1C7A3E), Color(hex: 0x61BE6E), Color(hex: 0xB4E6AE)],
-                               startPoint: .bottomLeading, endPoint: .topTrailing)
-            }
-            Image(uiImage: Self.grain).resizable(resizingMode: .tile)
-                .blendMode(.overlay).opacity(0.25)
-                .allowsHitTesting(false)
-        }
-    }
-
-    /// Ô hạt nhiễu xám ngẫu nhiên 160×160 (dựng một lần), lát kín khung
-    private static let grain: UIImage = {
-        let n = 160
-        var px = [UInt8](repeating: 0, count: n * n)
-        for i in px.indices { px[i] = UInt8.random(in: 0...255) }
-        let ctx = CGContext(data: &px, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n,
-                            space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
-        return UIImage(cgImage: ctx.makeImage()!, scale: 3, orientation: .up)
-    }()
+    var body: some View { Color(hex: 0x61BE6E) }
 }

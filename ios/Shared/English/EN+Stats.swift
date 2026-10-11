@@ -33,6 +33,8 @@ extension English {
         "Chi từng tháng": "By month",
         "Trước": "Previous",
         "Tuần này": "This week",
+        "Ít": "Less",
+        "Nhiều": "More",
         "Sau": "Next",
         "Hôm nay": "Today",
         "chưa có để so": "nothing to compare",

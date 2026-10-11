@@ -499,12 +499,12 @@ struct HouseView: View {
             Button { editingMember = m } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "building.columns.fill").font(.system(size: 15))
-                    Text(L("Thêm tài khoản để mọi người trả nhanh")).font(.system(size: 15, weight: .semibold))
+                    Text(L("Thêm tài khoản nhận tiền")).font(.system(size: 16, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
                 }
                 .foregroundStyle(.primary)
-                .padding(.horizontal, 16).frame(height: 48)
+                .padding(.horizontal, 18).frame(height: 58)
                 .background(Palette.card, in: Capsule())
             }
             .buttonStyle(Pressable())

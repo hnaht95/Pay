@@ -105,7 +105,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(660)]).sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(700)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -400,6 +400,8 @@ struct DateSheet: View {
     @State private var month = Date()
     /// Lần đổi tháng gần nhất là tới tháng sau (lưới trượt lên) hay lùi tháng trước (trượt xuống)
     @State private var forward = true
+    /// Bề ngang nút "Hôm nay" lúc bung (đo theo chữ), để co / nở được bằng một con số
+    @State private var todayW: CGFloat = 90
 
     private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
     private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
@@ -407,24 +409,36 @@ struct DateSheet: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            HStack {
-                Text(title).font(.system(size: 21, weight: .bold))
-                Spacer()
-                // Như hàng tiêu đề lịch của Peek: nút "Hôm nay" (viên thuốc, chỉ hiện khi đang ở tháng khác) và hai tam giác
-                // lên / xuống (lịch mở cả tháng thì các tuần xếp dọc, lùi tháng là đi lên)
+            // Hàng tiêu đề như lịch của Peek (cỡ Peek × 1,5): hình tờ lịch + "Tháng 10 năm 2026" chữ vừa mờ 55%;
+            // nút "Hôm nay" luôn dựng sẵn, chỉ co bề ngang về 0 rồi mờ đi khi đang ở tháng này (bật ra thì nở từ 0, hai mũi tên
+            // trượt theo); hai tam giác lên / xuống (lịch xếp tuần theo chiều dọc, lùi tháng là đi lên)
+            HStack(spacing: 0) {
+                HStack(spacing: 9) {
+                    CalendarShape().fill(style: FillStyle(eoFill: true)).frame(width: 22, height: 22)
+                    Text(title).font(.system(size: 17, weight: .medium))
+                        .contentTransition(.numericText())
+                }
+                .foregroundStyle(Color.primary.opacity(0.55))
+                Spacer(minLength: 8)
+                let showsToday = !isThisMonth
                 Button { jumpToToday() } label: {
-                    Text(L("Hôm nay")).font(.system(size: 15, weight: .medium))
+                    Text(L("Hôm nay")).font(.system(size: 15.75, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.6))
-                        .padding(.horizontal, 12).frame(height: 32)
-                        .background(Capsule().fill(Color.primary.opacity(0.08)))
+                        .fixedSize()
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { todayW = ceil($0) + 24 }
+                        .opacity(showsToday ? 1 : 0)
+                        .frame(width: showsToday ? todayW : 0, height: 36)
+                        .background(Capsule().fill(Color.primary.opacity(showsToday ? 0.08 : 0)))
+                        .clipShape(Capsule())
                         .contentShape(Capsule())
                 }
-                .buttonStyle(Pressable())
-                .opacity(isThisMonth ? 0 : 1)
-                .allowsHitTesting(!isThisMonth)
+                .buttonStyle(.plain)
+                .allowsHitTesting(showsToday)
+                .padding(.trailing, showsToday ? 4 : 0)
                 arrow(angle: 0, L("Tháng trước")) { shift(-1) }
                 arrow(angle: 180, L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
+            .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisMonth)
             // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
             ZStack {
                 monthGrid
@@ -460,7 +474,7 @@ struct DateSheet: View {
 
     private var title: String {
         let c = cal.dateComponents([.month, .year], from: month)
-        guard Lang.isEnglish else { return "Tháng \(c.month!), \(c.year!)" }
+        guard Lang.isEnglish else { return "Tháng \(c.month!) năm \(c.year!)" }
         let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "LLLL yyyy"
         return f.string(from: month)
     }
@@ -468,17 +482,19 @@ struct DateSheet: View {
     /// Tam giác bo góc của Peek (TriangleShape), mờ 45%, không nền
     private func arrow(angle: Double, _ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
+            // Cỡ Peek × 1,5: hình 7 trong khung 22, mỗi nút rộng 24 cách nhau 2
             TriangleShape().fill(Color.primary.opacity(0.45))
-                .frame(width: 11, height: 11)
+                .frame(width: 10.5, height: 10.5)
                 .rotationEffect(.degrees(angle))
-                .frame(width: 34, height: 34).contentShape(Circle())
+                .animation(.easeOut(duration: 0.2), value: angle)
+                .frame(width: 36, height: 33).contentShape(Circle())
         }
         .buttonStyle(Pressable()).accessibilityLabel(label)
     }
 
     private func jumpToToday() {
         forward = Date() > first
-        withAnimation(.snappy(duration: 0.32)) { month = Date() }
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = Date() }
     }
 
     /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
@@ -501,7 +517,8 @@ struct DateSheet: View {
     private var monthGrid: some View {
         let blanks = (cal.component(.weekday, from: first) + 5) % 7
         let days = cal.range(of: .day, in: .month, for: first)!.count
-        let rows = Int(ceil(Double(blanks + days) / 7))
+        // Luôn 6 hàng như Peek: tháng nào cũng cao bằng nhau, đổi tháng không nhảy chiều cao
+        let rows = 6
         let names = Lang.isEnglish ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
         let todayCol = (cal.component(.weekday, from: Date()) + 5) % 7
         return GeometryReader { g in
@@ -569,7 +586,7 @@ struct DateSheet: View {
     private func shift(_ by: Int) {
         guard let m = cal.date(byAdding: .month, value: by, to: first), m <= Date() else { return }
         forward = by > 0
-        withAnimation(.snappy(duration: 0.32)) { month = m }
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = m }
     }
 
     /// Đổi ngày, giữ nguyên giờ phút

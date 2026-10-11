@@ -749,9 +749,6 @@ struct CategoryEditor: View {
                         .buttonStyle(Pressable())
                         .accessibilityAddTraits(fTone < 0 ? .isSelected : [])
                     }
-                    swatchRow(CategoryTone.light)
-                    swatchRow(CategoryTone.strong)
-                    swatchRow(CategoryTone.flat, custom: true)
                     palettes
     }
 
@@ -759,7 +756,6 @@ struct CategoryEditor: View {
     /// Vuốt ngang để xem thêm bảng
     private var palettes: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L("Bảng màu gợi ý")).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
             ScrollView(.horizontal) {
                 HStack(spacing: 10) {
                     ForEach(Self.palettes.indices, id: \.self) { p in
@@ -769,10 +765,10 @@ struct CategoryEditor: View {
                                 let t = CategoryTone.custom(rgb)
                                 Button { tone = t } label: {
                                     Rectangle().fill(Color(hex: rgb))
-                                        .frame(width: 64, height: j == 0 ? 40 : 26)
+                                        .frame(width: 92, height: j == 0 ? 64 : 44)
                                         .overlay {
                                             if fTone == t {
-                                                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold))
+                                                Image(systemName: "checkmark").font(.system(size: 15, weight: .bold))
                                                     .foregroundStyle(CategoryTone.dark(t) ? .white : .black)
                                             }
                                         }
@@ -781,14 +777,18 @@ struct CategoryEditor: View {
                                 .accessibilityLabel(L("Màu %@", String(format: "#%06X", rgb)))
                             }
                         }
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
+                    // Cuối dải: tự chọn màu bất kỳ bằng bảng chọn màu của iOS
+                    customSwatch
+                        .frame(width: 92, height: 64 + 44 * 3)
+                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(.vertical, 2)
             }
             .scrollIndicators(.hidden)
         }
-        .padding(.top, 6)
+        .padding(.vertical, 6)
     }
 
     /// Bộ 4 màu, tông nhẹ đến đậm: pastel, retro, đất, biển, rừng, hoàng hôn, kẹo, cổ điển

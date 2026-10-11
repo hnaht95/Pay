@@ -548,6 +548,8 @@ struct ExpenseRow: View {
     /// Vị trí ngang bình thường của hàng và hàng đang bị vuốt sang trái (xem ô biểu tượng bên dưới)
     @State private var restX: CGFloat?
     @State private var swiped = false
+    @Environment(\.film) private var rowFilm
+    @Environment(\.stillPreview) private var stillPreview
 
     init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false) {
         self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats
@@ -571,7 +573,8 @@ struct ExpenseRow: View {
                 }
                 // Vuốt để xoá: danh sách cắt hàng ở mép trái, ô biểu tượng trượt gần hết ra ngoài nhưng còn lộ một vệt nền màu.
                 // Hàng lệch khỏi chỗ cũ thì ô biểu tượng mờ đi
-                .opacity(swiped ? 0 : 1)
+                // (Dựng tĩnh cho phim / màn mua Pro: hàng nằm trong băng chuyền trượt ngang, không tính là đang vuốt)
+                .opacity(swiped && rowFilm == nil && !stillPreview ? 0 : 1)
                 .animation(.easeOut(duration: 0.15), value: swiped)
             HStack(spacing: 6) {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"

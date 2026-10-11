@@ -80,6 +80,8 @@ struct FilmFade: View {
 
 extension EnvironmentValues {
     @Entry var film: FilmFrame? = nil
+    /// Đang dựng màn hình thật thu nhỏ làm hình minh hoạ (màn mua Pro): không phản ứng theo vị trí trên màn hình
+    @Entry var stillPreview = false
 }
 
 extension View {

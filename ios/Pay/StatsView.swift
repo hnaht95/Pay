@@ -121,22 +121,22 @@ struct StatsView: View {
                 }
             }
             .frame(height: 30)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 20)
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).id(d) }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
             }
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centerDay, anchor: .center)
             .defaultScrollAnchor(.trailing)
-            .frame(height: 78)
+            .frame(height: 82)
         }
-        .padding(.vertical, 14)
-        .background(Self.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        // Không nền thẻ, dải ngày tràn ra hai mép màn hình (bù lại lề 16 của trang); chữ tiêu đề vẫn thẳng lề
+        .padding(.horizontal, -16)
         .onChange(of: centerDay) {
             // Cuộn sang tháng khác: số liệu theo tháng đó; ngày đang chọn ở tháng khác thì bỏ chọn
             guard let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month) else { return }
@@ -169,16 +169,17 @@ struct StatsView: View {
                 Text("\(cal.component(.day, from: d))")
                     .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                     .foregroundStyle(on ? Self.inkText : today ? Self.todayTint : Color.primary.opacity(0.8))
+                // Cột dọc mảnh cao theo mức chi (rộng 16 thì cột đầy thành hình tròn, đọc ra cái chấm)
                 ZStack(alignment: .bottom) {
-                    Color.clear.frame(width: 1, height: 16)
+                    Color.clear.frame(width: 1, height: 18)
                     Capsule()
                         .fill(spent > 0 ? (on ? Self.inkText : Color(hex: 0x61BE6E)) : Color.primary.opacity(0.12))
-                        .frame(width: 16, height: spent > 0 ? max(4, 16 * r) : 3)
+                        .frame(width: spent > 0 ? 6 : 14, height: spent > 0 ? max(4, 18 * r) : 3)
                 }
             }
-            .frame(width: Self.pillWidth, height: 78)
+            .frame(width: Self.pillWidth, height: 82)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(on ? Self.ink : today ? Self.todayTint.opacity(0.1) : Color.primary.opacity(0.035)))
+                .fill(on ? Self.ink : today ? Self.todayTint.opacity(0.14) : Self.card))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(Pressable())

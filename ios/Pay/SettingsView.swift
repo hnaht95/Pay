@@ -761,7 +761,8 @@ struct CategoryEditor: View {
         .padding(.vertical, 8)
     }
 
-    private static let shares: [CGFloat] = [0.41, 0.26, 0.18, 0.15]
+    /// 4 dải cao bằng nhau
+    private static let shares: [CGFloat] = [0.25, 0.25, 0.25, 0.25]
 
     private func paletteCard(_ p: (vi: String, en: String, colors: [UInt32])) -> some View {
         return VStack(alignment: .leading, spacing: 6) {
@@ -774,8 +775,9 @@ struct CategoryEditor: View {
                                 .frame(height: g.size.height * Self.shares[j])
                                 .overlay(alignment: .trailing) {
                                     if fTone == t {
-                                        Image(systemName: "checkmark").font(.system(size: 14, weight: .bold))
-                                            .foregroundStyle(CategoryTone.dark(t) ? .white : Color(hex: 0x1C1C1E))
+                                        CircleCheck()
+                                            .fill(CategoryTone.dark(t) ? .white : Color(hex: 0x1C1C1E), style: FillStyle(eoFill: true))
+                                            .frame(width: 22, height: 22)
                                             .padding(.trailing, 10)
                                     }
                                 }
@@ -785,7 +787,8 @@ struct CategoryEditor: View {
                     }
                 }
             }
-            .aspectRatio(1, contentMode: .fit)
+            // Thẻ dọc, cao hơn rộng
+            .aspectRatio(0.72, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }
@@ -901,19 +904,25 @@ struct CategoryEditor: View {
                 // Về mặc định: một hàng cuối danh sách (trước nằm nổi ở đáy, không nền, đè lên bảng màu khi cuộn)
                 if let b = builtin, store.cats[b.k]?.on == true {
                     Section {
-                        Button(L("Về mặc định")) { store.resetCategory(b.k); dismiss() }
-                            .font(.system(size: 17, weight: .semibold))
-                            .frame(maxWidth: .infinity)
+                        // Hàng chữ thường, căn trái, như các nút khác trong Cài đặt
+                        Button { store.resetCategory(b.k); dismiss() } label: {
+                            Text(L("Về mặc định")).foregroundStyle(Color.primary)
+                        }
                     }
                 }
             }
             .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L("Lưu")) { save() }.disabled(trimmed.isEmpty || duplicate)
+            // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HStack(spacing: 12) {
+                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Lưu"), icon: "", primary: true) { save() }
+                        .disabled(trimmed.isEmpty || duplicate)
+                        .opacity(trimmed.isEmpty || duplicate ? 0.4 : 1)
                 }
+                .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 8)
+                .background(Color(.systemGroupedBackground).ignoresSafeArea())
             }
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone }
@@ -1139,5 +1148,17 @@ struct ApplePayHelp: View {
             Text(text).font(.system(size: 16))
         }
         .padding(.vertical, 4)
+    }
+}
+
+/// Vòng tích đặc của app Shot (Tabler circle-check): hình tròn đặc, dấu tích khoét rỗng
+struct CircleCheck: Shape {
+    func path(in r: CGRect) -> Path {
+        let k = min(r.width, r.height) / 24
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x * k, y: r.minY + y * k) }
+        let circle = Path(ellipseIn: CGRect(origin: p(2, 2), size: CGSize(width: 20 * k, height: 20 * k)))
+        var tick = Path()
+        tick.move(to: p(9, 12)); tick.addLine(to: p(11, 14)); tick.addLine(to: p(15, 10))
+        return circle.subtracting(tick.strokedPath(StrokeStyle(lineWidth: 2 * k, lineCap: .round, lineJoin: .round)))
     }
 }

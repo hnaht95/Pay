@@ -203,9 +203,6 @@ struct HouseView: View {
                 Color.clear.frame(width: 42, height: 42)
             }
             Spacer()
-            Text(inGroup && !house.name.isEmpty ? house.name : creating ? L("Nhóm mới") : L("Nhóm chung"))
-                .font(.system(size: 19, weight: .bold)).lineLimit(1)
-            Spacer()
             if inGroup && house.me != nil {
                 // Chuông: việc cần mình xác nhận + hoạt động gần đây
                 Button { showInbox = true } label: {
@@ -241,6 +238,12 @@ struct HouseView: View {
             } else {
                 Color.clear.frame(width: 42, height: 42)
             }
+        }
+        // Tên ở chính giữa màn hình, không theo khoảng trống giữa các nút (bên phải có hai nút, bên trái một nút)
+        .overlay {
+            Text(inGroup && !house.name.isEmpty ? house.name : creating ? L("Nhóm mới") : L("Nhóm chung"))
+                .font(.system(size: 19, weight: .bold)).lineLimit(1)
+                .padding(.horizontal, 100)
         }
         .padding(.top, 14).padding(.bottom, 14)
         .sheet(isPresented: $showInbox) { inbox }
@@ -540,8 +543,8 @@ struct HouseView: View {
                     .padding(.top, 6)
             } else {
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 28)).foregroundStyle(.green)
-                    Text(L("Đã cân bằng")).font(.system(size: 28, weight: .bold))
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(.green)
+                    Text(L("Đã cân bằng")).font(.system(size: 22, weight: .bold))
                 }
                 .padding(.top, 6)
             }

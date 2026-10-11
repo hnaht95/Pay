@@ -439,9 +439,9 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 16)
-            // Sát vạch Home hơn (cách mép màn hình ~22 điểm như thanh tab nổi của iOS): để nguyên vùng an toàn 34 điểm + 8 thì
+            // Sát vạch Home hơn (cách mép dưới 16 điểm, bằng lề hai bên): để nguyên vùng an toàn 34 điểm + 8 thì
             // dưới hai nút trống một khoảng lớn
-            .padding(.bottom, HomeView.nativeEdge ? -12 : 8)
+            .padding(.bottom, HomeView.nativeEdge ? -18 : 8)
     }
 
     /// "Tháng 10" / "October"

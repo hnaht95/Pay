@@ -752,7 +752,58 @@ struct CategoryEditor: View {
                     swatchRow(CategoryTone.light)
                     swatchRow(CategoryTone.strong)
                     swatchRow(CategoryTone.flat, custom: true)
+                    palettes
     }
+
+    /// Bảng màu gợi ý kiểu Color Hunt: mỗi bảng 4 màu xếp thành một thẻ dọc, chạm một dải màu để dùng (lưu như màu tự chọn).
+    /// Vuốt ngang để xem thêm bảng
+    private var palettes: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("Bảng màu gợi ý")).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    ForEach(Self.palettes.indices, id: \.self) { p in
+                        VStack(spacing: 0) {
+                            ForEach(Self.palettes[p].indices, id: \.self) { j in
+                                let rgb = Self.palettes[p][j]
+                                let t = CategoryTone.custom(rgb)
+                                Button { tone = t } label: {
+                                    Rectangle().fill(Color(hex: rgb))
+                                        .frame(width: 64, height: j == 0 ? 40 : 26)
+                                        .overlay {
+                                            if fTone == t {
+                                                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold))
+                                                    .foregroundStyle(CategoryTone.dark(t) ? .white : .black)
+                                            }
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(L("Màu %@", String(format: "#%06X", rgb)))
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .padding(.top, 6)
+    }
+
+    /// Bộ 4 màu, tông nhẹ đến đậm: pastel, retro, đất, biển, rừng, hoàng hôn, kẹo, cổ điển
+    private static let palettes: [[UInt32]] = [
+        [0xFFD6A5, 0xFDFFB6, 0xCAFFBF, 0x9BF6FF],   // pastel ấm
+        [0xA0C4FF, 0xBDB2FF, 0xFFC6FF, 0xFFADAD],   // pastel lạnh
+        [0xF2B82E, 0xEC7A2B, 0xE2462E, 0x1F3F6E],   // retro
+        [0xC9D9A4, 0x8AB17D, 0x2A9D8F, 0x264653],   // rừng
+        [0xE9C46A, 0xF4A261, 0xE76F51, 0x6D4C3D],   // đất
+        [0xCAF0F8, 0x90E0EF, 0x00B4D8, 0x0077B6],   // biển
+        [0xFFCDB2, 0xFFB4A2, 0xE5989B, 0xB5838D],   // hoàng hôn
+        [0xF7D6E0, 0xF2B5D4, 0xB8E0D2, 0x95B8D1],   // kẹo
+        [0xF4EDE1, 0xD8C3A5, 0x8E8D8A, 0x3A3A3A],   // cổ điển
+        [0xFFF3B0, 0xE09F3E, 0x9E2A2B, 0x540B0E],   // gạch
+    ]
 
     /// Phim: bản tự vẽ trông như Form (Form của hệ thống không vẽ ra PDF được): cùng các phần, cùng thứ tự
     private func filmBody(_ film: FilmFrame) -> some View {

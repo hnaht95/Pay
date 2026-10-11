@@ -17,6 +17,9 @@ struct StatsView: View {
     @State private var centerDay: Date? = Calendar.current.startOfDay(for: Date())
     /// Mờ mép trái / phải của dải ngày (chỉ khi còn ngày khuất bên đó; mở ra ở hôm nay nên mép phải không mờ)
     @State private var stripFade = [true, false]
+    /// Tháng đầu tiên đang hiện trên biểu đồ chi theo tháng (biểu đồ cuộn ngang, mỗi lần thấy 6 tháng)
+    @State private var chartStart = Calendar.current.date(byAdding: .month, value: -5,
+        to: Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!)!
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -231,6 +234,10 @@ struct StatsView: View {
     /// Tháng hiện trên lịch mở rộng cũng là tháng đang xem (và trang 6 tháng của biểu đồ chứa nó)
     private func showMonth(_ d: Date) {
         month = d
+        // Biểu đồ tháng cuộn tới cho thấy tháng đang xem (ở cột cuối nếu đang nằm ngoài khung 6 tháng)
+        let m = cal.date(from: cal.dateComponents([.year, .month], from: d))!
+        let end = cal.date(byAdding: .month, value: 6, to: chartStart)!
+        if m < chartStart || m >= end { chartStart = max(allMonths.first ?? m, cal.date(byAdding: .month, value: -5, to: m)!) }
         let start = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
         page = max(0, (cal.dateComponents([.month], from: cal.date(from: cal.dateComponents([.year, .month], from: d))!, to: start).month ?? 0) / 6)
     }
@@ -464,22 +471,39 @@ struct StatsView: View {
         card {
             Text(L("Hạn mức chi tháng")).font(.system(size: 17, weight: .semibold))
             if let limit {
+                // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám, mảng xanh của icon app có vạch tay nắm ở mép,
+                // chữ đen nằm trong thanh (vượt hạn mức: mảng đỏ đầy thanh)
                 let ratio = min(Double(spent) / Double(limit), 1)
+                let over = spent > limit
                 GeometryReader { g in
+                    let w = max(g.size.width * ratio, over ? g.size.width : 0)
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Self.chip)
-                        Capsule().fill(spent > limit ? Color(hex: 0xD92D20) : Self.orange)
-                            .frame(width: max(12, g.size.width * ratio))
+                        RoundedRectangle(cornerRadius: 14, style: .circular).fill(Color(light: 0xDCDCE2, dark: 0x2E2E31))
+                        RoundedRectangle(cornerRadius: 14, style: .circular)
+                            .fill(over ? Color(hex: 0xF08A7E) : Color(hex: 0x61BE6E))
+                            .frame(width: max(w, 30))
+                            .overlay(alignment: .trailing) {
+                                Capsule().fill(Color(hex: 0x111114).opacity(0.55))
+                                    .frame(width: 4, height: 48 * 0.44)
+                                    .padding(.trailing, 13)
+                            }
+                        HStack {
+                            Text(L("Đã chi %@", BudgetSlider.compact(spent)))
+                                .foregroundStyle(Color(hex: 0x111114).opacity(0.78))
+                            Spacer()
+                            Text("/ " + BudgetSlider.compact(limit))
+                                .foregroundStyle(Color.primary.opacity(0.85))
+                        }
+                        .font(.system(size: 17, weight: .medium, design: .rounded)).monospacedDigit()
+                        .padding(.horizontal, 18)
                     }
                 }
-                .frame(height: 12)
-                .padding(.top, 8)
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(fmt(spent))").font(.system(size: 16, weight: .semibold))
-                    Spacer()
-                    Text("/ \(fmt(limit))").font(.system(size: 14)).foregroundStyle(.secondary)
-                }
+                .frame(height: 48)
                 .padding(.top, 6)
+                Text(over ? L("Vượt %@ · đã dùng %@%%", fmt(spent - limit), String(Int((Double(spent) / Double(limit) * 100).rounded())))
+                          : L("Còn %@ · đã dùng %@%%", fmt(limit - spent), String(Int((Double(spent) / Double(limit) * 100).rounded()))))
+                    .font(.system(size: 14)).foregroundStyle(over ? Palette.danger : .secondary)
+                    .padding(.top, 2)
             } else {
                 Text(L("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.")).font(.system(size: 14)).foregroundStyle(.secondary)
             }
@@ -506,7 +530,7 @@ struct StatsView: View {
                   selected: { d in day.map { cal.isDate($0, inSameDayAs: d) } ?? true },
                   tap: { d in if d <= Date() { day = d } })
         case .month:
-            trend(L("Chi 6 tháng"), windowMonths, unit: .month, label: shortMonth, selected: isSelected, tap: { d in
+            trend(L("Chi theo tháng"), allMonths, unit: .month, label: shortMonth, selected: isSelected, tap: { d in
                 day = nil
                 showMonth(d)
                 // Dải ngày cuộn tới ngày cuối của tháng đó (tháng này thì tới hôm nay)
@@ -514,6 +538,14 @@ struct StatsView: View {
                 withAnimation(.snappy) { centerDay = cal.startOfDay(for: min(last, Date())) }
             })
         }
+    }
+
+    /// Mọi tháng từ tháng có khoản chi đầu tiên tới tháng này, ít nhất 6 tháng
+    private var allMonths: [Date] {
+        let now = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
+        let first = store.items.min(by: { $0.t < $1.t }).map { cal.date(from: cal.dateComponents([.year, .month], from: $0.date))! } ?? now
+        let n = max(6, (cal.dateComponents([.month], from: first, to: now).month ?? 0) + 1)
+        return (0..<n).reversed().map { cal.date(byAdding: .month, value: -$0, to: now)! }
     }
 
     private func trend(_ title: String, _ dates: [Date], unit: Calendar.Component, label: @escaping (Date) -> String,
@@ -551,6 +583,12 @@ struct StatsView: View {
             }
             // Giữ đủ 6 tháng trên trục kể cả tháng chưa có khoản chi nào
             .chartXScale(domain: bars.first!.date...cal.date(byAdding: unit, value: 1, to: bars.last!.date)!)
+            // Nhiều hơn 6 tháng: vuốt ngang để xem các tháng trước, mỗi lần thấy 6 cột (trục số bên trái đứng yên)
+            .chartScrollableAxes(unit == .month && bars.count > 6 ? .horizontal : [])
+            .chartXVisibleDomain(length: unit == .month && bars.count > 6 ? 6 * 30.5 * 86400
+                                 : cal.date(byAdding: unit, value: 1, to: bars.last!.date)!.timeIntervalSince(bars.first!.date))
+            .chartScrollPosition(x: $chartStart)
+            .chartScrollTargetBehavior(.valueAligned(matching: DateComponents(day: 1)))
             .chartXAxis {
                 AxisMarks(values: .stride(by: unit)) { v in
                     AxisValueLabel(centered: true) { if let d = v.as(Date.self) { Text(label(d)) } }
@@ -566,14 +604,11 @@ struct StatsView: View {
                     AxisValueLabel { if let n = v.as(Double.self) { Text(short(Int(n))).frame(width: 30, alignment: .leading) } }
                 }
             }
-            .chartOverlay { proxy in
-                // Chạm cột để chuyển sang tháng đó (chỉ nhận chạm, vuốt vẫn cuộn trang)
-                GeometryReader { g in
-                    Rectangle().fill(.clear).contentShape(Rectangle())
-                        .onTapGesture { p in
-                            guard let plot = proxy.plotFrame, let d: Date = proxy.value(atX: p.x - g[plot].origin.x) else { return }
-                            if let b = bars.first(where: { cal.isDate($0.date, equalTo: d, toGranularity: unit) }) { tap(b.date) }
-                        }
+            .chartGesture { proxy in
+                // Chạm cột để chuyển sang tháng đó. Cử chỉ của chính biểu đồ: một lớp phủ nhận chạm sẽ chặn luôn cú vuốt cuộn ngang
+                SpatialTapGesture().onEnded { e in
+                    guard let d: Date = proxy.value(atX: e.location.x) else { return }
+                    if let b = bars.first(where: { cal.isDate($0.date, equalTo: d, toGranularity: unit) }) { tap(b.date) }
                 }
             }
             .frame(height: 220)
@@ -581,11 +616,9 @@ struct StatsView: View {
 
             // Trung bình / Thấp nhất / Cao nhất của các tháng có chi
             if !used.isEmpty {
-                HStack(spacing: 0) {
+                HStack(spacing: 8) {
                     stat(L("Trung bình"), used.reduce(0, +) / used.count)
-                    Divider().frame(height: 36)
                     stat(L("Thấp nhất"), used.min()!)
-                    Divider().frame(height: 36)
                     stat(L("Cao nhất"), used.max()!)
                 }
                 .padding(.top, 16)
@@ -599,6 +632,8 @@ struct StatsView: View {
             Text(short(v)).font(.system(size: 20, weight: .bold))
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(Self.chip, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private func isSelected(_ d: Date) -> Bool { cal.isDate(d, equalTo: month, toGranularity: .month) }

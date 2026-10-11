@@ -752,57 +752,66 @@ struct CategoryEditor: View {
                     palettes
     }
 
-    /// Bảng màu gợi ý kiểu Color Hunt: mỗi bảng 4 màu xếp thành một thẻ dọc, chạm một dải màu để dùng (lưu như màu tự chọn).
-    /// Vuốt ngang để xem thêm bảng
+    /// Bảng màu gợi ý — cùng cách bày thẻ bảng màu của app Shot (ColourSetCard): thẻ vuông 4 dải cao 41 / 26 / 18 / 15 %,
+    /// bo 10, lưới 2 cột cách 16 (không ghi tên bảng). Chạm một dải để dùng màu ấy (lưu như màu tự chọn), dải đang dùng có dấu tích
     private var palettes: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal) {
-                HStack(spacing: 10) {
-                    ForEach(Self.palettes.indices, id: \.self) { p in
-                        VStack(spacing: 0) {
-                            ForEach(Self.palettes[p].indices, id: \.self) { j in
-                                let rgb = Self.palettes[p][j]
-                                let t = CategoryTone.custom(rgb)
-                                Button { tone = t } label: {
-                                    Rectangle().fill(Color(hex: rgb))
-                                        .frame(width: 92, height: j == 0 ? 64 : 44)
-                                        .overlay {
-                                            if fTone == t {
-                                                Image(systemName: "checkmark").font(.system(size: 15, weight: .bold))
-                                                    .foregroundStyle(CategoryTone.dark(t) ? .white : .black)
-                                            }
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(L("Màu %@", String(format: "#%06X", rgb)))
-                            }
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    // Cuối dải: tự chọn màu bất kỳ bằng bảng chọn màu của iOS
-                    customSwatch
-                        .frame(width: 92, height: 64 + 44 * 3)
-                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .padding(.vertical, 2)
-            }
-            .scrollIndicators(.hidden)
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
+            ForEach(Self.palettes.indices, id: \.self) { p in paletteCard(Self.palettes[p]) }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 
-    /// Bộ 4 màu, tông nhẹ đến đậm: pastel, retro, đất, biển, rừng, hoàng hôn, kẹo, cổ điển
-    private static let palettes: [[UInt32]] = [
-        [0xFFD6A5, 0xFDFFB6, 0xCAFFBF, 0x9BF6FF],   // pastel ấm
-        [0xA0C4FF, 0xBDB2FF, 0xFFC6FF, 0xFFADAD],   // pastel lạnh
-        [0xF2B82E, 0xEC7A2B, 0xE2462E, 0x1F3F6E],   // retro
-        [0xC9D9A4, 0x8AB17D, 0x2A9D8F, 0x264653],   // rừng
-        [0xE9C46A, 0xF4A261, 0xE76F51, 0x6D4C3D],   // đất
-        [0xCAF0F8, 0x90E0EF, 0x00B4D8, 0x0077B6],   // biển
-        [0xFFCDB2, 0xFFB4A2, 0xE5989B, 0xB5838D],   // hoàng hôn
-        [0xF7D6E0, 0xF2B5D4, 0xB8E0D2, 0x95B8D1],   // kẹo
-        [0xF4EDE1, 0xD8C3A5, 0x8E8D8A, 0x3A3A3A],   // cổ điển
-        [0xFFF3B0, 0xE09F3E, 0x9E2A2B, 0x540B0E],   // gạch
+    private static let shares: [CGFloat] = [0.41, 0.26, 0.18, 0.15]
+
+    private func paletteCard(_ p: (vi: String, en: String, colors: [UInt32])) -> some View {
+        return VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { g in
+                VStack(spacing: 0) {
+                    ForEach(p.colors.indices, id: \.self) { j in
+                        let rgb = p.colors[j], t = CategoryTone.custom(rgb)
+                        Button { tone = t } label: {
+                            Rectangle().fill(Color(hex: rgb))
+                                .frame(height: g.size.height * Self.shares[j])
+                                .overlay(alignment: .trailing) {
+                                    if fTone == t {
+                                        Image(systemName: "checkmark").font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(CategoryTone.dark(t) ? .white : Color(hex: 0x1C1C1E))
+                                            .padding(.trailing, 10)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L("Màu %@", String(format: "#%06X", rgb)))
+                    }
+                }
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+    }
+
+    /// 20 bảng màu được thích nhiều nhất trên Color Hunt, cùng bộ app Shot dùng (tên và 4 màu như Shot)
+    private static let palettes: [(vi: String, en: String, colors: [UInt32])] = [
+        ("Pastel", "Pastel", [0x95E1D3, 0xEAFFD0, 0xFCE38A, 0xF38181]),
+        ("Neon", "Neon", [0xEAEAEA, 0xFF2E63, 0x252A34, 0x08D9D6]),
+        ("Đầm phá", "Lagoon", [0x61C0BF, 0xBBDED6, 0xFAE3D9, 0xFFB6B9]),
+        ("Mộng mơ", "Dream", [0xFFFFD2, 0xFCBAD3, 0xAA96DA, 0xA8D8EA]),
+        ("Bến cảng", "Harbour", [0xFC5185, 0xF5F5F5, 0x3FC1C9, 0x364F6B]),
+        ("Hoàng hôn", "Sunset", [0x355C7D, 0x6C5B7B, 0xC06C84, 0xF67280]),
+        ("Than hồng", "Ember", [0xFFD460, 0xF07B3F, 0xEA5455, 0x2D4059]),
+        ("Nhiệt đới", "Tropic", [0xFFDE7D, 0xF6416C, 0xF8F3D4, 0x00B8A9]),
+        ("Rực rỡ", "Pop", [0xFF165D, 0xFF9A00, 0xF6F7D7, 0x3EC1D3]),
+        ("Kem trái cây", "Sorbet", [0xFFAAA5, 0xFFD3B6, 0xDCEDC1, 0xA8E6CF]),
+        ("Mạnh mẽ", "Bold", [0xF05454, 0x30475E, 0x222831, 0xDDDDDD]),
+        ("Đêm", "Night", [0xEEEEEE, 0xFFD369, 0x393E46, 0x222831]),
+        ("Gỉ sét", "Rust", [0xFF5722, 0xEEEEEE, 0x00ADB5, 0x303841]),
+        ("Bờ biển", "Coast", [0xFF7E67, 0xFAFAFA, 0xA2D5F2, 0x07689F]),
+        ("Cực quang", "Aurora", [0x521262, 0x6639A6, 0x3490DE, 0x6FE7DD]),
+        ("Chạng vạng", "Dusk", [0x583D72, 0x9F5F80, 0xFF8474, 0xFFC996]),
+        ("Kẹo ngọt", "Candy", [0xFF8AAE, 0xFFB2A6, 0xFFF89A, 0x9ADCFF]),
+        ("Đất nung", "Earth", [0x9DAB86, 0xDED7B1, 0xE08F62, 0xCC7351]),
+        ("Rừng", "Forest", [0xFBFADA, 0xADBC9F, 0x436850, 0x12372A]),
+        ("Retro", "Retro", [0x00B7CD, 0xFFF1D1, 0xFF9100, 0xDF301C]),
     ]
 
     /// Phim: bản tự vẽ trông như Form (Form của hệ thống không vẽ ra PDF được): cùng các phần, cùng thứ tự
@@ -888,6 +897,15 @@ struct CategoryEditor: View {
                 Section(L("Màu")) {
                     colorRows
                 }
+
+                // Về mặc định: một hàng cuối danh sách (trước nằm nổi ở đáy, không nền, đè lên bảng màu khi cuộn)
+                if let b = builtin, store.cats[b.k]?.on == true {
+                    Section {
+                        Button(L("Về mặc định")) { store.resetCategory(b.k); dismiss() }
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
             .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
@@ -895,14 +913,6 @@ struct CategoryEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L("Lưu")) { save() }.disabled(trimmed.isEmpty || duplicate)
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                if let b = builtin, store.cats[b.k]?.on == true {
-                    Button(L("Về mặc định")) { store.resetCategory(b.k); dismiss() }
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .padding(.horizontal, 16).padding(.bottom, 8)
                 }
             }
             .onAppear {

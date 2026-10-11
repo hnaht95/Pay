@@ -12,6 +12,7 @@ extension English {
         "Xong": "Done",
         "Huỷ": "Cancel",
         "Bảng màu gợi ý": "Palettes",
+        "Tự chọn": "Custom",
         "Lưu": "Save",
         "Phiên bản": "Version",
         "Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR.": "Pay — minimal expense tracking: type 35k coffee or scan a VietQR code.",

@@ -476,15 +476,7 @@ struct DateSheet: View {
 
     /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
     private func wheel(_ count: Int, _ value: Binding<Int>) -> some View {
-        Picker("", selection: value) {
-            ForEach(0..<count, id: \.self) { n in
-                Text(String(format: "%02d", n)).font(.system(size: 22, weight: .semibold).monospacedDigit()).tag(n)
-            }
-        }
-        .pickerStyle(.wheel)
-        .labelsHidden()
-        .frame(width: 76)
-        .clipped()
+        FlatWheel(count: count, value: value).frame(width: 76)
     }
 
     private func shift(_ by: Int) {
@@ -522,5 +514,53 @@ struct ChipEdges: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+/// Bánh xe chọn số phẳng: cuộn dọc, dừng đúng từng hàng, số giữa đậm trên viên nền, các số kề mờ dần.
+/// Không dùng Picker(.wheel) của iOS: bánh xe ấy cong như mặt trụ nên các số trên / dưới bị bóp dẹt chữ.
+private struct FlatWheel: View {
+    let count: Int
+    @Binding var value: Int
+    @State private var pos: Int?
+
+    private static let row: CGFloat = 36
+
+    var body: some View {
+        GeometryReader { g in
+            let pad = max(0, (g.size.height - Self.row) / 2)
+            ZStack {
+                Capsule().fill(Palette.pill).frame(height: Self.row)
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(0..<count, id: \.self) { n in
+                            let on = n == (pos ?? value)
+                            Text(String(format: "%02d", n))
+                                .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                                .foregroundStyle(on ? Color.primary : Color.secondary)
+                                .frame(maxWidth: .infinity, minHeight: Self.row, maxHeight: Self.row)
+                                .contentShape(Rectangle())
+                                .onTapGesture { withAnimation(.snappy) { pos = n } }
+                                .id(n)
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .contentMargins(.vertical, pad, for: .scrollContent)
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.viewAligned)
+                .scrollPosition(id: $pos, anchor: .center)
+                // Mờ dần lên trên / xuống dưới thay cho độ cong
+                .mask {
+                    LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.35),
+                                           .init(color: .black, location: 0.65), .init(color: .clear, location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+            }
+        }
+        .onAppear { pos = value }
+        .onChange(of: pos) { _, p in if let p, p != value { value = p } }
+        .onChange(of: value) { _, v in if pos != v { pos = v } }
+        .sensoryFeedback(.selection, trigger: pos)
     }
 }

@@ -54,6 +54,8 @@ struct HouseView: View {
     @State private var showArchived = false
     @State private var menu: AppMenuSpec?
     @State private var notifyOn: Bool?
+    /// Mục "Cả nhóm" (số dư từng người, các lần trả giữa người khác, lịch sử trả tiền) đang mở
+    @State private var showGroup = false
     @Environment(\.scenePhase) private var scenePhase
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
@@ -477,48 +479,38 @@ struct HouseView: View {
     @ViewBuilder private var ready: some View {
         let net = Settle.balances(house.spends, house.settles)
         let transfers = Settle.transfers(net)
+        let me = house.me ?? ""
+        let mine = net[me] ?? 0
 
-        hero(net[house.me ?? ""] ?? 0)
-        if let me = house.members.first(where: { $0.id == house.me }), !me.hasBank {
-            Button { editingMember = me } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "building.columns.fill").font(.system(size: 18))
-                        .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L("Thêm tài khoản nhận tiền")).font(.system(size: 16, weight: .semibold))
-                        Text(L("Mọi người bấm Trả ngay là app ngân hàng điền sẵn cho bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
-                    }
+        // 1. Việc của bạn: phải trả ai / ai trả bạn, mỗi người một dòng kèm nút
+        youCard(mine, transfers.filter { $0.from == me || $0.to == me })
+
+        // Chỉ nhắc thêm tài khoản khi mình là người được nhận tiền (để người khác bấm Trả ngay)
+        if mine > 0, let m = house.members.first(where: { $0.id == me }), !m.hasBank {
+            Button { editingMember = m } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "building.columns.fill").font(.system(size: 15))
+                    Text(L("Thêm tài khoản để mọi người trả nhanh")).font(.system(size: 15, weight: .semibold))
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
                 }
                 .foregroundStyle(.primary)
-                .padding(14)
-                .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .padding(.horizontal, 16).frame(height: 48)
+                .background(Palette.card, in: Capsule())
             }
             .buttonStyle(Pressable())
-            .padding(.top, 12)
+            .padding(.top, 10)
         }
 
+        // 2. Cần xác nhận (chỉ khi có)
         pendingSection
 
-        sectionTitle(L("Ai chuyển cho ai"), trailing: transfers.isEmpty ? nil : L("%d lần", transfers.count))
-        if transfers.isEmpty {
-            HStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 26)).foregroundStyle(.green)
-                Text(L("Mọi người đã cân bằng, không ai nợ ai.")).font(.system(size: 16)).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading).padding(18)
-            .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        }
-        VStack(spacing: 10) {
-            ForEach(transfers, id: \.self) { transferRow($0) }
-        }
+        // 3. Khoản chi chung
+        sectionTitle(L("Khoản chi"), trailing: monthTotal)
+        spendList
 
-        sectionTitle(L("Thành viên"), trailing: L("%d người", house.members.count))
-        members(net)
-
-        sectionTitle(L("Khoản chung"), trailing: monthTotal)
-        timeline
+        // 4. Cả nhóm (thu gọn)
+        groupSection(net, transfers.filter { $0.from != me && $0.to != me })
     }
 
     private var monthTotal: String? {
@@ -529,80 +521,88 @@ struct HouseView: View {
         return "Tháng \(cal.component(.month, from: Date())): \(fmt(sum))"
     }
 
-    private func hero(_ mine: Int) -> some View {
+    /// Thẻ trên cùng: số tiền của riêng bạn, bên dưới là từng người bạn cần trả / sẽ trả bạn.
+    private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(mine > 0 ? L("Cả nhà còn nợ bạn") : mine < 0 ? L("Bạn còn phải trả") : L("Bạn đã cân bằng"))
+            Text(mine > 0 ? L("Bạn sẽ nhận") : mine < 0 ? L("Bạn cần trả") : L("Bạn không nợ ai"))
                 .font(.system(size: 16)).foregroundStyle(.secondary)
-            Text(fmt(abs(mine)))
-                .font(.system(size: 46, weight: .bold)).kerning(-1.5)
-                .foregroundStyle(mine < 0 ? Palette.danger : .primary)
-                .minimumScaleFactor(0.5).lineLimit(1)
-                .padding(.top, 8).padding(.bottom, 16)
+            if mine != 0 {
+                Text(fmt(abs(mine)))
+                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
+                    .foregroundStyle(mine < 0 ? Palette.danger : Palette.goodInk)
+                    .minimumScaleFactor(0.5).lineLimit(1)
+                    .padding(.top, 6)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 28)).foregroundStyle(.green)
+                    Text(L("Đã cân bằng")).font(.system(size: 28, weight: .bold))
+                }
+                .padding(.top, 6)
+            }
+            if !mineTransfers.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(mineTransfers, id: \.self) { personRow($0) }
+                }
+                .padding(.top, 16)
+            }
             HStack(spacing: 10) {
                 HStack(spacing: -10) {
                     ForEach(house.members.prefix(5)) { m in
-                        HouseAvatar(id: m.id, name: m.name, size: 36).overlay(Circle().stroke(Palette.surface, lineWidth: 2.5))
+                        HouseAvatar(id: m.id, name: m.name, size: 32).overlay(Circle().stroke(Palette.surface, lineWidth: 2.5))
                     }
                 }
                 if house.members.count > 5 {
-                    Text("+\(house.members.count - 5)").font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+                    Text("+\(house.members.count - 5)").font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button { invite() } label: {
                     Label(L("Mời"), systemImage: "person.badge.plus")
-                        .font(.system(size: 16, weight: .semibold))
-                        .padding(.horizontal, 16).frame(height: 40)
+                        .font(.system(size: 15, weight: .semibold))
+                        .padding(.horizontal, 14).frame(height: 36)
                         .background(Palette.pill, in: Capsule())
                 }
                 .foregroundStyle(.primary)
                 .buttonStyle(Pressable())
             }
+            .padding(.top, 18)
         }
-        .padding(22)
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
         .environment(\.colorScheme, .light)   // giống thẻ "Hôm nay đã chi" ở màn hình chính
     }
 
-    private func transferRow(_ t: HouseTransfer) -> some View {
-        let from = house.memberName(t.from), to = house.memberName(t.to)
-        let mine = t.from == house.me || t.to == house.me
-        return HStack(spacing: 10) {
-            HStack(spacing: 4) {
-                HouseAvatar(id: t.from, name: from, size: 40)
-                Image(systemName: "arrow.right").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
-                HouseAvatar(id: t.to, name: to, size: 40)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(t.from == house.me ? L("Bạn trả %@", to) : t.to == house.me ? L("%@ trả bạn", from) : L("%@ trả %@", from, to))
-                    .font(.system(size: 16, weight: .semibold)).lineLimit(1)
-                Text(fmt(t.amount)).font(.system(size: 16, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+    /// Một người trong thẻ "Việc của bạn": bạn trả họ, hoặc họ trả bạn.
+    private func personRow(_ t: HouseTransfer) -> some View {
+        let outgoing = t.from == house.me
+        let other = outgoing ? t.to : t.from
+        let name = house.memberName(other)
+        let canPay = outgoing && house.members.first { $0.id == t.to }?.hasBank == true
+        return HStack(spacing: 12) {
+            HouseAvatar(id: other, name: name, size: 40)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(outgoing ? L("Trả %@", name) : L("%@ trả bạn", name)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                Text(fmt(t.amount)).font(.system(size: 18, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
             }
             Spacer(minLength: 4)
-            // Mình là người trả và người nhận đã thêm tài khoản: mở app ngân hàng điền sẵn
-            // Chỉ người trả và người nhận mới có nút; người khác chỉ xem
-            let canPay = t.from == house.me && house.members.first { $0.id == t.to }?.hasBank == true
-            if mine {
-                Button {
-                    if canPay { Task { await house.payNow(t, app: store.bankApp) } } else { paying = t }
-                } label: {
-                    // nền nằm trong nhãn để cả viên thuốc cùng thu nhỏ khi nhấn (để ngoài thì chỉ chữ động)
-                    Text(canPay ? L("Trả ngay") : t.to == house.me ? L("Đã nhận") : L("Đã chuyển"))
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(1).fixedSize()
-                        .padding(.horizontal, 14).frame(height: 38)
-                        .foregroundStyle(Palette.ctaInk)
-                        .background(Palette.cta, in: Capsule())
-                }
-                .buttonStyle(Pressable())
-
+            Button {
+                if canPay { Task { await house.payNow(t, app: store.bankApp) } } else { paying = t }
+            } label: {
+                // Có tài khoản: Trả ngay (mở app ngân hàng). Không có: báo đã trả bằng cách khác. Người nhận: xác nhận đã nhận
+                Text(canPay ? L("Trả ngay") : outgoing ? L("Báo đã trả") : L("Đã nhận"))
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(1).fixedSize()
+                    .padding(.horizontal, 14).frame(height: 38)
+                    .foregroundStyle(canPay ? Palette.ctaInk : .primary)
+                    .background(canPay ? Palette.cta : Palette.surface, in: Capsule())
             }
+            .buttonStyle(Pressable())
         }
-        .padding(12).padding(.trailing, 2)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(10).padding(.trailing, 2)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onHold {
-            guard t.from == house.me else { return }
-            menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: to, size: 56)), title: L("Bạn trả %@", to) + " · \(fmt(t.amount))",
+            guard outgoing else { return }
+            menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: name, size: 56)), title: L("Bạn trả %@", name) + " · \(fmt(t.amount))",
                                subtitle: house.members.first { $0.id == t.to }?.hasBank == true ? L("Đã có tài khoản nhận tiền") : L("Chưa có tài khoản nhận tiền"),
                                items: [
                 AppMenuItem(icon: "building.columns.fill", title: L("Trả qua app ngân hàng")) { Task { await house.payNow(t, app: store.bankApp) } },
@@ -611,53 +611,89 @@ struct HouseView: View {
         }
     }
 
-    private func members(_ net: [String: Int]) -> some View {
-        FilmScroll(axes: .horizontal) {
-            HStack(spacing: 10) {
-                ForEach(house.members) { m in
-                    let v = net[m.id] ?? 0
-                    VStack(spacing: 8) {
-                        HouseAvatar(id: m.id, name: m.name, size: 48)
-                        Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 15, weight: .semibold)).lineLimit(1)
-                        Text(v == 0 ? "0" : (v > 0 ? "+" : "−") + fmt(abs(v)))
-                            .font(.system(size: 14, weight: .medium)).monospacedDigit()
-                            .foregroundStyle(v < 0 ? Palette.danger : v > 0 ? Palette.goodInk : .secondary)
-                    }
-                    .frame(width: 96).padding(.vertical, 14)
-                    .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay(alignment: .topTrailing) {
-                        if m.hasBank { Image(systemName: "building.columns.fill").font(.system(size: 11)).foregroundStyle(.secondary).padding(10) }
-                    }
-                    .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .onTapGesture { editingMember = m }
-                }
+    /// Mục "Cả nhóm": bấm để mở. Số dư từng người bằng chữ, các lần trả giữa người khác, lịch sử trả tiền.
+    @ViewBuilder private func groupSection(_ net: [String: Int], _ others: [HouseTransfer]) -> some View {
+        Button { withAnimation(.snappy(duration: 0.3)) { showGroup.toggle() } } label: {
+            HStack {
+                Text(L("Cả nhóm")).font(.system(size: 21, weight: .bold))
+                Spacer()
+                Text(L("%d người", house.members.count)).font(.system(size: 15)).foregroundStyle(.secondary)
+                Image(systemName: "chevron.down").font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(showGroup ? 180 : 0))
+            }
+            .foregroundStyle(.primary)
+            .padding(.top, 26).padding(.bottom, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        if showGroup {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(house.members) { m in memberRow(m, net[m.id] ?? 0) }
                 Button { claimAfterAdd = false; addingMember = true } label: {
-                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                        .frame(width: 48, height: 48).background(Palette.surface, in: Circle())
+                    Label(L("Thêm người"), systemImage: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Palette.card, in: Capsule())
                         .foregroundStyle(.primary)
-                        .frame(width: 96).frame(maxHeight: .infinity)
-                    .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 .buttonStyle(Pressable())
-                .accessibilityLabel(L("Thêm người"))
+
+                if !others.isEmpty {
+                    Text(L("Giữa những người khác")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
+                    ForEach(others, id: \.self) { t in
+                        HStack(spacing: 8) {
+                            HouseAvatar(id: t.from, name: house.memberName(t.from), size: 32)
+                            Image(systemName: "arrow.right").font(.system(size: 12, weight: .bold)).foregroundStyle(.secondary)
+                            HouseAvatar(id: t.to, name: house.memberName(t.to), size: 32)
+                            Text(L("%@ trả %@", house.memberName(t.from), house.memberName(t.to))).font(.system(size: 15)).lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text(fmt(t.amount)).font(.system(size: 15, weight: .semibold))
+                        }
+                        .padding(10)
+                        .background(Palette.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                }
+
+                if !house.settles.isEmpty {
+                    Text(L("Lịch sử trả tiền")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
+                    ForEach(house.settles.sorted { $0.date > $1.date }) { settleRow($0) }
+                }
             }
-            .fixedSize(horizontal: false, vertical: true)   // ô dấu + cao bằng các ô thành viên
-            .padding(.horizontal, 16)
+            .transition(.opacity.combined(with: .move(edge: .top)))
         }
-        .padding(.horizontal, -16)
     }
 
-    /// Khoản chung và các lần trả nhau, mới nhất trước.
-    @ViewBuilder private var timeline: some View {
-        let items: [(Date, AnyView)] = house.spends.map { ($0.date, AnyView(spendRow($0))) } + house.settles.map { ($0.date, AnyView(settleRow($0))) }
-        if items.isEmpty {
+    /// Một người trong "Cả nhóm": số dư viết bằng chữ, chạm để sửa tên / tài khoản.
+    private func memberRow(_ m: HouseMember, _ v: Int) -> some View {
+        let isMe = m.id == house.me
+        let name = isMe ? L("Bạn") : m.name
+        return HStack(spacing: 12) {
+            HouseAvatar(id: m.id, name: m.name, size: 40)
+            HStack(spacing: 6) {
+                Text(name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                if m.hasBank { Image(systemName: "building.columns.fill").font(.system(size: 11)).foregroundStyle(.secondary) }
+            }
+            Spacer(minLength: 4)
+            Text(v > 0 ? L("sẽ nhận %@", fmt(v)) : v < 0 ? L("cần trả %@", fmt(-v)) : L("không nợ"))
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(v < 0 ? Palette.danger : v > 0 ? Palette.goodInk : .secondary)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .onTapGesture { editingMember = m }
+    }
+
+    /// Các khoản chi chung, mới nhất trước.
+    @ViewBuilder private var spendList: some View {
+        if house.spends.isEmpty {
             Text(L("Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhà."))
                 .font(.system(size: 16)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         VStack(spacing: 10) {
-            ForEach(Array(items.sorted { $0.0 > $1.0 }.enumerated()), id: \.offset) { $0.element.1 }
+            ForEach(house.spends.sorted { $0.date > $1.date }) { spendRow($0) }
         }
     }
 
@@ -670,14 +706,14 @@ struct HouseView: View {
                 .background(c.color, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.system(size: 17, weight: .semibold)).lineLimit(1)
-                Text(L("%@ ứng · chia %d người · %@", e.payer == house.me ? L("Bạn") : payer, Set(e.shares).count, day(e.date)))
+                Text(L("%@ trả · %@", e.payer == house.me ? L("Bạn") : payer, day(e.date)))
                     .font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 3) {
                 Text(fmt(e.amount)).font(.system(size: 17, weight: .bold))
                 if let me = house.me, e.shares.contains(me) {
-                    Text(L("bạn %@", fmt(Settle.split(e.amount, e.shares, seed: e.id)[me] ?? 0)))
+                    Text(L("bạn chịu %@", fmt(Settle.split(e.amount, e.shares, seed: e.id)[me] ?? 0)))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
             }

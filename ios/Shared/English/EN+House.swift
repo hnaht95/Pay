@@ -181,5 +181,21 @@ extension English {
         "Lẩu tối thứ 6": "Friday hotpot",
         "Homestay 2 đêm": "Homestay, 2 nights",
         "Lẩu gà lá é": "Chicken hotpot",
+        // Màn nhóm (bố cục mới)
+        "Bạn sẽ nhận": "You'll get back",
+        "Bạn cần trả": "You need to pay",
+        "Bạn không nợ ai": "You're all settled",
+        "Trả %@": "Pay %@",
+        "Báo đã trả": "Mark paid",
+        "Thêm tài khoản để mọi người trả nhanh": "Add your bank account so others can pay fast",
+        "Khoản chi": "Expenses",
+        "Cả nhóm": "Whole group",
+        "Giữa những người khác": "Between others",
+        "Lịch sử trả tiền": "Payment history",
+        "sẽ nhận %@": "gets back %@",
+        "cần trả %@": "owes %@",
+        "không nợ": "settled",
+        "%@ trả · %@": "%@ paid · %@",
+        "bạn chịu %@": "your share %@",
     ]
 }

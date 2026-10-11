@@ -10,37 +10,47 @@ struct ReceiptCamera: View {
     @StateObject private var cam = ReceiptCam()
     @State private var photo: PhotosPickerItem?
     @State private var finished = false
+    @State private var holeRect: CGRect = .zero
+
+    private static var safeBottom: CGFloat {
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom ?? 34
+    }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             CameraPreview(session: cam.session).ignoresSafeArea()
-            // Khung dọc tỉ lệ tờ hoá đơn: trong khung sáng, ngoài phủ tối
-            GeometryReader { g in
-                let w = g.size.width * 0.78, h = min(g.size.height * 0.62, w * 1.45)
-                let hole = RoundedRectangle(cornerRadius: 28, style: .continuous)
-                ZStack {
-                    Color.black.opacity(0.62)
-                    hole.frame(width: w, height: h).position(x: g.size.width / 2, y: g.size.height * 0.44).blendMode(.destinationOut)
-                }
-                .compositingGroup()
+            // Ngoài khung phủ tối; khung đo từ chỗ trống giữa dòng chữ và cụm nút (rộng bằng cụm nút)
+            let hole = RoundedRectangle(cornerRadius: 28, style: .continuous)
+            ZStack(alignment: .topLeading) {
+                Color.black.opacity(0.62)
+                hole.frame(width: holeRect.width, height: holeRect.height)
+                    .offset(x: holeRect.minX, y: holeRect.minY).blendMode(.destinationOut)
+            }
+            .compositingGroup()
+            .overlay(alignment: .topLeading) {
                 hole.strokeBorder(.white.opacity(0.9), lineWidth: 3)
-                    .frame(width: w, height: h).position(x: g.size.width / 2, y: g.size.height * 0.44)
+                    .frame(width: holeRect.width, height: holeRect.height).offset(x: holeRect.minX, y: holeRect.minY)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
-            VStack {
+            VStack(spacing: 16) {
                 Text(cam.error ?? L("Đặt hoá đơn vào khung rồi bấm chụp"))
                     .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
-                    .multilineTextAlignment(.center).padding(.horizontal, 24)
-                    .padding(.top, 20)
-                Spacer()
-                // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai
+                    .multilineTextAlignment(.center).padding(.horizontal, 8)
+                    .padding(.top, 12)
+                // Chỗ của khung: lấp hết phần giữa, rộng bằng cụm nút bên dưới
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { holeRect = $0 }
+                // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai. Hai góc dưới ngoài cùng bo theo góc
+                // màn hình (cụm nút cách mép dưới bằng lề hai bên, 16 pt)
+                let corner: CGFloat = 32, screen: CGFloat = 55 - 16
                 HStack(spacing: 12) {
                     VStack(spacing: 12) {
-                        Button { finish(nil) } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
-                        PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh")) }
+                        Button { finish(nil) } label: { pill(L("Đóng"), bottomLeading: corner) }.buttonStyle(Pressable())
+                        PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh"), bottomLeading: screen) }
                     }
                     Button { cam.capture { finish($0) } } label: {
                         VStack(spacing: 8) {
@@ -49,15 +59,18 @@ struct ReceiptCamera: View {
                         }
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+                        .background(.white, in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
+                                                                       bottomTrailingRadius: screen, topTrailingRadius: corner, style: .continuous))
                     }
                     .buttonStyle(Pressable())
                     .disabled(cam.error != nil)
                     .opacity(cam.error != nil ? 0.4 : 1)
                 }
                 .frame(height: 64 * 2 + 12)
-                .padding(.horizontal, 16).padding(.bottom, 12)
             }
+            .padding(.horizontal, 16)
+            // Cụm nút xuống sát đáy: cách mép dưới màn hình 16 pt như hai nút ở màn hình chính
+            .padding(.bottom, 16 - Self.safeBottom)
         }
         .onAppear { cam.start() }
         .onDisappear { cam.stop() }
@@ -68,10 +81,11 @@ struct ReceiptCamera: View {
         }
     }
 
-    private func pill(_ s: String) -> some View {
+    private func pill(_ s: String, bottomLeading: CGFloat) -> some View {
         Text(s).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .background(.white.opacity(0.18), in: Capsule())
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.white.opacity(0.18), in: UnevenRoundedRectangle(topLeadingRadius: 32, bottomLeadingRadius: bottomLeading,
+                                                                         bottomTrailingRadius: 32, topTrailingRadius: 32, style: .continuous))
     }
 
     private func finish(_ img: UIImage?) {

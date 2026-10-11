@@ -137,6 +137,8 @@ struct StatsView: View {
             .defaultScrollAnchor(.trailing)
             .frame(height: 82)
             .modifier(ChipEdges(fade: $stripFade))
+            // Rung nhẹ mỗi khi một ngày lướt qua giữa dải, như bánh xe chọn giờ của iOS
+            .sensoryFeedback(.selection, trigger: centerDay)
             .mask {
                 HStack(spacing: 0) {
                     LinearGradient(colors: [stripFade[0] ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing).frame(width: 32)

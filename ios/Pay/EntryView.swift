@@ -29,7 +29,7 @@ struct EntryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             head
-            Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
+            Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 26)
             HStack(spacing: 4) {
                 Text(amount > 0 ? fmt(amount) : "0")
                     .font(.system(size: 40, weight: .bold)).kerning(-1)
@@ -69,7 +69,7 @@ struct EntryView: View {
             .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)
 
-            chips.padding(.top, 14)
+            chips.padding(.top, 20)
 
             TextField(L("Ghi chú (không bắt buộc)"), text: $note)
                 .font(.system(size: 18))
@@ -77,7 +77,7 @@ struct EntryView: View {
                 .submitLabel(.done)
                 .padding(.horizontal, 18).padding(.vertical, 15)
                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.top, 12)
+                .padding(.top, 16)
                 .onChange(of: note) { _, v in
                     guard !catPicked else { return }
                     // Đoán lại theo ghi chú đang có, không giữ kết quả của lúc gõ dở (gõ "anh Tuấn mượn" thì "an" từng giữ Ăn uống).
@@ -90,9 +90,11 @@ struct EntryView: View {
                 .onChange(of: noteFocused) { _, on in if on { withAnimation(.snappy) { editing = true } } }
 
             keypad.padding(.vertical, 8)
-            actions
+            // Hàng nút sát đáy, cách mép dưới 16 điểm bằng lề hai bên (như hai nút Nhập / Quét QR ở màn hình chính):
+            // vùng an toàn dưới 34 điểm, lùi xuống 18
+            actions.padding(.bottom, -18)
         }
-        .padding(.horizontal, 18).padding(.bottom, 8)
+        .padding(.horizontal, 16)
         // Bàn phím chữ (đang gõ ghi chú) phủ lên bàn phím số và các nút, bố cục đứng yên. Để iOS co vùng an toàn thì nội dung
         // không co nổi tới mức đó: phần đầu trượt lên dưới thanh trạng thái, nút Lưu vẫn chìm dưới bàn phím
         .ignoresSafeArea(.keyboard, edges: .bottom)

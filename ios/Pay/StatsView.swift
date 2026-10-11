@@ -1046,14 +1046,16 @@ enum Hatch {
 /// Dải 7 cột: chỉ hiện đúng 7 viên nằm giữa hai lề 16, viên thừa lấn vào lề hai bên thì tan đi (mặt nạ mờ dần trong lề),
 /// trên dưới để rộng cho phần nhoè không bị cắt
 struct SevenColumns: ViewModifier {
+    /// Bề rộng phần tan, bằng lề hai bên (Thống kê 14, tấm chọn ngày 18)
+    var margin: CGFloat = 14
     func body(content: Content) -> some View {
         content.mask {
             HStack(spacing: 0) {
                 // Vùng tan đúng bằng lề 16: từ mép màn hình tới mép cột đầu / cột cuối; 7 cột đứng yên thì nét hoàn toàn
                 // (14 thay vì 16: tấm Thống kê của iOS 26 lùi vào ~1,5 pt mỗi bên, lề thật còn chừng 14,5)
-                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 14)
+                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: margin)
                 Color.black
-                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 14)
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: margin)
             }
             .padding(.vertical, -30)
         }

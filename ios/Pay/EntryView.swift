@@ -532,15 +532,18 @@ struct DateSheet: View {
             // Dải ngày vuốt ngang liền một mạch như Thống kê (không mũi tên): từ ngày cũ nhất cần tới hôm nay, mở ra ở ngày
             // đang chọn; 7 viên vừa một màn, cuộn dừng đúng viên. Tiêu đề tháng theo ngày đang ở giữa dải
             // Danh sách ngày và tổng chi từng ngày tính một lần lúc mở (như Thống kê): tính lại mỗi lần cuộn thì vuốt bị giật
-            let w = max(0, (rowW - 6 * 6) / 7)
+            // Giống dải ở Thống kê: dải tràn tới hai mép tấm, lề cuộn 20 (bằng lề tấm), đúng 7 cột vừa khít giữa hai lề,
+            // thả tay luôn dừng cân hai bên; viên thừa trong lề nhoè rồi tan
+            let w = max(0, (rowW - 40 - 6 * 6) / 7)
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
-                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 12).id(d)
+                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 18).id(d)
                     }
                 }
                 .scrollTargetLayout()
             }
+            .contentMargins(.horizontal, 20, for: .scrollContent)
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centerDay, anchor: .center)
@@ -549,6 +552,8 @@ struct DateSheet: View {
             .frame(height: 84 + 22)
             .frame(maxWidth: .infinity)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
+            .modifier(SevenColumns(margin: 18))
+            .padding(.horizontal, -20)
             .onChange(of: centerDay) { if let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month) { month = c } }
             // Giờ : phút, cùng khung xám bo góc với dải tuần; hai bánh xe cuộn dọc (phút nhảy 5), hàng giữa là giờ đang chọn
             HStack(spacing: 0) {

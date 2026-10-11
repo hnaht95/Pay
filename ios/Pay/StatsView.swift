@@ -38,8 +38,11 @@ struct StatsView: View {
     static let inkText = Color(light: 0xFFFFFF, dark: 0x111114)
     static let orange = Color(light: 0xEE6A35, dark: 0xF07443)
     static let chip = Color(light: 0xF2F2F2, dark: 0x2A2A2E)
-    /// Chữ trên khung Tổng chi (nền vàng ở cả hai chế độ nên chữ luôn đen)
-    static let heroInk = Color(hex: 0x1C1C1E)
+    /// Khung Tổng chi kiểu bảng màu retro: nền pistachio, chữ xanh lá đậm, viên % / biểu tượng nền xanh chữ kem
+    /// (giữ nguyên ở chế độ tối: nền sáng nổi trên trang tối vẫn đọc rõ)
+    static let heroBg = Color(hex: 0xC9D9A4)
+    static let heroInk = Color(hex: 0x1F6B47)
+    static let heroPill = Color(hex: 0xE8F0D2)
 
     var body: some View {
         let items = spending(in: span)
@@ -344,12 +347,9 @@ struct StatsView: View {
             HStack {
                 Text(heroTitle).font(.system(size: 16, weight: .medium))
                 Spacer()
-                iconChip("creditcard", fg: Self.heroInk, bg: Self.heroInk.opacity(0.08))
+                iconChip("creditcard", fg: Self.heroBg, bg: Self.heroInk)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(fmt(total)).font(.system(size: 40, weight: .bold)).kerning(-1).minimumScaleFactor(0.5).lineLimit(1)
-                Text("đ").font(.system(size: 22, weight: .semibold)).opacity(0.8)
-            }
+            Text(fmt(total)).font(.system(size: 40, weight: .bold)).kerning(-1).minimumScaleFactor(0.5).lineLimit(1)
             if let d = delta(total, sum(prev)) {
                 HStack(spacing: 8) {
                     // 0% (kể cả do làm tròn) không phải tăng cũng không phải giảm: không vẽ mũi tên
@@ -357,17 +357,18 @@ struct StatsView: View {
                         if d == 0 { Text(verbatim: "0%") } else { Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down") }
                     }
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Self.heroPill)
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Self.heroInk.opacity(0.08), in: Capsule())
+                    .background(Self.heroInk, in: Capsule())
                     Text(compareText)
-                        .font(.system(size: 13)).opacity(0.85)
+                        .font(.system(size: 13))
                 }
             }
         }
         .foregroundStyle(Self.heroInk)
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { HeroGreen().clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous)) }
+        .background(Self.heroBg, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     // MARK: Ô số liệu 2×2
@@ -809,9 +810,4 @@ enum Hatch {
         }
         return ImagePaint(image: Image(uiImage: img), scale: 1)
     }
-}
-
-/// Nền khung Tổng chi: vàng pastel phẳng (nhạt hơn ô "Cafe" ở màn chính), chữ đen.
-private struct HeroGreen: View {
-    var body: some View { Color(hex: 0xFFEBA6) }
 }

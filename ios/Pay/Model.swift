@@ -311,7 +311,7 @@ final class Store: ObservableObject {
         let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct)
         items.append(e)
         persist()
-        if toast { show(L("Đã lưu %@đ", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
+        if toast { show(L("Đã lưu %@", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
     }
 
     /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.

@@ -56,7 +56,7 @@ extension English {
         "%ld khoản": "%ld items",   // số ít dùng "1 khoản" (EN+Home: "1 item")
 
         // Thông báo (Model)
-        "Đã lưu %@đ": "Saved %@đ",
+        "Đã lưu %@": "Saved %@",
         "Đã xoá": "Deleted",
         "Đã xoá tất cả khoản chi": "All expenses deleted",
         "File sao lưu không hợp lệ": "Invalid backup file",
@@ -73,7 +73,6 @@ extension English {
         "Ghi chú": "Note",
 
         // Ngân sách
-        "Còn %@đ": "%@đ left",
-        "Vượt %@đ": "%@đ over",
+        "Còn %@": "%@ left",
     ]
 }

@@ -134,13 +134,13 @@ struct SpendView: View {
                     Gauge(value: min(b.ratio, 1)) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity)
                         .accessibilityLabel(b.label)
                 } else {
-                    Text(L("Tháng: %@đ", fmt(e.s.month))).font(.system(size: 12)).opacity(0.75).lineLimit(1)
+                    Text(L("Tháng: %@", fmt(e.s.month))).font(.system(size: 12)).opacity(0.75).lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(QuickKind.scan.url)
         case .accessoryInline:
-            Label(L("Hôm nay %@đ", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(QuickKind.scan.url)
+            Label(L("Hôm nay %@", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(QuickKind.scan.url)
         default:   // nhỏ: chạm vào là quét QR luôn
             VStack(alignment: .leading, spacing: 0) {
                 CardMarks(ink: ink)
@@ -163,7 +163,7 @@ struct SpendView: View {
                     .minimumScaleFactor(0.7).lineLimit(1)
                 InkBar(ratio: b.ratio, ink: ink).padding(.top, 3)
             } else {
-                Text(L("Tháng %ld: %@đ", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
+                Text(L("Tháng %ld: %@", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink)
                     .minimumScaleFactor(0.7).lineLimit(1)
             }
@@ -269,7 +269,7 @@ struct VoiceView: View {
                 }
                 Spacer(minLength: 6)
                 Text(L("Nói để ghi")).font(.system(size: 19, weight: .bold)).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.7)
-                Text(L("Hôm nay %@đ", fmt(e.s.today)))
+                Text(L("Hôm nay %@", fmt(e.s.today)))
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(soft)
                     .minimumScaleFactor(0.7).lineLimit(1)
             }
@@ -342,7 +342,7 @@ struct MyQRView: View {
                     Text(fmt(e.s.today)).font(.system(size: 28, weight: .bold)).kerning(-1).foregroundStyle(ink)
                         .minimumScaleFactor(0.5).lineLimit(1)
                     Text(e.s.budgetStatus.map(\.label)
-                         ?? L("Tháng %ld: %@đ", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
+                         ?? L("Tháng %ld: %@", Calendar.current.component(.month, from: e.date), fmt(e.s.month)))
                         .font(.system(size: 12, weight: .semibold)).foregroundStyle(ink).minimumScaleFactor(0.7).lineLimit(1)
                     if let b = e.s.budgetStatus { InkBar(ratio: b.ratio, ink: ink).padding(.top, 3) }
                     Spacer(minLength: 6)

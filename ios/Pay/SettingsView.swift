@@ -91,7 +91,7 @@ struct SettingsView: View {
             Image("logo-pay").resizable().scaledToFit().frame(width: 60)   // chỉ thẻ xanh, không ô nền
             VStack(alignment: .leading, spacing: 4) {
                 Group {
-                    Text(L("Tháng %@: %@đ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
+                    Text(L("Tháng %@: %@ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
                     Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
                 }
                 .font(.system(size: 15)).foregroundStyle(.secondary)
@@ -164,7 +164,7 @@ struct SettingsView: View {
                         Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 14)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
-                    Text("\(fmt(r.a))đ").fontWeight(.semibold).lineLimit(1)
+                    Text("\(fmt(r.a))").fontWeight(.semibold).lineLimit(1)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) { store.stopRepeating(r) } label: { Text(L("Bỏ lặp")) }
@@ -439,7 +439,7 @@ struct BudgetSlider: View {
     /// 8.000.000 -> "8tr", 8.500.000 -> "8,5tr", 7.250.000 -> "7,25tr", 500.000 -> "500k" (tiếng Anh: "8M", "8.5M", "7.25M").
     /// Số nhập tay giữ đúng tới hàng nghìn (1.004.000 -> "1,004tr", không làm tròn thành "1tr"); lẻ dưới một nghìn thì hiện đủ số.
     static func compact(_ v: Int) -> String {
-        if v % 1000 != 0 { return "\(fmt(v))đ" }
+        if v % 1000 != 0 { return "\(fmt(v))" }
         if v < 1_000_000 { return "\(v / 1000)k" }
         var s = String(format: "%.3f", Double(v) / 1_000_000)
         while s.hasSuffix("0") { s.removeLast() }

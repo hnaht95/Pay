@@ -28,9 +28,9 @@ extension English {
 
         // Câu trả lời của lệnh "Ghi chi tiêu" trong Siri / Phím tắt (LogExpenseIntent)
         "Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe": "Didn't catch the amount. Try again, e.g. 35k coffee",
-        "Đã ghi %@đ %@.": "Logged %@đ under %@.",
+        "Đã ghi %@ %@.": "Logged %@ under %@.",
         "%@ trong tháng.": "%@ this month.",
-        "Hôm nay đã chi %@đ.": "Spent %@đ today.",
+        "Hôm nay đã chi %@.": "Spent %@ today.",
 
         // Widget và nút Trung tâm điều khiển (PayWidget)
         "Chi tiêu hôm nay": "Today's Spending",
@@ -38,10 +38,10 @@ extension English {
         "Nói để ghi": "Speak to Log",
         "Nhập": "Add",
         "Hôm nay": "Today",
-        "Hôm nay %@đ": "Today %@đ",
+        "Hôm nay %@": "Today %@",
         "Hôm nay đã chi": "Spent today",
-        "Tháng: %@đ": "This month: %@đ",
-        "Tháng %ld: %@đ": "Month %ld: %@đ",
+        "Tháng: %@": "This month: %@",
+        "Tháng %ld: %@": "Month %ld: %@",
         "Chạm là Pay nghe luôn, nói \"35k cafe\" là ghi.": "Tap and Pay starts listening. Say \"35k coffee\" to log it.",
         "Ghi bằng giọng nói": "Log by Voice",
         "Pay: Ghi bằng giọng nói": "Pay: Log by Voice",

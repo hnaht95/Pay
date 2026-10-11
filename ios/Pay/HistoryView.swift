@@ -29,7 +29,7 @@ struct HistoryView: View {
                         }
                     } header: {
                         HStack {
-                            Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))đ")
+                            Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))")
                         }
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
                         .textCase(nil)

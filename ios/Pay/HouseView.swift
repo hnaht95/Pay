@@ -96,7 +96,7 @@ struct HouseView: View {
             #endif
         }
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
-        .confirmationDialog(confirming.map { L("%@ báo đã chuyển %@đ cho bạn", house.memberName($0.from), fmt($0.amount)) } ?? "",
+        .confirmationDialog(confirming.map { L("%@ báo đã chuyển %@ cho bạn", house.memberName($0.from), fmt($0.amount)) } ?? "",
                             isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible,
                             presenting: confirming) { c in
             Button(L("Đã nhận")) { Task { await house.respond(c.id, received: true) } }
@@ -151,10 +151,10 @@ struct HouseView: View {
     @ViewBuilder private var payActions: some View {
         if let t = paying {
             if t.from == house.me {
-                Button(L("Đã chuyển %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
+                Button(L("Đã chuyển %@", fmt(t.amount))) { Task { await house.settle(t) } }
                 Button(L("Chưa chuyển"), role: .cancel) {}
             } else {
-                Button(L("Đã nhận %@đ", fmt(t.amount))) { Task { await house.settle(t) } }
+                Button(L("Đã nhận %@", fmt(t.amount))) { Task { await house.settle(t) } }
             }
         }
     }
@@ -861,18 +861,18 @@ struct HouseView: View {
         var out: [Activity] = []
         for e in house.spends where e.payer != me {
             let part = me.flatMap { e.shares.contains($0) ? Settle.split(e.amount, e.shares, seed: e.id)[$0] : nil }
-            out.append(Activity(id: e.id, who: e.payer, text: L("%@ thêm %@ %@đ", name(e.payer), e.note.isEmpty ? L("một khoản") : "\"\(e.note)\"", fmt(e.amount))
-                                + (part.map { L(", phần bạn %@đ", fmt($0)) } ?? ""), date: e.date))
+            out.append(Activity(id: e.id, who: e.payer, text: L("%@ thêm %@ %@", name(e.payer), e.note.isEmpty ? L("một khoản") : "\"\(e.note)\"", fmt(e.amount))
+                                + (part.map { L(", phần bạn %@", fmt($0)) } ?? ""), date: e.date))
         }
         for s in house.settles where s.from == me || s.to == me {
             let other = s.from == me ? s.to : s.from
             let text: String = switch (s.from == me, s.status) {
-            case (true, "wait"): L("Đã báo chuyển %@đ cho %@, chờ xác nhận", fmt(s.amount), name(s.to))
-            case (true, "no"): L("%@ chưa nhận được %@đ bạn chuyển", name(s.to), fmt(s.amount))
-            case (true, _): L("%@ đã nhận %@đ của bạn", name(s.to), fmt(s.amount))
-            case (false, "wait"): L("%@ báo đã chuyển cho bạn %@đ", name(s.from), fmt(s.amount))
-            case (false, "no"): L("Bạn báo chưa nhận được %@đ từ %@", fmt(s.amount), name(s.from))
-            case (false, _): L("Bạn đã nhận %@đ từ %@", fmt(s.amount), name(s.from))
+            case (true, "wait"): L("Đã báo chuyển %@ cho %@, chờ xác nhận", fmt(s.amount), name(s.to))
+            case (true, "no"): L("%@ chưa nhận được %@ bạn chuyển", name(s.to), fmt(s.amount))
+            case (true, _): L("%@ đã nhận %@ của bạn", name(s.to), fmt(s.amount))
+            case (false, "wait"): L("%@ báo đã chuyển cho bạn %@", name(s.from), fmt(s.amount))
+            case (false, "no"): L("Bạn báo chưa nhận được %@ từ %@", fmt(s.amount), name(s.from))
+            case (false, _): L("Bạn đã nhận %@ từ %@", fmt(s.amount), name(s.from))
             }
             out.append(Activity(id: s.id, who: other, text: text, date: s.date))
         }
@@ -1233,7 +1233,6 @@ struct HouseSpendEditor: View {
                             .contentTransition(.numericText())
                             .lineLimit(1).minimumScaleFactor(0.5)
                         Spacer()
-                        Text("đ").font(.system(size: 22, weight: .semibold)).foregroundStyle(.secondary)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { noteFocused = false; withAnimation(.snappy(duration: 0.25)) { padShown = true } }
@@ -1286,7 +1285,7 @@ struct HouseSpendEditor: View {
                     if editing == nil, let mine = myShare, mine > 0 {   // sửa khoản cũ: không ghi thêm vào chi tiêu cá nhân
                         Toggle(isOn: $logMine) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(L("Ghi %@đ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
+                                Text(L("Ghi %@ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
                                 Text(L("Thống kê và ngân sách chỉ tính phần của bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
                             }
                         }

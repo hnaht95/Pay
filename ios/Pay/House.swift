@@ -749,14 +749,14 @@ final class House: ObservableObject {
             c.subtitle = g.name
             c.userInfo = ["settle": s.id, "group": g.id]
             if s.to == me && s.from != me && s.status == "wait" {
-                c.title = L("%@ báo đã chuyển %@đ", name(s.from), fmt(s.amount))
+                c.title = L("%@ báo đã chuyển %@", name(s.from), fmt(s.amount))
                 c.body = L("Kiểm tra tài khoản rồi xác nhận đã nhận.")
                 c.categoryIdentifier = "HOUSE_CONFIRM"
             } else if s.from == me && s.to != me && s.status == "no" {
-                c.title = L("%@ chưa nhận được %@đ", name(s.to), fmt(s.amount))
+                c.title = L("%@ chưa nhận được %@", name(s.to), fmt(s.amount))
                 c.body = L("Kiểm tra lại giao dịch trong app ngân hàng hoặc chuyển lại.")
             } else if s.from == me && s.to != me && s.status == "ok" && seen.contains("\(s.id).wait") {
-                c.title = L("%@ đã nhận %@đ", name(s.to), fmt(s.amount))
+                c.title = L("%@ đã nhận %@", name(s.to), fmt(s.amount))
                 c.body = L("Khoản trả đã được xác nhận.")
             } else { continue }
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: tag, content: c, trigger: nil))

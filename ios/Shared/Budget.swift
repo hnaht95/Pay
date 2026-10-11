@@ -26,8 +26,8 @@ struct BudgetStatus {
         }
     }
 
-    /// "Còn 1.200.000đ" hoặc "Vượt 300.000đ"
-    var label: String { remaining >= 0 ? L("Còn %@đ", fmt(remaining)) : L("Vượt %@đ", fmt(-remaining)) }
+    /// "Còn 1.200.000" hoặc "Vượt 300.000"
+    var label: String { remaining >= 0 ? L("Còn %@", fmt(remaining)) : L("Vượt %@", fmt(-remaining)) }
 }
 
 /// Thanh tiến độ ngân sách.

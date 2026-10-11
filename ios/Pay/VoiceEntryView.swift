@@ -414,7 +414,6 @@ struct VoiceEntryView: View {
                         number(now, dim: live == nil)
                     }
                 }
-                Text("đ").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
             }
             .animation(.snappy, value: live?.amount)
             if let l = live {
@@ -561,7 +560,7 @@ struct VoiceEntryView: View {
                 }
                 if mine > 0 { store.add(amount: mine, note: note.isEmpty ? hit.group.name : note, cat: cat, toast: false) }
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
-                store.show(L("Đã ghi %@đ vào %@ · bạn %@đ", fmt(q.amount), hit.group.name, fmt(mine)))
+                store.show(L("Đã ghi %@ vào %@ · bạn %@", fmt(q.amount), hit.group.name, fmt(mine)))
                 leave()
             }
             return
@@ -576,7 +575,7 @@ struct VoiceEntryView: View {
         if closeAfterSave {
             // Đã bấm Xong lúc đang nghe: ghi xong đóng thẻ, báo "Đã lưu" kèm Hoàn tác ở màn chính
             closeAfterSave = false
-            store.show(L("Đã lưu %@đ", fmt(e.a))) { [store] in store.remove(id: e.id, toast: false) }
+            store.show(L("Đã lưu %@", fmt(e.a))) { [store] in store.remove(id: e.id, toast: false) }
             leave()
             return
         }

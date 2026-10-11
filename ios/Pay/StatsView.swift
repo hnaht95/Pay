@@ -385,63 +385,73 @@ struct StatsView: View {
             if unit != .day {
             GridRow {
             if isRunning {
-                tile(L("Hôm nay"), "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: L("chưa có để so"))
+                tile(.tangerine, L("Hôm nay"), "sun.max", "\(fmt(today))", delta: delta(today, yesterday), note: L("chưa có để so"))
             } else {
                 let active = Set(items.map { cal.startOfDay(for: $0.date) }).count
-                tile(L("Ngày có chi"), "calendar", "\(active)/\(days)", delta: nil, note: L("%ld%% số ngày", active * 100 / max(days, 1)))
+                tile(.tangerine, L("Ngày có chi"), "calendar", "\(active)/\(days)", delta: nil, note: L("%ld%% số ngày", active * 100 / max(days, 1)))
             }
-            tile(L("TB mỗi ngày"), "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: L("chưa có để so"))
+            tile(.mustard, L("TB mỗi ngày"), "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))", delta: delta(avg, prevAvg), note: L("chưa có để so"))
             }
             }
             GridRow {
-            tile(L("Lớn nhất"), "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil,
+            tile(.river, L("Lớn nhất"), "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))" } ?? "0", delta: nil,
                  note: biggest.map { $0.n?.isEmpty == false ? $0.n! : Category.get($0.c).name } ?? L("chưa có"))
-            tile(L("Số khoản"), "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: L("chưa có để so"))
+            tile(.tomato, L("Số khoản"), "list.bullet", "\(items.count)", delta: delta(items.count, prev.count), note: L("chưa có để so"))
             }
         }
     }
 
     /// Ô số liệu tối giản: tên + biểu tượng, con số, và luôn một nhãn ở đáy: % nếu có so sánh, không thì nhãn xám ghi note.
     /// Nhờ vậy hai ô cùng hàng luôn cao bằng nhau mà không ô nào bị trống đáy.
-    private func tile(_ title: String, _ icon: String, _ value: String, delta d: Int?, note: String) -> some View {
+    /// Bộ ba màu kiểu bảng màu retro cho một ô: nền nhạt, chữ đậm cùng họ, và màu nhấn cho biểu tượng / nhãn %
+    /// (giữ nguyên ở chế độ tối: nền sáng nổi trên trang tối vẫn đọc rõ)
+    struct Tone {
+        let bg: Color, ink: Color, accent: Color, onAccent: Color
+        static let tangerine = Tone(bg: Color(hex: 0xF8D5B4), ink: Color(hex: 0x8A3A10), accent: Color(hex: 0xEC7A2B), onAccent: Color(hex: 0xFFF4E0))
+        static let mustard = Tone(bg: Color(hex: 0xF7DF96), ink: Color(hex: 0x1F3F6E), accent: Color(hex: 0x1F3F6E), onAccent: Color(hex: 0xF7DF96))
+        static let river = Tone(bg: Color(hex: 0xC8DBEF), ink: Color(hex: 0x1F4E8C), accent: Color(hex: 0x1F4E8C), onAccent: Color(hex: 0xDCE9F7))
+        static let tomato = Tone(bg: Color(hex: 0xF6C8BC), ink: Color(hex: 0x8A2414), accent: Color(hex: 0xE2462E), onAccent: Color(hex: 0xFFE9DF))
+    }
+
+    private func tile(_ tone: Tone, _ title: String, _ icon: String, _ value: String, delta d: Int?, note: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             // Biểu tượng tròn căn giữa theo chiều dọc với chữ tiêu đề nhỏ bên trái
             HStack(alignment: .center) {
-                Text(title).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
+                Text(title).font(.system(size: 14)).foregroundStyle(tone.ink.opacity(0.8)).lineLimit(1)
                 Spacer(minLength: 4)
-                iconChip(icon, fg: .primary, bg: Self.chip)
+                iconChip(icon, fg: tone.onAccent, bg: tone.accent)
             }
-            Text(value).font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.5).lineLimit(1)
-            if let d { deltaPill(d) } else { notePill(note) }
+            Text(value).font(.system(size: 22, weight: .bold)).foregroundStyle(tone.ink).minimumScaleFactor(0.5).lineLimit(1)
+            if let d { deltaPill(d, tone) } else { notePill(note, tone) }
         }
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Self.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(tone.bg, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    /// Chi tăng là xấu: mũi tên lên nền đỏ nhạt, xuống nền xanh nhạt (có mũi tên, không chỉ dựa vào màu).
+    /// Nhãn %: mũi tên lên = chi tăng, xuống = chi giảm.
     /// 0% (kể cả do làm tròn) không phải tăng cũng không phải giảm: nhãn xám, không mũi tên.
-    @ViewBuilder private func deltaPill(_ d: Int) -> some View {
+    @ViewBuilder private func deltaPill(_ d: Int, _ tone: Tone) -> some View {
         if d == 0 {
-            notePill("0%")
+            notePill("0%", tone)
         } else {
-            let up = d > 0
-            Label("\(abs(d))%", systemImage: up ? "arrow.up" : "arrow.down")
+            // Màu theo bảng màu của ô; tăng / giảm đọc qua mũi tên
+            Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(up ? Color(light: 0xB42318, dark: 0xFF8A80) : Color(light: 0x067647, dark: 0x6CE9A6))
+                .foregroundStyle(tone.onAccent)
                 .padding(.horizontal, 7).padding(.vertical, 3)
-                .background((up ? Color.red : Color.green).opacity(0.14), in: Capsule())
+                .background(tone.accent, in: Capsule())
         }
     }
 
     /// Nhãn xám cùng cỡ với nhãn %, cho ô không có gì để so.
-    private func notePill(_ text: String) -> some View {
+    private func notePill(_ text: String, _ tone: Tone) -> some View {
         Text(text)
             .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(tone.ink)
             .lineLimit(1)
             .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(Self.chip, in: Capsule())
+            .background(tone.ink.opacity(0.1), in: Capsule())
     }
 
     // MARK: Hạn mức tháng
@@ -465,9 +475,9 @@ struct StatsView: View {
                 .frame(height: 12)
                 .padding(.top, 8)
                 HStack(alignment: .firstTextBaseline) {
-                    Text("\(fmt(spent))đ").font(.system(size: 16, weight: .semibold))
+                    Text("\(fmt(spent))").font(.system(size: 16, weight: .semibold))
                     Spacer()
-                    Text("/ \(fmt(limit))đ").font(.system(size: 14)).foregroundStyle(.secondary)
+                    Text("/ \(fmt(limit))").font(.system(size: 14)).foregroundStyle(.secondary)
                 }
                 .padding(.top, 6)
             } else {
@@ -618,7 +628,7 @@ struct StatsView: View {
                                 .padding(.horizontal, 7).padding(.vertical, 3)
                                 .background(Self.chip, in: Capsule())
                             Spacer()
-                            Text("\(fmt(v))đ").font(.system(size: 16, weight: .semibold))
+                            Text("\(fmt(v))").font(.system(size: 16, weight: .semibold))
                         }
                         GeometryReader { g in
                             ZStack(alignment: .leading) {
@@ -656,7 +666,7 @@ struct StatsView: View {
                             Text(when(e.date)).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer()
-                        Text("\(fmt(e.a))đ").font(.system(size: 15, weight: .semibold))
+                        Text("\(fmt(e.a))").font(.system(size: 15, weight: .semibold))
                     }
                     .padding(.vertical, 14)
                     if e.id != rows.last?.id { Divider().padding(.leading, 50) }

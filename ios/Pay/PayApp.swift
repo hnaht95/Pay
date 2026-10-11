@@ -74,9 +74,9 @@ struct LogExpenseIntent: AppIntent {
         guard let e = store.quickAdd(text, spoken: true) else {
             throw $text.needsValueError(IntentDialog(stringLiteral: L("Chưa nghe rõ số tiền. Nói lại, ví dụ: 35k cafe")))
         }
-        var reply = L("Đã ghi %@đ %@.", fmt(e.a), Category.get(e.c).name)
+        var reply = L("Đã ghi %@ %@.", fmt(e.a), Category.get(e.c).name)
         if let b = store.budgetStatus() { reply += " " + L("%@ trong tháng.", b.label) }
-        else { reply += " " + L("Hôm nay đã chi %@đ.", fmt(store.total(on: Date()))) }
+        else { reply += " " + L("Hôm nay đã chi %@.", fmt(store.total(on: Date()))) }
         return .result(dialog: IntentDialog(stringLiteral: reply))
     }
 }

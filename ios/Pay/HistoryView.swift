@@ -46,9 +46,11 @@ struct HistoryView: View {
             .toolbar {
                 // Đang xem một danh mục: nhập luôn khoản mới vào danh mục đó
                 if let category {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button { editing = .new(cat: category) } label: { Image(systemName: "plus") }
-                            .accessibilityLabel(L("Nhập khoản %@", Category.get(category).name))
+                    // Nút tròn nền xám như các nút đầu trang khác của app, không dùng viên kính xanh mặc định của iOS
+                    if #available(iOS 26.0, *) {
+                        ToolbarItem(placement: .topBarTrailing) { addButton(category) }.sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .topBarTrailing) { addButton(category) }
                     }
                 }
             }
@@ -57,6 +59,16 @@ struct HistoryView: View {
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .appMenu($menu)
         .sheetGrabber()
+    }
+
+    private func addButton(_ category: String) -> some View {
+        Button { editing = .new(cat: category) } label: {
+            Image(systemName: "plus").font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
+        }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(L("Nhập khoản %@", Category.get(category).name))
     }
 
     private func grouped() -> [(Date, [Expense])] {

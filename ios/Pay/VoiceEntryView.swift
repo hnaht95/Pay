@@ -219,7 +219,7 @@ struct VoiceEntryView: View {
             // Phim: nền tối dần và thẻ trượt lên theo mức `shown`
             ZStack(alignment: .bottom) {
                 Color.black.opacity(0.35 * Double(v.shown))
-                card.padding(.horizontal, 12).padding(.bottom, 34).offset(y: ((1 - v.shown) * 460).rounded())
+                card.padding(.horizontal, 16).padding(.bottom, 16).offset(y: ((1 - v.shown) * 460).rounded())
             }
         } else { live }
     }
@@ -258,7 +258,7 @@ struct VoiceEntryView: View {
                             // Thẻ đổi cỡ (nghe xong thu gọn…): khối làm nền co giãn theo, cùng nhịp với thẻ
                             if cardRect == .zero { cardRect = r } else { withAnimation(Self.settle) { cardRect = r } }
                         }
-                        .padding(.horizontal, 12).padding(.bottom, 34)
+                        .padding(.horizontal, 16).padding(.bottom, 16)
                         // Chỉ mờ dần, không scaleEffect: scaleEffect gom cả thẻ thành một khối có toạ độ riêng, làm lúc nghe xong
                         // khung thẻ nhảy tức thì còn các nút cũ rơi xuống dưới mép thẻ (cách mở từ nút Tác vụ không bị vì không có nó)
                         .opacity(filled ? 1 : 0)
@@ -267,7 +267,7 @@ struct VoiceEntryView: View {
             } else if shown {
                 // Nâng lên khỏi đáy để thẻ không dính vào góc bo màn hình và các ô phía sau
                 card
-                    .padding(.horizontal, 12).padding(.bottom, 34)
+                    .padding(.horizontal, 16).padding(.bottom, 16)
                     // Chỉ trượt, không mờ dần: thẻ mờ nửa chừng đè lên các ô phía sau trông như bóng ma
                     .transition(.move(edge: .bottom))
             }

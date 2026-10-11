@@ -1210,17 +1210,10 @@ struct HouseSpendEditor: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Button { dismiss() } label: {
-                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
-                        .frame(width: 46, height: 46).background(Palette.pill, in: Circle())
-                }
-                .buttonStyle(Pressable())
-                .foregroundStyle(.primary)
-                Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold))
-                Spacer()
-            }
-            .padding(.top, 8)
+            // Bảng có vạch ngang, vuốt xuống là đóng: không cần nút quay lại
+            Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 26)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {

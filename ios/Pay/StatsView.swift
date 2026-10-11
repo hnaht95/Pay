@@ -107,6 +107,8 @@ struct StatsView: View {
     // chạm một ngày để xem riêng ngày ấy, chạm lại để về cả tháng.
 
     private static let pillWidth: CGFloat = 50
+    /// Viên ngày / tháng cao bằng nhau ở cả hai dải
+    private static let pillHeight: CGFloat = 108
 
     private var weekStrip: some View {
         let today = cal.startOfDay(for: Date())
@@ -151,7 +153,7 @@ struct StatsView: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centerDay, anchor: .center)
             .defaultScrollAnchor(.trailing)
-            .frame(height: 104)
+            .frame(height: Self.pillHeight + 20)
             .modifier(ChipEdges(fade: $stripFade))
             // Rung nhẹ mỗi khi một ngày lướt qua giữa dải, như bánh xe chọn giờ của iOS
             .sensoryFeedback(.selection, trigger: centerDay)
@@ -218,7 +220,7 @@ struct StatsView: View {
             }
             .scrollIndicators(.hidden)
             .defaultScrollAnchor(.trailing)
-            .frame(height: 104)
+            .frame(height: Self.pillHeight + 20)
             .onChange(of: month) {
                 withAnimation(.snappy) { proxy.scrollTo(cal.date(from: cal.dateComponents([.year, .month], from: month))!, anchor: .center) }
             }
@@ -238,9 +240,9 @@ struct StatsView: View {
             }
         } label: {
             VStack(spacing: 6) {
-                // Năm chỉ ghi ở tháng 1 (như dải ngày ghi tên tháng ở ngày 1), các tháng khác để trống
-                Text(cal.component(.month, from: m) == 1 ? String(cal.component(.year, from: m)) : " ")
-                    .font(.system(size: 11, weight: .bold))
+                // Hàng năm nằm ngoài viên, cùng kiểu hàng thứ của dải ngày
+                Text(String(cal.component(.year, from: m)))
+                    .font(.system(size: 11, weight: on ? .bold : .medium))
                     .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                 VStack(spacing: 0) {
                     Text(shortMonth(m))
@@ -260,7 +262,7 @@ struct StatsView: View {
                     }
                     .padding(4)
                 }
-                .frame(width: Self.pillWidth, height: 84)
+                .frame(width: Self.pillWidth, height: Self.pillHeight)
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -308,7 +310,7 @@ struct StatsView: View {
                     }
                     .padding(4)
                 }
-                .frame(width: Self.pillWidth, height: 84)
+                .frame(width: Self.pillWidth, height: Self.pillHeight)
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))

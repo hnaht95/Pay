@@ -12,7 +12,7 @@ struct ReceiptCamera: View {
     @State private var finished = false
     @State private var holeRect: CGRect = .zero
     /// Chiều cao nút Quét QR ở màn hình chính
-    private static let btnH: CGFloat = 56 + BigButton.inset * 2
+    private static let btnH: CGFloat = 64
 
     private static var safeBottom: CGFloat {
         (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom ?? 34
@@ -42,13 +42,15 @@ struct ReceiptCamera: View {
                     .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
                     .multilineTextAlignment(.center).padding(.horizontal, 8)
                     .padding(.top, 12)
-                // Chỗ của khung: lấp hết phần giữa, rộng bằng cụm nút bên dưới
+                // Khung dọc tỉ lệ tờ hoá đơn, rộng bằng cụm nút bên dưới, nằm giữa phần trống
+                Spacer(minLength: 0)
                 Color.clear
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .aspectRatio(0.72, contentMode: .fit)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { holeRect = $0 }
+                Spacer(minLength: 0)
                 // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai. Hai góc dưới ngoài cùng bo theo góc
                 // màn hình (cụm nút cách mép dưới bằng lề hai bên, 16 pt)
-                let corner: CGFloat = 32, screen: CGFloat = 55 - 16
+                let corner: CGFloat = 28, screen: CGFloat = 28
                 HStack(spacing: 12) {
                     VStack(spacing: 12) {
                         Button { finish(nil) } label: { pill(L("Đóng"), bottomLeading: corner) }.buttonStyle(Pressable())
@@ -56,7 +58,7 @@ struct ReceiptCamera: View {
                     }
                     Button { cam.capture { finish($0) } } label: {
                         VStack(spacing: 8) {
-                            Image(systemName: "camera.aperture").font(.system(size: 30, weight: .medium))
+                            Image(systemName: "camera.aperture").font(.system(size: 26, weight: .medium))
                             Text(L("Chụp")).font(.system(size: 18, weight: .semibold))
                         }
                         .foregroundStyle(.black)
@@ -71,7 +73,8 @@ struct ReceiptCamera: View {
                 // Mỗi nút trái cao bằng nút Quét QR ở màn hình chính, nút Chụp cao bằng cả hai cộng khe
                 .frame(height: Self.btnH * 2 + 12)
             }
-            .padding(.horizontal, 16)
+            // Khung và cụm nút thu vào giữa (lề 36): nhỏ gọn hơn cả bề ngang màn hình
+            .padding(.horizontal, 36)
             // Cụm nút xuống sát đáy: cách mép dưới màn hình 16 pt như hai nút ở màn hình chính
             .padding(.bottom, 16 - Self.safeBottom)
         }
@@ -87,8 +90,8 @@ struct ReceiptCamera: View {
     private func pill(_ s: String, bottomLeading: CGFloat) -> some View {
         Text(s).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.white.opacity(0.18), in: UnevenRoundedRectangle(topLeadingRadius: 32, bottomLeadingRadius: bottomLeading,
-                                                                         bottomTrailingRadius: 32, topTrailingRadius: 32, style: .continuous))
+            .background(.white.opacity(0.18), in: UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: bottomLeading,
+                                                                         bottomTrailingRadius: 28, topTrailingRadius: 28, style: .continuous))
     }
 
     private func finish(_ img: UIImage?) {

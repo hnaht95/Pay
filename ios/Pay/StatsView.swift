@@ -17,6 +17,8 @@ struct StatsView: View {
     @State private var centerDay: Date? = Calendar.current.startOfDay(for: Date())
     /// Mờ mép trái / phải của dải ngày (chỉ khi còn ngày khuất bên đó; mở ra ở hôm nay nên mép phải không mờ)
     @State private var stripFade = [true, false]
+    /// Dải trên cùng đang xem theo ngày (false) hay theo tháng (true)
+    @State private var byMonth = false
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -111,12 +113,13 @@ struct StatsView: View {
         let top = max(sorted.isEmpty ? 1 : sorted[min(sorted.count - 1, sorted.count * 9 / 10)], 1)
         let shown = centerDay ?? today
         return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(monthYear(shown)).font(.system(size: 17, weight: .semibold))
+            HStack(spacing: 8) {
+                Text(byMonth ? String(cal.component(.year, from: month)) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
                     .contentTransition(.numericText())
                     .animation(.snappy, value: monthYear(shown))
                 Spacer()
-                if !cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!)) {
+                if (!byMonth && (!cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!))))
+                    || (byMonth && !cal.isDate(month, equalTo: today, toGranularity: .month)) {
                     Button { withAnimation(.snappy) { goToday() } } label: {
                         Text(L("Hôm nay")).font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.primary)
@@ -126,9 +129,11 @@ struct StatsView: View {
                     .buttonStyle(Pressable())
                     .transition(.opacity)
                 }
+                scopeToggle
             }
             .frame(height: 30)
             .padding(.horizontal, 20)
+            if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).id(d) }
@@ -151,6 +156,7 @@ struct StatsView: View {
                     LinearGradient(colors: [.black, stripFade[1] ? .clear : .black], startPoint: .leading, endPoint: .trailing).frame(width: 32)
                 }
             }
+            }
         }
         // Không nền thẻ, dải ngày tràn ra hai mép màn hình (bù lại lề 16 của trang); chữ tiêu đề vẫn thẳng lề
         .padding(.horizontal, -16)
@@ -166,6 +172,97 @@ struct StatsView: View {
 
     /// Viên ngày: thứ nhỏ, số ngày; lớp nền trong dâng cao theo mức chi.
     /// Đang chọn: nền đậm, chữ trắng; hôm nay: số xanh lá; ngày 1: ghi tháng thay cho thứ để thấy chỗ sang tháng.
+    /// Nút chuyển dải trên cùng giữa Ngày và Tháng (hai chữ trong một viên, phần đang chọn nền đen)
+    private var scopeToggle: some View {
+        HStack(spacing: 2) {
+            ForEach([false, true], id: \.self) { m in
+                let on = byMonth == m
+                Button {
+                    withAnimation(.snappy) {
+                        byMonth = m
+                        day = nil
+                    }
+                } label: {
+                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(on ? Self.inkText : Color.primary.opacity(0.6))
+                        .padding(.horizontal, 10).frame(height: 26)
+                        .background(Capsule().fill(on ? Self.ink : .clear))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(2)
+        .background(Capsule().fill(Self.card))
+        .sensoryFeedback(.selection, trigger: byMonth)
+    }
+
+    /// Dải theo tháng: mỗi tháng một viên như dải ngày (tên tháng trên, lớp xám dâng theo mức chi), chạm để xem tháng đó
+    private var monthStrip: some View {
+        let months = allMonths
+        let totals = months.map { sum(spending(in: cal.dateInterval(of: .month, for: $0)!)) }
+        let used = totals.filter { $0 > 0 }.sorted(by: >)
+        let top = max(used.count > 1 && used[0] > used[1] * 2 ? used[1] : (used.first ?? 1), 1)
+        return ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 6) {
+                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).id(m) }
+                }
+                .padding(.horizontal, 16)
+            }
+            .scrollIndicators(.hidden)
+            .defaultScrollAnchor(.trailing)
+            .frame(height: 104)
+            .onChange(of: month) {
+                withAnimation(.snappy) { proxy.scrollTo(cal.date(from: cal.dateComponents([.year, .month], from: month))!, anchor: .center) }
+            }
+        }
+    }
+
+    private func monthPill(_ m: Date, spent: Int, top: Int) -> some View {
+        let on = isSelected(m)
+        let now = cal.isDate(m, equalTo: Date(), toGranularity: .month)
+        let r = min(sqrt(Double(spent) / Double(top)), 1)
+        return Button {
+            withAnimation(.snappy(duration: 0.2)) {
+                day = nil
+                showMonth(m)
+                let last = cal.date(byAdding: .day, value: -1, to: cal.dateInterval(of: .month, for: m)!.end)!
+                centerDay = cal.startOfDay(for: min(last, Date()))
+            }
+        } label: {
+            VStack(spacing: 6) {
+                // Năm chỉ ghi ở tháng 1 (như dải ngày ghi tên tháng ở ngày 1), các tháng khác để trống
+                Text(cal.component(.month, from: m) == 1 ? String(cal.component(.year, from: m)) : " ")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
+                VStack(spacing: 0) {
+                    Text(shortMonth(m))
+                        .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .foregroundStyle(on ? Self.inkText : now ? Self.todayTint : Color.primary.opacity(0.8))
+                        .frame(height: 24)
+                        .padding(.top, 8)
+                    GeometryReader { g in
+                        if spent > 0 {
+                            let h = max(8, g.size.height * r)
+                            UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
+                                .fill(on ? Self.inkText.opacity(0.22) : Color.primary.opacity(0.09))
+                                .frame(height: h)
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        }
+                    }
+                    .padding(4)
+                }
+                .frame(width: Self.pillWidth, height: 84)
+                .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(Pressable())
+        .sensoryFeedback(.selection, trigger: on)
+    }
+
     private func dayPill(_ d: Date, spent: Int, top: Int) -> some View {
         let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
         let today = cal.isDateInToday(d)
@@ -508,6 +605,8 @@ struct StatsView: View {
                 .contentTransition(.numericText())
             budgetLine(spent: current)
             noSpendLine
+            // Đang xem dải trên theo tháng thì không lặp lại hàng cột tháng ở đây
+            if !byMonth {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
                     HStack(alignment: .bottom, spacing: 8) {
@@ -527,6 +626,7 @@ struct StatsView: View {
             }
             .frame(height: 118)
             .padding(.top, 8)
+            }
         }
     }
 

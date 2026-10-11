@@ -62,13 +62,13 @@ struct ReceiptCamera: View {
                         withAnimation(.easeOut(duration: 0.35)) { flash = false }
                         cam.capture { finish($0) }
                     } label: {
-                        // Không icon, không chữ: một mảng vàng to là nút chụp (VoiceOver vẫn đọc "Chụp")
-                        Color.clear.contentShape(Rectangle())
+                        // Icon chụp đen ở giữa
+                        Image(systemName: "camera.aperture").font(.system(size: 34, weight: .medium))
                             .accessibilityLabel(L("Chụp"))
-                        // Vàng mù tạt retro (cùng bảng màu các ô Thống kê), icon xanh navy
-                        .foregroundStyle(Color(hex: 0x1F3F6E))
+                        // Xanh lá của icon app, icon đen
+                        .foregroundStyle(Color(hex: 0x111114))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(hex: 0xF2B82E), in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
+                        .background(Color(hex: 0x61BE6E), in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
                                                                        bottomTrailingRadius: screen, topTrailingRadius: corner, style: .continuous))
                     }
                     .buttonStyle(Pressable())

@@ -65,11 +65,22 @@ struct HouseView: View {
             Palette.bg.ignoresSafeArea()
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
-                    header
+                    header.hidden()   // giữ chỗ; đầu trang thật nằm cố định phía trên (xem overlay bên dưới)
                     content
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 120)
+            }
+            // Đầu trang (‹, chuông, ⋯) cố định; nội dung cuộn lên mờ dần dưới nó thay vì bị cắt ngang ở mép bảng
+            .overlay(alignment: .top) {
+                header.padding(.horizontal, 16)
+                    .background(alignment: .top) {
+                        LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.55),
+                                               .init(color: Palette.bg.opacity(0), location: 1)],
+                                       startPoint: .top, endPoint: .bottom)
+                            .padding(.bottom, -28)
+                            .allowsHitTesting(false)
+                    }
             }
             // Không có kéo-để-tải-lại: nó giành mất cử chỉ vuốt xuống để ẩn bảng. Sổ tự tải khi mở, khi app quay lại và khi có thông báo
             .withDock(dock: dock, fallbackBlur: bottomFade, film: film != nil)
@@ -239,9 +250,12 @@ struct HouseView: View {
         }
         // Tên ở chính giữa màn hình, không theo khoảng trống giữa các nút (bên phải có hai nút, bên trái một nút)
         .overlay {
-            Text(inGroup && !house.name.isEmpty ? house.name : creating ? L("Nhóm mới") : L("Nhóm chung"))
-                .font(.system(size: 19, weight: .bold)).lineLimit(1)
-                .padding(.horizontal, 100)
+            // Trong nhóm: tên nhóm nằm ngay trên số tiền (xem youCard), đầu trang chỉ còn các nút
+            if !inGroup {
+                Text(creating ? L("Nhóm mới") : L("Nhóm chung"))
+                    .font(.system(size: 19, weight: .bold)).lineLimit(1)
+                    .padding(.horizontal, 100)
+            }
         }
         .padding(.top, 14).padding(.bottom, 14)
         .sheet(isPresented: $showInbox) { inbox }
@@ -531,12 +545,15 @@ struct HouseView: View {
     /// Thẻ trên cùng: số tiền của riêng bạn, bên dưới là từng người bạn cần trả / sẽ trả bạn.
     private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text(house.name).font(.system(size: 28, weight: .bold)).lineLimit(2).padding(.bottom, 14)
+            // Màu đỏ / xanh chỉ ở dòng chữ nhỏ; số tiền to màu chữ thường cho dễ đọc trên nền xám
             Text(mine > 0 ? L("Bạn sẽ nhận") : mine < 0 ? L("Bạn cần trả") : L("Bạn không nợ ai"))
-                .font(.system(size: 16)).foregroundStyle(.secondary)
+                .font(.system(size: 16, weight: mine == 0 ? .regular : .semibold))
+                .foregroundStyle(mine < 0 ? Palette.danger : mine > 0 ? Palette.goodInk : .secondary)
             if mine != 0 {
                 Text(fmt(abs(mine)))
                     .font(.system(size: 46, weight: .bold)).kerning(-1.5)
-                    .foregroundStyle(mine < 0 ? Palette.danger : Palette.goodInk)
+                    .foregroundStyle(.primary)
                     .minimumScaleFactor(0.5).lineLimit(1)
                     .padding(.top, 6)
             } else {

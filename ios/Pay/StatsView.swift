@@ -830,63 +830,53 @@ struct StatsView: View {
         // như cách nó được vẽ ở mọi nơi, để các dòng cộng lại đúng bằng tổng chi
         let byCat = Dictionary(grouping: items, by: { Category.get($0.c).k }).mapValues(sum)
         let ranked = Category.all.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }
-        return card {
-            Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold))
-            VStack(spacing: 22) {
-                ForEach(ranked) { c in
-                    let v = byCat[c.k]!
-                    VStack(spacing: 10) {
-                        HStack(spacing: 12) {
-                            CategoryBadge(c: c, side: 38, radius: 11, iconSize: 22, edge: true)
-                            Text(c.name).font(.system(size: 16, weight: .medium))
+        // Cùng kiểu hàng "Gần đây" ở màn hình chính: mỗi danh mục một thẻ riêng (ô biểu tượng trắng, tên + %, số tiền,
+        // thanh tỉ lệ mảnh ở dưới tên)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            ForEach(ranked) { c in
+                let v = byCat[c.k]!
+                HStack(spacing: 14) {
+                    CategoryBadge(c: c, side: 56, radius: ExpenseRow.radius - ExpenseRow.inset)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text(c.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                             Text("\(Int((Double(v) / Double(total) * 100).rounded()))%")
                                 .font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                                 .padding(.horizontal, 7).padding(.vertical, 3)
-                                .background(Self.chip, in: Capsule())
-                            Spacer()
-                            Text("\(fmt(v))").font(.system(size: 16, weight: .semibold))
+                                .background(Color.primary.opacity(0.07), in: Capsule())
+                            Spacer(minLength: 8)
+                            Text("\(fmt(v))").font(.system(size: 19, weight: .bold)).lineLimit(1)
                         }
                         GeometryReader { g in
                             ZStack(alignment: .leading) {
-                                Capsule().fill(Self.chip)
+                                Capsule().fill(Color.primary.opacity(0.07))
                                 Capsule().fill(c.chart).frame(width: max(6, g.size.width * Double(v) / Double(total)))
                             }
                         }
                         .frame(height: 6)
                     }
                 }
+                .padding(.leading, ExpenseRow.inset).padding(.trailing, 16).padding(.vertical, 12)
+                .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
             }
-            .padding(.top, 12)
         }
     }
 
     // MARK: Khoản chi gần đây
 
+    /// Cùng kiểu hàng "Gần đây" ở màn hình chính: mỗi khoản một thẻ riêng (ô biểu tượng trắng, tên, số tiền, ngày | giờ)
     private func recentCard(_ items: [Expense]) -> some View {
         let rows = Array(items.sorted { $0.t > $1.t }.prefix(6))
-        return card {
+        return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(L("Khoản chi gần đây")).font(.system(size: 17, weight: .semibold))
                 Spacer()
                 // "1 khoản" tách riêng để tiếng Anh có dạng số ít (như màn hình chính)
                 Text(items.count == 1 ? L("1 khoản") : L("%ld khoản", items.count)).font(.system(size: 13)).foregroundStyle(.secondary)
             }
-            VStack(spacing: 0) {
-                ForEach(rows) { e in
-                    let c = Category.get(e.c)
-                    HStack(spacing: 12) {
-                        CategoryBadge(c: c, side: 34, radius: 10, iconSize: 20, edge: true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(e.n?.isEmpty == false ? e.n!.capFirst : c.name).font(.system(size: 15, weight: .medium)).lineLimit(1)
-                            Text(when(e.date)).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        Spacer()
-                        Text("\(fmt(e.a))").font(.system(size: 15, weight: .semibold))
-                    }
-                    .padding(.vertical, 14)
-                    if e.id != rows.last?.id { Divider().padding(.leading, 50) }
-                }
-            }
+            .padding(.horizontal, 4)
+            ForEach(rows) { e in ExpenseRow(e: e, showDay: true, repeats: Store.shared.rule(for: e) != nil) }
         }
     }
 

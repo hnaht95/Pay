@@ -606,10 +606,10 @@ struct DateSheet: View {
                 Text(name).font(.system(size: 12, weight: .medium))
                     .foregroundStyle(filled ? Color.white.opacity(0.75) : Color.primary.opacity(0.45))
                 Text("\(cal.component(.day, from: d))")
-                    .font(.system(size: 21, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
                     .foregroundStyle(filled ? Color.white : Color.primary.opacity(0.85))
             }
-            .frame(maxWidth: .infinity).frame(height: 64)
+            .frame(maxWidth: .infinity).frame(height: 58)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(on ? Self.orange : today ? Color(light: 0x3A3A3E, dark: 0x5A5A5F) : Color.primary.opacity(0.05)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

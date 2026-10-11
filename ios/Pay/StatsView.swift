@@ -9,10 +9,22 @@ struct StatsView: View {
     @State private var month = Date()
     /// Trang 6 tháng đang hiện trên thanh chọn tháng (0 = 6 tháng gần nhất, 1 = 6 tháng trước đó, ...)
     @State private var page: Int? = 0
+    /// Xem theo tuần / tháng / năm
+    @State private var scope: Scope = .month
+    /// Tuần đang xem (ngày đầu tuần, thứ Hai) và trang tuần trên thanh ngày (0 = tuần này)
+    @State private var week = Self.wcal.dateInterval(of: .weekOfYear, for: Date())!.start
+    @State private var weekPage: Int? = 0
+    /// Một ngày được chọn trong tuần (nil = cả tuần)
+    @State private var day: Date?
+    @State private var year = Date()
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
 
     private let cal = Calendar.current
+    /// Lịch tuần bắt đầu từ thứ Hai
+    static let wcal: Calendar = { var c = Calendar.current; c.firstWeekday = 2; return c }()
+
+    enum Scope: CaseIterable { case week, month, year }
 
     // Bảng màu của màn hình này
     static let page = Color(light: 0xEFEFEF, dark: 0x0D0D10)
@@ -23,8 +35,8 @@ struct StatsView: View {
     static let chip = Color(light: 0xF2F2F2, dark: 0x2A2A2E)
 
     var body: some View {
-        let items = store.monthItems(month)
-        let prev = comparable(store.monthItems(cal.date(byAdding: .month, value: -1, to: month)!))
+        let items = spending(in: span)
+        let prev = comparable(spending(in: prevSpan))
         if film != nil {
             // Phim: thanh tiêu đề và vùng cuộn tự vẽ (xem Film.swift)
             VStack(spacing: 0) {
@@ -46,10 +58,10 @@ struct StatsView: View {
 
     private func content(_ items: [Expense], _ prev: [Expense]) -> some View {
         VStack(spacing: 20) {
-            monthTabs
+            if film != nil { monthTabs } else { periodHeader }
             hero(items, prev)
             grid(items, prev)
-            limitCard(items)
+            if scope == .month { limitCard(items) }
             trendCard
             if !items.isEmpty {
                 categoryCard(items)
@@ -57,6 +69,197 @@ struct StatsView: View {
             }
         }
         .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 32)
+    }
+
+    // MARK: Đầu trang: khoảng ngày + Hôm nay, chọn Tuần / Tháng / Năm, rồi thanh chọn ngày / tháng / năm
+
+    private var periodHeader: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(rangeLabel).font(.system(size: 20, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
+                    .contentTransition(.numericText())
+                Spacer(minLength: 8)
+                Button(L("Hôm nay")) { withAnimation(.snappy) { goToday() } }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x3FA65A))
+                    .buttonStyle(Pressable())
+            }
+            .padding(.horizontal, 4)
+            scopePicker
+            switch scope {
+            case .week: weekStrip
+            case .month: pagedMonthTabs
+            case .year: yearTabs
+            }
+        }
+    }
+
+    private var scopePicker: some View {
+        HStack(spacing: 2) {
+            ForEach(Scope.allCases, id: \.self) { sc in
+                let on = scope == sc
+                Button { withAnimation(.snappy) { scope = sc } } label: {
+                    Text(scopeName(sc)).font(.system(size: 15, weight: on ? .semibold : .regular))
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .foregroundStyle(on ? Self.inkText : Color.secondary)
+                        .background(on ? Self.ink : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(Pressable())
+            }
+        }
+        .padding(4)
+        .background(Self.card, in: Capsule())
+    }
+
+    private func scopeName(_ s: Scope) -> String {
+        switch s { case .week: return L("Tuần"); case .month: return L("Tháng"); case .year: return L("Năm") }
+    }
+
+    /// Ngày đầu tuần của trang tuần p (0 = tuần này, 1 = tuần trước, ...)
+    private func weekStart(page p: Int) -> Date {
+        let now = Self.wcal.dateInterval(of: .weekOfYear, for: Date())!.start
+        return cal.date(byAdding: .day, value: -7 * p, to: now)!
+    }
+
+    /// Số trang tuần: lùi đến tuần có khoản chi đầu tiên, ít nhất 8 tuần
+    private var weekCount: Int {
+        guard let first = store.items.min(by: { $0.t < $1.t })?.date else { return 8 }
+        let days = cal.dateComponents([.day], from: first, to: Date()).day ?? 0
+        return max(8, days / 7 + 2)
+    }
+
+    /// 7 ngày của tuần (thứ Hai -> Chủ nhật); vuốt ngang sang tuần trước. Chạm một ngày để xem riêng ngày đó, chạm lại để xem cả tuần.
+    private var weekStrip: some View {
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: 0) {
+                ForEach((0..<weekCount).reversed(), id: \.self) { p in
+                    let start = weekStart(page: p)
+                    HStack(spacing: 2) {
+                        ForEach(0..<7, id: \.self) { i in dayCell(cal.date(byAdding: .day, value: i, to: start)!) }
+                    }
+                    .padding(4)
+                    .containerRelativeFrame(.horizontal)
+                    .id(p)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollIndicators(.hidden)
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $weekPage)
+        .defaultScrollAnchor(.trailing)
+        .background(Self.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .onChange(of: weekPage) {
+            let w = weekStart(page: weekPage ?? 0)
+            if w != week { week = w; day = nil }
+        }
+    }
+
+    private func dayCell(_ d: Date) -> some View {
+        let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
+        let future = d > Date()
+        let today = cal.isDateInToday(d)
+        let spent = !future && store.total(on: d) > 0
+        return Button { withAnimation(.snappy) { day = on ? nil : d } } label: {
+            VStack(spacing: 3) {
+                Text(weekdayShort(d)).font(.system(size: 13, weight: on ? .semibold : .regular))
+                Text("\(cal.component(.day, from: d))").font(.system(size: 19, weight: .semibold))
+                // Chấm nhỏ: ngày có chi
+                Circle().fill(on ? Self.inkText : Color(hex: 0x61BE6E)).frame(width: 5, height: 5).opacity(spent ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .foregroundStyle(on ? Self.inkText : today ? Color.primary : Color.secondary)
+            .opacity(future ? 0.35 : 1)
+            .background(on ? Self.ink : .clear, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(Pressable())
+        .disabled(future)
+    }
+
+    /// Các năm gần đây (3 đến 6 năm), năm đang xem là viên thuốc đậm
+    private var yearTabs: some View {
+        let now = cal.component(.year, from: Date())
+        let first = store.items.min(by: { $0.t < $1.t }).map { cal.component(.year, from: $0.date) } ?? now
+        // Ít nhất 3 năm (một viên thuốc kéo dài cả hàng trông lạc), nhiều nhất 6 năm
+        let years = Array(max(min(first, now - 2), now - 5)...now)
+        return HStack(spacing: 2) {
+            ForEach(years, id: \.self) { y in
+                let on = cal.component(.year, from: year) == y
+                Button { withAnimation(.snappy) { year = cal.date(from: DateComponents(year: y, month: 1, day: 1))! } } label: {
+                    Text(String(y)).font(.system(size: 15, weight: on ? .semibold : .regular))
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .foregroundStyle(on ? Self.inkText : Color.secondary)
+                        .background(on ? Self.ink : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(Pressable())
+            }
+        }
+        .padding(4)
+        .background(Self.card, in: Capsule())
+    }
+
+    private func goToday() {
+        switch scope {
+        case .week:
+            weekPage = 0
+            week = weekStart(page: 0)
+            day = Date()
+        case .month:
+            page = 0
+            month = Date()
+        case .year:
+            year = Date()
+        }
+    }
+
+    /// Chạm cột một tháng ở biểu đồ năm: chuyển sang xem tháng đó
+    private func openMonth(_ d: Date) {
+        let start = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
+        let back = cal.dateComponents([.month], from: d, to: start).month ?? 0
+        guard back >= 0 else { return }
+        withAnimation(.snappy) {
+            page = back / 6
+            month = d
+            scope = .month
+        }
+    }
+
+    /// "06.10 – 12.10.2026"; một ngày: "Thứ Hai, 13.10.2026"
+    private var rangeLabel: String {
+        let i = span
+        let f = DateFormatter()
+        f.locale = Lang.locale
+        if unit == .day { f.dateFormat = "dd.MM.yyyy"; return "\(dayName(i.start, long: true)), \(f.string(from: i.start))" }
+        let last = cal.date(byAdding: .day, value: -1, to: i.end)!
+        f.dateFormat = "dd.MM"
+        let a = f.string(from: i.start)
+        f.dateFormat = "dd.MM.yyyy"
+        return "\(a) – \(f.string(from: last))"
+    }
+
+    /// "T2".."CN" (tiếng Anh: "Mon")
+    private func weekdayShort(_ d: Date) -> String {
+        let w = cal.component(.weekday, from: d)
+        guard Lang.isEnglish else { return w == 1 ? "CN" : "T\(w)" }
+        let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "EEE"
+        return f.string(from: d)
+    }
+
+    /// long: "Thứ Hai" / short: "thứ Hai 13/10" (tiếng Anh: "Monday" / "Mon, Oct 13")
+    private func dayName(_ d: Date, long: Bool) -> String {
+        let w = cal.component(.weekday, from: d)
+        if Lang.isEnglish {
+            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = long ? "EEEE" : "EEE, MMM d"
+            return f.string(from: d)
+        }
+        let names = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
+        if long { return names[w - 1] }
+        if cal.isDateInToday(d) { return "hôm nay" }
+        return "\(names[w - 1].lowercased()) \(cal.component(.day, from: d))/\(cal.component(.month, from: d))"
     }
 
     // MARK: Chọn tháng (dạng tab, tháng đang chọn là viên thuốc đậm)
@@ -135,7 +338,7 @@ struct StatsView: View {
         let total = sum(items)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(L("Tổng chi %@", Lang.isEnglish ? monthName(month) : monthName(month).lowercased())).font(.system(size: 16, weight: .medium))
+                Text(heroTitle).font(.system(size: 16, weight: .medium))
                 Spacer()
                 iconChip("creditcard", fg: .white, bg: .white.opacity(0.2))
             }
@@ -152,7 +355,7 @@ struct StatsView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(.white.opacity(0.22), in: Capsule())
-                    Text(isRunning ? L("so với cùng kỳ") : L("so với tháng trước"))
+                    Text(compareText)
                         .font(.system(size: 13)).opacity(0.85)
                 }
             }
@@ -166,21 +369,24 @@ struct StatsView: View {
     // MARK: Ô số liệu 2×2
 
     private func grid(_ items: [Expense], _ prev: [Expense]) -> some View {
-        let days = isRunning ? cal.component(.day, from: Date()) : cal.range(of: .day, in: .month, for: month)!.count
-        let prevDays = isRunning ? days : cal.range(of: .day, in: .month, for: cal.date(byAdding: .month, value: -1, to: month)!)!.count
+        let days = isRunning ? elapsedDays + 1 : dayCount(span)
+        let prevDays = isRunning ? days : dayCount(prevSpan)
         let avg = sum(items) / max(days, 1), prevAvg = sum(prev) / max(prevDays, 1)
         let biggest = items.max { $0.a < $1.a }
         let today = store.total(on: Date()), yesterday = store.total(on: cal.date(byAdding: .day, value: -1, to: Date())!)
         // Grid: hai ô cùng hàng cao bằng nhau, chiều cao theo nội dung (không chừa chỗ trống)
         return Grid(horizontalSpacing: 14, verticalSpacing: 14) {
+            // Xem một ngày: bỏ hàng "Hôm nay / TB mỗi ngày" (không có nghĩa với một ngày)
+            if unit != .day {
             GridRow {
             if isRunning {
                 tile(L("Hôm nay"), "sun.max", "\(fmt(today))đ", delta: delta(today, yesterday), note: L("chưa có để so"))
             } else {
-                let active = Set(items.map { cal.component(.day, from: $0.date) }).count
+                let active = Set(items.map { cal.startOfDay(for: $0.date) }).count
                 tile(L("Ngày có chi"), "calendar", "\(active)/\(days)", delta: nil, note: L("%ld%% số ngày", active * 100 / max(days, 1)))
             }
             tile(L("TB mỗi ngày"), "chart.line.flattrend.xyaxis", "\(fmt(avg / 1000 * 1000))đ", delta: delta(avg, prevAvg), note: L("chưa có để so"))
+            }
             }
             GridRow {
             tile(L("Lớn nhất"), "arrow.up.forward.circle", biggest.map { "\(fmt($0.a))đ" } ?? "0đ", delta: nil,
@@ -276,10 +482,28 @@ struct StatsView: View {
         var total: Int { bills + other }
     }
 
-    private var trendCard: some View {
-        // Cùng khung 6 tháng với thanh chọn tháng; tháng đang xem được tô đậm
-        let bars: [MonthBar] = windowMonths.map { m in
-            let items = store.monthItems(m)
+    /// Biểu đồ theo kiểu xem: tuần -> 7 ngày, tháng -> 6 tháng của thanh chọn tháng, năm -> 12 tháng của năm
+    @ViewBuilder private var trendCard: some View {
+        switch scope {
+        case .week:
+            let start = Self.wcal.dateInterval(of: .weekOfYear, for: week)!.start
+            trend(L("Chi trong tuần"), (0..<7).map { cal.date(byAdding: .day, value: $0, to: start)! }, unit: .day, label: weekdayShort,
+                  selected: { d in day.map { cal.isDate($0, inSameDayAs: d) } ?? true },
+                  tap: { d in if d <= Date() { day = d } })
+        case .month:
+            trend(L("Chi 6 tháng"), windowMonths, unit: .month, label: shortMonth, selected: isSelected, tap: { month = $0 })
+        case .year:
+            let start = cal.dateInterval(of: .year, for: year)!.start
+            trend(L("Chi từng tháng"), (0..<12).map { cal.date(byAdding: .month, value: $0, to: start)! }, unit: .month, label: shortMonth,
+                  selected: { _ in true },
+                  tap: { d in openMonth(d) })
+        }
+    }
+
+    private func trend(_ title: String, _ dates: [Date], unit: Calendar.Component, label: @escaping (Date) -> String,
+                       selected: @escaping (Date) -> Bool, tap: @escaping (Date) -> Void) -> some View {
+        let bars: [MonthBar] = dates.map { m in
+            let items = spending(in: cal.dateInterval(of: unit, for: m)!)
             let bills = sum(items.filter { $0.c == "hd" })
             return MonthBar(date: m, bills: bills, other: sum(items) - bills)
         }
@@ -287,7 +511,7 @@ struct StatsView: View {
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
         let used = bars.filter { $0.total > 0 }.map(\.total)
         return card {
-            Text(L("Chi 6 tháng")).font(.system(size: 17, weight: .semibold))
+            Text(title).font(.system(size: 17, weight: .semibold))
             HStack(spacing: 14) {
                 legend(AnyShapeStyle(Self.ink), L("Hoá đơn"))
                 legend(AnyShapeStyle(Hatch.orange), L("Chi tiêu khác"))
@@ -296,24 +520,24 @@ struct StatsView: View {
             .padding(.top, 4)
             Chart(bars) { b in
                 if b.bills > 0 {
-                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", 0), yEnd: .value("Hoá đơn", b.bills), width: .ratio(0.55))
+                    BarMark(x: .value("Tháng", b.date, unit: unit), yStart: .value("Từ", 0), yEnd: .value("Hoá đơn", b.bills), width: .ratio(0.55))
                         .foregroundStyle(Self.ink)
                         .cornerRadius(6)
-                        .opacity(isSelected(b.date) ? 1 : 0.45)
+                        .opacity(selected(b.date) ? 1 : 0.45)
                 }
                 if b.other > 0 {
                     let start = b.bills > 0 ? Double(b.bills) + gap : 0
-                    BarMark(x: .value("Tháng", b.date, unit: .month), yStart: .value("Từ", start), yEnd: .value("Chi tiêu khác", start + Double(b.other)), width: .ratio(0.55))
+                    BarMark(x: .value("Tháng", b.date, unit: unit), yStart: .value("Từ", start), yEnd: .value("Chi tiêu khác", start + Double(b.other)), width: .ratio(0.55))
                         .foregroundStyle(Hatch.orange)
                         .cornerRadius(6)
-                        .opacity(isSelected(b.date) ? 1 : 0.45)
+                        .opacity(selected(b.date) ? 1 : 0.45)
                 }
             }
             // Giữ đủ 6 tháng trên trục kể cả tháng chưa có khoản chi nào
-            .chartXScale(domain: bars.first!.date...cal.date(byAdding: .month, value: 1, to: bars.last!.date)!)
+            .chartXScale(domain: bars.first!.date...cal.date(byAdding: unit, value: 1, to: bars.last!.date)!)
             .chartXAxis {
-                AxisMarks(values: .stride(by: .month)) { v in
-                    AxisValueLabel(centered: true) { if let d = v.as(Date.self) { Text(shortMonth(d)) } }
+                AxisMarks(values: .stride(by: unit)) { v in
+                    AxisValueLabel(centered: true) { if let d = v.as(Date.self) { Text(label(d)) } }
                 }
             }
             .chartYAxis {
@@ -328,7 +552,7 @@ struct StatsView: View {
                     Rectangle().fill(.clear).contentShape(Rectangle())
                         .onTapGesture { p in
                             guard let plot = proxy.plotFrame, let d: Date = proxy.value(atX: p.x - g[plot].origin.x) else { return }
-                            if let b = bars.first(where: { cal.isDate($0.date, equalTo: d, toGranularity: .month) }) { month = b.date }
+                            if let b = bars.first(where: { cal.isDate($0.date, equalTo: d, toGranularity: unit) }) { tap(b.date) }
                         }
                 }
             }
@@ -451,13 +675,62 @@ struct StatsView: View {
             .background(bg, in: Circle())
     }
 
-    private var isRunning: Bool { cal.isDate(month, equalTo: Date(), toGranularity: .month) }
+    // MARK: Khoảng thời gian đang xem
 
-    /// Tháng đang chạy thì so với cùng kỳ tháng trước (ngày 1 đến hôm nay), không so với cả tháng trước.
+    /// Khoảng đang xem: một ngày (đã chọn trong tuần), cả tuần, cả tháng hoặc cả năm
+    private var span: DateInterval {
+        switch scope {
+        case .week: return day.map { cal.dateInterval(of: .day, for: $0)! } ?? Self.wcal.dateInterval(of: .weekOfYear, for: week)!
+        case .month: return cal.dateInterval(of: .month, for: month)!
+        case .year: return cal.dateInterval(of: .year, for: year)!
+        }
+    }
+
+    private var unit: Calendar.Component {
+        switch scope { case .week: return day == nil ? .weekOfYear : .day; case .month: return .month; case .year: return .year }
+    }
+
+    /// Khoảng liền trước, cùng độ dài (hôm trước, tuần trước, tháng trước, năm trước)
+    private var prevSpan: DateInterval {
+        let c = unit == .weekOfYear ? Self.wcal : cal
+        return c.dateInterval(of: unit, for: c.date(byAdding: unit, value: -1, to: span.start)!)!
+    }
+
+    private func spending(in i: DateInterval) -> [Expense] { store.items.filter { $0.date >= i.start && $0.date < i.end } }
+
+    private func dayCount(_ i: DateInterval) -> Int { max(cal.dateComponents([.day], from: i.start, to: i.end).day ?? 1, 1) }
+
+    /// Số ngày đã qua từ đầu khoảng đang xem tới hôm nay (hôm nay là ngày thứ elapsedDays + 1)
+    private var elapsedDays: Int { cal.dateComponents([.day], from: span.start, to: cal.startOfDay(for: Date())).day ?? 0 }
+
+    /// Tuần / tháng / năm đang chạy (một ngày lẻ thì so cả ngày trước, không tính là đang chạy)
+    private var isRunning: Bool { unit != .day && span.contains(Date()) }
+
+    /// Khoảng đang chạy thì so với cùng kỳ của khoảng trước (từ đầu đến cùng số ngày), không so với cả khoảng trước.
     private func comparable(_ prev: [Expense]) -> [Expense] {
         guard isRunning else { return prev }
-        let today = cal.component(.day, from: Date())
-        return prev.filter { cal.component(.day, from: $0.date) <= today }
+        let start = prevSpan.start, n = elapsedDays
+        return prev.filter { (cal.dateComponents([.day], from: start, to: $0.date).day ?? 0) <= n }
+    }
+
+    private var heroTitle: String {
+        switch scope {
+        case .week:
+            if let day { return L("Chi %@", dayName(day, long: false)) }
+            return isRunning ? L("Tổng chi tuần này") : L("Tổng chi tuần")
+        case .month: return L("Tổng chi %@", Lang.isEnglish ? monthName(month) : monthName(month).lowercased())
+        case .year: return L("Tổng chi năm %@", String(cal.component(.year, from: year)))
+        }
+    }
+
+    private var compareText: String {
+        if isRunning { return L("so với cùng kỳ") }
+        switch unit {
+        case .day: return L("so với hôm trước")
+        case .weekOfYear: return L("so với tuần trước")
+        case .year: return L("so với năm trước")
+        default: return L("so với tháng trước")
+        }
     }
 
     /// Phần trăm thay đổi, nil nếu không có gì để so.
@@ -554,7 +827,7 @@ private struct HeroGreen: View {
                                startPoint: .bottomLeading, endPoint: .topTrailing)
             }
             Image(uiImage: Self.grain).resizable(resizingMode: .tile)
-                .blendMode(.overlay).opacity(0.55)
+                .blendMode(.overlay).opacity(0.25)
                 .allowsHitTesting(false)
         }
     }

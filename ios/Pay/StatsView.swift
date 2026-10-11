@@ -135,7 +135,7 @@ struct StatsView: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centerDay, anchor: .center)
             .defaultScrollAnchor(.trailing)
-            .frame(height: 82)
+            .frame(height: 104)
             .modifier(ChipEdges(fade: $stripFade))
             // Rung nhẹ mỗi khi một ngày lướt qua giữa dải, như bánh xe chọn giờ của iOS
             .sensoryFeedback(.selection, trigger: centerDay)
@@ -175,25 +175,29 @@ struct StatsView: View {
             }
         } label: {
             VStack(spacing: 6) {
+                // Hàng thứ nằm ngoài viên
                 Text(firstOfMonth ? shortMonth(d) : weekdayShort(d))
-                    .font(.system(size: 11, weight: firstOfMonth ? .bold : .medium))
-                    .foregroundStyle(on ? Self.inkText.opacity(0.7) : Color.primary.opacity(firstOfMonth ? 0.7 : 0.4))
-                Text("\(cal.component(.day, from: d))")
-                    .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(on ? Self.inkText : today ? Self.todayTint : Color.primary.opacity(0.8))
-            }
-            .frame(width: Self.pillWidth, height: 82)
-            // Hai lớp nền: viên ngoài trắng (đang chọn: đậm), bên trong một lớp xanh dâng từ đáy lên, cao theo mức chi
-            .background {
-                ZStack(alignment: .bottom) {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous).fill(on ? Self.ink : Self.card)
-                    if spent > 0 {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(on ? Color.white.opacity(0.2) : Color(hex: 0x61BE6E).opacity(0.3))
-                            .frame(height: max(14, (82 - 8) * r))
-                            .padding(4)
+                    .font(.system(size: 11, weight: firstOfMonth || on ? .bold : .medium))
+                    .foregroundStyle(Color.primary.opacity(firstOfMonth || on ? 0.75 : 0.4))
+                // Viên: số ngày ở trên cùng; phần dưới số là chỗ lớp xanh dâng lên theo mức chi, không bao giờ trùm lên số
+                VStack(spacing: 0) {
+                    Text("\(cal.component(.day, from: d))")
+                        .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .foregroundStyle(on ? Self.inkText : today ? Self.todayTint : Color.primary.opacity(0.8))
+                        .frame(height: 24)
+                        .padding(.top, 8)
+                    GeometryReader { g in
+                        if spent > 0 {
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .fill(on ? Color.white.opacity(0.22) : Color(hex: 0x61BE6E).opacity(0.32))
+                                .frame(height: max(8, g.size.height * r))
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                        }
                     }
+                    .padding(4)
                 }
+                .frame(width: Self.pillWidth, height: 84)
+                .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }

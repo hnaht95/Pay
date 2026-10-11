@@ -406,6 +406,11 @@ struct DateSheet: View {
     @State private var rowW: CGFloat = 340
     /// Chiều cao nội dung tấm, để tấm cao vừa khít
     @State private var contentH: CGFloat = 330
+    /// Nút Xong thò xuống dưới đáy nội dung chừng này: hết lề dưới 8 và vùng thanh home, chừa 20 pt tới đáy tấm
+    private static var extendDown: CGFloat {
+        let safe = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom ?? 34
+        return max(0, 8 + safe - 18.5)   // đo trên máy: tấm (iOS 26) lùi vào ~1,5 pt so với lề phải, nên chừa 18,5 cho hai lề bằng nhau
+    }
 
     private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
     private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
@@ -493,8 +498,10 @@ struct DateSheet: View {
                 }
                 .buttonStyle(Pressable())
                 }
-                // Cả cột chạy từ hàng chữ thứ (đỉnh khung giờ thẳng hàng chữ thứ) xuống tới đáy dải nền T7 / CN (đáy nút Xong)
-                .frame(width: wheelsW, height: colH + (P.band - P.rowGap / 2) * k)
+                // Cả cột chạy từ hàng chữ thứ (đỉnh khung giờ thẳng hàng chữ thứ) xuống; nút Xong kéo dài qua vùng thanh home tới
+                // cách đáy tấm đúng bằng lề phải (20 pt) — góc dưới phải nhờ vậy đồng tâm với góc tấm. Phần thò xuống không làm tấm cao thêm
+                .frame(width: wheelsW, height: colH + (P.band - P.rowGap / 2) * k + Self.extendDown)
+                .padding(.bottom, -Self.extendDown)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }

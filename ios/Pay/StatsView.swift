@@ -32,12 +32,12 @@ struct StatsView: View {
     private var scope: Scope { .month }
 
     // Bảng màu của màn hình này
-    static let page = Color(light: 0xEFEFEF, dark: 0x0D0D10)
-    static let card = Color(light: 0xFFFFFF, dark: 0x1C1C1F)
+    static let page = Color(light: 0xEFEFEF, dark: 0x1C1C1E)   // tối: sáng hơn nền màn chính (0D0D10) để tấm sheet tách khỏi màn phía sau
+    static let card = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
     static let ink = Color(light: 0x1C1C1E, dark: 0xF2F2F2)          // cột "Hoá đơn", tab đang chọn
     static let inkText = Color(light: 0xFFFFFF, dark: 0x111114)
     static let orange = Color(light: 0xEE6A35, dark: 0xF07443)
-    static let chip = Color(light: 0xF2F2F2, dark: 0x2A2A2E)
+    static let chip = Color(light: 0xF2F2F2, dark: 0x3A3A3C)
     /// Khung Tổng chi kiểu bảng màu retro: nền pistachio, chữ xanh lá đậm, viên % / biểu tượng nền xanh chữ kem
     /// (giữ nguyên ở chế độ tối: nền sáng nổi trên trang tối vẫn đọc rõ)
     static let heroBg = Color(hex: 0xC9D9A4)

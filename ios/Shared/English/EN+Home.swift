@@ -17,6 +17,7 @@ extension English {
         "Mở khoá %@ và mọi tính năng Pro.": "Unlock %@ and every Pro feature.",
         "Ghi chép luôn miễn phí. Pro dành cho khi bạn dùng Pay lâu dài.": "Logging is always free. Pro is for when Pay becomes a habit.",
         "Trọn đời": "Lifetime",
+        "Lẩu cuối tuần": "Weekend hotpot",
         "Trả một lần, dùng mãi": "Pay once, keep it forever",
         "Gói năm": "Yearly",
         "Tự gia hạn, huỷ bất cứ lúc nào": "Renews yearly, cancel anytime",

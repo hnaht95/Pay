@@ -200,5 +200,9 @@ extension English {
         "Đã ghi %@đ vào %@ · bạn %@đ": "Added %@ to %@ · your share %@",
         "Sửa khoản chung": "Edit shared expense",
         "Sửa khoản này": "Edit this expense",
+        "Gửi lời mời": "Send invite",
+        "Người này có dùng Pay": "They use Pay",
+        "Chỉ thêm tên": "Just add a name",
+        "Không dùng Pay, bạn ghi giúp": "Doesn't use Pay, you log for them",
     ]
 }

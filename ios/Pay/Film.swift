@@ -133,9 +133,8 @@ struct FilmScreen<Content: View>: View {
             content
             if !bare { statusBar }
             if let touch {
-                // Chấm tối: đen 30%, viền trắng mảnh để vẫn thấy khi đi qua nút đen
-                Circle().fill(.black.opacity(0.3))
-                    .overlay { Circle().strokeBorder(.white.opacity(0.6), lineWidth: 1.5) }
+                // Chấm tối: đen 50%, không viền
+                Circle().fill(.black.opacity(0.5))
                     .frame(width: 30, height: 30)
                     .scaleEffect(touch.scale).opacity(touch.alpha)
                     .position(touch.at)

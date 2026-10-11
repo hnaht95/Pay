@@ -232,7 +232,7 @@ enum FilmExport {
         let house = House.shared
         let open = Tap(at: CGPoint(x: 277, y: 91), down: 0.8, up: 1.0)
         let pick = Tap(at: CGPoint(x: 150, y: 196), down: 2.5, up: 2.7)
-        let got = Tap(at: CGPoint(x: 290, y: 568), down: 4.7, up: 4.9)
+        let got = Tap(at: CGPoint(x: 287, y: 502), down: 4.7, up: 4.9)
         let drag = Drag(from: CGPoint(x: 200, y: 660), to: CGPoint(x: 200, y: 330), start: 6.4, end: 7.3)
         let first = house.groups.first
         var picked = false, answered = false
@@ -305,7 +305,7 @@ enum FilmExport {
     /// Chỗ chạm trong màn sửa danh mục (đo trên khung hình đã vẽ)
     private enum POINTS {
         static let emoji = CGPoint(x: 282, y: 601)
-        static let color = CGPoint(x: 302, y: 662)
+        static let color = CGPoint(x: 90, y: 685)   // dải vàng của bảng màu gợi ý đầu tiên
     }
 }
 #endif

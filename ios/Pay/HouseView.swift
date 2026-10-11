@@ -625,12 +625,22 @@ struct HouseView: View {
     }
 
     /// Mục "Cả nhóm" (luôn hiện). Số dư từng người bằng chữ, các lần trả giữa người khác, lịch sử trả tiền.
+    private var addMemberLabel: some View {
+        Label(L("Thêm người"), systemImage: "plus")
+            .font(.system(size: 16, weight: .semibold))
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(Palette.card, in: Capsule())
+            .foregroundStyle(.primary)
+    }
+
     @ViewBuilder private func groupSection(_ net: [String: Int], _ others: [HouseTransfer]) -> some View {
         sectionTitle(L("Cả nhóm"), trailing: L("%d người", house.members.count))
         do {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(house.members) { m in memberRow(m, net[m.id] ?? 0) }
                 // Một nút, hai cách: mời người có dùng Pay (họ tự vào nhóm), hoặc chỉ thêm tên người không dùng Pay (mình ghi giúp)
+                // Phim: chỉ vẽ nhãn nút (Menu là của UIKit, ảnh xuất ra chỉ thấy ô vàng có dấu cấm)
+                if film != nil { addMemberLabel } else {
                 Menu {
                     Button { invite() } label: {
                         Text(L("Gửi lời mời")); Text(L("Người này có dùng Pay")); Image(systemName: "paperplane")
@@ -638,14 +648,9 @@ struct HouseView: View {
                     Button { claimAfterAdd = false; addingMember = true } label: {
                         Text(L("Chỉ thêm tên")); Text(L("Không dùng Pay, bạn ghi giúp")); Image(systemName: "person.text.rectangle")
                     }
-                } label: {
-                    Label(L("Thêm người"), systemImage: "plus")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Palette.card, in: Capsule())
-                        .foregroundStyle(.primary)
-                }
+                } label: { addMemberLabel }
                 .tint(.primary)
+                }
 
                 if !others.isEmpty {
                     Text(L("Giữa những người khác")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)

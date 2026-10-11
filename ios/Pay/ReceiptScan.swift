@@ -23,7 +23,7 @@ struct ReceiptCamera: View {
             Color.black.ignoresSafeArea()
             CameraPreview(session: cam.session).ignoresSafeArea()
             // Ngoài khung phủ tối; khung đo từ chỗ trống giữa dòng chữ và cụm nút (rộng bằng cụm nút)
-            let hole = RoundedRectangle(cornerRadius: 28, style: .continuous)
+            let hole = RoundedRectangle(cornerRadius: 18, style: .continuous)
             ZStack(alignment: .topLeading) {
                 Color.black.opacity(0.62)
                 hole.frame(width: holeRect.width, height: holeRect.height)
@@ -49,20 +49,19 @@ struct ReceiptCamera: View {
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { holeRect = $0 }
                 // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai. Hai góc dưới ngoài cùng bo theo góc
                 // màn hình (cụm nút cách mép dưới bằng lề hai bên, 16 pt)
-                let corner: CGFloat = 28, screen: CGFloat = 28
+                let corner: CGFloat = 18, screen: CGFloat = 18
                 HStack(spacing: 12) {
                     VStack(spacing: 12) {
                         Button { finish(nil) } label: { pill(L("Đóng"), bottomLeading: corner) }.buttonStyle(Pressable())
                         PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh"), bottomLeading: screen) }
                     }
                     Button { cam.capture { finish($0) } } label: {
-                        VStack(spacing: 8) {
-                            Image(systemName: "camera.aperture").font(.system(size: 26, weight: .medium))
-                            Text(L("Chụp")).font(.system(size: 18, weight: .semibold))
-                        }
-                        .foregroundStyle(.black)
+                        Image(systemName: "camera.aperture").font(.system(size: 36, weight: .medium))
+                            .accessibilityLabel(L("Chụp"))
+                        // Cam quýt retro (cùng bảng màu các ô Thống kê), chữ kem
+                        .foregroundStyle(Color(hex: 0xFFF4E0))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.white, in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
+                        .background(Color(hex: 0xEC7A2B), in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
                                                                        bottomTrailingRadius: screen, topTrailingRadius: corner, style: .continuous))
                     }
                     .buttonStyle(Pressable())
@@ -90,8 +89,8 @@ struct ReceiptCamera: View {
     private func pill(_ s: String, bottomLeading: CGFloat) -> some View {
         Text(s).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.white.opacity(0.18), in: UnevenRoundedRectangle(topLeadingRadius: 28, bottomLeadingRadius: bottomLeading,
-                                                                         bottomTrailingRadius: 28, topTrailingRadius: 28, style: .continuous))
+            .background(.white.opacity(0.18), in: UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: bottomLeading,
+                                                                         bottomTrailingRadius: 18, topTrailingRadius: 18, style: .continuous))
     }
 
     private func finish(_ img: UIImage?) {

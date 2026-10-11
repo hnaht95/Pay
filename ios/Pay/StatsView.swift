@@ -562,8 +562,8 @@ struct StatsView: View {
     /// Một cột tháng: cột bo góc cao theo mức chi (xám nhạt; tháng đang xem đen), tên tháng ở dưới
     private func monthColumn(_ m: Date, total: Int, top: Int) -> some View {
         let on = isSelected(m)
-        // Tháng chưa có dữ liệu: cột thấp 14 pt, màu nhạt nhất
-        let h = total > 0 ? max(18, 88 * min(Double(total) / Double(top), 1)) : 14
+        // Tháng chưa có dữ liệu: vạch mảnh 8 pt, màu nhạt nhất
+        let h = total > 0 ? max(18, 88 * min(Double(total) / Double(top), 1)) : 8
         return Button {
             withAnimation(.snappy) {
                 day = nil

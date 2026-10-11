@@ -627,10 +627,6 @@ struct DateSheet: View {
             let rowH = P.row * k, gap = P.rowGap * k, band = P.band * k
             let grid = DayGrid(width: g.size.width - P.colGap * k, rowPitch: rowH + gap, columnGap: P.colGap * k, rowGap: gap)
             ZStack(alignment: .topLeading) {
-                // Dải cuối tuần ở lớp nền, dưới con số và viên nền
-                WeekendBand(rows: rows, grid: grid, radius: P.frameR * k)
-                    .fill(Retro.weekend)
-                    .offset(x: P.colGap * k / 2, y: band)
                 // Khung tháng: màu đặc (không trong suốt) để đoạn đi qua dải cuối tuần không sáng hơn đoạn khác
                 MonthFrame(first: blanks, last: blanks + days - 1, grid: grid, radius: P.frameR * k)
                     .stroke(Color(light: 0xD9D9DC, dark: 0x3A3A3E), lineWidth: 1.5)
@@ -678,7 +674,7 @@ struct DateSheet: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .opacity(future ? 0.35 : 1).disabled(future)
+        .disabled(future)   // ngày chưa tới vẫn sáng như ngày thường, chỉ không chạm được; chỉ ngày khác tháng mới mờ
     }
 
     private func wheel(_ count: Int, _ value: Binding<Int>) -> some View {
@@ -898,11 +894,12 @@ private struct PeekWheel: View {
 }
 
 /// Bảng màu retro của lịch chọn ngày giờ (cùng họ với các ô Thống kê): nền nhạt vàng mù tạt / pistachio / cam đào,
-/// ngày đang chọn xanh lá retro chữ trắng. Chế độ tối dùng bản trầm của cùng màu
+/// ngày đang chọn xanh lá retro chữ trắng. Chế độ tối: bản trầm của màu nhạt thành nâu / ô liu đục, chữ trắng trên đó khó đọc,
+/// nên nền dải và khung giờ về xám trung tính như Peek; giữ màu ở hai điểm nhấn: nút Bây giờ cam đào sáng, ngày chọn xanh lá
 private enum Retro {
-    static let weekend = Color(light: 0xFBEFC6, dark: 0x3A3420)
-    static let wheel = Color(light: 0xE6EDD2, dark: 0x27301F)
-    static let now = Color(light: 0xFCE3CF, dark: 0x3D2A1C)
-    static let nowInk = Color(light: 0x8A3A10, dark: 0xF3B48A)
+    static let weekend = Color(light: 0xFBEFC6, dark: 0x2A2A2E)
+    static let wheel = Color(light: 0xE6EDD2, dark: 0x2A2A2E)
+    static let now = Color(light: 0xFCE3CF, dark: 0xF8D5B4)
+    static let nowInk = Color(light: 0x8A3A10, dark: 0x6B2A08)
     static let green = Color(light: 0x1F6B47, dark: 0x3E9E6A)
 }

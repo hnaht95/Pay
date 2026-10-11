@@ -236,9 +236,17 @@ struct StatsView: View {
         } label: {
             VStack(spacing: 6) {
                 // Hàng năm nằm ngoài viên, cùng kiểu hàng thứ của dải ngày; chỉ ghi ở tháng hiện tại và tháng 12 (mốc sang năm)
-                Text(now || cal.component(.month, from: m) == 12 ? String(cal.component(.year, from: m)) : " ")
-                    .font(.system(size: 11, weight: on ? .bold : .medium))
-                    .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
+                // Tháng không ghi năm: một vạch ngang ngắn, mờ giữ chỗ
+                Group {
+                    if now || cal.component(.month, from: m) == 12 {
+                        Text(String(cal.component(.year, from: m)))
+                            .font(.system(size: 11, weight: on ? .bold : .medium))
+                            .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
+                    } else {
+                        Capsule().fill(Color.primary.opacity(0.18)).frame(width: 10, height: 2)
+                    }
+                }
+                .frame(height: 13)
                 VStack(spacing: 0) {
                     Text(shortMonth(m))
                         .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()

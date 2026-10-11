@@ -124,7 +124,7 @@ struct StatsView: View {
                 if (!byMonth && (!cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!))))
                     || (byMonth && !cal.isDate(month, equalTo: today, toGranularity: .month)) {
                     Button { withAnimation(.snappy) { goToday() } } label: {
-                        Text(L("Hôm nay")).font(.system(size: 14, weight: .semibold))
+                        Text(byMonth ? L("Tháng này") : L("Hôm nay")).font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 12).frame(height: 30)
                             .background(Capsule().fill(Self.card))
@@ -252,7 +252,8 @@ struct StatsView: View {
                 }
                 .frame(height: 13)
                 VStack(spacing: 0) {
-                    Text(shortMonth(m))
+                    // Dải tháng: tiếng Việt chỉ ghi số tháng (không "T" phía trước)
+                    Text(Lang.isEnglish ? shortMonth(m) : "\(cal.component(.month, from: m))")
                         .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                         .foregroundStyle(on ? Self.inkText : now ? Self.todayTint : Color.primary.opacity(0.8))
                         .frame(height: 24)

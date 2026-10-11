@@ -6,6 +6,7 @@ extension English {
         "Tháng sau": "Next month",
         "Tháng trước": "Previous month",
         "Tuần trước": "Previous week",
+        "Tháng này": "This month",
         "Thời gian chi": "Time",
         "Tuần sau": "Next week",
         "Giờ": "Time",

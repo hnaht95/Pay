@@ -548,11 +548,12 @@ struct ExpenseRow: View {
                 .frame(width: 56, height: 56)
                 // Bo đồng tâm với thẻ: bo của thẻ trừ đi khoảng cách tới mép
                 .background(c.color, in: RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
-                // Có ảnh hoá đơn đính kèm: chấm xanh lá (màu icon app) trơn, nằm trong góc trên phải ô biểu tượng
+                // Có ảnh hoá đơn đính kèm: chấm xanh lá (màu icon app) ở góc trên phải ô biểu tượng, viền màu thẻ cho tách nền
                 .overlay(alignment: .topTrailing) {
                     if ReceiptPhotos.has(e.id) {
-                        Circle().fill(Color(hex: 0x61BE6E)).frame(width: 9, height: 9)
-                            .padding(5)
+                        Circle().fill(Color(hex: 0x61BE6E)).frame(width: 12, height: 12)
+                            .overlay(Circle().strokeBorder(Palette.card, lineWidth: 2.5))
+                            .offset(x: 3, y: -3)
                             .accessibilityLabel(L("Có ảnh hoá đơn"))
                     }
                 }

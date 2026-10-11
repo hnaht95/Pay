@@ -580,10 +580,6 @@ struct StatsView: View {
             }
             .frame(height: 118)
             .padding(.top, 8)
-            if !used.isEmpty {
-                stat(L("Cao nhất"), used.max()!)
-                    .padding(.top, 10)
-            }
         }
     }
 

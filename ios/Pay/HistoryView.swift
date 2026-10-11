@@ -68,9 +68,9 @@ struct HistoryView: View {
 
     private func addButton(_ category: String) -> some View {
         Button { editing = .new(cat: category) } label: {
-            // plus.circle.fill: vòng đen đặc, dấu cộng trắng (không nền xám)
+            // plus.circle.fill: vòng xanh lá của app (như sóng âm), dấu cộng trắng
             Image(systemName: "plus.circle.fill").font(.system(size: 26))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.white, Color(hex: 0x61BE6E))
                 .frame(width: 40, height: 40).contentShape(Rectangle())
         }
         .buttonStyle(Pressable())

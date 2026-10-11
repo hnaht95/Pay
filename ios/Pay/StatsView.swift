@@ -229,13 +229,13 @@ struct StatsView: View {
         }
     }
 
-    /// Đầu tháng trước: bản miễn phí xem được từ đây
+    /// Bản miễn phí xem được 3 tháng: tháng này và hai tháng trước (từ đầu tháng thứ hai trước)
     static func freeStart(_ cal: Calendar) -> Date {
         let thisMonth = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
-        return cal.date(byAdding: .month, value: -1, to: thisMonth)!
+        return cal.date(byAdding: .month, value: -2, to: thisMonth)!
     }
 
-    /// Bản miễn phí chỉ xem được từ đầu tháng trước; ngày / tháng xa hơn vẫn hiện nhưng mờ, chạm vào là mở màn mua Pro
+    /// Bản miễn phí chỉ xem được 3 tháng gần nhất; ngày / tháng xa hơn vẫn hiện nhưng mờ, chạm vào là mở màn mua Pro
     private func locked(_ d: Date) -> Bool { !pro.active && d < Self.freeStart(cal) }
 
     private func monthPill(_ m: Date, spent: Int, top: Int) -> some View {

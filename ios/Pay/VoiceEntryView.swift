@@ -226,8 +226,16 @@ struct VoiceEntryView: View {
 
     private var live: some View {
         ZStack(alignment: .bottom) {
-            Color.black.opacity(shown ? 0.35 : 0).ignoresSafeArea()
-                .onTapGesture { close() }
+            // Màn chính phía sau nhòe đi rồi tối nhẹ: chỉ tối thì các ô danh mục màu vẫn lộ sắc nét quanh hai góc trên của thẻ,
+            // nhìn như thẻ cắt vào ô (rõ nhất ở giao diện tối). Lớp nhòe hiện sau lớp tối một nhịp, để không chen vào lúc thẻ đang bung
+            ZStack {
+                Rectangle().fill(.regularMaterial)
+                    .opacity(shown ? 1 : 0)
+                    .animation(.easeOut(duration: 0.3).delay(shown ? 0.12 : 0), value: shown)
+                Color.black.opacity(shown ? 0.25 : 0)
+            }
+            .ignoresSafeArea()
+            .onTapGesture { close() }
             if let from {
                 // Khối biến hình: từ khung và màu của nút tới khung và màu của thẻ
                 GeometryReader { g in

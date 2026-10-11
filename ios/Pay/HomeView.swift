@@ -68,12 +68,12 @@ struct HomeView: View {
                     tiles(now)
 
                     sectionTitle(L("Gần đây")) {
-                        // Chữ + mũi tên chéo lên phải (SF Symbol arrow.up.right): bấm là mở trang khác
+                        // Chữ + biểu tượng chồng thẻ (SF Symbol rectangle.stack): mở cả chồng khoản chi
                         Button { showHistory = true } label: {
                             // To hơn nhãn "Tháng 10" ở mục Danh mục một chút: đây là nút bấm
                             HStack(spacing: 5) {
                                 Text(L("Xem tất cả")).font(.system(size: 17, weight: .medium))
-                                Image(systemName: "arrow.up.right").font(.system(size: 14, weight: .semibold))
+                                Image(systemName: "rectangle.stack").font(.system(size: 15, weight: .semibold))
                             }
                             .padding(.horizontal, 3).padding(.vertical, 3)
                         }

@@ -233,26 +233,32 @@ struct EntryView: View {
                         .frame(maxWidth: .infinity)
                 }
             case .edit(var e), .editNow(var e):
-                if editing {
-                    primary(L("Lưu thay đổi")) {
-                        e.a = amount; e.n = trimmed; e.c = finalCat
-                        // Chỉ ghi lại thời điểm khi người dùng thật sự đổi (so theo phút), kẻo lệch mili giây làm xáo thứ tự
-                        if abs(when.timeIntervalSince(e.date)) >= 60 { e.t = when.timeIntervalSince1970 * 1000 }
-                        learn(); store.update(e); dismiss()
+                // Xoá và Sửa / Lưu thay đổi cùng một hàng (xoá nằm riêng một dòng bên dưới thì đáy màn hình trống nhiều)
+                HStack(spacing: 10) {
+                    Button(role: .destructive) {
+                        // Đóng màn hình trước, xoá khi nó trượt đi gần hết: xoá ngay thì thanh "Đã xoá" bật lên sau màn hình đang trượt
+                        // xuống, tới lúc thấy được thì nó đã đứng yên, như không có hiệu ứng
+                        let id = e.id
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { store.remove(id: id) }
+                    } label: {
+                        Text(L("Xoá")).font(.system(size: 19, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 64)
+                            .foregroundStyle(Palette.danger)
+                            .background(Palette.pill, in: Capsule())
                     }
-                } else {
-                    primary(L("Sửa")) { withAnimation(.snappy) { editing = true } }
+                    .buttonStyle(Pressable())
+                    if editing {
+                        primary(L("Lưu thay đổi")) {
+                            e.a = amount; e.n = trimmed; e.c = finalCat
+                            // Chỉ ghi lại thời điểm khi người dùng thật sự đổi (so theo phút), kẻo lệch mili giây làm xáo thứ tự
+                            if abs(when.timeIntervalSince(e.date)) >= 60 { e.t = when.timeIntervalSince1970 * 1000 }
+                            learn(); store.update(e); dismiss()
+                        }
+                    } else {
+                        primary(L("Sửa")) { withAnimation(.snappy) { editing = true } }
+                    }
                 }
-                Button(role: .destructive) {
-                    // Đóng màn hình trước, xoá khi nó trượt đi gần hết: xoá ngay thì thanh "Đã xoá" bật lên sau màn hình đang trượt
-                    // xuống, tới lúc thấy được thì nó đã đứng yên, như không có hiệu ứng
-                    let id = e.id
-                    dismiss()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { store.remove(id: id) }
-                } label: {
-                    Text(L("Xoá khoản này")).font(.system(size: 17, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 46)
-                }
-                .foregroundStyle(Palette.danger)
             }
         }
     }

@@ -659,6 +659,8 @@ struct CategoryEditor: View {
     @State private var tone = 0
     @FocusState private var nameFocused: Bool
     @State private var pickingEmoji = false
+    /// Bảng chọn màu của iOS đang mở
+    @State private var pickingColor = false
     /// Đang dựng phim giới thiệu (xem Film.swift): biểu tượng, màu đang chọn lấy từ phim
     @Environment(\.film) private var film
     private var fIcon: String { film?.edit?.icon ?? icon }
@@ -728,7 +730,7 @@ struct CategoryEditor: View {
                     }
                     swatchRow(CategoryTone.light)
                     swatchRow(CategoryTone.strong)
-                    swatchRow(CategoryTone.flat)
+                    swatchRow(CategoryTone.flat, custom: true)
     }
 
     /// Phim: bản tự vẽ trông như Form (Form của hệ thống không vẽ ra PDF được): cùng các phần, cùng thứ tự
@@ -838,7 +840,7 @@ struct CategoryEditor: View {
         }
     }
 
-    private func swatchRow(_ r: Range<Int>) -> some View {
+    private func swatchRow(_ r: Range<Int>, custom: Bool = false) -> some View {
         HStack(spacing: 0) {
             ForEach(r, id: \.self) { i in
                 Button { tone = i } label: { swatch(CategoryTone.bg(i), on: fTone == i).frame(maxWidth: .infinity, minHeight: 44) }
@@ -847,6 +849,31 @@ struct CategoryEditor: View {
                     .accessibilityLabel(L("Màu %@", String(i + 1)))
                     .accessibilityAddTraits(fTone == i ? .isSelected : [])
             }
+            // Ô cuối hàng: tự chọn màu bằng bảng chọn màu của iOS (lưới, phổ màu, thanh trượt RGB, mã hex)
+            if custom { customSwatch.frame(maxWidth: .infinity, minHeight: 44) }
+        }
+    }
+
+    /// Ô tự chọn màu: vòng cầu vồng; đang dùng màu tự chọn thì hiện chính màu đó với vòng chọn
+    private var customSwatch: some View {
+        let on = CategoryTone.isCustom(fTone)
+        return Button { pickingColor = true } label: { ZStack {
+            if on { swatch(CategoryTone.bg(fTone), on: true) }
+            else {
+                Circle().fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center))
+                    .frame(width: 32, height: 32)
+            }
+        } }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(L("Tự chọn màu"))
+        .sheet(isPresented: $pickingColor) {
+            SystemColorPicker(initial: UIColor(CategoryTone.bg(fTone))) { c in
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                c.getRed(&r, green: &g, blue: &b, alpha: &a)
+                let byte = { (v: CGFloat) in UInt32(max(0, min(255, (v * 255).rounded()))) }
+                tone = CategoryTone.custom(byte(r) << 16 | byte(g) << 8 | byte(b))
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -978,5 +1005,29 @@ struct QuickAccessHelp: View {
                 .background(Color.primary.opacity(0.08), in: Circle())
             Text(L(text))
         }
+    }
+}
+
+/// Bảng chọn màu của iOS (lưới, phổ màu, thanh trượt RGB, mã hex), không chọn độ trong suốt.
+struct SystemColorPicker: UIViewControllerRepresentable {
+    let initial: UIColor
+    let picked: (UIColor) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(picked) }
+
+    func makeUIViewController(context: Context) -> UIColorPickerViewController {
+        let vc = UIColorPickerViewController()
+        vc.supportsAlpha = false
+        vc.selectedColor = initial
+        vc.delegate = context.coordinator
+        return vc
+    }
+
+    func updateUIViewController(_ vc: UIColorPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, UIColorPickerViewControllerDelegate {
+        let picked: (UIColor) -> Void
+        init(_ picked: @escaping (UIColor) -> Void) { self.picked = picked }
+        func colorPickerViewController(_ vc: UIColorPickerViewController, didSelect color: UIColor, continuously: Bool) { picked(color) }
     }
 }

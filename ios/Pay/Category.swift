@@ -137,10 +137,30 @@ enum CategoryTone {
     ]
     /// 8 màu đầu là nhạt, 8 màu sau là đậm, 7 màu cuối là bộ màu phẳng
     static let light = 0..<8, strong = 8..<16, flat = 16..<23
+    /// Màu người dùng tự chọn (bảng chọn màu của iOS): lưu chung số `tone` với chỉ số bảng màu, bằng `customBase + 0xRRGGBB`
+    static let customBase = 0x1_000_000
+    static func isCustom(_ i: Int) -> Bool { i >= customBase }
+    static func custom(_ rgb: UInt32) -> Int { customBase + Int(rgb & 0xFFFFFF) }
+    static func rgb(_ i: Int) -> UInt32 { UInt32((i - customBase) & 0xFFFFFF) }
+
     /// Màu tối: chữ và biểu tượng trên ô phải trắng
-    static func dark(_ i: Int) -> Bool { i == 20 || i == 21 }
-    static func bg(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].bg) }
-    static func chart(_ i: Int) -> Color { Color(hex: all[(i % all.count + all.count) % all.count].chart) }
+    static func dark(_ i: Int) -> Bool {
+        guard isCustom(i) else { return i == 20 || i == 21 }
+        let c = rgb(i)
+        let r = Double((c >> 16) & 0xFF), g = Double((c >> 8) & 0xFF), b = Double(c & 0xFF)
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55
+    }
+    static func bg(_ i: Int) -> Color {
+        isCustom(i) ? Color(hex: rgb(i)) : Color(hex: all[(i % all.count + all.count) % all.count].bg)
+    }
+    /// Màu biểu đồ: màu tự chọn thì lấy chính nó đậm thêm (sáng quá thì khó thấy trên biểu đồ)
+    static func chart(_ i: Int) -> Color {
+        guard isCustom(i) else { return Color(hex: all[(i % all.count + all.count) % all.count].chart) }
+        let c = rgb(i)
+        let k = dark(i) ? 1.0 : 0.62
+        func ch(_ v: UInt32) -> UInt32 { UInt32(Double(v & 0xFF) * k) }
+        return Color(hex: ch(c >> 16) << 16 | ch(c >> 8) << 8 | ch(c))
+    }
 }
 
 /// Bỏ dấu tiếng Việt, chữ thường: "Phở Bò" -> "pho bo"

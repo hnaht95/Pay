@@ -125,5 +125,6 @@ extension English {
         "Siri và Phím tắt": "Siri and Shortcuts",
         "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\".": "Say \"Log expense with Pay\" to Siri, then say the expense. Or \"Scan QR with Pay\".",
         "Hoặc mở app Phím tắt, hai lệnh này có sẵn trong mục Pay.": "Or open the Shortcuts app; both actions are listed under Pay.",
+        "Tự chọn màu": "Custom color",
     ]
 }

@@ -904,5 +904,6 @@ private enum Retro {
     static let wheel = Color(light: 0xE6EDD2, dark: 0x2A2A2E)
     static let now = Color(light: 0xFCE3CF, dark: 0xF8D5B4)
     static let nowInk = Color(light: 0x8A3A10, dark: 0x6B2A08)
-    static let green = Color(light: 0x1F6B47, dark: 0x3E9E6A)
+    /// Xanh lá của icon app
+    static let green = Color(hex: 0x61BE6E)
 }

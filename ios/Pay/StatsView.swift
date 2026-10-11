@@ -464,28 +464,28 @@ struct StatsView: View {
         card {
             Text(L("Hạn mức chi tháng")).font(.system(size: 17, weight: .semibold))
             if let limit {
-                // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám, mảng vàng mù tạt (chữ navy) có vạch ở mép;
-                // trái là số đã chi, phải là hạn mức (vượt hạn mức: mảng đỏ cà chua đầy thanh, chữ kem)
+                // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám nhạt, mảng đen (chữ trắng) có vạch ở mép;
+                // trái là số đã chi, phải là hạn mức (vượt hạn mức: mảng đỏ đầy thanh)
                 let ratio = min(Double(spent) / Double(limit), 1)
                 let over = spent > limit
                 GeometryReader { g in
                     let w = max(g.size.width * ratio, over ? g.size.width : 0)
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 14, style: .circular).fill(Color(light: 0xDCDCE2, dark: 0x2E2E31))
+                        RoundedRectangle(cornerRadius: 14, style: .circular).fill(Color.primary.opacity(0.07))
                         RoundedRectangle(cornerRadius: 14, style: .circular)
-                            .fill(over ? Color(hex: 0xE2462E) : Color(hex: 0xF2B82E))
+                            .fill(over ? Palette.danger : Self.ink)
                             .frame(width: max(w, 30))
                             .overlay(alignment: .trailing) {
-                                Capsule().fill((over ? Color(hex: 0xFFE9DF) : Color(hex: 0x1F3F6E)).opacity(0.6))
+                                Capsule().fill(Self.inkText.opacity(0.6))
                                     .frame(width: 4, height: 48 * 0.44)
                                     .padding(.trailing, 13)
                             }
                         HStack {
                             Text(L("Đã chi %@", short(spent)))
-                                .foregroundStyle(over ? Color(hex: 0xFFE9DF) : Color(hex: 0x1F3F6E))
+                                .foregroundStyle(Self.inkText)
                             Spacer()
                             Text(L("Hạn mức %@", short(limit)))
-                                .foregroundStyle(over ? Color(hex: 0xFFE9DF) : Color.primary.opacity(0.6))
+                                .foregroundStyle(over ? Self.inkText : Color.primary.opacity(0.55))
                         }
                         .font(.system(size: 17, weight: .medium, design: .rounded)).monospacedDigit()
                         .padding(.horizontal, 18)
@@ -554,7 +554,7 @@ struct StatsView: View {
             .padding(.top, 2)
             Text(fmt(current))
                 .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
-                .foregroundStyle(Color(light: 0xD4621C, dark: 0xF39A5C))
+                .foregroundStyle(.primary)
                 .contentTransition(.numericText())
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
@@ -586,7 +586,7 @@ struct StatsView: View {
         }
     }
 
-    /// Một cột tháng: cột bo góc cao theo mức chi (xanh trời nhạt; tháng đang xem cam quýt), tên tháng ở dưới
+    /// Một cột tháng: cột bo góc cao theo mức chi (xám nhạt; tháng đang xem đen), tên tháng ở dưới
     private func monthColumn(_ m: Date, total: Int, top: Int) -> some View {
         let on = isSelected(m)
         let h = total > 0 ? max(8, 88 * min(Double(total) / Double(top), 1)) : 4
@@ -601,7 +601,7 @@ struct StatsView: View {
         } label: {
             VStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(on ? Color(hex: 0xEC7A2B) : Color(light: 0xD6E3F2, dark: 0x2A3442))
+                    .fill(on ? Self.ink : Color.primary.opacity(0.08))
                     .frame(width: 40, height: h)
                     .frame(height: 88, alignment: .bottom)
                 Text(shortMonth(m))

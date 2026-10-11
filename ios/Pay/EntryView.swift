@@ -526,7 +526,7 @@ struct DateSheet: View {
                                    startPoint: .top, endPoint: .bottom)
                 }
                 .frame(height: 5 * 18 * k)
-                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                .background(Retro.wheel, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
                 // Khung giờ gọn 5 hàng như Peek; phần còn lại của cột là nút "Bây giờ"
                 .frame(maxHeight: .infinity, alignment: .top)
                 .overlay(alignment: .bottom) { dayBox(k: k).frame(height: colH - 5 * 18 * k - 8) }
@@ -571,8 +571,8 @@ struct DateSheet: View {
         } label: {
             Text(L("Bây giờ")).font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .foregroundStyle(Color.primary.opacity(isNow ? 0.35 : 0.85))
-                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                .foregroundStyle(Retro.nowInk.opacity(isNow ? 0.4 : 1))
+                .background(Retro.now, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
         }
         .buttonStyle(Pressable())
@@ -629,7 +629,7 @@ struct DateSheet: View {
             ZStack(alignment: .topLeading) {
                 // Dải cuối tuần ở lớp nền, dưới con số và viên nền
                 WeekendBand(rows: rows, grid: grid, radius: P.frameR * k)
-                    .fill(Color.primary.opacity(0.07))
+                    .fill(Retro.weekend)
                     .offset(x: P.colGap * k / 2, y: band)
                 // Khung tháng: màu đặc (không trong suốt) để đoạn đi qua dải cuối tuần không sáng hơn đoạn khác
                 MonthFrame(first: blanks, last: blanks + days - 1, grid: grid, radius: P.frameR * k)
@@ -666,12 +666,12 @@ struct DateSheet: View {
         return Button { pick(date) } label: {
             Text("\(cal.component(.day, from: date))")
                 .font(.system(size: P.font * k, weight: on || today ? .semibold : .medium, design: .rounded)).monospacedDigit()
-                .foregroundStyle(on ? Palette.ctaInk : today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : Color.primary.opacity(0.85))
+                .foregroundStyle(on ? Color.white : today ? Retro.green : Color.primary.opacity(0.85))
                 .frame(maxWidth: .infinity)
                 .frame(height: P.pillH * k)
                 // Viên nền lấp cả ô trừ hở 2 mỗi bên (cách nét khung đúng 2 ở mọi phía). Ngày đang chọn: nền đen chữ trắng như
                 // nút chính (xám nhạt đứng trên dải cuối tuần cũng xám thì gần như không đọc ra); hôm nay: nền xanh lá nhạt
-                .background(on ? Palette.cta : today ? Color(light: 0x2F9E50, dark: 0x6FD08A).opacity(0.16) : .clear,
+                .background(on ? Retro.green : today ? Retro.green.opacity(0.16) : .clear,
                             in: RoundedRectangle(cornerRadius: P.pillR * k, style: .continuous))
                 .padding(.horizontal, P.frameGap * k)
                 .opacity(inMonth ? 1 : 0.42)
@@ -895,4 +895,14 @@ private struct PeekWheel: View {
         // Giờ lẻ (11:03) hiện ở nấc gần nhất (05) mà không bị đổi khi chỉ mở ra xem; chỉ đổi khi cuộn sang nấc khác
         if wrap(target) != wrap(Int((Double(value) / Double(step)).rounded())) { value = wrap(target) * step }
     }
+}
+
+/// Bảng màu retro của lịch chọn ngày giờ (cùng họ với các ô Thống kê): nền nhạt vàng mù tạt / pistachio / cam đào,
+/// ngày đang chọn xanh lá retro chữ trắng. Chế độ tối dùng bản trầm của cùng màu
+private enum Retro {
+    static let weekend = Color(light: 0xFBEFC6, dark: 0x3A3420)
+    static let wheel = Color(light: 0xE6EDD2, dark: 0x27301F)
+    static let now = Color(light: 0xFCE3CF, dark: 0x3D2A1C)
+    static let nowInk = Color(light: 0x8A3A10, dark: 0xF3B48A)
+    static let green = Color(light: 0x1F6B47, dark: 0x3E9E6A)
 }

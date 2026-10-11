@@ -837,7 +837,7 @@ struct HouseView: View {
                 .padding(.horizontal, 16).padding(.bottom, 30)
             }
             .background(Palette.bg.ignoresSafeArea())
-            .navigationTitle(L("Thông báo"))
+            .screenTitle(L("Thông báo"))
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 let s = await UNUserNotificationCenter.current().notificationSettings()
@@ -1032,7 +1032,7 @@ struct HouseGroupEditor: View {
                     if photo != nil { Text(L("Đang dùng ảnh. Bỏ ảnh để hiện màu.")) }
                 }
             }
-            .navigationTitle(L("Sửa nhóm"))
+            .screenTitle(L("Sửa nhóm"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
@@ -1141,7 +1141,7 @@ struct HouseMemberEditor: View {
                     Text(L("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung."))
                 }
             }
-            .navigationTitle(member.id == house.me ? L("Bạn") : member.name)
+            .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }

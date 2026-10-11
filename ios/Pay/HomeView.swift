@@ -714,6 +714,15 @@ extension View {
     }
 }
 
+extension View {
+    /// Tiêu đề màn hình: cỡ 21 đậm, bằng "Sửa / Lưu khoản chi" (tiêu đề mặc định của iOS nhỏ quá)
+    func screenTitle(_ title: String) -> some View {
+        navigationTitle(title).toolbar {
+            ToolbarItem(placement: .principal) { Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1) }
+        }
+    }
+}
+
 /// Hiệu ứng nhấn chung của các nút tự vẽ: thu nhỏ và mờ đi một chút khi đang nhấn, bật lại khi thả
 /// (chỉ thu nhỏ 3% thì nút nhỏ gần như không thấy gì).
 struct Pressable: ButtonStyle {

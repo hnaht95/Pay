@@ -41,14 +41,9 @@ struct HistoryView: View {
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
-            .navigationTitle(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
+            .screenTitle(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Tiêu đề to bằng "Sửa / Lưu khoản chi"
-                ToolbarItem(placement: .principal) {
-                    Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
-                        .font(.system(size: 21, weight: .bold)).lineLimit(1)
-                }
                 // Đang xem một danh mục: nhập luôn khoản mới vào danh mục đó
                 if let category {
                     // Nút tròn nền xám như các nút đầu trang khác của app, không dùng viên kính xanh mặc định của iOS

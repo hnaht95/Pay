@@ -51,7 +51,7 @@ struct SettingsView: View {
                     Text(L("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR."))
                 }
             }
-            .navigationTitle(L("Cài đặt"))
+            .screenTitle(L("Cài đặt"))
             .navigationBarTitleDisplayMode(.inline)
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
@@ -817,7 +817,7 @@ struct CategoryEditor: View {
                     colorRows
                 }
             }
-            .navigationTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
+            .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
@@ -993,7 +993,7 @@ struct QuickAccessHelp: View {
                 Label(L("Siri và Phím tắt"), systemImage: "wand.and.stars")
             }
         }
-        .navigationTitle(L("Truy cập nhanh"))
+        .screenTitle(L("Truy cập nhanh"))
         .navigationBarTitleDisplayMode(.inline)
     }
 

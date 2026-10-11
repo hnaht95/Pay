@@ -36,7 +36,7 @@ struct StatsView: View {
         NavigationStack {
             ScrollView { content(items, prev) }
             .background(Self.page.ignoresSafeArea())
-            .navigationTitle(L("Thống kê"))
+            .screenTitle(L("Thống kê"))
             .navigationBarTitleDisplayMode(.inline)
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
@@ -195,17 +195,16 @@ struct StatsView: View {
     /// Nhờ vậy hai ô cùng hàng luôn cao bằng nhau mà không ô nào bị trống đáy.
     private func tile(_ title: String, _ icon: String, _ value: String, delta d: Int?, note: String) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Chữ tiêu đề nằm sát mép trên như lề trái/dưới; biểu tượng tròn lùi lên góc
-            HStack(alignment: .top) {
+            // Biểu tượng tròn căn giữa theo chiều dọc với chữ tiêu đề nhỏ bên trái
+            HStack(alignment: .center) {
                 Text(title).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 4)
-                iconChip(icon, fg: .primary, bg: Self.chip).padding(.top, 0.5).padding(.trailing, -1.5)   // cách mép trên và phải đều ~16,5pt (đã đo)
+                iconChip(icon, fg: .primary, bg: Self.chip)
             }
             Text(value).font(.system(size: 22, weight: .bold)).minimumScaleFactor(0.5).lineLimit(1)
             if let d { deltaPill(d) } else { notePill(note) }
         }
         .padding(18)
-        .padding(.top, 2.5)   // đỉnh chữ tiêu đề cách mép trên ~18,5pt, bằng lề trái/dưới (đã đo trên ảnh chụp)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Self.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }

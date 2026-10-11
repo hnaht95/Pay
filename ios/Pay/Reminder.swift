@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UserNotifications
 
 /// Nhắc ghi chi tiêu mỗi tối: tới giờ đã chọn mà hôm ấy chưa ghi khoản nào thì báo một câu.
@@ -9,8 +10,9 @@ enum DailyReminder {
     private static let onKey = "remindOn", minuteKey = "remindMinute"
     private static let prefix = "remind-"
 
+    /// Mặc định bật (chưa xin quyền thông báo thì chưa nhắc được: xin ở lần ghi khoản đầu tiên, xem askOnce)
     static var isOn: Bool {
-        get { UserDefaults.standard.bool(forKey: onKey) }
+        get { UserDefaults.standard.object(forKey: onKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: onKey) }
     }
 
@@ -30,6 +32,23 @@ enum DailyReminder {
             isOn = false
         }
         reschedule(loggedToday: store.count(on: Date()) > 0)
+    }
+
+    /// Lần đầu ghi xong một khoản (đang mở app): xin quyền thông báo cho lời nhắc mặc định bật. Từ chối thì tắt nhắc.
+    /// Chỉ hỏi một lần; ghi qua Siri / Phím tắt lúc app chạy nền thì chưa hỏi (hệ thống không hiện hộp hỏi được)
+    @MainActor
+    static func askOnce(store: Store) {
+        let askedKey = "remindAsked"
+        guard isOn, !UserDefaults.standard.bool(forKey: askedKey),
+              UIApplication.shared.applicationState == .active else { return }
+        UserDefaults.standard.set(true, forKey: askedKey)
+        Task {
+            // Đợi thanh "Đã lưu" hiện xong rồi mới hỏi, không chen ngay lúc bấm Lưu
+            try? await Task.sleep(for: .seconds(1.2))
+            let ok = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+            if !ok { isOn = false }
+            reschedule(loggedToday: store.count(on: Date()) > 0)
+        }
     }
 
     static func reschedule(loggedToday: Bool) {

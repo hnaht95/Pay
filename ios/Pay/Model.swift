@@ -318,6 +318,7 @@ final class Store: ObservableObject {
         items.append(e)
         persist()
         if toast { show(L("Đã lưu %@", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
+        DailyReminder.askOnce(store: self)
     }
 
     /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.

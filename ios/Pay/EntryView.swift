@@ -20,6 +20,8 @@ struct EntryView: View {
     /// Hàng chip còn chip bị che ở mép trái / phải (để làm mờ mép đó)
     @State private var chipFade = [false, true]
     @State private var addingCat = false
+    /// Lần quét QR đầu tiên (chưa từng chọn app ngân hàng): hỏi người dùng dùng app nào trước khi mở
+    @State private var choosingBank = false
     @State private var ready = false
     /// Ngày giờ của khoản đang sửa
     @State private var when = Date()
@@ -114,6 +116,15 @@ struct EntryView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
+        .onAppear {
+            if case .scan = mode, UserDefaults.standard.string(forKey: "bankApp") == nil {
+                Task { try? await Task.sleep(for: .milliseconds(400)); choosingBank = true }
+            }
+        }
+        .sheet(isPresented: $choosingBank) {
+            BankChooser { id in store.appId = id; choosingBank = false }
+                .presentationDetents([.large])
+        }
         .sheet(isPresented: $pickingDate) {
             DateSheet(when: $when).sheetGrabber()
         }
@@ -1022,5 +1033,38 @@ private struct PhotoViewer: View {
                 .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(Pressable())
+    }
+}
+
+/// Chọn app ngân hàng (lần quét QR đầu tiên): app mở sẵn người nhận + số tiền xếp trước, app chỉ mở được xếp sau.
+/// Chọn xong là nhớ luôn, đổi lại trong Cài đặt › Thanh toán
+struct BankChooser: View {
+    let pick: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(BankData.apps.filter(\.fill)) { row($0) }
+                } header: {
+                    Text(L("Mở sẵn người nhận + số tiền"))
+                }
+                Section {
+                    ForEach(BankData.apps.filter { !$0.fill }) { row($0) }
+                } header: {
+                    Text(L("Chỉ mở app (quét lại QR)"))
+                } footer: {
+                    Text(L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
+                }
+            }
+            .screenTitle(L("Bạn dùng app ngân hàng nào?"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func row(_ a: BankApp) -> some View {
+        Button { Haptic.select(); pick(a.id) } label: {
+            Text(a.name).foregroundStyle(Color.primary).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }
     }
 }

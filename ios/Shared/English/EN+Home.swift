@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Bạn dùng app ngân hàng nào?": "Which bank app do you use?",
+        "Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán.": "Change it anytime in Settings › Payments.",
         "Xem **toàn bộ lịch sử**, từ khoản chi đầu tiên": "See your **full history**, back to your first expense",
         "**Đồng bộ iCloud** trên mọi iPhone, iPad": "**iCloud sync** across your iPhone and iPad",
         "**Nhóm chung**: chia tiền với gia đình, bạn bè": "**Shared groups**: split costs with family and friends",

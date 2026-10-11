@@ -822,10 +822,11 @@ extension View {
     /// (shader EdgeBlur.metal). Độ nhoè tính theo vị trí trên dải nên vùng nhoè liền mạch qua các cột kề nhau.
     /// (Không áp lên cả ScrollView được: hiệu ứng lớp không vẽ được vùng cuộn của UIKit)
     func softScrollEdge(zone: CGFloat = 36, radius: CGFloat = 6) -> some View {
-        visualEffect { content, g in
-            let f = g.frame(in: .scrollView(axis: .horizontal))
-            let width = g.bounds(of: .scrollView(axis: .horizontal))?.width ?? 0
-            return content.layerEffect(ShaderLibrary.edgeBlur(.float(width), .float(zone), .float(radius), .float2(1, 1), .float(f.minX)),
+        // Tính theo mép màn hình (toạ độ toàn cục): dải nào cũng tràn hai mép màn hình
+        let screenW = UIScreen.main.bounds.width
+        return visualEffect { content, g in
+            let x = g.frame(in: .global).minX
+            return content.layerEffect(ShaderLibrary.edgeBlur(.float(screenW), .float(zone), .float(radius), .float2(1, 1), .float(x)),
                                        maxSampleOffset: CGSize(width: radius * 1.5, height: radius * 1.5))
         }
     }

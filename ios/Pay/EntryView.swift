@@ -28,7 +28,10 @@ struct EntryView: View {
     @State private var editing = true
     @FocusState private var noteFocused: Bool
     @State private var scanningReceipt = false
-    @State private var readingReceipt = false
+    /// Ảnh hoá đơn đính kèm khoản (lưu trong Pay, xem ReceiptPhotos); đổi / xoá rồi thì lưu lại lúc bấm Lưu
+    @State private var photo: UIImage?
+    @State private var photoChanged = false
+    @State private var viewingPhoto = false
 
     private var amount: Int { Int(digits) ?? 0 }
 
@@ -113,18 +116,17 @@ struct EntryView: View {
             ReceiptCamera { img in
                 scanningReceipt = false
                 guard let img else { return }
-                readingReceipt = true
-                Task {
-                    let r = await ReceiptReader.read(img)
-                    readingReceipt = false
-                    if let a = r.amount { withAnimation(.snappy) { digits = String(a) } }
-                    if let m = r.merchant, note.isEmpty {
-                        note = m
-                        if !catPicked { withAnimation(.snappy) { cat = store.guessCategory(m) } }
-                    }
-                    if r.amount == nil { store.show(L("Không đọc được tổng tiền trên hoá đơn")) }
-                }
+                withAnimation(.snappy) { photo = img; photoChanged = true; editing = true }
             }
+        }
+        .fullScreenCover(isPresented: $viewingPhoto) {
+            PhotoViewer(image: photo, retake: {
+                viewingPhoto = false
+                Task { try? await Task.sleep(for: .milliseconds(350)); scanningReceipt = true }
+            }, remove: {
+                viewingPhoto = false
+                withAnimation(.snappy) { photo = nil; photoChanged = true; editing = true }
+            }, editable: editing)
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -144,19 +146,23 @@ struct EntryView: View {
                 .padding(.horizontal, 52)
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .overlay(alignment: .trailing) {
-                    // Nhập mới: chụp hoá đơn để điền sẵn số tiền, tên quán và danh mục
-                    if isNewEntry {
-                        Button { scanningReceipt = true } label: {
-                            Group {
-                                if readingReceipt { ProgressView() } else {
-                                    Image(systemName: "camera.aperture").font(.system(size: 20, weight: .medium))
-                                }
-                            }
-                            .foregroundStyle(.primary)
-                            .frame(width: 46, height: 46).contentShape(Rectangle())
+                    // Ảnh hoá đơn: đã có thì hiện ảnh nhỏ (chạm để xem to / chụp lại / xoá); chưa có thì nút chụp
+                    if let photo {
+                        Button { viewingPhoto = true } label: {
+                            Image(uiImage: photo).resizable().scaledToFill()
+                                .frame(width: 40, height: 40)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .frame(width: 46, height: 46).contentShape(Rectangle())
                         }
                         .buttonStyle(Pressable())
-                        .disabled(readingReceipt)
+                        .accessibilityLabel(L("Ảnh hoá đơn"))
+                    } else if isNewEntry || isEdit {
+                        Button { scanningReceipt = true } label: {
+                            Image(systemName: "camera.aperture").font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(.primary)
+                                .frame(width: 46, height: 46).contentShape(Rectangle())
+                        }
+                        .buttonStyle(Pressable())
                         .accessibilityLabel(L("Chụp hoá đơn"))
                     }
                 }
@@ -278,7 +284,9 @@ struct EntryView: View {
                     BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
                     BigButton(title: L("Lưu"), icon: "", primary: true) {
                         guard amount > 0 else { return }
-                        learn(); store.add(amount: amount, note: trimmed, cat: finalCat); dismiss()
+                        learn(); store.add(amount: amount, note: trimmed, cat: finalCat)
+                        if let photo, let id = store.items.last?.id { ReceiptPhotos.save(photo, id: id) }
+                        dismiss()
                     }
                     .opacity(amount == 0 ? 0.35 : 1)
                     .animation(.easeInOut(duration: 0.25), value: amount == 0)
@@ -307,7 +315,9 @@ struct EntryView: View {
                                 e.a = amount; e.n = trimmed; e.c = finalCat
                                 // Chỉ ghi lại thời điểm khi người dùng thật sự đổi (so theo phút), kẻo lệch mili giây làm xáo thứ tự
                                 if abs(when.timeIntervalSince(e.date)) >= 60 { e.t = when.timeIntervalSince1970 * 1000 }
-                                learn(); store.update(e); dismiss()
+                                learn(); store.update(e)
+                                if photoChanged { if let photo { ReceiptPhotos.save(photo, id: e.id) } else { ReceiptPhotos.remove(e.id) } }
+                                dismiss()
                             }
                             .opacity(amount == 0 ? 0.35 : 1)
                             .animation(.easeInOut(duration: 0.25), value: amount == 0)
@@ -374,12 +384,9 @@ struct EntryView: View {
             cat = c; catPicked = c != nil
         case .raw:
             break
-        case .receipt(let a, let m):
-            // Từ hoá đơn vừa chụp: số tiền, tên quán làm ghi chú, danh mục đoán theo tên quán
-            if let a, a > 0 { digits = String(a) }
-            note = m ?? ""
-            cat = store.guessCategory(note)
-            baseCat = cat
+        case .receipt(let img):
+            // Từ hoá đơn vừa chụp: ảnh đính kèm sẵn, số tiền và ghi chú nhập tay
+            photo = img; photoChanged = true
         case .scan(let q):
             let m = q.memoKey.flatMap { store.memo[$0] }
             note = m?.n ?? (!q.name.isEmpty ? q.name : q.purpose)
@@ -389,6 +396,8 @@ struct EntryView: View {
             baseCat = cat
         case .edit(let e), .editNow(let e):
             digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date
+            let id = e.id
+            Task { if let img = await ReceiptPhotos.load(id), !photoChanged { photo = img } }
             // Chạm vào một khoản thì ban đầu chỉ xem; đã bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ) thì vào sửa luôn
             if case .edit = mode { editing = false }
         }
@@ -904,5 +913,43 @@ private struct PeekWheel: View {
     private func commit(_ target: Int) {
         // Giờ lẻ (11:03) hiện ở nấc gần nhất (05) mà không bị đổi khi chỉ mở ra xem; chỉ đổi khi cuộn sang nấc khác
         if wrap(target) != wrap(Int((Double(value) / Double(step)).rounded())) { value = wrap(target) * step }
+    }
+}
+
+/// Xem ảnh hoá đơn to, kèm Chụp lại / Xoá ảnh (khi đang sửa) và Đóng
+private struct PhotoViewer: View {
+    let image: UIImage?
+    let retake: () -> Void
+    let remove: () -> Void
+    let editable: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let image {
+                Image(uiImage: image).resizable().scaledToFit().padding(.horizontal, 16)
+            }
+            VStack {
+                Spacer()
+                HStack(spacing: 12) {
+                    if editable {
+                        pill(L("Xoá ảnh")) { remove() }
+                        pill(L("Chụp lại")) { retake() }
+                    }
+                    pill(L("Đóng")) { dismiss() }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 12)
+            }
+        }
+    }
+
+    private func pill(_ t: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Text(t).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(Pressable())
     }
 }

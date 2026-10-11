@@ -18,6 +18,7 @@
 		1EFA26C27A77368362E01491 /* EN+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E4AB183C62C00335ACF57F /* EN+Settings.swift */; };
 		28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
 		353DD484D4B5BAD4AC365650 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24AA5434B7C4F15242E106C2 /* WidgetViews.swift */; };
+		3B5B0E6A0C5E55A60D345A70 /* ReceiptPhotos.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE3F2358FF0A2540E730066 /* ReceiptPhotos.swift */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
 		414AAD28F01726AB65D67F0F /* CalendarShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3EBD642701EF9188E81FC44 /* CalendarShape.swift */; };
 		4D2AC3C30D76AC35350E54A4 /* Highlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609388C25572F0E507533210 /* Highlight.swift */; };
@@ -123,6 +124,7 @@
 		C495C9B5ABDB2E162467B1A8 /* PayWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PayWidget.entitlements; sourceTree = "<group>"; };
 		C52368CCF0CD05A29F53F06A /* PayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayWidget.swift; sourceTree = "<group>"; };
 		C5CCA8FB4425669D725FC11F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CBE3F2358FF0A2540E730066 /* ReceiptPhotos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptPhotos.swift; sourceTree = "<group>"; };
 		D1E4AB183C62C00335ACF57F /* EN+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EN+Settings.swift"; sourceTree = "<group>"; };
 		D3EBD642701EF9188E81FC44 /* CalendarShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarShape.swift; sourceTree = "<group>"; };
 		D89B234044050006AE979177 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */,
 				5EC9417995E09D8907ED785B /* PayApp.swift */,
 				1A44344E8096362017AC591B /* QuickParse.swift */,
+				CBE3F2358FF0A2540E730066 /* ReceiptPhotos.swift */,
 				319F68A71118585C6599859C /* ReceiptScan.swift */,
 				0AD67DA0004B7BA5772A2896 /* Reminder.swift */,
 				8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */,
@@ -356,6 +359,7 @@
 				40405BB47395FF979965CD24 /* PayApp.swift in Sources */,
 				F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */,
 				AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */,
+				3B5B0E6A0C5E55A60D345A70 /* ReceiptPhotos.swift in Sources */,
 				97291C0D4BCDF7D1D1F8E58C /* ReceiptScan.swift in Sources */,
 				C1653DBE55CA4305CDD29DA0 /* Reminder.swift in Sources */,
 				9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */,

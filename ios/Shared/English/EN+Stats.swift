@@ -32,6 +32,7 @@ extension English {
         "Chi trong tuần": "This week",
         "Chi từng tháng": "By month",
         "Trước": "Previous",
+        "Tuần này": "This week",
         "Sau": "Next",
         "Hôm nay": "Today",
         "chưa có để so": "nothing to compare",

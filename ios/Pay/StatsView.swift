@@ -547,7 +547,7 @@ struct StatsView: View {
                 }
                 .frame(height: 6)
                 HStack {
-                    Text(L("%ld%% hạn mức %@", pct, short(limit)))
+                    Text(L("Đã dùng %ld%% của %@", pct, fmt(limit)))
                         .foregroundStyle(over ? Palette.danger : .secondary)
                     Spacer()
                     Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000)))

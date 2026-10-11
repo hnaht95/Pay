@@ -54,7 +54,7 @@ extension English {
         "Đã chi %@": "Spent %@",
         "Hạn mức %@": "Limit %@",
         "Hạn mức tháng này": "This month's limit",
-        "%ld%% hạn mức %@": "%ld%% of %@ limit",
+        "Đã dùng %ld%% của %@": "%ld%% of %@ used",
         "Còn %@/ngày": "%@/day left",
         "Còn %@ · đã dùng %@%%": "%@ left · %@%% used",
         "Vượt %@ · đã dùng %@%%": "%@ over · %@%% used",

@@ -160,8 +160,7 @@ struct StatsView: View {
         .foregroundStyle(.white)
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LinearGradient(colors: [Color(hex: 0x66C273), Color(hex: 0x3E9E50)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background { HeroGreen().clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous)) }
     }
 
     // MARK: Ô số liệu 2×2
@@ -532,5 +531,26 @@ enum Hatch {
             p.stroke()
         }
         return ImagePaint(image: Image(uiImage: img), scale: 1)
+    }
+}
+
+/// Nền khung Tổng chi: xanh lá của app (#61BE6E) loang không đều — các điểm giữa lệch khỏi lưới,
+/// mỗi mảng sáng / đậm một chút khác nhau, không chuyển thẳng một chiều như LinearGradient.
+private struct HeroGreen: View {
+    var body: some View {
+        if #available(iOS 18.0, *) {
+            MeshGradient(width: 3, height: 3, points: [
+                [0, 0], [0.42, 0], [1, 0],
+                [0, 0.62], [0.68, 0.38], [1, 0.55],
+                [0, 1], [0.3, 1], [1, 1],
+            ], colors: [
+                Color(hex: 0x86D492), Color(hex: 0x61BE6E), Color(hex: 0x70C87D),
+                Color(hex: 0x55B663), Color(hex: 0x96DCA0), Color(hex: 0x4AA958),
+                Color(hex: 0x61BE6E), Color(hex: 0x46A555), Color(hex: 0x66C173),
+            ])
+        } else {
+            LinearGradient(colors: [Color(hex: 0x74CB80), Color(hex: 0x61BE6E), Color(hex: 0x52B160)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
     }
 }

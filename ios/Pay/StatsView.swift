@@ -554,7 +554,7 @@ struct StatsView: View {
             .padding(.top, 2)
             Text(fmt(current))
                 .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
-                .foregroundStyle(Color(light: 0x1F3F6E, dark: 0xB9CDEB))
+                .foregroundStyle(Color(light: 0xD4621C, dark: 0xF39A5C))
                 .contentTransition(.numericText())
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
@@ -586,7 +586,7 @@ struct StatsView: View {
         }
     }
 
-    /// Một cột tháng: cột bo góc cao theo mức chi (tháng đang xem tô vàng mù tạt), tên tháng ở dưới
+    /// Một cột tháng: cột bo góc cao theo mức chi (xanh trời nhạt; tháng đang xem cam quýt), tên tháng ở dưới
     private func monthColumn(_ m: Date, total: Int, top: Int) -> some View {
         let on = isSelected(m)
         let h = total > 0 ? max(8, 88 * min(Double(total) / Double(top), 1)) : 4
@@ -601,7 +601,7 @@ struct StatsView: View {
         } label: {
             VStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(on ? Color(hex: 0xF2B82E) : Color(light: 0xE9E3D2, dark: 0x3A3730))
+                    .fill(on ? Color(hex: 0xEC7A2B) : Color(light: 0xD6E3F2, dark: 0x2A3442))
                     .frame(width: 40, height: h)
                     .frame(height: 88, alignment: .bottom)
                 Text(shortMonth(m))

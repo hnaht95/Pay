@@ -18,6 +18,9 @@ struct SettingsView: View {
     /// Sửa / thêm danh mục tự tạo (nil k = thêm mới)
     /// Ngôn ngữ đang chọn trong Cài đặt
     @State private var lang = Lang.current
+    @State private var remindOn = DailyReminder.isOn
+    @State private var remindAt = Calendar.current.date(byAdding: .minute, value: DailyReminder.minute,
+                                                        to: Calendar.current.startOfDay(for: Date()))!
 
     var body: some View {
         NavigationStack {
@@ -28,6 +31,7 @@ struct SettingsView: View {
 
                 budgetSection
                 recurringSection
+                autoSection
                 cloudSection
                 bankSection
                 myQRSection
@@ -260,6 +264,30 @@ struct SettingsView: View {
             Text(L("Thanh toán"))
         } footer: {
             Text(store.bankApp.fill ? L("Sau khi quét, Pay mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
+        }
+    }
+
+    // MARK: Tự động: nhắc ghi buổi tối, tự ghi khi trả Apple Pay
+
+    private var autoSection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { remindOn }, set: { v in
+                remindOn = v
+                Task { await DailyReminder.enable(v, store: store); remindOn = DailyReminder.isOn }
+            })) { row(L("Nhắc ghi chi tiêu")) }
+            if remindOn {
+                DatePicker(selection: Binding(get: { remindAt }, set: { d in
+                    remindAt = d
+                    let c = Calendar.current.dateComponents([.hour, .minute], from: d)
+                    DailyReminder.minute = (c.hour ?? 21) * 60 + (c.minute ?? 0)
+                    DailyReminder.reschedule(loggedToday: store.count(on: Date()) > 0)
+                }), displayedComponents: .hourAndMinute) { row(L("Giờ nhắc")) }
+            }
+            NavigationLink { ApplePayHelp() } label: { row(L("Tự ghi khi trả Apple Pay")) }
+        } header: {
+            Text(L("Tự động"))
+        } footer: {
+            Text(L("Tới giờ nhắc mà hôm ấy chưa ghi khoản nào, Pay báo một câu. Đã ghi rồi thì không báo."))
         }
     }
 
@@ -1022,5 +1050,33 @@ struct SystemColorPicker: UIViewControllerRepresentable {
         let picked: (UIColor) -> Void
         init(_ picked: @escaping (UIColor) -> Void) { self.picked = picked }
         func colorPickerViewController(_ vc: UIColorPickerViewController, didSelect color: UIColor, continuously: Bool) { picked(color) }
+    }
+}
+
+/// Cách cài tự động hoá Phím tắt để mỗi lần trả bằng Apple Pay là Pay tự ghi một khoản chi
+struct ApplePayHelp: View {
+    var body: some View {
+        List {
+            Section {
+                step(1, L("Mở app Phím tắt, chọn thẻ Tự động hoá, bấm + rồi chọn Giao dịch."))
+                step(2, L("Chọn thẻ trong Ví muốn theo dõi, đặt Chạy ngay (không cần xác nhận), bấm Tiếp."))
+                step(3, L("Chọn Tác vụ mới, tìm Pay, chọn Ghi giao dịch thẻ."))
+                step(4, L("Chạm ô Số tiền, chọn biến Giao dịch rồi chọn Số tiền. Chạm ô Người bán, chọn Giao dịch rồi chọn Người bán."))
+                step(5, L("Bấm Xong. Từ giờ mỗi lần quẹt thẻ, Pay tự ghi khoản chi, danh mục đoán theo tên cửa hàng."))
+            } footer: {
+                Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
+            }
+        }
+        .screenTitle(L("Tự ghi khi trả Apple Pay"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func step(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("\(n)").font(.system(size: 15, weight: .bold, design: .rounded))
+                .frame(width: 24, height: 24).background(Palette.pill, in: Circle())
+            Text(text).font(.system(size: 16))
+        }
+        .padding(.vertical, 4)
     }
 }

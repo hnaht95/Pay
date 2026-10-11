@@ -27,6 +27,8 @@ struct EntryView: View {
     /// Đang nhập / sửa. Mở một khoản đã ghi thì ban đầu chỉ xem (bàn phím mờ), bấm Sửa mới sửa
     @State private var editing = true
     @FocusState private var noteFocused: Bool
+    @State private var scanningReceipt = false
+    @State private var readingReceipt = false
 
     private var amount: Int { Int(digits) ?? 0 }
 
@@ -107,6 +109,24 @@ struct EntryView: View {
         .sheet(isPresented: $pickingDate) {
             DateSheet(when: $when).sheetGrabber()
         }
+        .fullScreenCover(isPresented: $scanningReceipt) {
+            ReceiptCamera { img in
+                scanningReceipt = false
+                guard let img else { return }
+                readingReceipt = true
+                Task {
+                    let r = await ReceiptReader.read(img)
+                    readingReceipt = false
+                    if let a = r.amount { withAnimation(.snappy) { digits = String(a) } }
+                    if let m = r.merchant, note.isEmpty {
+                        note = m
+                        if !catPicked { withAnimation(.snappy) { cat = store.guessCategory(m) } }
+                    }
+                    if r.amount == nil { store.show(L("Không đọc được tổng tiền trên hoá đơn")) }
+                }
+            }
+            .ignoresSafeArea()
+        }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
             CategoryEditor { k in cat = k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } }
@@ -124,6 +144,23 @@ struct EntryView: View {
             Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
                 .padding(.horizontal, 52)
                 .frame(maxWidth: .infinity, minHeight: 46)
+                .overlay(alignment: .trailing) {
+                    // Nhập mới: chụp hoá đơn để điền sẵn số tiền, tên quán và danh mục
+                    if case .new = mode {
+                        Button { scanningReceipt = true } label: {
+                            Group {
+                                if readingReceipt { ProgressView() } else {
+                                    Image(systemName: "doc.text.viewfinder").font(.system(size: 20, weight: .medium))
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                            .frame(width: 46, height: 46).contentShape(Rectangle())
+                        }
+                        .buttonStyle(Pressable())
+                        .disabled(readingReceipt)
+                        .accessibilityLabel(L("Chụp hoá đơn"))
+                    }
+                }
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
             if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
         }

@@ -52,8 +52,45 @@ struct PayShortcuts: AppShortcutsProvider {
                     shortTitle: "Ghi chi tiêu", systemImageName: "mic.fill")
         AppShortcut(intent: ScanIntent(), phrases: ["Quét QR bằng \(.applicationName)", "\(.applicationName) quét QR"],
                     shortTitle: "Quét QR", systemImageName: "qrcode.viewfinder")
+        AppShortcut(intent: CardPaymentIntent(), phrases: ["Ghi giao dịch thẻ bằng \(.applicationName)"],
+                    shortTitle: "Ghi giao dịch thẻ", systemImageName: "creditcard")
         AppShortcut(intent: AddIntent(), phrases: ["Nhập chi tiêu bằng \(.applicationName)", "\(.applicationName) nhập khoản chi"],
                     shortTitle: "Nhập khoản chi", systemImageName: "plus")
+    }
+}
+
+/// Tự ghi khi trả bằng Apple Pay: trong app Phím tắt > Tự động hoá > Giao dịch (Ví), chọn thẻ, thêm tác vụ "Ghi giao dịch thẻ"
+/// của Pay rồi gán Số tiền và Người bán của giao dịch vào hai ô. Mỗi lần quẹt thẻ là có một khoản chi, không phải mở app.
+struct CardPaymentIntent: AppIntent {
+    static let title: LocalizedStringResource = "Ghi giao dịch thẻ"
+    static let description = IntentDescription("Ghi một khoản chi từ giao dịch thẻ Apple Pay. Dùng trong Tự động hoá > Giao dịch: gán Số tiền và Người bán của giao dịch.")
+    static let openAppWhenRun = false
+
+    /// Nhận dạng chữ để chịu được mọi kiểu Phím tắt đưa vào: "₫35.000", "35,000.00 VND", "35000"
+    @Parameter(title: "Số tiền")
+    var amount: String
+
+    @Parameter(title: "Người bán")
+    var merchant: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let a = Self.parse(amount), a > 0 else {
+            return .result(dialog: IntentDialog(stringLiteral: L("Không đọc được số tiền của giao dịch.")))
+        }
+        let store = Store.shared
+        let note = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        store.add(amount: a, note: note, cat: store.guessCategory(note), toast: false)
+        return .result(dialog: IntentDialog(stringLiteral: L("Đã ghi %@ %@.", fmt(a), note.isEmpty ? L("giao dịch thẻ") : note)))
+    }
+
+    /// Bỏ ký hiệu tiền và chữ; phần lẻ sau dấu thập phân (",00" / ".50" ở cuối) bỏ đi; còn lại ghép các chữ số
+    static func parse(_ s: String) -> Int? {
+        var t = s.filter { $0.isNumber || $0 == "." || $0 == "," }
+        if let r = t.range(of: #"[.,]\d{1,2}$"#, options: .regularExpression) { t.removeSubrange(r) }
+        let digits = t.filter(\.isNumber)
+        guard !digits.isEmpty, digits.count <= 12 else { return nil }
+        return Int(digits)
     }
 }
 

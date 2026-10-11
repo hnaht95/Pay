@@ -302,6 +302,8 @@ final class Store: ObservableObject {
     /// Ghi số liệu cho widget rồi bảo widget vẽ lại.
     private func refreshWidget() {
         let now = Date()
+        // Nhắc ghi buổi tối: hôm nay đã có khoản thì bỏ lời nhắc của hôm nay
+        DailyReminder.reschedule(loggedToday: count(on: now) > 0)
         Summary(today: total(on: now), month: monthItems(now).reduce(0) { $0 + $1.a }, count: count(on: now), day: now, budget: budget).save()
         WidgetCenter.shared.reloadAllTimelines()
     }

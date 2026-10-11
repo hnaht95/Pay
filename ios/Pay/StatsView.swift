@@ -507,6 +507,7 @@ struct StatsView: View {
                 .foregroundStyle(.primary)
                 .contentTransition(.numericText())
             budgetLine(spent: current)
+            noSpendLine
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
                     HStack(alignment: .bottom, spacing: 8) {
@@ -527,6 +528,39 @@ struct StatsView: View {
             .frame(height: 118)
             .padding(.top, 8)
         }
+    }
+
+    /// Ngày không chi tiêu của tháng đang xem: đếm các ngày đã qua (từ ngày bắt đầu dùng app) không có khoản nào,
+    /// và ở tháng này thì thêm chuỗi ngày không chi liền nhau tính tới hôm qua. Hôm nay chưa hết nên không tính.
+    @ViewBuilder private var noSpendLine: some View {
+        let today = cal.startOfDay(for: Date())
+        let mStart = cal.dateInterval(of: .month, for: month)!.start
+        let mEnd = cal.dateInterval(of: .month, for: month)!.end
+        let firstUse = store.items.min(by: { $0.t < $1.t }).map { cal.startOfDay(for: $0.date) } ?? today
+        let from = max(mStart, firstUse)
+        let to = min(mEnd, today)   // ngày cuối được tính là hôm qua (đang ở tháng này) hoặc ngày cuối tháng
+        let spentDays = Set(spending(in: DateInterval(start: from, end: max(from, to))).map { cal.startOfDay(for: $0.date) })
+        let total = max(0, cal.dateComponents([.day], from: from, to: to).day ?? 0)
+        let free = max(0, total - spentDays.count)
+        let streak: Int = {
+            guard cal.isDate(month, equalTo: Date(), toGranularity: .month) else { return 0 }
+            var n = 0, d = cal.date(byAdding: .day, value: -1, to: today)!
+            while d >= firstUse, !spentDays.contains(d), d >= mStart { n += 1; d = cal.date(byAdding: .day, value: -1, to: d)! }
+            return n
+        }()
+        if total > 0 {
+            HStack(spacing: 6) {
+                chipLabel(free == 0 ? L("Ngày nào cũng có chi") : L("%ld ngày không chi tiêu", free))
+                if streak > 0 { chipLabel(L("Chuỗi %ld ngày", streak)) }
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private func chipLabel(_ t: String) -> some View {
+        Text(t).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Color.primary.opacity(0.06), in: Capsule())
     }
 
     /// Hạn mức nằm ngay dưới số tiền: một vạch ngang mảnh đã dùng / hạn mức, kèm còn bao nhiêu và mức nên tiêu mỗi ngày.

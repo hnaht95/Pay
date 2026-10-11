@@ -8,13 +8,26 @@ struct HistoryView: View {
     var category: String? = nil
     @State private var editing: EntryMode?
     @State private var menu: AppMenuSpec?
+    /// Ô tìm: lọc theo ghi chú hoặc tên danh mục, không phân biệt dấu ("ca phe" ra "cà phê")
+    @State private var query = ""
 
     var body: some View {
         NavigationStack {
             let groups = grouped()
             List {
+                // Đang tìm: một dòng tổng của các khoản tìm được
+                if !query.isEmpty, !groups.isEmpty {
+                    let found = groups.flatMap(\.1)
+                    HStack {
+                        Text(found.count == 1 ? L("1 khoản") : L("%ld khoản", found.count))
+                        Spacer()
+                        Text(fmt(found.reduce(0) { $0 + $1.a })).fontWeight(.semibold)
+                    }
+                    .font(.system(size: 16))
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                }
                 if groups.isEmpty {
-                    Text(L("Chưa có khoản nào.")).font(.system(size: 17)).foregroundStyle(.secondary)
+                    Text(query.isEmpty ? L("Chưa có khoản nào.") : L("Không tìm thấy khoản nào.")).font(.system(size: 17)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity).padding(40)
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
@@ -38,6 +51,7 @@ struct HistoryView: View {
                 }
             }
             .listStyle(.plain)
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: L("Tìm khoản chi"))
             .softTopEdge()
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
@@ -81,7 +95,11 @@ struct HistoryView: View {
         let all = Category.all, known = Set(all.map(\.k)), other = all.last!.k
         let canon = { (k: String) in known.contains(k) ? k : other }
         let want = category.map(canon)
-        let dict = Dictionary(grouping: store.items.filter { want == nil || canon($0.c) == want }) { cal.startOfDay(for: $0.date) }
+        let q = Store.noteKey(query)
+        let hit = { (e: Expense) -> Bool in
+            q.isEmpty || Store.noteKey(e.n ?? "").contains(q) || Store.noteKey(Category.get(e.c).name).contains(q)
+        }
+        let dict = Dictionary(grouping: store.items.filter { (want == nil || canon($0.c) == want) && hit($0) }) { cal.startOfDay(for: $0.date) }
         return dict.keys.sorted(by: >).map { ($0, dict[$0]!.sorted { $0.t > $1.t }) }
     }
 

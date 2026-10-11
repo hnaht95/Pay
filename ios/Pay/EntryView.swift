@@ -105,7 +105,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(700)]).sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(470)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -402,6 +402,8 @@ struct DateSheet: View {
     @State private var forward = true
     /// Bề ngang nút "Hôm nay" lúc bung (đo theo chữ), để co / nở được bằng một con số
     @State private var todayW: CGFloat = 90
+    /// Bề ngang hàng lịch + giờ, để chia chỗ cho lưới và hai bánh xe
+    @State private var rowW: CGFloat = 340
 
     private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
     private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
@@ -409,16 +411,13 @@ struct DateSheet: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            // Hàng tiêu đề như lịch của Peek (cỡ Peek × 1,5): hình tờ lịch + "Tháng 10 năm 2026" chữ vừa mờ 55%;
+            // Hàng tiêu đề như lịch của Peek (cỡ Peek × 1,5): "Tháng 10 năm 2026" chữ vừa mờ 55% (không hình tờ lịch);
             // nút "Hôm nay" luôn dựng sẵn, chỉ co bề ngang về 0 rồi mờ đi khi đang ở tháng này (bật ra thì nở từ 0, hai mũi tên
             // trượt theo); hai tam giác lên / xuống (lịch xếp tuần theo chiều dọc, lùi tháng là đi lên)
             HStack(spacing: 0) {
-                HStack(spacing: 9) {
-                    CalendarShape().fill(style: FillStyle(eoFill: true)).frame(width: 22, height: 22)
-                    Text(title).font(.system(size: 17, weight: .medium))
-                        .contentTransition(.numericText())
-                }
-                .foregroundStyle(Color.primary.opacity(0.55))
+                Text(title).font(.system(size: 17, weight: .medium))
+                    .contentTransition(.numericText())
+                    .foregroundStyle(Color.primary.opacity(0.55))
                 Spacer(minLength: 8)
                 let showsToday = !isThisMonth
                 Button { jumpToToday() } label: {
@@ -439,27 +438,50 @@ struct DateSheet: View {
                 arrow(angle: 180, L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
             .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisMonth)
-            // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
-            ZStack {
-                monthGrid
-                    .id(first)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
-                        removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
+            // Lịch tháng bên trái, giờ : phút bên phải trên cùng một hàng (như Peek chia hai cột khi mở cả tháng);
+            // hai bánh xe cao đúng bằng lưới
+            // Lưới chiếm hết phần ngang còn lại (bánh xe giờ phút gọn 96 pt); chữ số giờ phút cùng cỡ chữ số ngày
+            let wheelsW: CGFloat = 96
+            let gw = max(0, rowW - wheelsW - 10)
+            let k = gw / 7 / P.pitch
+            let gh = k * P.height(rows: 6)
+            HStack(alignment: .top, spacing: 10) {
+                // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
+                ZStack {
+                    monthGrid
+                        .id(first)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
+                            removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
+                }
+                // Cắt rìa khi trượt, nhưng chừa 2 pt: nét khung 1,5 chạy đúng mép lưới, cắt sát thì nửa nét ở mép ngoài mất,
+                // cạnh ngoài mỏng hơn cạnh trong
+                .padding(2).clipped().padding(-2)
+                .frame(width: gw, height: gh)
+                // Khung giờ như Peek: nền tối bo góc, giờ : phút, phút nhảy từng 5, hai mép trên dưới mờ dần
+                HStack(spacing: 4 * k) {
+                    PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
+                              pitch: 18 * k, font: 17 * k)
+                        .frame(width: 26 * k)
+                    Text(":").font(.system(size: 17 * k, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
+                    PeekWheel(count: 12, step: 5, value: Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }),
+                              pitch: 18 * k, font: 17 * k)
+                        .frame(width: 26 * k)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .mask {
+                    LinearGradient(stops: [.init(color: .black.opacity(0.06), location: 0), .init(color: .black, location: 0.4),
+                                           .init(color: .black, location: 0.6), .init(color: .black.opacity(0.06), location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12 * k, style: .continuous))
+                // Cao đúng bằng dải nền T7 / CN (từ hàng ngày đầu tới hàng cuối, không gồm hàng thứ), đặt ngang hàng với dải ấy
+                .frame(width: wheelsW, height: 6 * (P.row + P.rowGap) * k)
+                .padding(.top, (P.band - P.rowGap / 2) * k)
             }
-            // Cắt rìa khi trượt, nhưng chừa 2 pt: nét khung 1,5 chạy đúng mép lưới, cắt sát thì nửa nét ở mép ngoài mất,
-            // cạnh ngoài mỏng hơn cạnh trong
-            .padding(2).clipped().padding(-2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
             Spacer(minLength: 0)
-            HStack(spacing: 4) {
-                Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
-                Spacer()
-                wheel(24, Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }))
-                Text(":").font(.system(size: 22, weight: .bold)).foregroundStyle(.secondary)
-                wheel(60, Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }))
-            }
-            // Bánh xe cao đủ cho 5 hàng: thấp quá (120) thì hai số kề trên / dưới bị cắt ở chỗ đang cong nhất, trông dẹt ngắn
-            .frame(height: 170)
             Button { dismiss() } label: {
                 Text(L("Xong")).font(.system(size: 19, weight: .semibold))
                     .frame(maxWidth: .infinity, minHeight: 58)
@@ -627,23 +649,24 @@ struct ChipEdges: ViewModifier {
 private struct FlatWheel: View {
     let count: Int
     @Binding var value: Int
+    /// Cỡ chữ số và chiều cao một hàng (mặc định 22 / 36; đứng cạnh lịch thì nhỏ theo chữ số của lịch)
+    var font: CGFloat = 22
+    var row: CGFloat = 36
     @State private var pos: Int?
-
-    private static let row: CGFloat = 36
 
     var body: some View {
         GeometryReader { g in
-            let pad = max(0, (g.size.height - Self.row) / 2)
+            let pad = max(0, (g.size.height - row) / 2)
             ZStack {
-                Capsule().fill(Palette.pill).frame(height: Self.row)
+                Capsule().fill(Palette.pill).frame(height: row)
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(0..<count, id: \.self) { n in
                             let on = n == (pos ?? value)
                             Text(String(format: "%02d", n))
-                                .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                                .font(.system(size: font, weight: .semibold).monospacedDigit())
                                 .foregroundStyle(on ? Color.primary : Color.secondary)
-                                .frame(maxWidth: .infinity, minHeight: Self.row, maxHeight: Self.row)
+                                .frame(maxWidth: .infinity, minHeight: row, maxHeight: row)
                                 .contentShape(Rectangle())
                                 .onTapGesture { withAnimation(.snappy) { pos = n } }
                                 .id(n)
@@ -731,5 +754,65 @@ private struct WeekendBand: Shape {
         guard rows > 0 else { return Path() }
         let box = CGRect(x: grid.left(5), y: grid.top(0), width: grid.right(6) - grid.left(5), height: grid.bottom(rows - 1) - grid.top(0))
         return Path(roundedRect: box, cornerRadius: radius, style: .continuous)
+    }
+}
+
+/// Một cột bánh xe giờ / phút kiểu Peek (NoteTimeWheel / WheelColumn): quay vòng (trên 00 là 55, 50…), hàng giữa chữ to đậm,
+/// lệch một hàng thì chữ nhỏ lại (17 → 12) và mờ còn 60%. Kéo tay rồi buông thì bật về đúng nấc gần nhất (có đà theo tốc độ vuốt).
+/// Tự vẽ bằng cử chỉ kéo, không dùng ScrollView: cần quay vòng và hàng giữa phải luôn đúng giá trị đang chọn.
+/// `step` = bước nhảy (phút đi từng 5 như Peek)
+private struct PeekWheel: View {
+    let count: Int
+    var step: Int = 1
+    @Binding var value: Int
+    let pitch: CGFloat
+    let font: CGFloat
+    /// Nấc đang đứng (đếm liên tục, không lấy dư — để lò xo chạy thẳng qua mốc 00 thay vì quay ngược cả vòng)
+    @State private var base = 0
+    @State private var drag: CGFloat = 0
+    @State private var ready = false
+
+    private var pos: CGFloat { CGFloat(base) - drag / pitch }
+    private func wrap(_ i: Int) -> Int { ((i % count) + count) % count }
+
+    var body: some View {
+        let center = Int(pos.rounded())
+        ZStack {
+            ForEach(-4...4, id: \.self) { o in
+                let i = center + o
+                let d = CGFloat(i) - pos
+                let a = min(abs(d), 1)
+                Text(String(format: "%02d", wrap(i) * step))
+                    .font(.system(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit())
+                    .foregroundStyle(Color.primary)
+                    .scaleEffect((17 - 5 * a) / 17)
+                    .opacity(1 - 0.4 * a)
+                    .offset(y: d * pitch)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 2)
+                .onChanged { v in drag = v.translation.height }
+                .onEnded { v in
+                    // Đà: lấy điểm dừng dự đoán của cú vuốt, rồi làm tròn về nấc
+                    let target = Int((CGFloat(base) - v.predictedEndTranslation.height / pitch).rounded())
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { base = target; drag = 0 }
+                    commit(target)
+                }
+        )
+        .onAppear {
+            guard !ready else { return }
+            base = Int((Double(value) / Double(step)).rounded())
+            ready = true
+        }
+        .sensoryFeedback(.selection, trigger: center)
+    }
+
+    private func commit(_ target: Int) {
+        // Giờ lẻ (11:03) hiện ở nấc gần nhất (05) mà không bị đổi khi chỉ mở ra xem; chỉ đổi khi cuộn sang nấc khác
+        if wrap(target) != wrap(Int((Double(value) / Double(step)).rounded())) { value = wrap(target) * step }
     }
 }

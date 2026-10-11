@@ -586,7 +586,7 @@ struct DateSheet: View {
 
     private static let orange = Color(hex: 0xF0884F)
 
-    /// Dải tuần kiểu Peek: mỗi ngày một ô bo góc riêng (chữ thứ nhỏ trên, số to dưới, chấm dưới chân số),
+    /// Dải tuần kiểu Peek: mỗi ngày một ô bo góc riêng (chữ thứ nhỏ trên, số to dưới),
     /// các ô cách nhau 6. Ngày chọn: ô cam chữ trắng; hôm nay: ô đen xám chữ trắng; còn lại ô xám rất nhạt
     private var weekStrip: some View {
         let names = Lang.isEnglish ? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
@@ -599,19 +599,17 @@ struct DateSheet: View {
 
     private func stripDay(_ d: Date, name: String) -> some View {
         let on = cal.isDate(d, inSameDayAs: when), today = cal.isDateInToday(d), future = d > Date()
-        let spent = !future && Store.shared.total(on: d) > 0
         let filled = on || today
         return Button { pick(d) } label: {
-            VStack(spacing: 5) {
+            // Thứ và số xếp giữa ô, cân trên dưới
+            VStack(spacing: 4) {
                 Text(name).font(.system(size: 12, weight: .medium))
                     .foregroundStyle(filled ? Color.white.opacity(0.75) : Color.primary.opacity(0.45))
                 Text("\(cal.component(.day, from: d))")
                     .font(.system(size: 21, weight: .semibold, design: .rounded)).monospacedDigit()
                     .foregroundStyle(filled ? Color.white : Color.primary.opacity(0.85))
-                // Ngày có khoản chi: chấm nhỏ dưới chân số
-                Circle().fill(spent ? (filled ? Color.white : Self.orange) : .clear).frame(width: 4, height: 4)
             }
-            .frame(maxWidth: .infinity).frame(height: 74)
+            .frame(maxWidth: .infinity).frame(height: 64)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(on ? Self.orange : today ? Color(light: 0x3A3A3E, dark: 0x5A5A5F) : Color.primary.opacity(0.05)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

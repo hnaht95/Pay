@@ -63,8 +63,9 @@ struct PayShortcuts: AppShortcutsProvider {
 /// của Pay rồi gán Số tiền và Người bán của giao dịch vào hai ô. Mỗi lần quẹt thẻ là có một khoản chi, không phải mở app.
 struct CardPaymentIntent: AppIntent {
     static let title: LocalizedStringResource = "Ghi giao dịch thẻ"
-    static let description = IntentDescription("Ghi một khoản chi từ giao dịch thẻ Apple Pay. Dùng trong Tự động hoá > Giao dịch: gán Số tiền và Người bán của giao dịch.")
+    static let description = IntentDescription("Ghi một khoản chi từ giao dịch thẻ trong Ví. Dùng trong Tự động hoá > Giao dịch: gán Số tiền và Người bán của giao dịch.")
     static let openAppWhenRun = false
+    // Lưu ý: mô tả của App Intent không được chứa chữ "Apple" (App Store Connect trả về ITMS-90626)
 
     /// Nhận dạng chữ để chịu được mọi kiểu Phím tắt đưa vào: "₫35.000", "35,000.00 VND", "35000"
     @Parameter(title: "Số tiền")

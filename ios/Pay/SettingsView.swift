@@ -203,7 +203,7 @@ struct SettingsView: View {
                 Button(L("Khôi phục giao dịch")) { Task { await pro.restore() } }.foregroundStyle(Color.primary)
             }
         } footer: {
-            if !pro.active { Text(L("Lịch sử đầy đủ, iCloud, nhóm chung, khoản định kỳ, ảnh, danh mục không giới hạn, tự ghi Apple Pay, xuất CSV.")) }
+            if !pro.active { Text(L("Lịch sử đầy đủ, iCloud, khoản định kỳ, ảnh, danh mục không giới hạn, tự ghi Apple Pay, xuất CSV.")) }
         }
     }
 

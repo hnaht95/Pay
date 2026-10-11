@@ -191,10 +191,7 @@ struct HomeView: View {
             Image("logo-pay").resizable().scaledToFit().frame(height: 30)
                 .accessibilityLabel("Pay").accessibilityAddTraits(.isHeader)
             Spacer()
-            // Nhóm chung là Pro; đã ở trong nhóm (vd được mời vào) thì vẫn mở được
-            headerButton("person.2.crop.square.stack.fill", L("Nhóm chung")) {
-                if !House.shared.groups.isEmpty || Pro.shared.allow(.house) { showHouse = true }
-            }
+            headerButton("person.2.crop.square.stack.fill", L("Nhóm chung")) { showHouse = true }
             headerButton("icon-dashboard", L("Thống kê"), asset: true) { showStats = true }
             headerButton("icon-settings", L("Cài đặt"), asset: true) { showSettings = true }
         }

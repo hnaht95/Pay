@@ -534,23 +534,38 @@ enum Hatch {
     }
 }
 
-/// Nền khung Tổng chi: xanh lá của app (#61BE6E) loang không đều — các điểm giữa lệch khỏi lưới,
-/// mỗi mảng sáng / đậm một chút khác nhau, không chuyển thẳng một chiều như LinearGradient.
+/// Nền khung Tổng chi: gradient loang chủ đạo xanh lá của app (#61BE6E) — đậm góc dưới trái, sáng dần lên góc trên phải,
+/// điểm giữa lệch khỏi lưới cho mảng màu không đều — phủ một lớp hạt nhiễu mịn như ảnh in.
 private struct HeroGreen: View {
     var body: some View {
-        if #available(iOS 18.0, *) {
-            MeshGradient(width: 3, height: 3, points: [
-                [0, 0], [0.42, 0], [1, 0],
-                [0, 0.62], [0.68, 0.38], [1, 0.55],
-                [0, 1], [0.3, 1], [1, 1],
-            ], colors: [
-                Color(hex: 0x86D492), Color(hex: 0x61BE6E), Color(hex: 0x70C87D),
-                Color(hex: 0x55B663), Color(hex: 0x96DCA0), Color(hex: 0x4AA958),
-                Color(hex: 0x61BE6E), Color(hex: 0x46A555), Color(hex: 0x66C173),
-            ])
-        } else {
-            LinearGradient(colors: [Color(hex: 0x74CB80), Color(hex: 0x61BE6E), Color(hex: 0x52B160)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        ZStack {
+            if #available(iOS 18.0, *) {
+                MeshGradient(width: 3, height: 3, points: [
+                    [0, 0], [0.5, 0], [1, 0],
+                    [0, 0.5], [0.58, 0.42], [1, 0.5],
+                    [0, 1], [0.45, 1], [1, 1],
+                ], colors: [
+                    Color(hex: 0x45AE60), Color(hex: 0x7ACF86), Color(hex: 0xB4E6AE),
+                    Color(hex: 0x2F9852), Color(hex: 0x61BE6E), Color(hex: 0x95DA98),
+                    Color(hex: 0x1C7A3E), Color(hex: 0x2E9A55), Color(hex: 0x5CBB6C),
+                ])
+            } else {
+                LinearGradient(colors: [Color(hex: 0x1C7A3E), Color(hex: 0x61BE6E), Color(hex: 0xB4E6AE)],
+                               startPoint: .bottomLeading, endPoint: .topTrailing)
+            }
+            Image(uiImage: Self.grain).resizable(resizingMode: .tile)
+                .blendMode(.overlay).opacity(0.55)
+                .allowsHitTesting(false)
         }
     }
+
+    /// Ô hạt nhiễu xám ngẫu nhiên 160×160 (dựng một lần), lát kín khung
+    private static let grain: UIImage = {
+        let n = 160
+        var px = [UInt8](repeating: 0, count: n * n)
+        for i in px.indices { px[i] = UInt8.random(in: 0...255) }
+        let ctx = CGContext(data: &px, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n,
+                            space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
+        return UIImage(cgImage: ctx.makeImage()!, scale: 3, orientation: .up)
+    }()
 }

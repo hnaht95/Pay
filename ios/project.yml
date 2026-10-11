@@ -119,3 +119,14 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+schemes:
+  Pay:
+    build:
+      targets:
+        Pay: all
+    run:
+      config: Debug
+      # Thử mua Pro trên máy ảo bằng cấu hình StoreKit cục bộ (giá 199.000đ / 79.000đ)
+      storeKitConfiguration: Pay.storekit
+    archive:
+      config: Release

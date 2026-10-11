@@ -5,6 +5,7 @@ import SwiftUI
 /// chi theo danh mục và các khoản gần đây.
 struct StatsView: View {
     @EnvironmentObject var store: Store
+    @ObservedObject private var pro = Pro.shared
     @Environment(\.dismiss) private var dismiss
     @State private var month = Date()
     /// Trang 6 tháng đang hiện trên thanh chọn tháng (0 = 6 tháng gần nhất, 1 = 6 tháng trước đó, ...)
@@ -115,7 +116,8 @@ struct StatsView: View {
         // Mốc 90%: một ngày trả tiền nhà không làm mọi cột khác lùn tịt (ngày vượt mốc thì cột đầy)
         let sorted = byDay.values.sorted()
         let top = max(sorted.isEmpty ? 1 : sorted[min(sorted.count - 1, sorted.count * 9 / 10)], 1)
-        let shown = centerDay ?? today
+        // Cuộn vào vùng khoá (bản miễn phí): tiêu đề giữ tháng đang xem số liệu, không theo ngày bị khoá
+        let shown = (centerDay.map { locked($0) } ?? false) ? month : (centerDay ?? today)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Text(byMonth ? monthYear(month) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
@@ -167,7 +169,7 @@ struct StatsView: View {
         .padding(.horizontal, -16)
         .onChange(of: centerDay) {
             // Cuộn sang tháng khác: số liệu theo tháng đó; ngày đang chọn ở tháng khác thì bỏ chọn
-            guard let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month) else { return }
+            guard let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month), !locked(c) else { return }
             showMonth(c)
             if let d = day, !cal.isDate(d, equalTo: c, toGranularity: .month) { day = nil }
         }
@@ -227,11 +229,22 @@ struct StatsView: View {
         }
     }
 
+    /// Đầu tháng trước: bản miễn phí xem được từ đây
+    static func freeStart(_ cal: Calendar) -> Date {
+        let thisMonth = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
+        return cal.date(byAdding: .month, value: -1, to: thisMonth)!
+    }
+
+    /// Bản miễn phí chỉ xem được từ đầu tháng trước; ngày / tháng xa hơn vẫn hiện nhưng mờ, chạm vào là mở màn mua Pro
+    private func locked(_ d: Date) -> Bool { !pro.active && d < Self.freeStart(cal) }
+
     private func monthPill(_ m: Date, spent: Int, top: Int) -> some View {
         let on = isSelected(m)
         let now = cal.isDate(m, equalTo: Date(), toGranularity: .month)
         let r = min(sqrt(Double(spent) / Double(top)), 1)
+        let lock = locked(m)
         return Button {
+            if lock { Pro.shared.allow(.history); return }
             withAnimation(.snappy(duration: 0.2)) {
                 day = nil
                 showMonth(m)
@@ -275,6 +288,7 @@ struct StatsView: View {
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .opacity(lock ? 0.3 : 1)
         }
         .buttonStyle(Pressable())
         .sensoryFeedback(.selection, trigger: on)
@@ -284,7 +298,9 @@ struct StatsView: View {
         let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
         let today = cal.isDateInToday(d)
         let r = min(sqrt(Double(spent) / Double(top)), 1)
+        let lock = locked(d)
         return Button {
+            if lock { Pro.shared.allow(.history); return }
             withAnimation(.snappy(duration: 0.2)) {
                 if on { day = nil } else {
                     day = d
@@ -323,6 +339,7 @@ struct StatsView: View {
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .opacity(lock ? 0.3 : 1)
         }
         .buttonStyle(Pressable())
     }

@@ -4,6 +4,7 @@ import WidgetKit
 
 struct SettingsView: View {
     @EnvironmentObject var store: Store
+    @ObservedObject private var pro = Pro.shared
     @Environment(\.dismiss) private var dismiss
     /// Tài khoản nhận tiền của mình, cho widget mã QR
     @State private var myQR = MyQR.load()
@@ -30,6 +31,7 @@ struct SettingsView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
 
+                proSection
                 budgetSection
                 recurringSection
                 autoSection
@@ -183,12 +185,36 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: Pro
+
+    private var proSection: some View {
+        Section {
+            if pro.active {
+                Label { Text(L("Đã có Pay Pro")) } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x61BE6E)) }
+            } else {
+                Button { ProPaywall.present() } label: {
+                    HStack(spacing: 10) {
+                        Text(L("Nâng cấp Pay Pro")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
+                        ProBadge()
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
+                    }
+                }
+                Button(L("Khôi phục giao dịch")) { Task { await pro.restore() } }.foregroundStyle(Color.primary)
+            }
+        } footer: {
+            if !pro.active { Text(L("Lịch sử đầy đủ, iCloud, nhóm chung, khoản định kỳ, ảnh, danh mục không giới hạn, tự ghi Apple Pay, xuất CSV.")) }
+        }
+    }
+
     // MARK: iCloud
 
     private var cloudSection: some View {
         Section {
-            Toggle(isOn: $store.cloudOn) { row(L("Đồng bộ iCloud")) }
-            if store.cloudOn {
+            // Pro: chưa mua thì công tắc hiện tắt, bật lên là mở màn mua Pro
+            Toggle(isOn: Binding(get: { store.cloudOn && pro.active },
+                                 set: { v in if !v || Pro.shared.allow(.cloud) { store.cloudOn = v } })) { proRow(L("Đồng bộ iCloud")) }
+            if store.cloudOn && pro.active {
                 HStack { Text(L("Trạng thái")); Spacer(); cloudStatus }
                 if cloudReady {
                     Button {
@@ -357,8 +383,10 @@ struct SettingsView: View {
                 ShareLink(item: jsonURL) { row(L("Sao lưu ra file")) }
             }
             Button { importing = true } label: { row(L("Khôi phục từ file sao lưu")) }
-            if let csvURL {
+            if pro.active, let csvURL {
                 ShareLink(item: csvURL) { row(L("Xuất CSV (Excel)")) }
+            } else if !pro.active {
+                Button { Pro.shared.allow(.csv) } label: { proRow(L("Xuất CSV (Excel)")) }
             }
             Button(role: .destructive) { confirmErase = true } label: {
                 row(L("Xoá tất cả khoản chi"), destructive: true)
@@ -376,6 +404,14 @@ struct SettingsView: View {
     /// Một hàng chỉ có chữ (trước có ô biểu tượng màu ở đầu, đã bỏ cho gọn)
     private func row(_ title: String, destructive: Bool = false) -> some View {
         Text(title).foregroundStyle(destructive ? Color.red : Color.primary)
+    }
+
+    /// Hàng của tính năng Pro: chưa mua thì có nhãn "Pro" nhỏ bên cạnh
+    private func proRow(_ title: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title).foregroundStyle(Color.primary)
+            if !pro.active { ProBadge() }
+        }
     }
 
     private var version: String {
@@ -872,11 +908,13 @@ struct CategoryEditor: View {
 
                 Section {
                     // Ảnh riêng: chọn từ thư viện ảnh, phủ kín ô vuông; có ảnh thì biểu tượng chỉ là phụ (dùng khi xoá ảnh)
+                    // Ảnh danh mục là tính năng Pro: chưa mua thì lớp chạm phủ lên mở màn mua Pro
                     PhotosPicker(selection: $photoItem, matching: .images) {
                         HStack(spacing: 12) {
                             Image(systemName: "photo").font(.system(size: 17, weight: .semibold))
                                 .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
                             Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")).foregroundStyle(.primary)
+                            if !Pro.shared.active { ProBadge() }
                             Spacer()
                             if let photo {
                                 Image(uiImage: photo).resizable().scaledToFill().frame(width: 34, height: 34)
@@ -885,6 +923,7 @@ struct CategoryEditor: View {
                         }
                     }
                     .tint(.primary)
+                    .overlay { if !Pro.shared.active { Color.white.opacity(0.001).onTapGesture { Pro.shared.allow(.photos) } } }
                     if photo != nil {
                         Button { withAnimation(.snappy) { photo = nil; photoChanged = true } } label: {
                             Text(L("Xoá ảnh, dùng biểu tượng")).foregroundStyle(.red)

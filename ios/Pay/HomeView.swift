@@ -191,7 +191,10 @@ struct HomeView: View {
             Image("logo-pay").resizable().scaledToFit().frame(height: 30)
                 .accessibilityLabel("Pay").accessibilityAddTraits(.isHeader)
             Spacer()
-            headerButton("person.2.crop.square.stack.fill", L("Nhóm chung")) { showHouse = true }
+            // Nhóm chung là Pro; đã ở trong nhóm (vd được mời vào) thì vẫn mở được
+            headerButton("person.2.crop.square.stack.fill", L("Nhóm chung")) {
+                if !House.shared.groups.isEmpty || Pro.shared.allow(.house) { showHouse = true }
+            }
             headerButton("icon-dashboard", L("Thống kê"), asset: true) { showStats = true }
             headerButton("icon-settings", L("Cài đặt"), asset: true) { showSettings = true }
         }
@@ -333,7 +336,7 @@ struct HomeView: View {
 
     /// Dòng cuối: tạo danh mục riêng. Thấp, dài cả hàng, dấu + nhỏ và chữ ở giữa (giống nút Tạo nhóm mới)
     private var addTile: some View {
-        Button { addingCat = true } label: {
+        Button { if Category.custom.count < Pro.freeCategories || Pro.shared.allow(.categories) { addingCat = true } } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus").font(.system(size: 16, weight: .bold))
                 Text(L("Thêm danh mục")).font(.system(size: 17, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
@@ -453,7 +456,7 @@ struct HomeView: View {
         GlassGroup {
             HStack(spacing: 12) {
                 // Chạm: nhập tay. Vuốt lên: chụp hoá đơn rồi mở màn nhập với ảnh hoá đơn đính kèm
-                BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in receiptScan = true }) { entry = .new(cat: nil) }
+                BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in if Pro.shared.allow(.photos) { receiptScan = true } }) { entry = .new(cat: nil) }
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in

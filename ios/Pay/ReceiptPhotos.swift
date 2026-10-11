@@ -16,7 +16,7 @@ enum ReceiptPhotos {
 
     /// Thư mục ảnh trên iCloud của Pay, nil khi chưa bật đồng bộ / chưa đăng nhập iCloud (gọi ngoài luồng chính: lần đầu có thể chậm)
     private static func cloudDir() -> URL? {
-        guard UserDefaults.standard.object(forKey: "cloudSync") as? Bool ?? true,
+        guard UserDefaults.standard.object(forKey: "cloudSync") as? Bool ?? true, UserDefaults.standard.bool(forKey: "proActive"),
               let base = fm.url(forUbiquityContainerIdentifier: nil) else { return nil }
         let d = base.appendingPathComponent("Documents/Receipts", isDirectory: true)
         try? fm.createDirectory(at: d, withIntermediateDirectories: true)

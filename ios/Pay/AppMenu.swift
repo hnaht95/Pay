@@ -153,7 +153,7 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
         items.append(AppMenuItem(icon: "xmark.circle", title: L("Bỏ lặp hằng tháng"), subtitle: L("Đang tự ghi vào ngày %@ mỗi tháng", String(r.day))) { store.stopRepeating(r) })
     } else {
         items.append(AppMenuItem(icon: "repeat", title: L("Lặp hằng tháng"),
-                                 subtitle: L("Tự ghi vào ngày %@ mỗi tháng", String(Calendar.current.component(.day, from: e.date)))) { store.repeatMonthly(e) })
+                                 subtitle: L("Tự ghi vào ngày %@ mỗi tháng", String(Calendar.current.component(.day, from: e.date)))) { if Pro.shared.allow(.recurring) { store.repeatMonthly(e) } })
     }
     items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
     return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),

@@ -1,0 +1,40 @@
+{
+  "identifier" : "PAYPRO01",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "199000",
+      "familyShareable" : true,
+      "internalID" : "6700000001",
+      "localizations" : [ { "description" : "Mở mọi tính năng Pro, trả một lần", "displayName" : "Pay Pro trọn đời", "locale" : "vi" } ],
+      "productID" : "com.hnaht95.sochipay.pro.lifetime",
+      "referenceName" : "Pay Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : { "_storefront" : "VNM", "_locale" : "vi" },
+  "subscriptionGroups" : [
+    {
+      "id" : "21000001",
+      "localizations" : [],
+      "name" : "Pay Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [], "codeOffers" : [],
+          "displayPrice" : "79000",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "6700000002",
+          "introductoryOffer" : null,
+          "localizations" : [ { "description" : "Mở mọi tính năng Pro, gia hạn mỗi năm", "displayName" : "Pay Pro năm", "locale" : "vi" } ],
+          "productID" : "com.hnaht95.sochipay.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pay Pro Yearly",
+          "subscriptionGroupID" : "21000001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : { "major" : 4, "minor" : 0 }
+}

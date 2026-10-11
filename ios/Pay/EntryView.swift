@@ -165,7 +165,7 @@ struct EntryView: View {
     @ViewBuilder private var photoTile: some View {
         if isNewEntry || isEdit {
             let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
-            Button { if photo != nil { viewingPhoto = true } else { scanningReceipt = true } } label: {
+            Button { if photo != nil { viewingPhoto = true } else if Pro.shared.allow(.photos) { scanningReceipt = true } } label: {
                 Color.primary.opacity(0.05)
                     .overlay {
                         if let photo {
@@ -243,7 +243,7 @@ struct EntryView: View {
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
-                    Button { addingCat = true } label: {
+                    Button { if Category.custom.count < Pro.freeCategories || Pro.shared.allow(.categories) { addingCat = true } } label: {
                         Label(L("Mới"), systemImage: "plus")
                             .font(.system(size: 17, weight: .medium))
                             .padding(.horizontal, 16).frame(height: 48)

@@ -231,13 +231,17 @@ final class Store: ObservableObject {
 
     /// Bật / tắt đồng bộ theo công tắc trong Cài đặt.
     private func applyCloud() async {
-        guard cloudOn else { cloud.stop(); cloudState = .off; return }
+        // Đồng bộ iCloud là tính năng Pro: chưa mua thì coi như tắt (công tắc vẫn nhớ, mua xong là chạy)
+        guard cloudOn, Pro.shared.active else { cloud.stop(); cloudState = .off; return }
         if cloud.active { return }
         cloudState = .connecting
         let ok = await cloud.start { [weak self] remote in self?.absorb(remote) }
-        if !cloudOn { cloud.stop(); cloudState = .off; return }   // vừa tắt trong lúc đang kết nối
+        if !cloudOn || !Pro.shared.active { cloud.stop(); cloudState = .off; return }   // vừa tắt trong lúc đang kết nối
         cloudState = ok ? .on(last: nil) : .unavailable
     }
+
+    /// Vừa mua / hết hạn Pro: bật / tắt các phần cần Pro (đồng bộ iCloud)
+    func proChanged() { Task { await applyCloud() } }
 
     /// Nút "Đồng bộ ngay": đẩy bản máy này lên rồi đọc lại bản trên iCloud.
     func syncNow() async {

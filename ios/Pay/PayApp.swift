@@ -29,6 +29,8 @@ struct PayApp: App {
                     FilmTouches.install()
                     await FilmExport.runIfAsked(store: store, quick: quick)
                     #endif
+                    // Kiểm tra quyền Pro và lắng nghe giao dịch (mua trên máy khác, gia hạn, hoàn tiền)
+                    await Pro.shared.refresh()
                     // Tải trước sổ Nhóm chung ngay khi mở app, để lúc bấm vào đã có sẵn (không hỏi quyền thông báo ở đây)
                     await House.shared.load(prompt: false)
                 }
@@ -76,6 +78,10 @@ struct CardPaymentIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        // Tính năng Pro (đọc cờ đã lưu: intent chạy nền, không chờ App Store)
+        guard UserDefaults.standard.bool(forKey: "proActive") else {
+            return .result(dialog: IntentDialog(stringLiteral: L("Tự ghi giao dịch thẻ cần Pay Pro. Mở Pay để nâng cấp.")))
+        }
         guard let a = Self.parse(amount), a > 0 else {
             return .result(dialog: IntentDialog(stringLiteral: L("Không đọc được số tiền của giao dịch.")))
         }

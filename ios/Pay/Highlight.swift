@@ -42,18 +42,23 @@ enum HighlightBand {
 }
 
 /// Đánh dấu đoạn chữ cần tô dạ quang
-struct HighlightMark: TextAttribute {}
+struct HighlightMark: TextAttribute {
+    /// Màu bút (mặc định xanh lá của Shot)
+    var rgb: UInt32 = 0x5FB875
+}
 
 /// Vẽ dải dạ quang phía sau các đoạn có HighlightMark, mỗi dòng một dải, rồi vẽ chữ lên trên
 @available(iOS 18.0, *)
 struct HighlightRenderer: TextRenderer {
     func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
         for line in layout {
-            var band: CGRect?
-            for run in line where run[HighlightMark.self] != nil {
+            var band: CGRect?, rgb: UInt32?
+            for run in line {
+                guard let mark = run[HighlightMark.self] else { continue }
                 band = band.map { $0.union(run.typographicBounds.rect) } ?? run.typographicBounds.rect
+                rgb = mark.rgb
             }
-            if let band { ctx.fill(HighlightBand.path(behind: band), with: .color(HighlightBand.green.opacity(0.45))) }
+            if let band, let rgb { ctx.fill(HighlightBand.path(behind: band), with: .color(Color(hex: rgb).opacity(0.45))) }
         }
         for line in layout { ctx.draw(line) }
     }
@@ -62,12 +67,13 @@ struct HighlightRenderer: TextRenderer {
 /// Câu có một đoạn bọc trong **…**: đoạn đó được tô dạ quang (iOS 18 trở lên; iOS 17 thì in đậm như Markdown).
 struct HighlightedText: View {
     let text: String
+    var rgb: UInt32 = 0x5FB875
 
     var body: some View {
         if #available(iOS 18.0, *) {
             let parts = text.components(separatedBy: "**")
             parts.enumerated().reduce(Text("")) { out, part in
-                out + (part.offset % 2 == 1 ? Text(part.element).customAttribute(HighlightMark()).foregroundStyle(.primary) : Text(part.element))
+                out + (part.offset % 2 == 1 ? Text(part.element).customAttribute(HighlightMark(rgb: rgb)).foregroundStyle(.primary) : Text(part.element))
             }
             .textRenderer(HighlightRenderer())
         } else {

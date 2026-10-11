@@ -209,19 +209,6 @@ final class Store: ObservableObject {
         return dir.appendingPathComponent("pay.json")
     }()
 
-    /// Sổ mẫu chỉ để vẽ màn hình minh hoạ (màn mua Pro): chi tiêu mẫu đủ mọi ngày, không ghi file, không đồng bộ, không
-    /// đụng widget. Danh mục lấy theo máy này để màu / biểu tượng giống hệt app của người dùng
-    static let preview: Store = Store(preview: true)
-    private var isPreview = false
-
-    private init(preview: Bool) {
-        isPreview = true
-        cats = Store.shared.cats
-        items = Self.filmSeed()
-        budget = 0
-        cloudOn = false
-    }
-
     init() {
         if let data = try? Data(contentsOf: fileURL), let b = try? JSONDecoder().decode(Backup.self, from: data) {
             apply(b)
@@ -306,13 +293,12 @@ final class Store: ObservableObject {
     var sorted: [Expense] { items.sorted { $0.t > $1.t } }
 
     private func persist() {
-        guard !isPreview else { return }
         writeLocal()
         cloud.push(snapshot)
     }
 
     private func writeLocal() {
-        guard !isPreview, let data = try? JSONEncoder().encode(snapshot) else { return }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: fileURL, options: .atomic)
         refreshWidget()
     }
@@ -666,6 +652,7 @@ final class Store: ObservableObject {
     }
 }
 
+#if DEBUG
 extension Store {
     /// Chi tiêu mẫu cố định cho phim giới thiệu: 5 tháng trước đủ các danh mục, tháng này tới hôm qua; hôm nay chưa ghi gì.
     static func filmSeed() -> [Expense] {
@@ -700,3 +687,4 @@ private struct SeedRandom {
     var seed: UInt64
     mutating func next() -> UInt64 { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return seed >> 33 }
 }
+#endif

@@ -2,6 +2,14 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Xem **toàn bộ lịch sử**, từ khoản chi đầu tiên": "See your **full history**, back to your first expense",
+        "**Đồng bộ iCloud** trên mọi iPhone, iPad": "**iCloud sync** across your iPhone and iPad",
+        "**Nhóm chung**: chia tiền với gia đình, bạn bè": "**Shared groups**: split costs with family and friends",
+        "**Khoản định kỳ** tự ghi mỗi tháng": "**Recurring expenses** logged every month",
+        "**Ảnh hoá đơn** và ảnh riêng cho danh mục": "**Receipt photos** and your own category photos",
+        "Tạo **danh mục không giới hạn**": "Create **unlimited categories**",
+        "**Tự ghi khi trả Apple Pay**, không cần mở app": "**Auto-log Apple Pay** without opening the app",
+        "**Xuất CSV** mở bằng Excel, Numbers": "**CSV export** for Excel and Numbers",
         "Xem toàn bộ lịch sử": "Full history",
         "Thống kê theo ngày, theo tháng từ khoản đầu tiên": "Daily and monthly stats back to your first expense",
         "Dữ liệu trên mọi iPhone, iPad của bạn": "Your data on every iPhone and iPad",

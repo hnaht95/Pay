@@ -167,47 +167,52 @@ struct ProPaywall: View {
     private var yearly: Product? { pro.products.first { $0.id == Pro.yearlyID } }
     private var chosen: Product? { pro.products.first { $0.id == pick } }
 
-    /// Thẻ minh hoạ đang hiện (băng chuyền tự chạy; mở từ tính năng nào thì bắt đầu ở tính năng đó)
-    @State private var page: ProFeature = .history
-    /// Người dùng vừa tự vuốt: ngừng tự chạy một lúc
-    @State private var touched = Date.distantPast
+    private var ordered: [ProFeature] {
+        guard let feature else { return ProFeature.allCases }
+        return [feature] + ProFeature.allCases.filter { $0 != feature }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 18) {
                     VStack(spacing: 6) {
-                        HStack(spacing: 8) {
-                            Text("Pay").font(.system(size: 34, weight: .bold))
-                            Text("PRO").font(.system(size: 17, weight: .heavy)).tracking(1)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(Capsule().fill(Color(hex: 0x61BE6E)))
+                        // "Pay" chữ đậm của app, "Pro" viết tay như tiêu đề peakapp.vn
+                        HStack(alignment: .lastTextBaseline, spacing: 6) {
+                            Text("Pay").font(.system(size: 40, weight: .bold))
+                            HandPro().fill(Color(hex: 0x61BE6E))
+                                .frame(width: 58 * HandPro.aspect, height: 58)
+                                .alignmentGuide(.lastTextBaseline) { $0.height * 0.86 }
                         }
                         Text(L("Ghi chép luôn miễn phí. Pro dành cho khi bạn dùng Pay lâu dài."))
                             .font(.system(size: 16)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     .padding(.top, 30).padding(.horizontal, 24)
 
-                    // Băng chuyền: mỗi tính năng một thẻ có hình minh hoạ vẽ bằng code, cùng ngôn ngữ hình với app
-                    TabView(selection: Binding(get: { page }, set: { page = $0; touched = Date() })) {
-                        ForEach(ProFeature.allCases) { f in
-                            featureCard(f).tag(f).padding(.horizontal, 16)
+                    // Mỗi tính năng một khung riêng: ô biểu tượng màu, tiêu đề tô dạ quang cùng màu (bút của Shot), mô tả.
+                    // Mở từ tính năng nào thì khung đó lên đầu, viền xanh
+                    VStack(spacing: 10) {
+                        ForEach(ordered) { f in
+                            HStack(alignment: .top, spacing: 14) {
+                                Image(systemName: f.icon).font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 44, height: 44)
+                                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color(hex: f.marker)))
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HighlightedText(text: "**" + f.title + "**", rgb: f.marker)
+                                        .font(.system(size: 18, weight: .semibold))
+                                    Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(16)
+                            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
+                            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .strokeBorder(f == feature ? Color(hex: 0x61BE6E) : .clear, lineWidth: 2))
                         }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(height: 400)
-                    .sensoryFeedback(.selection, trigger: page)
-
-                    // Chấm trang, chạm để nhảy
-                    HStack(spacing: 6) {
-                        ForEach(ProFeature.allCases) { f in
-                            Capsule().fill(f == page ? Color.primary : Color.primary.opacity(0.18))
-                                .frame(width: f == page ? 18 : 6, height: 6)
-                                .onTapGesture { withAnimation(.snappy) { page = f; touched = Date() } }
-                        }
-                    }
-                    .animation(.snappy, value: page)
+                    .padding(.horizontal, 16)
 
                     if pro.products.isEmpty {
                         ProgressView().frame(height: 96)
@@ -243,35 +248,6 @@ struct ProPaywall: View {
         }
         .background(Palette.surface.ignoresSafeArea())
         .task { await pro.load() }
-        .task {
-            if let feature { page = feature }
-            // Tự chạy mỗi 3,2 giây; vừa vuốt tay thì đợi 6 giây rồi mới chạy tiếp
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3.2))
-                guard Date().timeIntervalSince(touched) > 6 else { continue }
-                let all = ProFeature.allCases
-                let i = all.firstIndex(of: page) ?? 0
-                withAnimation(.easeInOut(duration: 0.45)) { page = all[(i + 1) % all.count] }
-            }
-        }
-    }
-
-    /// Một thẻ: khung minh hoạ màu, tên và mô tả tính năng
-    private func featureCard(_ f: ProFeature) -> some View {
-        VStack(spacing: 14) {
-            // Cận cảnh: iPhone phóng to, luôn thấy trọn mép trên máy (thanh trạng thái, Dynamic Island); màn hình bên trong
-            // cuộn sẵn tới phần của tính năng nên phần đó nằm ngay dưới thanh trạng thái
-            ProScreen(feature: f, scale: 0.65)
-                .offset(y: 22)
-                .frame(maxWidth: .infinity).frame(height: 300, alignment: .top)
-                .clipped()
-                .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(f.tint))
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            VStack(spacing: 4) {
-                Text(f.title).font(.system(size: 20, weight: .bold))
-                Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            }
-        }
     }
 
     private func plan(_ p: Product, title: String, note: String) -> some View {
@@ -300,74 +276,31 @@ struct ProPaywall: View {
 }
 
 extension ProFeature {
-    /// Nền thẻ minh hoạ: bảng màu danh mục của app
-    var tint: Color {
+    /// Một dòng giới thiệu, từ khoá trong **…** được tô dạ quang
+    var line: String {
         switch self {
-        case .history: Color(hex: 0xC9D9A4)
-        case .cloud: Color(hex: 0xA2D5F2)
-        case .house: Color(hex: 0xFFD43B)
-        case .recurring: Color(hex: 0xE2DBFF)
-        case .photos: Color(hex: 0xF07B3F)
-        case .categories: Color(hex: 0xCFEEDD)
-        case .cardAuto: Color(hex: 0xEA5455)
-        case .csv: Color(hex: 0xF4EDE1)
-        }
-    }
-}
-
-/// Minh hoạ của từng tính năng: chính màn hình thật của Pay (dựng bằng chế độ vẽ tĩnh của phim giới thiệu, xem Film.swift),
-/// thu nhỏ trong khung điện thoại, cuộn tới đúng phần của tính năng đó
-struct ProScreen: View {
-    let feature: ProFeature
-    /// Tỉ lệ thu nhỏ màn hình 402 × 874 (iPhone 17)
-    var scale: CGFloat = 0.65
-
-    var body: some View {
-        let size = FilmScreen<EmptyView>.size
-        // Khung iPhone đúng tỉ lệ: màn hình bo 55 pt như máy thật, viền đen 12 pt quanh màn hình
-        let r = 55 * scale, bezel = 12 * scale
-        FilmScreen { screen }
-            .environmentObject(Store.preview)
-            .environmentObject(QuickAction.shared)
-            .environment(\.stillPreview, true)
-            .allowsHitTesting(false)
-            .scaleEffect(scale, anchor: .topLeading)
-            .frame(width: size.width * scale, height: size.height * scale, alignment: .topLeading)
-            .clipShape(RoundedRectangle(cornerRadius: r, style: .continuous))
-            .padding(bezel)
-            .background(RoundedRectangle(cornerRadius: r + bezel, style: .continuous).fill(Color(hex: 0x111114)))
-            .overlay(RoundedRectangle(cornerRadius: r + bezel, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
-            .shadow(color: .black.opacity(0.22), radius: 16, y: 8)
-    }
-
-    @ViewBuilder private var screen: some View {
-        switch feature {
-        // Thống kê và Cài đặt dựng bản thật (không qua chế độ phim): giống y màn hình người dùng đang thấy
-        case .history: sheet(live: true) { StatsView() }
-        case .cloud: home(scroll: 0)
-        case .house:
-            if House.shared.groups.isEmpty { home(scroll: 0) } else { sheet { HouseView() } }
-        case .recurring: sheet(live: true) { HistoryView() }
-        case .photos:
-            let c = Category.get("an")
-            sheet { CategoryEditor(editing: CustomCat(k: c.k, name: c.rawName, icon: c.icon, tone: -1, on: true, u: 0)) }
-        case .categories: home(scroll: 290)
-        case .cardAuto: home(scroll: 760)
-        case .csv: sheet(scroll: 900) { StatsView() }
+        case .history: L("Xem **toàn bộ lịch sử**, từ khoản chi đầu tiên")
+        case .cloud: L("**Đồng bộ iCloud** trên mọi iPhone, iPad")
+        case .house: L("**Nhóm chung**: chia tiền với gia đình, bạn bè")
+        case .recurring: L("**Khoản định kỳ** tự ghi mỗi tháng")
+        case .photos: L("**Ảnh hoá đơn** và ảnh riêng cho danh mục")
+        case .categories: L("Tạo **danh mục không giới hạn**")
+        case .cardAuto: L("**Tự ghi khi trả Apple Pay**, không cần mở app")
+        case .csv: L("**Xuất CSV** mở bằng Excel, Numbers")
         }
     }
 
-    private func home(scroll: CGFloat) -> some View {
-        var f = FilmFrame(); f.scroll = scroll
-        // Nội dung cuộn lên thì chui dưới thanh trạng thái (như máy thật), không đè chữ lên giờ / pin
-        return HomeView().environment(\.film, f)
-            .overlay(alignment: .top) { if scroll > 0 { Palette.bg.frame(height: FilmScreen<EmptyView>.insets.top) } }
-    }
-
-    private func sheet<C: View>(scroll: CGFloat = 0, live: Bool = false, @ViewBuilder _ content: () -> C) -> some View {
-        var f = FilmFrame(); f.scroll = scroll
-        return FilmSheet(shown: 1) { HomeView().environment(\.film, FilmFrame()) } content: {
-            content().environment(\.film, live ? nil : f)
+    /// Màu bút dạ quang của dòng (bảng màu danh mục của app)
+    var marker: UInt32 {
+        switch self {
+        case .history: 0x5FB875
+        case .cloud: 0x4FA6DB
+        case .house: 0xFFC800
+        case .recurring: 0xB993FF
+        case .photos: 0xF07B3F
+        case .categories: 0x4FD1C5
+        case .cardAuto: 0xEA5455
+        case .csv: 0xFF8CC6
         }
     }
 }
@@ -379,5 +312,111 @@ struct ProBadge: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 6).padding(.vertical, 2.5)
             .background(Capsule().fill(Color(hex: 0x61BE6E)))
+    }
+}
+
+/// Chữ "Pro" viết tay, cùng nét chữ tiêu đề trên peakapp.vn (phông 1K Awesome Quote). Theo giấy phép phông chỉ được dùng
+/// hình vẽ của cả từ, không nhúng phông: đây là hình của từ "Pro" (đường nét lấy từ phông bằng HarfBuzz, như
+/// tools/hand-heading.py của trang web), vẽ lại bằng Path. Tỉ lệ rộng / cao: 0.7887
+struct HandPro: Shape {
+    static let aspect: CGFloat = 0.7887
+
+    func path(in r: CGRect) -> Path {
+        var path = Path()
+        let k = r.height
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x * k, y: r.minY + y * k) }
+        func m(to a: CGPoint) { path.move(to: a) }
+        func l(to a: CGPoint) { path.addLine(to: a) }
+        func q(to a: CGPoint, control c: CGPoint) { path.addQuadCurve(to: a, control: c) }
+        func c(to a: CGPoint, control1 c1: CGPoint, control2 c2: CGPoint) { path.addCurve(to: a, control1: c1, control2: c2) }
+        func z() { path.closeSubpath() }
+        m(to: p(0.1197, 1.0000))
+        q(to: p(0.0987, 0.9946), control: p(0.1080, 1.0000))
+        q(to: p(0.0684, 0.9029), control: p(0.0785, 0.9837))
+        q(to: p(0.0513, 0.5781), control: p(0.0559, 0.8073))
+        q(to: p(0.0194, 0.5330), control: p(0.0194, 0.5688))
+        q(to: p(0.0505, 0.4918), control: p(0.0194, 0.5019))
+        q(to: p(0.0536, 0.3170), control: p(0.0505, 0.4025))
+        q(to: p(0.0684, 0.0948), control: p(0.0606, 0.1189))
+        q(to: p(0.0458, 0.0963), control: p(0.0575, 0.0963))
+        q(to: p(0.0109, 0.0804), control: p(0.0218, 0.0963))
+        q(to: p(0.0000, 0.0521), control: p(0.0000, 0.0645))
+        q(to: p(0.0124, 0.0194), control: p(0.0000, 0.0311))
+        q(to: p(0.1064, 0.0000), control: p(0.0342, 0.0000))
+        q(to: p(0.2106, 0.0280), control: p(0.1632, 0.0000))
+        q(to: p(0.2859, 0.1099), control: p(0.2580, 0.0559))
+        q(to: p(0.3139, 0.2432), control: p(0.3139, 0.1639))
+        q(to: p(0.2980, 0.3757), control: p(0.3139, 0.3069))
+        q(to: p(0.2444, 0.4984), control: p(0.2821, 0.4444))
+        q(to: p(0.1430, 0.5742), control: p(0.2067, 0.5524))
+        q(to: p(0.1671, 0.9565), control: p(0.1476, 0.7350))
+        q(to: p(0.1511, 0.9880), control: p(0.1671, 0.9759))
+        q(to: p(0.1197, 1.0000), control: p(0.1352, 1.0000))
+        z()
+        m(to: p(0.1422, 0.4732))
+        l(to: p(0.1437, 0.4724))
+        q(to: p(0.1869, 0.4180), control: p(0.1686, 0.4522))
+        q(to: p(0.2191, 0.2937), control: p(0.2051, 0.3838))
+        q(to: p(0.2230, 0.2440), control: p(0.2230, 0.2688))
+        q(to: p(0.1570, 0.1026), control: p(0.2230, 0.1414))
+        l(to: p(0.1500, 0.2137))
+        q(to: p(0.1422, 0.4732), control: p(0.1430, 0.3256))
+        z()
+        m(to: p(0.2999, 0.9402))
+        q(to: p(0.2696, 0.9266), control: p(0.2836, 0.9402))
+        q(to: p(0.2556, 0.8959), control: p(0.2556, 0.9130))
+        l(to: p(0.2735, 0.5509))
+        q(to: p(0.2887, 0.5175), control: p(0.2751, 0.5299))
+        q(to: p(0.3209, 0.5051), control: p(0.3023, 0.5051))
+        q(to: p(0.3516, 0.5183), control: p(0.3388, 0.5051))
+        q(to: p(0.3652, 0.5493), control: p(0.3644, 0.5315))
+        l(to: p(0.3605, 0.6379))
+        q(to: p(0.4542, 0.5625), control: p(0.4064, 0.5882))
+        q(to: p(0.5152, 0.5369), control: p(0.5019, 0.5369))
+        q(to: p(0.5470, 0.5517), control: p(0.5330, 0.5369))
+        q(to: p(0.5610, 0.5843), control: p(0.5610, 0.5664))
+        q(to: p(0.5229, 0.6301), control: p(0.5610, 0.6138))
+        q(to: p(0.4685, 0.6620), control: p(0.4957, 0.6426))
+        q(to: p(0.4196, 0.7102), control: p(0.4545, 0.6698))
+        q(to: p(0.3823, 0.7731), control: p(0.3947, 0.7444))
+        q(to: p(0.3613, 0.8850), control: p(0.3613, 0.8213))
+        q(to: p(0.3364, 0.9239), control: p(0.3613, 0.9106))
+        q(to: p(0.2999, 0.9402), control: p(0.3201, 0.9402))
+        z()
+        m(to: p(0.6449, 0.9301))
+        q(to: p(0.5765, 0.9071), control: p(0.6045, 0.9301))
+        q(to: p(0.5338, 0.8465), control: p(0.5486, 0.8842))
+        q(to: p(0.5190, 0.7638), control: p(0.5190, 0.8089))
+        q(to: p(0.5385, 0.6581), control: p(0.5190, 0.7055))
+        q(to: p(0.5855, 0.5765), control: p(0.5579, 0.6107))
+        q(to: p(0.6402, 0.5237), control: p(0.6131, 0.5423))
+        q(to: p(0.6822, 0.5051), control: p(0.6674, 0.5051))
+        q(to: p(0.7141, 0.5179), control: p(0.6993, 0.5051))
+        q(to: p(0.7288, 0.5493), control: p(0.7288, 0.5307))
+        q(to: p(0.7187, 0.5808), control: p(0.7288, 0.5703))
+        q(to: p(0.6962, 0.5975), control: p(0.7086, 0.5913))
+        l(to: p(0.6830, 0.6068))
+        l(to: p(0.6915, 0.6061))
+        q(to: p(0.7327, 0.6263), control: p(0.7102, 0.6061))
+        q(to: p(0.7720, 0.6810), control: p(0.7552, 0.6465))
+        q(to: p(0.7887, 0.7599), control: p(0.7887, 0.7156))
+        q(to: p(0.7681, 0.8497), control: p(0.7887, 0.8112))
+        q(to: p(0.7148, 0.9091), control: p(0.7475, 0.8881))
+        q(to: p(0.6449, 0.9301), control: p(0.6822, 0.9301))
+        z()
+        m(to: p(0.6441, 0.8376))
+        q(to: p(0.6803, 0.8190), control: p(0.6636, 0.8376))
+        q(to: p(0.6970, 0.7599), control: p(0.6970, 0.8003))
+        q(to: p(0.6873, 0.7152), control: p(0.6970, 0.7304))
+        q(to: p(0.6667, 0.6900), control: p(0.6775, 0.7001))
+        q(to: p(0.6523, 0.6740), control: p(0.6581, 0.6822))
+        q(to: p(0.6465, 0.6480), control: p(0.6465, 0.6659))
+        q(to: p(0.6107, 0.7630), control: p(0.6107, 0.7040))
+        q(to: p(0.6294, 0.8322), control: p(0.6107, 0.8034))
+        q(to: p(0.6301, 0.8329), control: p(0.6301, 0.8322))
+        l(to: p(0.6325, 0.8337))
+        q(to: p(0.6441, 0.8376), control: p(0.6379, 0.8376))
+        z()
+        return path
     }
 }

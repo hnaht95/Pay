@@ -118,11 +118,11 @@ enum ProFeature: String, CaseIterable, Identifiable {
 
     var detail: String {
         switch self {
-        case .history: L("Thống kê theo ngày, theo tháng từ khoản đầu tiên")
+        case .history: L("Thống kê từ khoản chi đầu tiên")
         case .cloud: L("Dữ liệu trên mọi iPhone, iPad của bạn")
         case .house: L("Chia tiền với gia đình, bạn bè")
         case .recurring: L("Tiền nhà, điện, internet tự ghi mỗi tháng")
-        case .photos: L("Đính kèm hoá đơn, ảnh riêng cho danh mục")
+        case .photos: L("Đính kèm hoá đơn, ảnh cho danh mục")
         case .categories: L("Tạo bao nhiêu danh mục tuỳ ý")
         case .cardAuto: L("Quẹt thẻ là có khoản chi, không mở app")
         case .csv: L("Mở bằng Excel, Numbers")
@@ -196,10 +196,11 @@ struct ProPaywall: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(f.title).font(.system(size: 18, weight: .semibold))
                                 Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                    .lineLimit(1).minimumScaleFactor(0.85)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(16)
+                            // Khung nào cũng cao bằng nhau, chữ nằm giữa theo chiều dọc, lề trái phải bằng nhau
+                            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+                            .padding(.horizontal, 20)
                             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
                             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
                                 .strokeBorder(f == feature ? Color(hex: 0x61BE6E) : .clear, lineWidth: 2))

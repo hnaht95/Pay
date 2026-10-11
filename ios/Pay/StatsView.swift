@@ -19,6 +19,7 @@ struct StatsView: View {
     @State private var stripFade = [true, false]
     /// Dải trên cùng đang xem theo ngày (false) hay theo tháng (true)
     @State private var byMonth = false
+    @Namespace private var scopeNS
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -181,7 +182,7 @@ struct StatsView: View {
             ForEach([false, true], id: \.self) { m in
                 let on = byMonth == m
                 Button {
-                    withAnimation(.snappy) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         byMonth = m
                         day = nil
                     }
@@ -189,7 +190,10 @@ struct StatsView: View {
                     Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(on ? Self.inkText : Color.primary.opacity(0.6))
                         .padding(.horizontal, 22).frame(height: 40)
-                        .background(Capsule().fill(on ? Self.ink : .clear))
+                        // Nền đen trượt qua lại giữa hai nút (cùng một khối nhờ matchedGeometryEffect)
+                        .background {
+                            if on { Capsule().fill(Self.ink).matchedGeometryEffect(id: "scopePill", in: scopeNS) }
+                        }
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)

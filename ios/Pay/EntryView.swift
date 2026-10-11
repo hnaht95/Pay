@@ -538,7 +538,7 @@ struct DateSheet: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
-                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 18).id(d)
+                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 18, space: "dateStrip", width: rowW).id(d)
                     }
                 }
                 .scrollTargetLayout()
@@ -552,6 +552,7 @@ struct DateSheet: View {
             .frame(height: 84 + 22)
             .frame(maxWidth: .infinity)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
+            .coordinateSpace(.named("dateStrip"))
             .modifier(SevenColumns(margin: 18))
             .padding(.horizontal, -20)
             .onChange(of: centerDay) { if let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month) { month = c } }
@@ -826,12 +827,13 @@ extension View {
     /// Một phần tử trong dải cuộn ngang: phần nằm sát mép dải nhoè dần theo từng điểm ảnh như mép cuộn mềm của iOS
     /// (shader EdgeBlur.metal). Độ nhoè tính theo vị trí trên dải nên vùng nhoè liền mạch qua các cột kề nhau.
     /// (Không áp lên cả ScrollView được: hiệu ứng lớp không vẽ được vùng cuộn của UIKit)
-    func softScrollEdge(zone: CGFloat = 36, radius: CGFloat = 6) -> some View {
-        // Tính theo mép màn hình (toạ độ toàn cục): dải nào cũng tràn hai mép màn hình
+    /// `space` + `width`: đo theo khung dải đặt tên (dải nằm trong tấm nổi, tấm lùi vào so với mép màn hình); bỏ trống thì
+    /// đo theo mép màn hình
+    func softScrollEdge(zone: CGFloat = 36, radius: CGFloat = 6, space: String? = nil, width: CGFloat? = nil) -> some View {
         let screenW = UIScreen.main.bounds.width
         return visualEffect { content, g in
-            let x = g.frame(in: .global).minX
-            return content.layerEffect(ShaderLibrary.edgeBlur(.float(screenW), .float(zone), .float(radius), .float2(1, 1), .float(x)),
+            let x = space.map { g.frame(in: .named($0)).minX } ?? g.frame(in: .global).minX
+            return content.layerEffect(ShaderLibrary.edgeBlur(.float(width ?? screenW), .float(zone), .float(radius), .float2(1, 1), .float(x)),
                                        maxSampleOffset: CGSize(width: radius * 1.5, height: radius * 1.5))
         }
     }

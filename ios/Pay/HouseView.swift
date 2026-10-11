@@ -920,9 +920,7 @@ struct HouseView: View {
             }
         }
         .padding(14)
-        // Việc cần mình bấm: nền trắng như thẻ trên cùng (nền tím nhạt làm chữ khó đọc), viền mảnh cho nổi trên nền xám
-        .background(incoming ? Palette.surface : Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay { if incoming { RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1) } }
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))   // phẳng: chỉ nền, không viền
     }
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
@@ -930,7 +928,7 @@ struct HouseView: View {
             Text(title).font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
-                .background(primary ? Palette.cta : Palette.pill, in: Capsule())
+                .background(primary ? Palette.cta : Palette.surface, in: Capsule())   // nút phụ nền trắng trên thẻ xám
         }
         .buttonStyle(Pressable())
     }

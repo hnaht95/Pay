@@ -331,8 +331,7 @@ struct VoiceEntryView: View {
         // lúc mở và lúc thu về thấy hai cửa sổ chồng nhau (nền thẻ mờ dần ở cỡ đầy đủ, khối thì đang lớn / đang co).
         // Không đổ bóng: khối biến hình không có bóng, nên lúc khối nhường chỗ cho thẻ thì bóng bật ra tức thì, trông như thẻ khựng
         .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: 42, style: .continuous))
-        // Viền mảnh cho thẻ tách khỏi nền phía sau (chế độ tối thẻ và nền gần cùng màu)
-        .overlay(RoundedRectangle(cornerRadius: 42, style: .continuous).strokeBorder(Color.primary.opacity(bare ? 0 : 0.08), lineWidth: 1))
+
         // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
         // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
         // xuống dưới mép thẻ rồi mới mờ đi.) Nội dung đi cùng khung lúc bật lên là nhờ thẻ có đủ nội dung từ đầu (xem `starting`).

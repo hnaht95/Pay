@@ -251,7 +251,7 @@ struct EntryView: View {
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
                         .buttonStyle(Pressable())
-                        .softScrollEdge()
+                        .softScrollEdge(zone: 16)
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
@@ -536,7 +536,7 @@ struct DateSheet: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
-                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 24).id(d)
+                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 12).id(d)
                     }
                 }
                 .scrollTargetLayout()

@@ -144,7 +144,7 @@ struct StatsView: View {
             if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 16).id(d) }
+                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 8).id(d) }
                 }
                 .scrollTargetLayout()
             }
@@ -220,7 +220,7 @@ struct StatsView: View {
         return ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 16).id(m) }
+                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 8).id(m) }
                 }
                 .scrollTargetLayout()
             }
@@ -1049,9 +1049,12 @@ struct SevenColumns: ViewModifier {
     func body(content: Content) -> some View {
         content.mask {
             HStack(spacing: 0) {
-                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 16)
+                // Chỉ tan trong 8 pt sát mép màn hình
+                Color.clear.frame(width: 4)
+                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 8)
                 Color.black
-                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 16)
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 8)
+                Color.clear.frame(width: 4)
             }
             .padding(.vertical, -30)
         }

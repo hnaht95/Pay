@@ -555,9 +555,15 @@ struct StatsView: View {
             let bills = sum(items.filter { $0.c == "hd" })
             return MonthBar(date: m, bills: bills, other: sum(items) - bills)
         }
-        let top = max(bars.map(\.total).max() ?? 0, 1)
+        // Biểu đồ tháng cuộn ngang: trục dọc và ba ô Trung bình / Thấp / Cao tính theo 6 tháng đang thấy,
+        // để một tháng chi vọt lên (vd 150tr) không làm mọi cột khác dẹt lép — vuốt tới tháng đó trục mới giãn ra
+        let scrolls = unit == .month && bars.count > 6
+        let seen = scrolls
+            ? bars.filter { $0.date >= chartStart && $0.date < cal.date(byAdding: .month, value: 6, to: chartStart)! }
+            : bars
+        let top = max(seen.map(\.total).max() ?? 0, 1)
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
-        let used = bars.filter { $0.total > 0 }.map(\.total)
+        let used = seen.filter { $0.total > 0 }.map(\.total)
         return card {
             Text(title).font(.system(size: 17, weight: .semibold))
             HStack(spacing: 14) {
@@ -584,8 +590,10 @@ struct StatsView: View {
             // Giữ đủ 6 tháng trên trục kể cả tháng chưa có khoản chi nào
             .chartXScale(domain: bars.first!.date...cal.date(byAdding: unit, value: 1, to: bars.last!.date)!)
             // Nhiều hơn 6 tháng: vuốt ngang để xem các tháng trước, mỗi lần thấy 6 cột (trục số bên trái đứng yên)
-            .chartScrollableAxes(unit == .month && bars.count > 6 ? .horizontal : [])
-            .chartXVisibleDomain(length: unit == .month && bars.count > 6 ? 6 * 30.5 * 86400
+            .chartYScale(domain: 0...Double(top) * 1.1)
+            .animation(.snappy, value: top)
+            .chartScrollableAxes(scrolls ? .horizontal : [])
+            .chartXVisibleDomain(length: scrolls ? 6 * 30.5 * 86400
                                  : cal.date(byAdding: unit, value: 1, to: bars.last!.date)!.timeIntervalSince(bars.first!.date))
             .chartScrollPosition(x: $chartStart)
             .chartScrollTargetBehavior(.valueAligned(matching: DateComponents(day: 1)))

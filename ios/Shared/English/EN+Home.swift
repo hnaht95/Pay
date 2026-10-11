@@ -38,6 +38,7 @@ extension English {
         "Quyền riêng tư": "Privacy",
         "Đã có Pay Pro": "You have Pay Pro",
         "Nâng cấp Pay Pro": "Upgrade to Pay Pro",
+        "Nâng cấp": "Upgrade to",
         "Lịch sử đầy đủ, iCloud, khoản định kỳ, ảnh, danh mục không giới hạn, tự ghi Apple Pay, xuất CSV.": "Full history, iCloud, recurring, photos, unlimited categories, Apple Pay auto-log, CSV export.",
         "Tự ghi giao dịch thẻ cần Pay Pro. Mở Pay để nâng cấp.": "Auto-logging card payments needs Pay Pro. Open Pay to upgrade.",
         "Xong": "Done",

@@ -194,8 +194,14 @@ struct SettingsView: View {
             } else {
                 Button { ProPaywall.present() } label: {
                     HStack(spacing: 10) {
-                        Text(L("Nâng cấp Pay Pro")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
-                        ProBadge()
+                        // "Nâng cấp" + chữ "Pay Pro" viết tay như màn mua Pro
+                        Text(L("Nâng cấp")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
+                        ZStack {
+                            HandPayPro(word: 0).fill(Color.primary)
+                            HandPayPro(word: 1).fill(Color(hex: 0x61BE6E))
+                        }
+                        .frame(width: 30 * HandPayPro.aspect, height: 30)
+                        .accessibilityLabel("Pay Pro")
                         Spacer()
                         Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
                     }
@@ -974,15 +980,22 @@ struct CategoryEditor: View {
             .bottomBar {
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
-                    BigButton(title: L("Lưu"), icon: "", primary: true) { save() }
-                        .disabled(trimmed.isEmpty || duplicate)
-                        .opacity(trimmed.isEmpty || duplicate ? 0.4 : 1)
+                    if trimmed.isEmpty || duplicate {
+                        // Chưa lưu được: nút xám đặc (không làm mờ cả nút: mờ thì thấy xuyên nội dung cuộn phía sau)
+                        Text(L("Lưu")).font(.system(size: 21, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.35))
+                            .frame(maxWidth: .infinity).frame(height: 56 + BigButton.inset * 2)
+                            .background(Capsule().fill(Color(light: 0xDCDDE2, dark: 0x2C2C30)))
+                    } else {
+                        BigButton(title: L("Lưu"), icon: "", primary: true) { save() }
+                    }
                 }
                 // Sát đáy như màn nhập: cách mép dưới 16 bằng lề hai bên (vùng an toàn 34, lùi xuống 18)
                 .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
             // Mép trên vùng cuộn mờ dần (không cắt ngang dưới tiêu đề)
             .softTopEdge()
+            // Bàn phím hiện lên thì Huỷ / Lưu nằm yên ở đáy, bị bàn phím che (không bị đẩy lên đè lên ô Ảnh)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone; photo = CategoryPhotos.image(e.k) }
                 else { tone = store.cats.count % 16; nameFocused = true }

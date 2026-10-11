@@ -89,7 +89,7 @@ struct HomeView: View {
             }
         }
         // Nhập / sửa khoản chi mở dạng tấm (sheet) như danh mục, thống kê, cài đặt — không phủ kín màn hình
-        .sheet(item: $entry) { EntryView(mode: $0).sheetGrabber() }
+        .sheet(item: $entry) { EntryView(mode: $0).id($0.id).sheetGrabber() }   // id: đổi khoản khi tấm còn mở thì dựng lại từ đầu, không mang trạng thái của khoản trước
         .fullScreenCover(isPresented: $receiptScan) {
             ReceiptCamera { img in
                 receiptScan = false

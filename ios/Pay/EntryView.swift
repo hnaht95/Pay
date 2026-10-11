@@ -80,13 +80,15 @@ struct EntryView: View {
 
             chips.padding(.top, 28)
 
+            // Ô ghi chú và bên phải là ô ảnh hoá đơn (cao bằng ô ghi chú)
+            HStack(spacing: 10) {
             TextField(L("Ghi chú (không bắt buộc)"), text: $note)
                 .font(.system(size: 18))
                 .focused($noteFocused)
                 .submitLabel(.done)
-                .padding(.horizontal, 18).padding(.vertical, 15)
+                .padding(.horizontal, 18)
+                .frame(minHeight: Self.noteH)
                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.top, 24)
                 .onChange(of: note) { _, v in
                     guard !catPicked else { return }
                     // Đoán lại theo ghi chú đang có, không giữ kết quả của lúc gõ dở (gõ "anh Tuấn mượn" thì "an" từng giữ Ăn uống).
@@ -97,6 +99,9 @@ struct EntryView: View {
                 }
                 // Chạm vào ghi chú cũng là bắt đầu sửa
                 .onChange(of: noteFocused) { _, on in if on { withAnimation(.snappy) { editing = true } } }
+            photoTile
+            }
+            .padding(.top, 24)
 
             keypad.padding(.vertical, 8)
             // Hàng nút sát đáy, cách mép dưới 16 điểm bằng lề hai bên (như hai nút Nhập / Quét QR ở màn hình chính):
@@ -145,34 +150,39 @@ struct EntryView: View {
             Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
                 .padding(.horizontal, 52)
                 .frame(maxWidth: .infinity, minHeight: 46)
-                .overlay(alignment: .trailing) {
-                    // Ảnh hoá đơn: đã có thì hiện ảnh nhỏ (chạm để xem to / chụp lại / xoá); chưa có thì nút chụp
-                    if let photo {
-                        Button { viewingPhoto = true } label: {
-                            Image(uiImage: photo).resizable().scaledToFill()
-                                .frame(width: 40, height: 40)
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                .frame(width: 46, height: 46).contentShape(Rectangle())
-                        }
-                        .buttonStyle(Pressable())
-                        .accessibilityLabel(L("Ảnh hoá đơn"))
-                    } else if isNewEntry || isEdit {
-                        Button { scanningReceipt = true } label: {
-                            Image(systemName: "camera.aperture").font(.system(size: 20, weight: .medium))
-                                .foregroundStyle(.primary)
-                                .frame(width: 46, height: 46).contentShape(Rectangle())
-                        }
-                        .buttonStyle(Pressable())
-                        .accessibilityLabel(L("Chụp hoá đơn"))
-                    }
-                }
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
             if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
         }
         .padding(.top, 8)
     }
 
-    /// Nhập mới (tay hoặc từ hoá đơn): có nút chụp hoá đơn ở góc trên
+    /// Chiều cao ô ghi chú, cũng là cạnh ô ảnh hoá đơn bên cạnh
+    private static let noteH: CGFloat = 54
+
+    /// Ô ảnh hoá đơn cạnh ô ghi chú, khung 3:2, cao bằng ô ghi chú: có ảnh thì hiện ảnh (chạm để xem to / chụp lại / xoá),
+    /// chưa có thì icon camera (chạm để chụp hoặc chọn ảnh). Màn quét QR / mã lạ không có ô này
+    @ViewBuilder private var photoTile: some View {
+        if isNewEntry || isEdit {
+            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            Button { if photo != nil { viewingPhoto = true } else { scanningReceipt = true } } label: {
+                Color.primary.opacity(0.05)
+                    .overlay {
+                        if let photo {
+                            Image(uiImage: photo).resizable().scaledToFill()
+                        } else {
+                            Image(systemName: "camera.aperture").font(.system(size: 22, weight: .medium)).foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: Self.noteH * 1.5, height: Self.noteH)   // khung ngang 3:2
+                .clipShape(shape)
+                .contentShape(shape)
+            }
+            .buttonStyle(Pressable())
+            .accessibilityLabel(photo != nil ? L("Ảnh hoá đơn") : L("Chụp hoá đơn"))
+        }
+    }
+
+    /// Nhập mới (tay hoặc từ hoá đơn)
     private var isNewEntry: Bool {
         switch mode { case .new, .receipt: return true; default: return false }
     }

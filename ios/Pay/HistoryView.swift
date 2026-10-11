@@ -89,7 +89,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .sheet(item: $editing) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
+        .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .appMenu($menu)
         .sheetGrabber()

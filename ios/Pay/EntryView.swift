@@ -314,12 +314,24 @@ struct EntryView: View {
                 }
             case .scan(let q):
                 let app = store.bankApp
-                primary(L("Lưu & mở %@", app.name)) {
-                    saveScan(q); dismiss()
-                    let a = amount
-                    Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }
+                // Hai nút cùng một hàng, cùng cao: Lưu (chỉ ghi) bên trái, Lưu & mở app ngân hàng bên phải (rộng hơn)
+                HStack(spacing: 12) {
+                    Button { saveScan(q); dismiss() } label: {
+                        Text(L("Lưu")).font(.system(size: 21, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 56 + BigButton.inset * 2)
+                            .foregroundStyle(.primary)
+                            .background(Palette.pill, in: Capsule())
+                    }
+                    .buttonStyle(Pressable())
+                    .disabled(amount == 0)
+                    .opacity(amount == 0 ? 0.35 : 1)
+                    .frame(width: 104)
+                    primary(L("Lưu & mở %@", app.name)) {
+                        saveScan(q); dismiss()
+                        let a = amount
+                        Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }
+                    }
                 }
-                secondary(L("Chỉ lưu")) { saveScan(q); dismiss() }
             case .edit(var e), .editNow(var e):
                 // Huỷ và Sửa / Lưu thay đổi cùng một hàng. Xoá khoản: vuốt trái ở danh sách hoặc nhấn giữ
                 GlassGroup {
@@ -349,7 +361,8 @@ struct EntryView: View {
     private func primary(_ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
             // Cao và cỡ chữ bằng nút Xoá / Sửa (BigButton)
-            Text(label).font(.system(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).font(.system(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+                .padding(.horizontal, 16)   // tên ngân hàng dài (VietinBank iPay) không chạm mép nút
                 .frame(maxWidth: .infinity, minHeight: 56 + BigButton.inset * 2)
                 .foregroundStyle(Palette.ctaInk)
                 .background(Palette.cta, in: Capsule())

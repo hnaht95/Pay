@@ -536,7 +536,12 @@ struct DateSheet: View {
             })
             // Giờ : phút, cùng khung xám bo góc với dải tuần; hai bánh xe cuộn dọc (phút nhảy 5), hàng giữa là giờ đang chọn
             HStack(spacing: 0) {
-                Text(L("Thời gian chi")).font(.system(size: 17, weight: .medium)).foregroundStyle(Color.primary.opacity(0.6))
+                // Đồng hồ báo thức (Tabler alarm-minus, bản đặc) trước nhãn
+                HStack(spacing: 8) {
+                    Image("icon-alarm").renderingMode(.template).resizable().frame(width: 22, height: 22)
+                    Text(L("Thời gian chi")).font(.system(size: 17, weight: .medium))
+                }
+                .foregroundStyle(Color.primary.opacity(0.6))
                 Spacer(minLength: 8)
                 HStack(spacing: 4) {
                     PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),

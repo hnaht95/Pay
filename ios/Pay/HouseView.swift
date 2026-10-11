@@ -268,8 +268,11 @@ struct HouseView: View {
 
     private func circleButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: symbol).font(.system(size: 15, weight: .bold))
-                .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
+            // Nút back: chỉ có mũi tên, không nền
+            Image(systemName: symbol).font(.system(size: symbol == "arrow.left" ? 18 : 15, weight: .bold))
+                .frame(width: 36, height: 36, alignment: symbol == "arrow.left" ? .leading : .center)
+                .background { if symbol != "arrow.left" { Circle().fill(Palette.pill) } }
+                .contentShape(Rectangle())
         }
         .buttonStyle(Pressable())
         .foregroundStyle(.primary)

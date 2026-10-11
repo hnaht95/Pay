@@ -121,19 +121,19 @@ struct EntryView: View {
     // MARK: Phần đầu
 
     private var head: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .trailing, spacing: 2) {
             HStack(spacing: 10) {
                 Button { dismiss() } label: {
-                    Image(systemName: "arrow.left").font(.system(size: 18, weight: .semibold))
-                        .frame(width: 46, height: 46).background(Palette.pill, in: Circle())
+                    Image(systemName: "arrow.left").font(.system(size: 20, weight: .semibold))
+                        .frame(width: 46, height: 46, alignment: .leading).contentShape(Rectangle())
                 }
                 .buttonStyle(Pressable())
                 .foregroundStyle(.primary)
-                if isEdit { Spacer(minLength: 0) }
+                Spacer(minLength: 0)
                 Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
             }
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
-            if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 56).lineLimit(2) }
+            if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.trailing).lineLimit(2) }
         }
         .padding(.top, 8)
     }

@@ -286,8 +286,9 @@ struct EntryView: View {
 
     private func primary(_ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(label).font(.system(size: 19, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: 64)
+            // Cao và cỡ chữ bằng nút Xoá / Sửa (BigButton)
+            Text(label).font(.system(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, minHeight: 56 + BigButton.inset * 2)
                 .foregroundStyle(Palette.ctaInk)
                 .background(Palette.cta, in: Capsule())
         }

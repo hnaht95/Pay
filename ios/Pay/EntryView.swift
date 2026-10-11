@@ -584,35 +584,54 @@ struct DateSheet: View {
     private var weekStart: Date { cal.dateInterval(of: .weekOfYear, for: month)!.start }
     private var isThisWeek: Bool { cal.isDate(month, equalTo: Date(), toGranularity: .weekOfYear) }
 
-    private static let orange = Color(hex: 0xF0884F)
 
-    /// Dải tuần kiểu Peek: mỗi ngày một ô bo góc riêng (chữ thứ nhỏ trên, số to dưới),
-    /// các ô cách nhau 6. Ngày chọn: ô cam chữ trắng; hôm nay: ô đen xám chữ trắng; còn lại ô xám rất nhạt
+    /// Dải tuần cùng kiểu dải ngày ở Thống kê: chữ thứ nằm trên viên; trong viên số ngày ở trên, lớp xám dâng từ đáy
+    /// theo mức chi của ngày (căn bậc hai, so với ngày chi nhiều nhất tuần). Ngày chọn viên đen, hôm nay số xanh lá
+    private static let pillCard = Color(light: 0xF2F2F4, dark: 0x2C2C2E)
+    private static let pillInk = Color(light: 0x1C1C1E, dark: 0xF2F2F2)
+    private static let pillInkText = Color(light: 0xFFFFFF, dark: 0x111114)
+    private static let todayTint = Color(light: 0x3FA65A, dark: 0x7FD08B)
+
     private var weekStrip: some View {
-        let names = Lang.isEnglish ? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+        let days = (0..<7).map { cal.date(byAdding: .day, value: $0, to: weekStart)! }
+        let totals = days.map { $0 > Date() ? 0 : Store.shared.total(on: $0) }
+        let top = max(totals.max() ?? 1, 1)
         return HStack(spacing: 6) {
-            ForEach(0..<7, id: \.self) { i in
-                stripDay(cal.date(byAdding: .day, value: i, to: weekStart)!, name: names[i])
-            }
+            ForEach(0..<7, id: \.self) { i in stripDay(days[i], spent: totals[i], top: top) }
         }
     }
 
-    private func stripDay(_ d: Date, name: String) -> some View {
+    private func stripDay(_ d: Date, spent: Int, top: Int) -> some View {
         let on = cal.isDate(d, inSameDayAs: when), today = cal.isDateInToday(d), future = d > Date()
-        let filled = on || today
+        let r = min(sqrt(Double(spent) / Double(top)), 1)
+        let names = Lang.isEnglish ? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
         return Button { pick(d) } label: {
-            // Thứ và số xếp giữa ô, cân trên dưới
-            VStack(spacing: 4) {
-                Text(name).font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(filled ? Color.white.opacity(0.75) : Color.primary.opacity(0.45))
-                Text("\(cal.component(.day, from: d))")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(filled ? Color.white : Color.primary.opacity(0.85))
+            VStack(spacing: 6) {
+                Text(names[(cal.component(.weekday, from: d) + 5) % 7])
+                    .font(.system(size: 11, weight: on ? .bold : .medium))
+                    .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
+                VStack(spacing: 0) {
+                    Text("\(cal.component(.day, from: d))")
+                        .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .foregroundStyle(on ? Self.pillInkText : today ? Self.todayTint : Color.primary.opacity(0.8))
+                        .frame(height: 24)
+                        .padding(.top, 8)
+                    GeometryReader { g in
+                        if spent > 0 {
+                            let h = max(8, g.size.height * r)
+                            UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
+                                .fill(on ? Self.pillInkText.opacity(0.22) : Color.primary.opacity(0.09))
+                                .frame(height: h)
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        }
+                    }
+                    .padding(4)
+                }
+                .frame(maxWidth: .infinity).frame(height: 84)
+                .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.pillInk : Self.pillCard))
             }
-            .frame(maxWidth: .infinity).frame(height: 58)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(on ? Self.orange : today ? Color(light: 0x3A3A3E, dark: 0x5A5A5F) : Color.primary.opacity(0.05)))
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(Pressable())
         .opacity(future ? 0.3 : 1).disabled(future)

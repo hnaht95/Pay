@@ -226,13 +226,18 @@ struct VoiceEntryView: View {
 
     private var live: some View {
         ZStack(alignment: .bottom) {
-            // Màn chính phía sau nhòe đi rồi tối nhẹ: chỉ tối thì các ô danh mục màu vẫn lộ sắc nét quanh hai góc trên của thẻ,
-            // nhìn như thẻ cắt vào ô (rõ nhất ở giao diện tối). Lớp nhòe hiện sau lớp tối một nhịp, để không chen vào lúc thẻ đang bung
+            // Cả màn tối nhẹ; riêng nửa dưới (quanh thẻ) nhòe dần từ giữa màn xuống: chỉ tối thì các ô danh mục màu vẫn lộ sắc nét
+            // quanh hai góc trên của thẻ, nhìn như thẻ cắt vào ô (rõ nhất ở giao diện tối). Phần trên vẫn rõ để biết mình đang ở đâu.
+            // Lớp nhòe hiện sau lớp tối một nhịp, để không chen vào lúc thẻ đang bung
             ZStack {
                 Rectangle().fill(.regularMaterial)
+                    .mask {
+                        LinearGradient(stops: [.init(color: .clear, location: 0.3), .init(color: .black, location: 0.62)],
+                                       startPoint: .top, endPoint: .bottom)
+                    }
                     .opacity(shown ? 1 : 0)
                     .animation(.easeOut(duration: 0.3).delay(shown ? 0.12 : 0), value: shown)
-                Color.black.opacity(shown ? 0.25 : 0)
+                Color.black.opacity(shown ? 0.3 : 0)
             }
             .ignoresSafeArea()
             .onTapGesture { close() }

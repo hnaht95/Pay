@@ -678,7 +678,8 @@ struct BigButton: View {
         } else {
             Self.face(title: title, icon: icon, primary: primary)
                 .contentShape(Capsule())
-                .glassCapsule(tint: primary ? Palette.cta : nil)
+                // Nút phụ có icon (Nhập ở màn hình chính): trắng đặc ở giao diện sáng, đen ở giao diện tối — không xám đục
+                .glassCapsule(tint: primary ? Palette.cta : icon.isEmpty ? nil : Color(light: 0xFFFFFF, dark: 0x1C1C1F))
         }
     }
 

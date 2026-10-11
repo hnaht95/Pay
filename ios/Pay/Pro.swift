@@ -259,9 +259,10 @@ struct ProPaywall: View {
     /// Một thẻ: khung minh hoạ màu, tên và mô tả tính năng
     private func featureCard(_ f: ProFeature) -> some View {
         VStack(spacing: 14) {
-            // Cận cảnh: iPhone phóng to, chỉ lộ đúng phần của tính năng (khung máy lộ ở hai bên và mép trên)
-            ProScreen(feature: f, scale: 0.8)
-                .offset(y: 22 - f.focusY * 0.8)
+            // Cận cảnh: iPhone phóng to, luôn thấy trọn mép trên máy (thanh trạng thái, Dynamic Island); màn hình bên trong
+            // cuộn sẵn tới phần của tính năng nên phần đó nằm ngay dưới thanh trạng thái
+            ProScreen(feature: f, scale: 0.65)
+                .offset(y: 22)
                 .frame(maxWidth: .infinity).frame(height: 300, alignment: .top)
                 .clipped()
                 .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(f.tint))
@@ -299,15 +300,6 @@ struct ProPaywall: View {
 }
 
 extension ProFeature {
-    /// Phần màn hình (pt, từ mép trên màn 874) cần cận cảnh
-    var focusY: CGFloat {
-        switch self {
-        case .cloud, .house: 0
-        case .history, .recurring, .photos, .csv, .cardAuto: 96
-        case .categories: 300
-        }
-    }
-
     /// Nền thẻ minh hoạ: bảng màu danh mục của app
     var tint: Color {
         switch self {
@@ -328,14 +320,14 @@ extension ProFeature {
 struct ProScreen: View {
     let feature: ProFeature
     /// Tỉ lệ thu nhỏ màn hình 402 × 874 (iPhone 17)
-    var scale: CGFloat = 0.36
+    var scale: CGFloat = 0.65
 
     var body: some View {
         let size = FilmScreen<EmptyView>.size
         // Khung iPhone đúng tỉ lệ: màn hình bo 55 pt như máy thật, viền đen 12 pt quanh màn hình
         let r = 55 * scale, bezel = 12 * scale
         FilmScreen { screen }
-            .environmentObject(Store.shared)
+            .environmentObject(Store.preview)
             .environmentObject(QuickAction.shared)
             .environment(\.stillPreview, true)
             .allowsHitTesting(false)
@@ -359,7 +351,7 @@ struct ProScreen: View {
         case .photos:
             let c = Category.get("an")
             sheet { CategoryEditor(editing: CustomCat(k: c.k, name: c.rawName, icon: c.icon, tone: -1, on: true, u: 0)) }
-        case .categories: home(scroll: 0)
+        case .categories: home(scroll: 290)
         case .cardAuto: home(scroll: 760)
         case .csv: sheet(scroll: 900) { StatsView() }
         }
@@ -367,7 +359,9 @@ struct ProScreen: View {
 
     private func home(scroll: CGFloat) -> some View {
         var f = FilmFrame(); f.scroll = scroll
+        // Nội dung cuộn lên thì chui dưới thanh trạng thái (như máy thật), không đè chữ lên giờ / pin
         return HomeView().environment(\.film, f)
+            .overlay(alignment: .top) { if scroll > 0 { Palette.bg.frame(height: FilmScreen<EmptyView>.insets.top) } }
     }
 
     private func sheet<C: View>(scroll: CGFloat = 0, live: Bool = false, @ViewBuilder _ content: () -> C) -> some View {

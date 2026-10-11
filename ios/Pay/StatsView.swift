@@ -6,6 +6,8 @@ import SwiftUI
 struct StatsView: View {
     @EnvironmentObject var store: Store
     @ObservedObject private var pro = Pro.shared
+    /// Đang là hình minh hoạ ở màn mua Pro: vẽ như đã có Pro (không mờ ngày cũ)
+    @Environment(\.stillPreview) private var stillPreview
     @Environment(\.dismiss) private var dismiss
     @State private var month = Date()
     /// Trang 6 tháng đang hiện trên thanh chọn tháng (0 = 6 tháng gần nhất, 1 = 6 tháng trước đó, ...)
@@ -236,7 +238,7 @@ struct StatsView: View {
     }
 
     /// Bản miễn phí chỉ xem được 3 tháng gần nhất; ngày / tháng xa hơn vẫn hiện nhưng mờ, chạm vào là mở màn mua Pro
-    private func locked(_ d: Date) -> Bool { !pro.active && d < Self.freeStart(cal) }
+    private func locked(_ d: Date) -> Bool { !pro.active && !stillPreview && d < Self.freeStart(cal) }
 
     private func monthPill(_ m: Date, spent: Int, top: Int) -> some View {
         let on = isSelected(m)

@@ -51,6 +51,7 @@ extension English {
         "Không tìm thấy khoản nào.": "No matching expenses.",
         "Ngày nào cũng có chi": "Spent every day",
         "Chụp hoá đơn": "Scan receipt",
+        "Bây giờ": "Now",
         "Không đọc được tổng tiền trên hoá đơn": "Couldn't find the total on the receipt",
         "%ld ngày không chi tiêu": "%ld no-spend days",
         "Chuỗi %ld ngày": "%ld-day streak",

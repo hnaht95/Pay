@@ -525,7 +525,11 @@ struct DateSheet: View {
                                            .init(color: .black, location: 0.65), .init(color: .black.opacity(0.06), location: 1)],
                                    startPoint: .top, endPoint: .bottom)
                 }
+                .frame(height: 5 * 18 * k)
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                // Khung giờ gọn 5 hàng như Peek; phần còn lại của cột là nút "Bây giờ"
+                .frame(maxHeight: .infinity, alignment: .top)
+                .overlay(alignment: .bottom) { dayBox(k: k).frame(height: colH - 5 * 18 * k - 8) }
                 .frame(width: wheelsW, height: colH)
                 .padding(.top, (P.band - P.rowGap / 2) * k)
             }
@@ -556,6 +560,24 @@ struct DateSheet: View {
         guard Lang.isEnglish else { return "Tháng \(c.month!) năm \(c.year!)" }
         let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "LLLL yyyy"
         return f.string(from: month)
+    }
+
+    /// Ô dưới khung giờ: nút "Bây giờ" lấp cả ô, đưa về ngày giờ hiện tại (đang ở bây giờ thì mờ đi)
+    private func dayBox(k: CGFloat) -> some View {
+        let isNow = abs(when.timeIntervalSinceNow) < 60
+        return Button {
+            forward = Date() > first
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { when = Date(); month = Date() }
+        } label: {
+            Text(L("Bây giờ")).font(.system(size: 16, weight: .semibold))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .foregroundStyle(Color.primary.opacity(isNow ? 0.35 : 0.85))
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+        }
+        .buttonStyle(Pressable())
+        .disabled(isNow)
+        .animation(.easeInOut(duration: 0.2), value: isNow)
     }
 
     /// Tam giác bo góc của Peek (TriangleShape), mờ 45%, không nền
@@ -643,12 +665,13 @@ struct DateSheet: View {
         let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
         return Button { pick(date) } label: {
             Text("\(cal.component(.day, from: date))")
-                .font(.system(size: P.font * k, weight: today ? .semibold : .medium, design: .rounded)).monospacedDigit()
-                .foregroundStyle(today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : Color.primary.opacity(0.85))
+                .font(.system(size: P.font * k, weight: on || today ? .semibold : .medium, design: .rounded)).monospacedDigit()
+                .foregroundStyle(on ? Palette.ctaInk : today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : Color.primary.opacity(0.85))
                 .frame(maxWidth: .infinity)
                 .frame(height: P.pillH * k)
-                // Viên nền lấp cả ô trừ hở 2 mỗi bên (cách nét khung đúng 2 ở mọi phía); hôm nay cũng có nền như ngày đang chọn
-                .background(on || today ? Color.primary.opacity(0.16) : .clear,
+                // Viên nền lấp cả ô trừ hở 2 mỗi bên (cách nét khung đúng 2 ở mọi phía). Ngày đang chọn: nền đen chữ trắng như
+                // nút chính (xám nhạt đứng trên dải cuối tuần cũng xám thì gần như không đọc ra); hôm nay: nền xanh lá nhạt
+                .background(on ? Palette.cta : today ? Color(light: 0x2F9E50, dark: 0x6FD08A).opacity(0.16) : .clear,
                             in: RoundedRectangle(cornerRadius: P.pillR * k, style: .continuous))
                 .padding(.horizontal, P.frameGap * k)
                 .opacity(inMonth ? 1 : 0.42)

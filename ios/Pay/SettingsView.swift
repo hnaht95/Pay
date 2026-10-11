@@ -737,20 +737,7 @@ struct CategoryEditor: View {
                     .padding(.vertical, 4)
     }
 
-    @ViewBuilder private var colorRows: some View {
-                    if let b = builtin {
-                        Button { tone = -1 } label: {
-                            HStack(spacing: 12) {
-                                swatch(b.color, on: fTone < 0)
-                                Text(L("Màu gốc")).foregroundStyle(.primary)
-                                Spacer()
-                            }
-                        }
-                        .buttonStyle(Pressable())
-                        .accessibilityAddTraits(fTone < 0 ? .isSelected : [])
-                    }
-                    palettes
-    }
+    private var colorRows: some View { palettes }
 
     /// Bảng màu gợi ý — cùng cách bày thẻ bảng màu của app Shot (ColourSetCard): thẻ vuông 4 dải cao 41 / 26 / 18 / 15 %,
     /// bo 10, lưới 2 cột cách 16 (không ghi tên bảng). Chạm một dải để dùng màu ấy (lưu như màu tự chọn), dải đang dùng có dấu tích
@@ -901,15 +888,6 @@ struct CategoryEditor: View {
                     colorRows
                 }
 
-                // Về mặc định: một hàng cuối danh sách (trước nằm nổi ở đáy, không nền, đè lên bảng màu khi cuộn)
-                if let b = builtin, store.cats[b.k]?.on == true {
-                    Section {
-                        // Hàng chữ thường, căn trái, như các nút khác trong Cài đặt
-                        Button { store.resetCategory(b.k); dismiss() } label: {
-                            Text(L("Về mặc định")).foregroundStyle(Color.primary)
-                        }
-                    }
-                }
             }
             .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)

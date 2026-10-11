@@ -243,7 +243,7 @@ struct StatsView: View {
                             .font(.system(size: 11, weight: on ? .bold : .medium))
                             .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                     } else {
-                        Capsule().fill(Color.primary.opacity(0.18)).frame(width: 10, height: 2)
+                        Capsule().fill(Color.primary.opacity(0.15)).frame(width: 6, height: 1.5)
                     }
                 }
                 .frame(height: 13)

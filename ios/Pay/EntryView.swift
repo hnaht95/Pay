@@ -514,7 +514,7 @@ struct DateSheet: View {
                     PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
                               pitch: 18 * k, font: 17 * k)
                         .frame(width: 26 * k)
-                    Text(":").font(.system(size: 17 * k, weight: .semibold)).foregroundStyle(Retro.green.opacity(0.7))
+                    Text(":").font(.system(size: 17 * k, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
                     PeekWheel(count: 12, step: 5, value: Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }),
                               pitch: 18 * k, font: 17 * k)
                         .frame(width: 26 * k)
@@ -573,8 +573,8 @@ struct DateSheet: View {
         } label: {
             Text(L("Bây giờ")).font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .foregroundStyle(Retro.nowInk.opacity(isNow ? 0.4 : 1))
-                .background(Retro.now, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                .foregroundStyle(Color.primary.opacity(isNow ? 0.35 : 0.85))
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
         }
         .buttonStyle(Pressable())
@@ -664,12 +664,12 @@ struct DateSheet: View {
         return Button { pick(date) } label: {
             Text("\(cal.component(.day, from: date))")
                 .font(.system(size: P.font * k, weight: on || today ? .semibold : .medium, design: .rounded)).monospacedDigit()
-                .foregroundStyle(on ? Color.white : today ? Retro.green : Color.primary.opacity(0.85))
+                .foregroundStyle(on ? Palette.ctaInk : Color.primary.opacity(today ? 1 : 0.85))
                 .frame(maxWidth: .infinity)
                 .frame(height: P.pillH * k)
                 // Viên nền lấp cả ô trừ hở 2 mỗi bên (cách nét khung đúng 2 ở mọi phía). Ngày đang chọn: nền đen chữ trắng như
                 // nút chính (xám nhạt đứng trên dải cuối tuần cũng xám thì gần như không đọc ra); hôm nay: nền xanh lá nhạt
-                .background(on ? Retro.green : today ? Retro.green.opacity(0.16) : .clear,
+                .background(on ? Palette.cta : today ? Color.primary.opacity(0.1) : .clear,
                             in: RoundedRectangle(cornerRadius: P.pillR * k, style: .continuous))
                 .padding(.horizontal, P.frameGap * k)
                 .opacity(inMonth ? 1 : 0.42)
@@ -863,7 +863,7 @@ private struct PeekWheel: View {
                 Text(String(format: "%02d", wrap(i) * step))
                     .font(.system(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit())
                     // Hàng đang chọn (giờ / phút hiện tại của khoản) màu xanh lá
-                    .foregroundStyle(abs(d) < 0.5 ? Retro.green : Color.primary)
+                    .foregroundStyle(Color.primary)
                     .scaleEffect((17 - 5 * a) / 17)
                     .opacity(1 - 0.4 * a)
                     .offset(y: d * pitch)
@@ -894,16 +894,4 @@ private struct PeekWheel: View {
         // Giờ lẻ (11:03) hiện ở nấc gần nhất (05) mà không bị đổi khi chỉ mở ra xem; chỉ đổi khi cuộn sang nấc khác
         if wrap(target) != wrap(Int((Double(value) / Double(step)).rounded())) { value = wrap(target) * step }
     }
-}
-
-/// Bảng màu retro của lịch chọn ngày giờ (cùng họ với các ô Thống kê): nền nhạt vàng mù tạt / pistachio / cam đào,
-/// ngày đang chọn xanh lá retro chữ trắng. Chế độ tối: bản trầm của màu nhạt thành nâu / ô liu đục, chữ trắng trên đó khó đọc,
-/// nên nền dải và khung giờ về xám trung tính như Peek; giữ màu ở hai điểm nhấn: nút Bây giờ cam đào sáng, ngày chọn xanh lá
-private enum Retro {
-    static let weekend = Color(light: 0xFBEFC6, dark: 0x2A2A2E)
-    static let wheel = Color(light: 0xE6EDD2, dark: 0x2A2A2E)
-    static let now = Color(light: 0xFCE3CF, dark: 0xF8D5B4)
-    static let nowInk = Color(light: 0x8A3A10, dark: 0x6B2A08)
-    /// Xanh lá của icon app
-    static let green = Color(hex: 0x61BE6E)
 }

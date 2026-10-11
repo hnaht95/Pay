@@ -204,5 +204,7 @@ extension English {
         "Người này có dùng Pay": "They use Pay",
         "Chỉ thêm tên": "Just add a name",
         "Không dùng Pay, bạn ghi giúp": "Doesn't use Pay, you log for them",
+        "%@ báo đã chuyển %@đ cho bạn": "%@ says they sent you %@",
+        "Kiểm tra tài khoản rồi xác nhận.": "Check your account, then confirm.",
     ]
 }

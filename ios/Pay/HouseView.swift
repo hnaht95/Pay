@@ -56,6 +56,8 @@ struct HouseView: View {
     @State private var notifyOn: Bool?
     /// Khoản chung đang sửa
     @State private var editingSpend: HouseSpend?
+    /// Lần trả người khác báo đã chuyển cho mình, đang hỏi đã nhận chưa
+    @State private var confirming: HouseSettle?
     @Environment(\.scenePhase) private var scenePhase
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
@@ -102,6 +104,13 @@ struct HouseView: View {
             #endif
         }
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
+        .confirmationDialog(confirming.map { L("%@ báo đã chuyển %@đ cho bạn", house.memberName($0.from), fmt($0.amount)) } ?? "",
+                            isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible,
+                            presenting: confirming) { c in
+            Button(L("Đã nhận")) { Task { await house.respond(c.id, received: true) } }
+            Button(L("Chưa nhận được"), role: .destructive) { Task { await house.respond(c.id, received: false) } }
+            Button(L("Huỷ"), role: .cancel) {}
+        } message: { _ in Text(L("Kiểm tra tài khoản rồi xác nhận.")) }
         .sheet(item: $editingSpend) { HouseSpendEditor(editing: $0).environmentObject(store).sheetGrabber() }
         .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
             TextField(L("Tên"), text: $newMember)
@@ -742,7 +751,8 @@ struct HouseView: View {
         default: ("checkmark", Palette.goodInk, L("Đã xác nhận"))
         }
         return HStack(spacing: 14) {
-            Image(systemName: icon).font(.system(size: 20, weight: .bold)).foregroundStyle(tint)
+            // Biểu tượng tròn đặc cùng một khung (clock / checkmark / xmark .circle.fill) để to nhỏ đều nhau
+            Image(systemName: icon + ".circle.fill").font(.system(size: 24)).foregroundStyle(tint)
                 .frame(width: 52, height: 52)
                 .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
@@ -750,11 +760,15 @@ struct HouseView: View {
                 Text("\(note) · \(day(s.date))").font(.system(size: 14)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            Text(fmt(s.amount)).font(.system(size: 17, weight: .bold)).foregroundStyle(s.status == "no" ? .secondary : tint)
+            // Số tiền màu chữ thường cho dễ đọc; trạng thái đã có ở biểu tượng màu bên trái
+            Text(fmt(s.amount)).font(.system(size: 17, weight: .bold)).foregroundStyle(s.status == "no" ? .secondary : .primary)
                 .strikethrough(s.status == "no")
         }
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        // Người khác báo đã chuyển cho mình, đang chờ: chạm để xác nhận đã nhận hay chưa
+        .onTapGesture { if s.to == house.me && s.status == "wait" { confirming = s } }
         .onHold {
             menu = AppMenuSpec(icon: AnyView(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(tint)
                                 .frame(width: 56, height: 56).background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))),

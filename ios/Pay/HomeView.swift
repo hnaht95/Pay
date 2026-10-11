@@ -136,6 +136,8 @@ struct HomeView: View {
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .editNow(e) }
             })
             .environmentObject(store)
+            // Mỗi lượt một thẻ mới hẳn (micro, trạng thái nghe riêng), kể cả khi thẻ cũ còn đang hiện
+            .id(voiceRound)
         }
         .onChange(of: scenePhase) { _, p in if p == .active { wake() } }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in wake() }
@@ -155,12 +157,17 @@ struct HomeView: View {
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
     private func run(_ k: QuickKind) async {
-        let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || listening || listing != nil
+        // Thẻ nói đang mở mà lại gọi nói (bấm nút Tác vụ lần nữa): không đóng rồi mở lại thẻ, chỉ dựng thẻ mới tại chỗ (xem
+        // voiceRound). Đóng rồi mở trong vài trăm mili giây thì iOS có khi giữ lại thẻ cũ, mà thẻ cũ đã tắt micro lúc bị đóng:
+        // kẹt ở "Đang bật micro…"
+        let renew = k == .voice && listening
+        let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || (listening && !renew) || listing != nil
             || addingCat || editingCat != nil
         // Thẻ nói còn mở thì không bỏ qua lệnh nói: thẻ có thể đã ngừng nghe từ lâu (đã ghi, chưa nghe rõ, thiếu quyền micro),
         // ở đây không biết được, nên đóng rồi mở lại để nghe ngay
         if k == .scan && scanning { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listening = false; listing = nil; voiceFrom = nil
+        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listing = nil; voiceFrom = nil
+        if !renew { listening = false }
         addingCat = false; editingCat = nil; menu = nil
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {

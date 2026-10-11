@@ -207,10 +207,10 @@ struct HouseView: View {
     private var header: some View {
         HStack(spacing: 8) {
             if inGroup {
-                circleButton("chevron.left", L("Các nhóm")) { withAnimation(.snappy) { house.open(nil) } }
+                circleButton("arrow.left", L("Các nhóm")) { withAnimation(.snappy) { house.open(nil) } }
             } else if creating && !house.groups.isEmpty {
                 // (đang lưu nhóm vừa tạo thì chờ xong: lùi ra lúc này sẽ gặp màn "Bạn là ai" của nhóm chưa có ai)
-                circleButton("chevron.left", L("Các nhóm")) { if !house.busy { withAnimation(.snappy) { creating = false } } }
+                circleButton("arrow.left", L("Các nhóm")) { if !house.busy { withAnimation(.snappy) { creating = false } } }
             } else {
                 // Ở danh sách nhóm không có nút đóng (vạch ngang trên cùng cho biết kéo xuống là đóng); giữ chỗ để tên vẫn ở giữa
                 Color.clear.frame(width: 36, height: 36)

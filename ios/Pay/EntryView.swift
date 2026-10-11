@@ -124,11 +124,12 @@ struct EntryView: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 10) {
                 Button { dismiss() } label: {
-                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold))
+                    Image(systemName: "arrow.left").font(.system(size: 18, weight: .semibold))
                         .frame(width: 46, height: 46).background(Palette.pill, in: Circle())
                 }
                 .buttonStyle(Pressable())
                 .foregroundStyle(.primary)
+                if isEdit { Spacer(minLength: 0) }
                 Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
             }
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề

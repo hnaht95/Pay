@@ -701,46 +701,16 @@ extension View {
     }
 }
 
-/// Gom các nút kính lại để iOS 26 vẽ chung một lớp kính (hai nút gần nhau trông liền mạch).
+/// Trước đây gom nút kính của iOS 26; giờ nút vẽ phẳng nên chỉ trả lại nội dung.
 struct GlassGroup<Content: View>: View {
     @ViewBuilder let content: Content
-
-    var body: some View {
-        if #available(iOS 26.0, *) { GlassEffectContainer(spacing: 12) { content } } else { content }
-    }
+    var body: some View { content }
 }
 
 extension View {
-    /// Nền kính hình viên thuốc: Liquid Glass trên iOS 26, kính mờ + bóng đổ trên iOS cũ hơn.
-    func glassCapsule(tint: Color?) -> some View { modifier(GlassCapsule(tint: tint)) }
-}
-
-private struct GlassCapsule: ViewModifier {
-    @Environment(\.film) private var film
-    let tint: Color?
-
-    func body(content: Content) -> some View { content.glass(tint: tint, drawn: film != nil) }
-}
-
-private extension View {
-    /// drawn: tự vẽ nền giống kính (cho phim: kính của hệ thống không vẽ ra PDF được)
-    @ViewBuilder func glass(tint: Color?, drawn: Bool) -> some View {
-        if drawn {
-            background {
-                Capsule().fill(tint ?? Color.white.opacity(0.82))
-                    .overlay { Capsule().strokeBorder(.white.opacity(tint == nil ? 0.9 : 0.12), lineWidth: 1) }
-                    .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-            }
-        } else if #available(iOS 26.0, *) {
-            glassEffect(tint.map { Glass.regular.tint($0).interactive() } ?? .regular.interactive(), in: Capsule())
-        } else {
-            background {
-                Capsule().fill(.ultraThinMaterial)
-                    .overlay { if let tint { Capsule().fill(tint.opacity(0.92)) } }
-                    .overlay { Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5) }
-                    .shadow(color: .black.opacity(0.15), radius: 14, y: 6)
-            }
-        }
+    /// Nền phẳng hình viên thuốc (kiểu Peek): nút chính màu đặc, nút phụ xám nhạt; không kính, không viền, không bóng.
+    func glassCapsule(tint: Color?) -> some View {
+        background { Capsule().fill(tint ?? Palette.pill) }
     }
 }
 

@@ -105,7 +105,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(560)]).sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(610)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -445,7 +445,8 @@ struct DateSheet: View {
                 Text(":").font(.system(size: 22, weight: .bold)).foregroundStyle(.secondary)
                 wheel(60, Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }))
             }
-            .frame(height: 120)
+            // Bánh xe cao đủ cho 5 hàng: thấp quá (120) thì hai số kề trên / dưới bị cắt ở chỗ đang cong nhất, trông dẹt ngắn
+            .frame(height: 170)
             Button { dismiss() } label: {
                 Text(L("Xong")).font(.system(size: 19, weight: .semibold))
                     .frame(maxWidth: .infinity, minHeight: 58)

@@ -104,7 +104,8 @@ struct StatsView: View {
     // thứ, ngày, và một cột nhỏ cao theo số tiền đã chi. Cuộn sang tháng nào thì số liệu bên dưới tính theo tháng đó;
     // chạm một ngày để xem riêng ngày ấy, chạm lại để về cả tháng.
 
-    private static let pillWidth: CGFloat = 50
+    /// Bề ngang một viên: vừa đúng 7 viên trên bề ngang dải (lề 16 hai bên, khe 6), đo theo màn hình
+    @State private var pillW: CGFloat = 48
     /// Viên ngày / tháng cao bằng nhau ở cả hai dải
     private static let pillHeight: CGFloat = 108
 
@@ -143,11 +144,14 @@ struct StatsView: View {
             if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge().id(d) }
+                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 16).id(d) }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, 16)
             }
+            // Lề 16 hai bên là lề cuộn (không phải đệm trong nội dung): cuộn dừng thì viên đầu thẳng lề trái, vừa đúng 7 viên
+            .contentMargins(.horizontal, 16, for: .scrollContent)
+            // Đo đúng bề ngang dải cuộn (tràn hai mép màn hình): 7 viên + 6 khe vừa khít giữa hai lề 16
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pillW = max(36, ($0 - 32 - 6 * 6) / 7) }
             .scrollIndicators(.hidden)
             // Không cắt ở khung dải: viên trôi ra mép nhoè lan ra ngoài khung (cắt thì thấy rõ vạch trên / dưới ở viên tối)
             .scrollClipDisabled()
@@ -156,6 +160,7 @@ struct StatsView: View {
             .defaultScrollAnchor(.trailing)
             .frame(height: Self.pillHeight + 20)
             .modifier(ChipEdges(fade: $stripFade))
+            .modifier(SevenColumns())
             // Rung nhẹ mỗi khi một ngày lướt qua giữa dải, như bánh xe chọn giờ của iOS
             .sensoryFeedback(.selection, trigger: centerDay)
             // Hai mép: nhoè dần như mép cuộn của iOS (kính mờ tan dần), không phủ màu nền lên
@@ -215,10 +220,13 @@ struct StatsView: View {
         return ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge().id(m) }
+                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 16).id(m) }
                 }
-                .padding(.horizontal, 16)
+                .scrollTargetLayout()
             }
+            .contentMargins(.horizontal, 16, for: .scrollContent)
+            .scrollTargetBehavior(.viewAligned)
+            .modifier(SevenColumns())
             .scrollIndicators(.hidden)
             .scrollClipDisabled()
             .defaultScrollAnchor(.trailing)
@@ -285,7 +293,7 @@ struct StatsView: View {
                     }
                     .padding(4)
                 }
-                .frame(width: Self.pillWidth, height: Self.pillHeight)
+                .frame(width: pillW, height: Self.pillHeight)
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -337,7 +345,7 @@ struct StatsView: View {
                     }
                     .padding(4)
                 }
-                .frame(width: Self.pillWidth, height: Self.pillHeight)
+                .frame(width: pillW, height: Self.pillHeight)
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -1032,5 +1040,20 @@ enum Hatch {
             p.stroke()
         }
         return ImagePaint(image: Image(uiImage: img), scale: 1)
+    }
+}
+
+/// Dải 7 cột: chỉ hiện đúng 7 viên nằm giữa hai lề 16, viên thừa lấn vào lề hai bên thì tan đi (mặt nạ mờ dần trong lề),
+/// trên dưới để rộng cho phần nhoè không bị cắt
+struct SevenColumns: ViewModifier {
+    func body(content: Content) -> some View {
+        content.mask {
+            HStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 16)
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 16)
+            }
+            .padding(.vertical, -30)
+        }
     }
 }

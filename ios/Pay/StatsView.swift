@@ -605,28 +605,6 @@ struct StatsView: View {
                 .contentTransition(.numericText())
             budgetLine(spent: current)
             noSpendLine
-            // Đang xem dải trên theo tháng thì không lặp lại hàng cột tháng ở đây
-            if !byMonth {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal) {
-                    HStack(alignment: .bottom, spacing: 8) {
-                        ForEach(Array(months.enumerated()), id: \.element) { i, m in
-                            monthColumn(m, total: totals[i], top: top).id(m)
-                        }
-                    }
-                    .scrollTargetLayout()
-                    .padding(.horizontal, 20)
-                }
-                .scrollIndicators(.hidden)
-                .defaultScrollAnchor(.trailing)
-                .padding(.horizontal, -20)
-                .onChange(of: month) {
-                    withAnimation(.snappy) { proxy.scrollTo(cal.date(from: cal.dateComponents([.year, .month], from: month))!, anchor: .center) }
-                }
-            }
-            .frame(height: 118)
-            .padding(.top, 8)
-            }
         }
     }
 

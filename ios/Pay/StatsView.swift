@@ -38,6 +38,8 @@ struct StatsView: View {
     static let inkText = Color(light: 0xFFFFFF, dark: 0x111114)
     static let orange = Color(light: 0xEE6A35, dark: 0xF07443)
     static let chip = Color(light: 0xF2F2F2, dark: 0x2A2A2E)
+    /// Chữ trên khung Tổng chi (nền vàng ở cả hai chế độ nên chữ luôn đen)
+    static let heroInk = Color(hex: 0x1C1C1E)
 
     var body: some View {
         let items = spending(in: span)
@@ -342,7 +344,7 @@ struct StatsView: View {
             HStack {
                 Text(heroTitle).font(.system(size: 16, weight: .medium))
                 Spacer()
-                iconChip("creditcard", fg: .white, bg: .white.opacity(0.2))
+                iconChip("creditcard", fg: Self.heroInk, bg: Self.heroInk.opacity(0.08))
             }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(fmt(total)).font(.system(size: 40, weight: .bold)).kerning(-1).minimumScaleFactor(0.5).lineLimit(1)
@@ -356,13 +358,13 @@ struct StatsView: View {
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(.white.opacity(0.22), in: Capsule())
+                    .background(Self.heroInk.opacity(0.08), in: Capsule())
                     Text(compareText)
                         .font(.system(size: 13)).opacity(0.85)
                 }
             }
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Self.heroInk)
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { HeroGreen().clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous)) }
@@ -809,7 +811,7 @@ enum Hatch {
     }
 }
 
-/// Nền khung Tổng chi: đen phẳng, cùng màu nút chính của app (Quét QR, Lưu) — giữ đen cả ở chế độ tối cho chữ trắng luôn đọc rõ.
+/// Nền khung Tổng chi: vàng phẳng, cùng màu ô "Cafe" ở màn chính (bảng màu danh mục của app), chữ đen.
 private struct HeroGreen: View {
-    var body: some View { Color(light: 0x161618, dark: 0x232326) }
+    var body: some View { Color(hex: 0xFFD43B) }
 }

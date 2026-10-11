@@ -21,9 +21,9 @@ struct Category: Identifiable, Hashable {
 
     var id: String { k }
 
-    init(k: String, icon: String, name: String, color: Color, art: Bool = false, kw: [String], customChart: Color? = nil) {
+    init(k: String, icon: String, name: String, color: Color, art: Bool = false, kw: [String], customChart: Color? = nil, onDark: Bool = false) {
         self.k = k; self.icon = icon; self.rawName = name; self.color = color
-        self.art = art; self.kw = kw; self.customChart = customChart
+        self.art = art; self.kw = kw; self.customChart = customChart; self.onDark = onDark
     }
 
     /// Danh mục tự tạo đang dùng, Store cập nhật mỗi khi đổi (cả khi máy khác thêm qua iCloud)
@@ -38,10 +38,10 @@ struct Category: Identifiable, Hashable {
     }
 
     static let builtin: [Category] = [
-        Category(k: "an", icon: "🍜", name: "Ăn uống", color: Color(hex: 0xFFC9C1), art: true, kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa", "lunch", "dinner", "breakfast", "brunch", "meal", "rice", "noodle", "noodles", "beer", "snack", "snacks", "burger", "eat", "eating", "mcdonalds", "takeout"]),
-        Category(k: "cafe", icon: "☕", name: "Cafe", color: Color(hex: 0xF1DCC0), art: true, kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la", "tea", "milk tea", "bubble tea", "boba", "latte", "cappuccino", "espresso", "smoothie", "juice"]),
-        Category(k: "di", icon: "🛵", name: "Đi lại", color: Color(hex: 0xC9E3FF), art: true, kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot", "gas", "fuel", "petrol", "bus", "train", "flight", "plane", "uber", "toll", "metro", "car wash"]),
-        Category(k: "mua", icon: "🛍️", name: "Mua sắm", color: Color(hex: 0xFFD3E6), art: true, kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "di cho", "shopping", "clothes", "shirt", "shoes", "market", "groceries", "grocery", "supermarket", "amazon", "cosmetics"]),
+        Category(k: "an", icon: "🍕", name: "Ăn uống", color: Color(hex: 0xF07B3F), kw: ["an", "com", "pho", "bun", "banh", "mi", "bia", "lau", "nuong", "kfc", "lotteria", "jollibee", "pizza", "grabfood", "shopeefood", "quan", "nha hang", "restaurant", "food", "bakery", "an sang", "an trua", "an toi", "chao", "xoi", "che", "kem", "tap hoa", "lunch", "dinner", "breakfast", "brunch", "meal", "rice", "noodle", "noodles", "beer", "snack", "snacks", "burger", "eat", "eating", "mcdonalds", "takeout"]),
+        Category(k: "cafe", icon: "🥤", name: "Cafe", color: Color(hex: 0xFFD43B), kw: ["cafe", "ca phe", "coffee", "tra", "tra sua", "highlands", "starbucks", "phuc long", "katinat", "sinh to", "nuoc mia", "trung nguyen", "cong ca phe", "the coffee house", "tocotoco", "gong cha", "mixue", "phe la", "tea", "milk tea", "bubble tea", "boba", "latte", "cappuccino", "espresso", "smoothie", "juice"]),
+        Category(k: "di", icon: "🚕", name: "Đi lại", color: Color(hex: 0xEA5455), kw: ["grab", "be", "xanh sm", "gojek", "xang", "taxi", "gui xe", "do xe", "parking", "ve xe", "ve tau", "may bay", "petrolimex", "rua xe", "sua xe", "vetc", "bot", "gas", "fuel", "petrol", "bus", "train", "flight", "plane", "uber", "toll", "metro", "car wash"], onDark: true),
+        Category(k: "mua", icon: "🛒", name: "Mua sắm", color: Color(hex: 0xA2D5F2), kw: ["shopee", "lazada", "tiki", "tiktok", "sieu thi", "winmart", "bach hoa", "circle k", "gs25", "familymart", "7-eleven", "ministop", "quan ao", "ao", "quan", "giay", "dep", "my pham", "mart", "store", "shop", "uniqlo", "di cho", "shopping", "clothes", "shirt", "shoes", "market", "groceries", "grocery", "supermarket", "amazon", "cosmetics"]),
         Category(k: "hd", icon: "🧾", name: "Hoá đơn", color: Color(hex: 0xE2DBFF), art: true, kw: ["dien", "tien nuoc", "internet", "wifi", "mang", "4g", "5g", "dien thoai", "nap tien", "tien nha", "thue nha", "phong", "hoc phi", "evn", "viettel", "vnpt", "fpt", "mobifone", "vinaphone", "netflix", "spotify", "youtube", "icloud", "bao hiem", "chung cu", "phi dich vu", "rent", "electricity", "electric", "electric bill", "water bill", "phone bill", "mobile", "top up", "insurance", "tuition", "subscription", "utilities"]),
         Category(k: "khac", icon: "📌", name: "Khác", color: Color(hex: 0xCFEEDD), art: true, kw: []),
     ]
@@ -55,10 +55,10 @@ struct Category: Identifiable, Hashable {
     var chart: Color {
         if let customChart { return customChart }
         return switch k {
-        case "an": Color(light: 0xE34948, dark: 0xE34948)
-        case "cafe": Color(light: 0xEDA100, dark: 0xC98500)
-        case "di": Color(light: 0x2A78D6, dark: 0x3987E5)
-        case "mua": Color(light: 0xE87BA4, dark: 0xD55181)
+        case "an": Color(light: 0xE8692A, dark: 0xF07B3F)
+        case "cafe": Color(light: 0xA88400, dark: 0xE5B000)
+        case "di": Color(light: 0xD93A3C, dark: 0xEA5455)
+        case "mua": Color(light: 0x3E9BD6, dark: 0x5AAFE3)
         case "hd": Color(light: 0x4A3AA7, dark: 0x9085E9)
         default: Color(light: 0x1BAF7A, dark: 0x199E70)
         }

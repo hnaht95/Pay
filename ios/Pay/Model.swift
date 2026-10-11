@@ -47,7 +47,7 @@ struct CustomCat: Codable, Hashable {
             let kw = base.kw + [Store.noteKey(name)].filter { !$0.isEmpty && !base.kw.contains($0) }
             var c = Category(k: k, icon: icon, name: name, color: tone < 0 ? base.color : CategoryTone.bg(tone),
                              art: base.art && icon == base.icon, kw: kw, customChart: tone < 0 ? nil : CategoryTone.chart(tone))
-            c.onDark = CategoryTone.dark(tone)
+            c.onDark = tone < 0 ? base.onDark : CategoryTone.dark(tone)
             return c
         }
         var c = Category(k: k, icon: icon, name: name, color: CategoryTone.bg(tone), kw: [Store.noteKey(name)].filter { !$0.isEmpty },

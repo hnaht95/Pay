@@ -656,8 +656,9 @@ struct BigButton: View {
     /// đầu nút bo tròn). Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
     /// Thẻ nói để ghi cũng vẽ mặt này lên khối biến hình, để nút và thẻ là một khối liền.
     static func face(title: String, icon: String, primary: Bool) -> some View {
-        HStack(spacing: 10) {
-            // icon rỗng: nút chỉ có chữ ở giữa, cao bằng nút có icon (vd Xoá / Sửa ở màn sửa khoản chi)
+        // icon rỗng: nút chỉ có chữ ở giữa, cao bằng nút có icon (vd Xoá / Sửa ở màn sửa khoản chi). Không đặt một khung trống
+        // vào hàng: khung rộng 0 vẫn ăn một khoảng cách 10 pt, đẩy chữ lệch sang phải 5 pt so với giữa nút
+        HStack(spacing: icon.isEmpty ? 0 : 10) {
             if icon.isEmpty {
                 Color.clear.frame(width: 0, height: 56)
             } else {

@@ -103,9 +103,6 @@ struct EntryView: View {
         // không co nổi tới mức đó: phần đầu trượt lên dưới thanh trạng thái, nút Lưu vẫn chìm dưới bàn phím
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .background(Palette.surface.ignoresSafeArea())
-        // Vuốt từ mép trái để quay lại, vuốt xuống để ẩn (màn hình này mở toàn màn hình nên iOS không có sẵn)
-        .edgeBack(slides: { true }) { dismiss() }
-        .swipeDownToClose { dismiss() }
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
             DateSheet(when: $when).presentationDetents([.height(560)]).sheetGrabber()
@@ -122,18 +119,11 @@ struct EntryView: View {
 
     private var head: some View {
         VStack(spacing: 2) {
-            // Tiêu đề ở giữa, nút back nằm đè bên trái
+            // Tiêu đề ở giữa. Màn mở dạng tấm (không phủ kín màn hình): đóng bằng vuốt xuống như các tấm khác,
+            // không có mũi tên quay lại hay vuốt từ mép trái
             Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
                 .padding(.horizontal, 52)
                 .frame(maxWidth: .infinity, minHeight: 46)
-                .overlay(alignment: .leading) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "arrow.left").font(.system(size: 20, weight: .semibold))
-                            .frame(width: 46, height: 46, alignment: .leading).contentShape(Rectangle())
-                    }
-                    .buttonStyle(Pressable())
-                    .foregroundStyle(.primary)
-                }
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
             if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
         }

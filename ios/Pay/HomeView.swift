@@ -308,12 +308,15 @@ struct HomeView: View {
         }
     }
 
-    /// Ô cuối: tạo danh mục riêng. Chỉ dấu + ở giữa ô, không chữ
+    /// Ô cuối: tạo danh mục riêng. Dấu + nhỏ và chữ ở giữa ô (giống nút Tạo nhóm mới)
     private var addTile: some View {
         Button { addingCat = true } label: {
-            Image(systemName: "plus").font(.system(size: 22, weight: .semibold))
-                .frame(width: 52, height: 52).background(Palette.surface, in: Circle())
+            HStack(spacing: 8) {
+                Image(systemName: "plus").font(.system(size: 16, weight: .bold))
+                Text(L("Thêm danh mục")).font(.system(size: 17, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            }
                 .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, minHeight: 140)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))

@@ -74,7 +74,6 @@ struct StatsView: View {
             if film != nil { monthTabs } else { periodHeader }
             hero(items, prev)
             grid(items, prev)
-            trendCard
             if !items.isEmpty {
                 categoryCard(items)
                 recentCard(items)
@@ -461,6 +460,11 @@ struct StatsView: View {
                         .font(.system(size: 13))
                 }
             }
+            // Gộp từ thẻ "Chi theo tháng" cũ (trùng số tiền với khung này): vạch hạn mức (tháng này) và ngày không chi
+            if scope == .month && day == nil {
+                budgetLine(spent: total)
+                noSpendLine
+            }
         }
         .foregroundStyle(Self.heroInk)
         .padding(22)
@@ -636,9 +640,9 @@ struct StatsView: View {
     }
 
     private func chipLabel(_ t: String) -> some View {
-        Text(t).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+        Text(t).font(.system(size: 13, weight: .medium)).foregroundStyle(Self.heroInk)
             .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(Color.primary.opacity(0.06), in: Capsule())
+            .background(Self.heroInk.opacity(0.1), in: Capsule())
     }
 
     /// Hạn mức nằm ngay dưới số tiền: một vạch ngang mảnh đã dùng / hạn mức, kèm còn bao nhiêu và mức nên tiêu mỗi ngày.
@@ -652,18 +656,18 @@ struct StatsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.primary.opacity(0.08))
-                        Capsule().fill(over ? Palette.danger : Self.ink)
+                        Capsule().fill(Self.heroInk.opacity(0.15))
+                        Capsule().fill(over ? Palette.danger : Self.heroInk)
                             .frame(width: max(6, g.size.width * min(Double(spent) / Double(limit), 1)))
                     }
                 }
                 .frame(height: 6)
                 HStack {
                     Text(L("Đã dùng %ld%% của %@", pct, fmt(limit)))
-                        .foregroundStyle(over ? Palette.danger : .secondary)
+                        .foregroundStyle(over ? Palette.danger : Self.heroInk.opacity(0.8))
                     Spacer()
                     Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000)))
-                        .foregroundStyle(over ? Palette.danger : .secondary)
+                        .foregroundStyle(over ? Palette.danger : Self.heroInk.opacity(0.8))
                 }
                 .font(.system(size: 13))
             }

@@ -531,25 +531,31 @@ struct DateSheet: View {
                 }
                 .buttonStyle(.plain)
                 .allowsHitTesting(showsToday)
-                .padding(.trailing, showsToday ? 4 : 0)
-                // Dải tuần đi ngang nên mũi tên trái / phải
-                arrow(angle: -90, L("Tuần trước")) { shift(-1) }
-                arrow(angle: 90, L("Tuần sau")) { shift(1) }.opacity(isThisWeek ? 0.3 : 1).disabled(isThisWeek)
             }
             .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisWeek)
-            // Chỉ chọn ngày: một dải tuần (thứ trên, ngày dưới) trong khung xám nhạt bo góc; chấm nhỏ dưới ngày có khoản chi.
-            // Đổi tuần bằng mũi tên hoặc vuốt ngang
-            ZStack {
-                weekStrip
-                    .id(weekStart)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
-                        removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)))
+            // Dải ngày vuốt ngang liền một mạch như Thống kê (không mũi tên): từ ngày cũ nhất cần tới hôm nay, mở ra ở ngày
+            // đang chọn; 7 viên vừa một màn, cuộn dừng đúng viên. Tiêu đề tháng theo ngày đang ở giữa dải
+            let w = max(0, (rowW - 6 * 6) / 7)
+            let days = stripDays
+            let totals = days.map { Store.shared.total(on: $0) }
+            let top = max(totals.max() ?? 1, 1)
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 6) {
+                    ForEach(Array(days.enumerated()), id: \.element) { i, d in
+                        stripDay(d, spent: totals[i], top: top).frame(width: w).id(d)
+                    }
+                }
+                .scrollTargetLayout()
             }
-            .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 20).onEnded { v in
-                if v.translation.width < -40 { shift(1) } else if v.translation.width > 40 { shift(-1) }
-            })
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $centerDay, anchor: .center)
+            .defaultScrollAnchor(.trailing)
+            .scrollClipDisabled()
+            .frame(height: 84 + 22)
+            .frame(maxWidth: .infinity)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
+            .onChange(of: centerDay) { if let c = centerDay { withAnimation(.snappy) { month = c } } }
             // Giờ : phút, cùng khung xám bo góc với dải tuần; hai bánh xe cuộn dọc (phút nhảy 5), hàng giữa là giờ đang chọn
             HStack(spacing: 0) {
                 // Đồng hồ báo thức (Tabler alarm-minus, bản đặc) trước nhãn
@@ -596,12 +602,28 @@ struct DateSheet: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Palette.surface.ignoresSafeArea())
         .presentationDetents([.height(max(contentH, 200))])
-        .onAppear { month = when; if original == nil { original = when } }
+        .onAppear {
+            month = when; if original == nil { original = when }
+            centerDay = cal.startOfDay(for: when)
+        }
     }
 
-    /// Thứ Hai đầu tuần đang xem
-    private var weekStart: Date { cal.dateInterval(of: .weekOfYear, for: month)!.start }
-    private var isThisWeek: Bool { cal.isDate(month, equalTo: Date(), toGranularity: .weekOfYear) }
+    /// Ngày đang nằm giữa dải (cuộn tới đâu, tiêu đề tháng theo đó)
+    @State private var centerDay: Date?
+    /// Hôm nay đang nằm trong 7 viên đang thấy (viên giữa cách hôm nay không quá 3 ngày): khỏi hiện nút "Hôm nay"
+    private var isThisWeek: Bool {
+        let c = centerDay ?? cal.startOfDay(for: when)
+        return (cal.dateComponents([.day], from: c, to: cal.startOfDay(for: Date())).day ?? 0) <= 3
+    }
+
+    /// Các ngày trên dải: từ khoản chi cũ nhất (ít nhất 120 ngày trước, và luôn có ngày đang chọn) tới hôm nay
+    private var stripDays: [Date] {
+        let today = cal.startOfDay(for: Date())
+        let oldest = Store.shared.items.min(by: { $0.t < $1.t }).map { cal.startOfDay(for: $0.date) } ?? today
+        let from = min(oldest, cal.startOfDay(for: when), cal.date(byAdding: .day, value: -120, to: today)!)
+        let n = (cal.dateComponents([.day], from: from, to: today).day ?? 0) + 1
+        return (0..<n).map { cal.date(byAdding: .day, value: $0, to: from)! }
+    }
 
 
     /// Dải tuần cùng kiểu dải ngày ở Thống kê: chữ thứ nằm trên viên; trong viên số ngày ở trên, lớp xám dâng từ đáy
@@ -610,15 +632,6 @@ struct DateSheet: View {
     private static let pillInk = Color(light: 0x1C1C1E, dark: 0xF2F2F2)
     private static let pillInkText = Color(light: 0xFFFFFF, dark: 0x111114)
     private static let todayTint = Color(light: 0x3FA65A, dark: 0x7FD08B)
-
-    private var weekStrip: some View {
-        let days = (0..<7).map { cal.date(byAdding: .day, value: $0, to: weekStart)! }
-        let totals = days.map { $0 > Date() ? 0 : Store.shared.total(on: $0) }
-        let top = max(totals.max() ?? 1, 1)
-        return HStack(spacing: 6) {
-            ForEach(0..<7, id: \.self) { i in stripDay(days[i], spent: totals[i], top: top) }
-        }
-    }
 
     private func stripDay(_ d: Date, spent: Int, top: Int) -> some View {
         let on = cal.isDate(d, inSameDayAs: when), today = cal.isDateInToday(d), future = d > Date()
@@ -696,9 +709,8 @@ struct DateSheet: View {
     }
 
     private func jumpToToday() {
-        forward = Date() > weekStart
         Haptic.select()
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = Date() }
+        withAnimation(.snappy) { centerDay = cal.startOfDay(for: Date()) }
     }
 
     /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
@@ -784,12 +796,6 @@ struct DateSheet: View {
         FlatWheel(count: count, value: value).frame(width: 76)
     }
 
-    private func shift(_ by: Int) {
-        guard let m = cal.date(byAdding: .weekOfYear, value: by, to: weekStart), m <= Date() else { return }
-        forward = by > 0
-        Haptic.select()
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = m }
-    }
 
     /// Đổi ngày, giữ nguyên giờ phút
     private func pick(_ day: Date) {

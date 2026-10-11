@@ -281,9 +281,10 @@ struct StatsView: View {
         } label: {
             VStack(spacing: 6) {
                 // Hàng thứ nằm ngoài viên
-                Text(firstOfMonth ? shortMonth(d) : weekdayShort(d))
-                    .font(.system(size: 11, weight: firstOfMonth || on ? .bold : .medium))
-                    .foregroundStyle(Color.primary.opacity(firstOfMonth || on ? 0.75 : 0.4))
+                // Luôn là thứ (ngày mùng 1 cũng vậy: ghi "T10" ở đó dễ nhầm với thứ); sang tháng đã có tiêu đề tháng ở trên
+                Text(weekdayShort(d))
+                    .font(.system(size: 11, weight: on ? .bold : .medium))
+                    .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                 // Viên: số ngày ở trên cùng; phần dưới số là chỗ lớp xanh dâng lên theo mức chi, không bao giờ trùm lên số
                 VStack(spacing: 0) {
                     Text("\(cal.component(.day, from: d))")

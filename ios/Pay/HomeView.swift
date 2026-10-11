@@ -346,8 +346,8 @@ struct HomeView: View {
     /// Ô danh mục: biểu tượng, tên, số tiền tháng này. Dấu + ở góc nhập khoản mới cho danh mục đó
     private func tile(_ c: Category, total: Int) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            CategoryIcon(c: c, size: 30)
-                .frame(width: 52, height: 52).background(.white, in: Circle())
+            // Ô vuông nền trắng (bo đồng tâm với ô: 28 − 16), ảnh riêng hoặc biểu tượng
+            CategoryBadge(c: c, side: 52, radius: 12)
             Spacer(minLength: 14)
             // Tên mờ 70% (pha màu nền); số tiền giữ đậm rõ cho dễ đọc
             Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
@@ -546,10 +546,8 @@ struct ExpenseRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            CategoryIcon(c: c, size: 30)
-                .frame(width: 56, height: 56)
-                // Bo đồng tâm với thẻ: bo của thẻ trừ đi khoảng cách tới mép
-                .background(c.color, in: RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
+            // Ô vuông nền trắng như ô danh mục; bo đồng tâm với thẻ (bo thẻ trừ khoảng cách tới mép)
+            CategoryBadge(c: c, side: 56, radius: Self.radius - Self.inset)
                 // Có ảnh hoá đơn đính kèm: chấm xanh lá (màu icon app) ở góc trên phải ô biểu tượng, viền màu thẻ cho tách nền
                 .overlay(alignment: .topTrailing) {
                     if ReceiptPhotos.has(e.id) {

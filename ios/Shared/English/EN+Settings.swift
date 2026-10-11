@@ -12,6 +12,8 @@ extension English {
         "Xong": "Done",
         "Huỷ": "Cancel",
         "Bảng màu gợi ý": "Palettes",
+        "Ảnh": "Photo",
+        "Xoá ảnh, dùng biểu tượng": "Remove photo, use icon",
         "Tự chọn": "Custom",
         "Lưu": "Save",
         "Phiên bản": "Version",

@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 import WidgetKit
 
@@ -680,6 +681,10 @@ struct CategoryEditor: View {
     @State private var tone = 0
     @FocusState private var nameFocused: Bool
     @State private var pickingEmoji = false
+    /// Ảnh riêng của danh mục (thay cho biểu tượng); đổi / xoá rồi thì lưu lúc bấm Lưu
+    @State private var photo: UIImage?
+    @State private var photoChanged = false
+    @State private var photoItem: PhotosPickerItem?
     /// Bảng chọn màu của iOS đang mở
     @State private var pickingColor = false
     /// Đang dựng phim giới thiệu (xem Film.swift): biểu tượng, màu đang chọn lấy từ phim
@@ -708,10 +713,13 @@ struct CategoryEditor: View {
     private var previewCard: some View {
                     HStack(spacing: 14) {
                         Group {
+                            if let photo { Image(uiImage: photo).resizable().scaledToFill() }
                             // Danh mục có sẵn chưa đổi biểu tượng: hiện đúng hình vẽ phẳng như ở màn hình chính
-                            if let b = builtin, fIcon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(fIcon).font(.system(size: 28)) }
+                            else if let b = builtin, fIcon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(fIcon).font(.system(size: 28)) }
                         }
-                            .frame(width: 56, height: 56).background(.white, in: Circle())
+                            // Ô vuông nền trắng như ô danh mục ở màn hình chính
+                            .frame(width: 56, height: 56).background(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         Text(shownName.isEmpty ? L("Tên danh mục") : shownName)
                             .font(.system(size: 20, weight: .semibold)).lineLimit(1)
                             .opacity(shownName.isEmpty ? 0.4 : 1)
@@ -865,6 +873,39 @@ struct CategoryEditor: View {
                 }
 
                 Section {
+                    // Ảnh riêng: chọn từ thư viện ảnh, phủ kín ô vuông; có ảnh thì biểu tượng chỉ là phụ (dùng khi xoá ảnh)
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "photo").font(.system(size: 17, weight: .semibold))
+                                .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
+                            Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")).foregroundStyle(.primary)
+                            Spacer()
+                            if let photo {
+                                Image(uiImage: photo).resizable().scaledToFill().frame(width: 34, height: 34)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                        }
+                    }
+                    .tint(.primary)
+                    if photo != nil {
+                        Button { withAnimation(.snappy) { photo = nil; photoChanged = true } } label: {
+                            Text(L("Xoá ảnh, dùng biểu tượng")).foregroundStyle(.red)
+                        }
+                    }
+                } header: {
+                    Text(L("Ảnh"))
+                }
+                .onChange(of: photoItem) { _, item in
+                    guard let item else { return }
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: data) {
+                            withAnimation(.snappy) { photo = img; photoChanged = true }
+                        }
+                        photoItem = nil
+                    }
+                }
+
+                Section {
                     // Mở bàn phím Emoji của iOS: chọn được mọi biểu tượng, có cả ô tìm kiếm
                     Button { pickingEmoji = true } label: {
                         HStack(spacing: 12) {
@@ -905,7 +946,7 @@ struct CategoryEditor: View {
             // Mép trên vùng cuộn mờ dần (không cắt ngang dưới tiêu đề)
             .softTopEdge()
             .onAppear {
-                if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone }
+                if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone; photo = CategoryPhotos.image(e.k) }
                 else { tone = store.cats.count % 16; nameFocused = true }
             }
         }
@@ -962,10 +1003,18 @@ struct CategoryEditor: View {
         if let e = editing {
             // không đổi tên (đang xem bản dịch của tên gốc): giữ tên gốc, khỏi lưu chữ tiếng Anh
             store.updateCategory(e.k, name: trimmed == L(e.name) ? e.name : trimmed, icon: icon, tone: tone)
+            savePhoto(e.k)
         } else {
-            onAdd(store.addCategory(name: trimmed, icon: icon, tone: tone))
+            let k = store.addCategory(name: trimmed, icon: icon, tone: tone)
+            savePhoto(k)
+            onAdd(k)
         }
         dismiss()
+    }
+
+    private func savePhoto(_ k: String) {
+        guard photoChanged else { return }
+        if let photo { CategoryPhotos.save(photo, k: k) } else { CategoryPhotos.remove(k) }
     }
 }
 

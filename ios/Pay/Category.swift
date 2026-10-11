@@ -98,7 +98,11 @@ struct CategoryIcon: View {
     var size: CGFloat = 28
 
     var body: some View {
-        if c.art, UIImage(named: "cat-\(c.k)") != nil {
+        if let img = CategoryPhotos.image(c.k) {
+            // Danh mục có ảnh riêng: ảnh vuông bo góc thay cho biểu tượng
+            Image(uiImage: img).resizable().scaledToFill().frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
+        } else if c.art, UIImage(named: "cat-\(c.k)") != nil {
             Image("cat-\(c.k)").resizable().scaledToFit().frame(width: size, height: size)
         } else {
             Text(c.icon).font(.system(size: size * 0.85))

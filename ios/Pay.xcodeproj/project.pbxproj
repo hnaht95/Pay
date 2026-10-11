@@ -13,6 +13,7 @@
 		0CE7EF883F7F15652EBDAD0A /* FilmTouches.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12194354B3B9408BEBA73165 /* FilmTouches.swift */; };
 		0F2D8471B53F47051E302D93 /* FilmWidgetScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC4452634BACD32EE6204C2 /* FilmWidgetScene.swift */; };
 		132E3557D0C9606D92EE043D /* Parts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B596D5B30FB62C52A570D2AF /* Parts.swift */; };
+		15C527A659ECE27D3A275D7A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 32FD5516FC5C1832BC5288DA /* PrivacyInfo.xcprivacy */; };
 		1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D89B234044050006AE979177 /* StatsView.swift */; };
 		1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5CCA8FB4425669D725FC11F /* Assets.xcassets */; };
 		1EFA26C27A77368362E01491 /* EN+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E4AB183C62C00335ACF57F /* EN+Settings.swift */; };
@@ -40,6 +41,7 @@
 		9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E141264B0193BD7C93AC85D7 /* SettingsView.swift */; };
 		9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */; };
 		A545C30BDF4D6CF5519EA278 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
+		A8555FD55F85608523EC852F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3259FD0A108A269C333686A7 /* PrivacyInfo.xcprivacy */; };
 		ABAF7C9D3EFFBE9F9E02D294 /* VoiceEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */; };
 		ACA5747DA4A0AE572D34F222 /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44363C52BE264A2C9A5D3E8D /* QuickAction.swift */; };
 		AD211944DCFBAC31AA4D6A80 /* Parts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B596D5B30FB62C52A570D2AF /* Parts.swift */; };
@@ -104,6 +106,8 @@
 		2AC4452634BACD32EE6204C2 /* FilmWidgetScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmWidgetScene.swift; sourceTree = "<group>"; };
 		319F68A71118585C6599859C /* ReceiptScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptScan.swift; sourceTree = "<group>"; };
 		323469640D98E325EFD569FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3259FD0A108A269C333686A7 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		32FD5516FC5C1832BC5288DA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		44363C52BE264A2C9A5D3E8D /* QuickAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAction.swift; sourceTree = "<group>"; };
 		51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		5B9A02E66795259132018E66 /* HouseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseView.swift; sourceTree = "<group>"; };
@@ -171,6 +175,7 @@
 				ED087675452679C35387B98C /* Model.swift */,
 				FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */,
 				5EC9417995E09D8907ED785B /* PayApp.swift */,
+				3259FD0A108A269C333686A7 /* PrivacyInfo.xcprivacy */,
 				B5D089C49DAB9DD5CD6BE0CF /* Pro.swift */,
 				1A44344E8096362017AC591B /* QuickParse.swift */,
 				CBE3F2358FF0A2540E730066 /* ReceiptPhotos.swift */,
@@ -193,6 +198,7 @@
 				92009F79708552562ABFB7E1 /* Info.plist */,
 				C495C9B5ABDB2E162467B1A8 /* PayWidget.entitlements */,
 				C52368CCF0CD05A29F53F06A /* PayWidget.swift */,
+				32FD5516FC5C1832BC5288DA /* PrivacyInfo.xcprivacy */,
 			);
 			path = PayWidget;
 			sourceTree = "<group>";
@@ -251,6 +257,7 @@
 			buildConfigurationList = 926CF30251108794B8DAF98B /* Build configuration list for PBXNativeTarget "PayWidget" */;
 			buildPhases = (
 				D911E628FE0736A44371C2B4 /* Sources */,
+				AEBA9CF380A2D65F1E39CC29 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -330,6 +337,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */,
+				A8555FD55F85608523EC852F /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AEBA9CF380A2D65F1E39CC29 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				15C527A659ECE27D3A275D7A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -105,7 +105,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(610)]).sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(600)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -465,7 +465,9 @@ struct DateSheet: View {
     // được khoanh một viền mảnh bo theo bậc, hai cột T7 / CN có nền nhạt (từ hàng ngày, không gồm hàng thứ), hôm nay chữ xanh,
     // ngày đang chọn là ô vuông bo nền xám
 
-    private static let rowH: CGFloat = 42
+    /// Tỉ lệ đo trên lịch của Peek: bước cột ≈ 3,5 lần chiều cao chữ số, bước hàng ≈ 0,89 bước cột. Bề ngang lưới cố định theo
+    /// tấm (≈ 49 pt một cột) nên chữ số 19 pt, hàng 44 pt — chữ nhỏ quá thì các ngày trông xa nhau
+    private static let rowH: CGFloat = 44
     private static let headH: CGFloat = 28
 
     private var monthGrid: some View {
@@ -512,10 +514,10 @@ struct DateSheet: View {
         let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
         return Button { pick(date) } label: {
             Text("\(cal.component(.day, from: date))")
-                .font(.system(size: 17, weight: on || today ? .bold : .medium, design: .rounded)).monospacedDigit()
+                .font(.system(size: 19, weight: on || today ? .bold : .medium, design: .rounded)).monospacedDigit()
                 .foregroundStyle(today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : inMonth ? Color.primary : Color.secondary.opacity(0.6))
-                .frame(width: 38, height: 34)
-                .background(on ? Color.primary.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 42, height: 38)
+                .background(on ? Color.primary.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }

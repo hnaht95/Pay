@@ -198,5 +198,7 @@ extension English {
         "%@ trả · %@": "%@ paid · %@",
         "bạn chịu %@": "your share %@",
         "Đã ghi %@đ vào %@ · bạn %@đ": "Added %@ to %@ · your share %@",
+        "Sửa khoản chung": "Edit shared expense",
+        "Sửa khoản này": "Edit this expense",
     ]
 }

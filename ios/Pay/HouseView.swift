@@ -56,6 +56,8 @@ struct HouseView: View {
     @State private var notifyOn: Bool?
     /// Mục "Cả nhóm" (số dư từng người, các lần trả giữa người khác, lịch sử trả tiền) đang mở
     @State private var showGroup = false
+    /// Khoản chung đang sửa
+    @State private var editingSpend: HouseSpend?
     @Environment(\.scenePhase) private var scenePhase
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
@@ -91,6 +93,7 @@ struct HouseView: View {
             #endif
         }
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
+        .sheet(item: $editingSpend) { HouseSpendEditor(editing: $0).environmentObject(store).sheetGrabber() }
         .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
             TextField(L("Tên"), text: $newMember)
             Button(L("Huỷ"), role: .cancel) { newMember = ""; claimAfterAdd = false }
@@ -720,13 +723,16 @@ struct HouseView: View {
         }
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onTapGesture { editingSpend = e }   // chạm để xem / sửa ai trả, chia cho ai
         .onHold {
             let c = Category.get(e.cat)
             menu = AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
                                 .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                                title: "\(e.note.isEmpty ? c.name : e.note.capFirst) · \(fmt(e.amount))",
                                subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
-                               items: [AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
+                               items: [AppMenuItem(icon: "pencil", title: L("Sửa khoản này")) { editingSpend = e },
+                                       AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
                                    Task { await house.delete(e.id) }
                                }])
         }
@@ -1174,6 +1180,8 @@ struct HouseMemberEditor: View {
 
 /// Thêm khoản chung: số tiền, ghi chú, ai ứng, chia cho ai; ghi luôn phần của mình vào chi tiêu cá nhân.
 struct HouseSpendEditor: View {
+    /// Đang sửa khoản có sẵn (nil: thêm khoản mới)
+    var editing: HouseSpend? = nil
     @EnvironmentObject var store: Store
     @ObservedObject private var house = House.shared
     @Environment(\.dismiss) private var dismiss
@@ -1206,7 +1214,7 @@ struct HouseSpendEditor: View {
                 }
                 .buttonStyle(Pressable())
                 .foregroundStyle(.primary)
-                Text(L("Khoản chung")).font(.system(size: 21, weight: .bold))
+                Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold))
                 Spacer()
             }
             .padding(.top, 8)
@@ -1272,7 +1280,7 @@ struct HouseSpendEditor: View {
                         }
                     }
 
-                    if let mine = myShare, mine > 0 {
+                    if editing == nil, let mine = myShare, mine > 0 {   // sửa khoản cũ: không ghi thêm vào chi tiêu cá nhân
                         Toggle(isOn: $logMine) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(L("Ghi %@đ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
@@ -1315,8 +1323,14 @@ struct HouseSpendEditor: View {
         .background(Palette.surface.ignoresSafeArea())
         .overlay(alignment: .bottom) { if failed { ToastView().padding(.bottom, 84) } }   // ngay trên nút Lưu
         .onAppear {
-            payer = house.me ?? house.members.first?.id ?? ""
-            shares = Set(house.members.map(\.id))
+            if let e = editing {
+                amountText = String(e.amount); note = e.note; cat = e.cat; catPicked = true
+                payer = e.payer; shares = Set(e.shares)
+                padShown = false
+            } else {
+                payer = house.me ?? house.members.first?.id ?? ""
+                shares = Set(house.members.map(\.id))
+            }
         }
     }
 
@@ -1371,6 +1385,11 @@ struct HouseSpendEditor: View {
         let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare
         let log = logMine
         Task {
+            if var e = editing {
+                e.amount = a; e.note = n; e.cat = c; e.payer = p; e.shares = s
+                guard await house.updateSpend(e) else { saving = false; failed = true; return }
+                dismiss(); return
+            }
             // Không lưu được: ở lại bảng, mở lại nút Lưu, House đã đưa lỗi lên thanh báo
             guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c) else { saving = false; failed = true; return }
             if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c) }

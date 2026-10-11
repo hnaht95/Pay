@@ -630,6 +630,15 @@ final class House: ObservableObject {
         return Settle.split(amount, shares, seed: "")[me]
     }
 
+    /// Sửa một khoản chung (số tiền, ghi chú, ai trả, chia cho ai, danh mục); giữ nguyên ngày.
+    func updateSpend(_ e: HouseSpend) async -> Bool {
+        if demo, let i = cur, let j = groups[i].spends.firstIndex(where: { $0.id == e.id }) { groups[i].spends[j] = e; return true }
+        guard let r = record(e.id) else { stale(); return false }
+        guard knows(e.shares + [e.payer]) else { stale(); return false }
+        r["amount"] = Int64(e.amount); r["note"] = e.note; r["payer"] = e.payer; r["shares"] = e.shares; r["cat"] = e.cat
+        return await run([r])
+    }
+
     func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String) async -> Bool {
         if demo, let i = cur {
             groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)

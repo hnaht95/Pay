@@ -197,5 +197,6 @@ extension English {
         "không nợ": "settled",
         "%@ trả · %@": "%@ paid · %@",
         "bạn chịu %@": "your share %@",
+        "Đã ghi %@đ vào %@ · bạn %@đ": "Added %@ to %@ · your share %@",
     ]
 }

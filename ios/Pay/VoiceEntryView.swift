@@ -549,6 +549,24 @@ struct VoiceEntryView: View {
     // MARK: Xử lý
 
     private func handle(_ said: String) {
+        // Câu có nhắc tên nhóm ("300k đi chợ nhà mình"): ghi vào nhóm đó, mình trả, chia đều cả nhóm; phần của mình ghi vào
+        // chi tiêu cá nhân. Xong đóng thẻ, báo ở màn chính
+        if !said.isEmpty, let hit = House.shared.groupMentioned(in: said),
+           let q = QuickParse.spoken(hit.rest) ?? QuickParse.expense(hit.rest) {
+            let cat = store.guessCategory(q.note), note = q.note
+            Task {
+                guard let mine = await House.shared.quickSpend(in: hit.group, amount: q.amount, note: note, cat: cat) else {
+                    notUnderstood = true
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    return
+                }
+                if mine > 0 { store.add(amount: mine, note: note.isEmpty ? hit.group.name : note, cat: cat, toast: false) }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                store.show(L("Đã ghi %@đ vào %@ · bạn %@đ", fmt(q.amount), hit.group.name, fmt(mine)))
+                leave()
+            }
+            return
+        }
         guard !said.isEmpty, let e = store.quickAdd(said, spoken: true, toast: false) else {
             notUnderstood = true
             UINotificationFeedbackGenerator().notificationOccurred(.warning)

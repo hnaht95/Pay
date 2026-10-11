@@ -589,6 +589,47 @@ final class House: ObservableObject {
     }
 
     @discardableResult
+    /// Câu nói nhắc tới một nhóm ("300k đi chợ nhà mình", "nhóm Đà Lạt 500k ăn tối", "200k lẩu vào nhà chung"):
+    /// nhóm đó và câu đã bỏ phần nhắc nhóm. Chỉ nhóm đã chọn "tôi là ai" (mới biết ai trả). Nói "nhà chung" / "nhóm chung"
+    /// mà chỉ có một nhóm thì là nhóm đó.
+    func groupMentioned(in text: String) -> (group: HouseGroup, rest: String)? {
+        let usable = groups.filter { $0.me != nil && !archived.contains($0.id) && !$0.name.isEmpty }
+        guard !usable.isEmpty else { return nil }
+        let opts: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        func wholeWord(_ r: Range<String.Index>, in t: String) -> Bool {
+            (r.lowerBound == t.startIndex || t[t.index(before: r.lowerBound)].isWhitespace)
+                && (r.upperBound == t.endIndex || !t[r.upperBound].isLetter)
+        }
+        var hit: (HouseGroup, Range<String.Index>)?
+        for g in usable.sorted(by: { $0.name.count > $1.name.count }) {
+            if let r = text.range(of: g.name, options: opts), wholeWord(r, in: text) { hit = (g, r); break }
+        }
+        if hit == nil, usable.count == 1 {
+            for phrase in ["nhà chung", "nhóm chung", "group"] {
+                if let r = text.range(of: phrase, options: opts), wholeWord(r, in: text) { hit = (usable[0], r); break }
+            }
+        }
+        guard let (g, r) = hit else { return nil }
+        // Bỏ tên nhóm và các chữ đi kèm ngay trước nó ("vào nhóm", "cho nhà", "nhóm"…)
+        var before = text[..<r.lowerBound].split(whereSeparator: \.isWhitespace).map(String.init)
+        let fillers: Set<String> = ["vao", "nhom", "cho", "o", "trong", "into", "to", "for", "group"]
+        while let w = before.last, fillers.contains(strip(w)) { before.removeLast() }
+        let rest = (before + [String(text[r.upperBound...])]).joined(separator: " ")
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return (g, rest)
+    }
+
+    /// Ghi nhanh một khoản chung vào nhóm `g` (từ giọng nói): mình trả, chia đều cả nhóm. Trả về phần của mình nếu lưu được.
+    func quickSpend(in g: HouseGroup, amount: Int, note: String, cat: String) async -> Int? {
+        guard let me = g.me else { return nil }
+        let shares = g.members.map(\.id)
+        let back = currentID
+        currentID = g.id
+        defer { currentID = back }
+        guard await addSpend(amount: amount, note: note, payer: me, shares: shares, cat: cat) else { return nil }
+        return Settle.split(amount, shares, seed: "")[me]
+    }
+
     func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String) async -> Bool {
         if demo, let i = cur {
             groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)

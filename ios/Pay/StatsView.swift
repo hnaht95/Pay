@@ -186,16 +186,16 @@ struct StatsView: View {
                         day = nil
                     }
                 } label: {
-                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 13, weight: .semibold))
+                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(on ? Self.inkText : Color.primary.opacity(0.6))
-                        .padding(.horizontal, 10).frame(height: 26)
+                        .padding(.horizontal, 22).frame(height: 40)
                         .background(Capsule().fill(on ? Self.ink : .clear))
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(2)
+        .padding(3)
         .background(Capsule().fill(Self.card))
         .sensoryFeedback(.selection, trigger: byMonth)
     }

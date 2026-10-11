@@ -828,7 +828,7 @@ extension View {
             let left = min(max((edge - f.minX) / reach, 0), 1)
             let right = min(max((f.maxX - (width - edge)) / reach, 0), 1)
             let t = max(left, right)
-            return content.blur(radius: 6 * t).opacity(1 - 0.55 * t)
+            return content.blur(radius: 6 * t).opacity(1 - 0.15 * t)   // nhoè là chính, chỉ nhạt rất ít (giữ màu viên)
         }
     }
 }

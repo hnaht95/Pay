@@ -712,7 +712,7 @@ struct CategoryEditor: View {
     var onAdd: (String) -> Void = { _ in }
 
     @State private var name = ""
-    @State private var icon = "🏠"
+    @State private var icon = "🐶"
     @State private var tone = 0
     @FocusState private var nameFocused: Bool
     @State private var pickingEmoji = false
@@ -993,7 +993,7 @@ struct CategoryEditor: View {
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone; photo = CategoryPhotos.image(e.k) }
-                else { tone = store.cats.count % 16; nameFocused = true }
+                else { tone = CategoryTone.custom(0xCC7351); nameFocused = true }   // danh mục mới: màu đất nung + em chó
             }
         }
     }

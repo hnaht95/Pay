@@ -733,9 +733,6 @@ private struct Waveform: View {
             let y0 = (size.height - (CGFloat(Self.rows) * step - Self.dotGap)) / 2
             let mid = Self.rows / 2
             for i in 0..<n {
-                // Chấm xanh mờ dần về hai mép, rõ nhất ở giữa (dạng chuông, mép còn 25%)
-                let u = abs(Double(i) / Double(max(n - 1, 1)) * 2 - 1)
-                let fade = 1 - 0.75 * pow(u, 1.6)
                 let shape: Double = (0.6 + 0.4 * Self.hash(i, 1)) * Self.taper(i, of: n)
                 let speed: Double = 5 + 7 * Self.hash(i, 2)
                 let jitter: Double = 0.5 + 0.5 * sin(time * speed + 6.283 * Self.hash(i, 3))
@@ -746,7 +743,7 @@ private struct Waveform: View {
                     let rect = CGRect(x: x0 + CGFloat(i) * step, y: y0 + CGFloat(r) * step, width: Self.dot, height: Self.dot)
                     let on = abs(r - mid) <= reach
                     // Chấm sáng xanh lá; chấm nền đen nhạt (chế độ tối thành trắng nhạt)
-                    ctx.fill(Path(ellipseIn: rect), with: .color(on ? Self.green.opacity(fade) : Color.primary.opacity(0.1)))
+                    ctx.fill(Path(ellipseIn: rect), with: .color(on ? Self.green : Color.primary.opacity(0.1)))
                 }
             }
         }

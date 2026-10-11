@@ -548,6 +548,15 @@ struct ExpenseRow: View {
                 .frame(width: 56, height: 56)
                 // Bo đồng tâm với thẻ: bo của thẻ trừ đi khoảng cách tới mép
                 .background(c.color, in: RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
+                // Có ảnh hoá đơn đính kèm: chấm xanh lá (màu icon app) ở góc trên phải ô biểu tượng, viền màu thẻ cho tách nền
+                .overlay(alignment: .topTrailing) {
+                    if ReceiptPhotos.has(e.id) {
+                        Circle().fill(Color(hex: 0x61BE6E)).frame(width: 12, height: 12)
+                            .overlay(Circle().strokeBorder(Palette.card, lineWidth: 2.5))
+                            .offset(x: 3, y: -3)
+                            .accessibilityLabel(L("Có ảnh hoá đơn"))
+                    }
+                }
                 // Vuốt để xoá: danh sách cắt hàng ở mép trái, ô biểu tượng trượt gần hết ra ngoài nhưng còn lộ một vệt nền màu.
                 // Hàng lệch khỏi chỗ cũ thì ô biểu tượng mờ đi
                 .opacity(swiped ? 0 : 1)
@@ -556,11 +565,6 @@ struct ExpenseRow: View {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
                 Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
                     .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
-                // Có ảnh hoá đơn đính kèm
-                if ReceiptPhotos.has(e.id) {
-                    Image(systemName: "photo").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
-                        .accessibilityLabel(L("Có ảnh hoá đơn"))
-                }
                 if repeats {
                     Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
                         .accessibilityLabel(L("Hằng tháng"))

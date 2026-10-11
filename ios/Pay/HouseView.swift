@@ -164,7 +164,10 @@ struct HouseView: View {
             GlassGroup {
                 BigButton(title: L("Thêm khoản chung"), icon: "plus", primary: true) { adding = true }
             }
-            .padding(.horizontal, 16).padding(.bottom, 8)
+            .padding(.horizontal, 16)
+            // Sát vạch Home hơn (cách mép màn hình ~22 điểm như thanh tab nổi của iOS): để nguyên vùng an toàn 34 điểm + 8 thì
+            // dưới hai nút trống một khoảng lớn
+            .padding(.bottom, HomeView.nativeEdge ? -12 : 8)
         }
     }
 

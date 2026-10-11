@@ -156,7 +156,7 @@ struct ProPaywall: View {
         if top is UIHostingController<ProPaywall> { return }
         let vc = UIHostingController(rootView: ProPaywall(feature: f))
         vc.modalPresentationStyle = .pageSheet
-        vc.sheetPresentationController?.prefersGrabberVisible = true
+        vc.sheetPresentationController?.prefersGrabberVisible = false   // như các bảng khác của app: không có vạch kéo
         top.present(vc, animated: true)
     }
 

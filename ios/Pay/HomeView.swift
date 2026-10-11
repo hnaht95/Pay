@@ -723,9 +723,8 @@ extension View {
         if film {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
         } else if #available(iOS 26.0, *) {
-            // Mép mờ của hệ thống quá nhẹ trên máy thật, nên phủ thêm lớp mờ tự làm phía dưới thanh nút
-            overlay(alignment: .bottom) { fallbackBlur }
-                .overlay(alignment: .bottom) { above().padding(.bottom, 8) }
+            // Chỉ dùng mép mờ của hệ thống, cùng kiểu thanh tiêu đề (không phủ thêm lớp chuyển màu tự làm)
+            overlay(alignment: .bottom) { above().padding(.bottom, 8) }
                 .safeAreaBar(edge: .bottom) { dock }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {

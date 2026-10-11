@@ -554,26 +554,6 @@ struct HouseView: View {
                 }
                 .padding(.top, 16)
             }
-            HStack(spacing: 10) {
-                HStack(spacing: -10) {
-                    ForEach(house.members.prefix(5)) { m in
-                        HouseAvatar(id: m.id, name: m.name, size: 32).overlay(Circle().stroke(Palette.bg, lineWidth: 2.5))
-                    }
-                }
-                if house.members.count > 5 {
-                    Text("+\(house.members.count - 5)").font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button { invite() } label: {
-                    Label(L("Mời"), systemImage: "person.badge.plus")
-                        .font(.system(size: 15, weight: .semibold))
-                        .padding(.horizontal, 14).frame(height: 36)
-                        .background(Palette.pill, in: Capsule())
-                }
-                .foregroundStyle(.primary)
-                .buttonStyle(Pressable())
-            }
-            .padding(.top, 18)
         }
         // Không bọc nền: nằm thẳng trên nền màn hình, chỉ các dòng từng người có nền (tránh lồng nhiều lớp nền)
         .padding(.top, 8)
@@ -637,14 +617,25 @@ struct HouseView: View {
         if showGroup {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(house.members) { m in memberRow(m, net[m.id] ?? 0) }
-                Button { claimAfterAdd = false; addingMember = true } label: {
-                    Label(L("Thêm người"), systemImage: "plus")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Palette.card, in: Capsule())
-                        .foregroundStyle(.primary)
+                // Mời người dùng Pay vào nhóm, hoặc thêm người không dùng Pay (mình ghi giúp phần của họ)
+                HStack(spacing: 10) {
+                    Button { invite() } label: {
+                        Label(L("Mời"), systemImage: "person.badge.plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(Palette.card, in: Capsule())
+                            .foregroundStyle(.primary)
+                    }
+                    .buttonStyle(Pressable())
+                    Button { claimAfterAdd = false; addingMember = true } label: {
+                        Label(L("Thêm người"), systemImage: "plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(Palette.card, in: Capsule())
+                            .foregroundStyle(.primary)
+                    }
+                    .buttonStyle(Pressable())
                 }
-                .buttonStyle(Pressable())
 
                 if !others.isEmpty {
                     Text(L("Giữa những người khác")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)

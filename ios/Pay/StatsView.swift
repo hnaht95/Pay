@@ -143,7 +143,7 @@ struct StatsView: View {
             if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).id(d) }
+                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(inset: 16).id(d) }
                 }
                 .scrollTargetLayout()
                 .padding(.horizontal, 16)
@@ -157,7 +157,7 @@ struct StatsView: View {
             // Rung nhẹ mỗi khi một ngày lướt qua giữa dải, như bánh xe chọn giờ của iOS
             .sensoryFeedback(.selection, trigger: centerDay)
             // Hai mép: nhoè dần như mép cuộn của iOS (kính mờ tan dần), không phủ màu nền lên
-            .modifier(EdgeBlur(fade: stripFade, width: 40))
+
             }
             // Công tắc Ngày / Tháng ngay dưới dải, giữa màn
             scopeToggle.frame(maxWidth: .infinity)
@@ -213,7 +213,7 @@ struct StatsView: View {
         return ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).id(m) }
+                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(inset: 16).id(m) }
                 }
                 .padding(.horizontal, 16)
             }

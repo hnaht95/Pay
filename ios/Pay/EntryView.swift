@@ -251,6 +251,7 @@ struct EntryView: View {
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
                         .buttonStyle(Pressable())
+                        .softScrollEdge(inset: 18)
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
@@ -270,7 +271,7 @@ struct EntryView: View {
             // Hai mép mờ dần khi cuộn: chip đi ra mép thì tan vào nền thay vì bị cắt thẳng
             // Chỉ mờ phía còn chip bị che: đang ở đầu hàng thì mép trái không mờ, cuộn hết thì mép phải không mờ
             .modifier(ChipEdges(fade: $chipFade))
-            .modifier(EdgeBlur(fade: chipFade, width: 30))
+
             // Sau khi setup() gán xong `cat` (onAppear của hàng chip chạy trước, lúc đó `cat` còn nil): đưa nó lên đầu hàng
             // (đứng đầu rồi nên hàng ở vị trí ban đầu là thấy, không cuộn: cuộn tới chip thì mất lề trái)
             .onChange(of: ready) { _, _ in leadCat = cat }
@@ -534,7 +535,7 @@ struct DateSheet: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
-                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).id(d)
+                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(inset: 0).id(d)
                     }
                 }
                 .scrollTargetLayout()
@@ -814,30 +815,19 @@ struct DateSheet: View {
 }
 
 /// Theo dõi hàng chip đang cuộn tới đâu: còn chip bị che ở mép trái / phải không (iOS 17 không có, giữ mờ mép phải).
-/// Mép trái / phải của dải cuộn ngang nhoè dần như mép cuộn của iOS: lớp kính mờ, rõ nhất sát mép rồi tan vào giữa.
-/// Chỉ hiện ở phía còn nội dung bị che (xem ChipEdges)
-struct EdgeBlur: ViewModifier {
-    let fade: [Bool]
-    var width: CGFloat = 36
-
-    func body(content: Content) -> some View {
-        content.overlay {
-            HStack(spacing: 0) {
-                edge(.leading).opacity(fade[0] ? 1 : 0)
-                Spacer(minLength: 0)
-                edge(.trailing).opacity(fade[1] ? 1 : 0)
-            }
-            .allowsHitTesting(false)
+extension View {
+    /// Một phần tử trong dải cuộn ngang: ra tới mép dải thì nhoè dần và nhạt đi (như mép cuộn mềm của iOS), chính nó nhoè
+    /// chứ không phủ lớp nào lên. `inset`: lề trong của dải (phần tử nằm yên ở lề thì chưa nhoè)
+    func softScrollEdge(inset: CGFloat) -> some View {
+        visualEffect { content, g in
+            let f = g.frame(in: .scrollView(axis: .horizontal))
+            let width = g.bounds(of: .scrollView(axis: .horizontal))?.width ?? f.maxX
+            let reach = max(f.width * 0.7, 1)
+            let left = min(max((inset - f.minX) / reach, 0), 1)
+            let right = min(max((f.maxX - (width - inset)) / reach, 0), 1)
+            let t = max(left, right)
+            return content.blur(radius: 6 * t).opacity(1 - 0.55 * t)
         }
-    }
-
-    private func edge(_ side: HorizontalEdge) -> some View {
-        Rectangle().fill(.ultraThinMaterial)
-            .mask {
-                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.6), location: 0.4), .init(color: .clear, location: 1)],
-                               startPoint: side == .leading ? .leading : .trailing, endPoint: side == .leading ? .trailing : .leading)
-            }
-            .frame(width: width)
     }
 }
 

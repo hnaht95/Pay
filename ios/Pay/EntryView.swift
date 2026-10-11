@@ -125,7 +125,6 @@ struct EntryView: View {
                     if r.amount == nil { store.show(L("Không đọc được tổng tiền trên hoá đơn")) }
                 }
             }
-            .ignoresSafeArea()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"

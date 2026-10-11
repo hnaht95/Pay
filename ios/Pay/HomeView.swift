@@ -101,7 +101,6 @@ struct HomeView: View {
                     entry = .receipt(amount: r.amount, merchant: r.merchant)
                 }
             }
-            .ignoresSafeArea()
         }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }

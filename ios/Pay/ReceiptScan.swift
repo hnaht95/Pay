@@ -1,30 +1,143 @@
+import AVFoundation
+import PhotosUI
 import SwiftUI
 import Vision
-import VisionKit
 
-/// Chụp hoá đơn bằng máy quét tài liệu của iOS (tự bắt khung, làm phẳng giấy)
-struct ReceiptCamera: UIViewControllerRepresentable {
+/// Màn chụp hoá đơn của Pay, cùng kiểu màn quét QR: camera toàn màn hình, khung dọc gợi ý chỗ đặt hoá đơn (ngoài khung tối),
+/// một nút chụp tròn, "Đóng" và "Chọn ảnh". Không dùng máy quét tài liệu của iOS: nó có sẵn bộ lọc / chế độ chụp không ẩn được
+struct ReceiptCamera: View {
     var done: (UIImage?) -> Void
+    @StateObject private var cam = ReceiptCam()
+    @State private var photo: PhotosPickerItem?
+    @State private var finished = false
 
-    func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
-        let vc = VNDocumentCameraViewController()
-        vc.delegate = context.coordinator
-        return vc
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            CameraPreview(session: cam.session).ignoresSafeArea()
+            // Khung dọc tỉ lệ tờ hoá đơn: trong khung sáng, ngoài phủ tối
+            GeometryReader { g in
+                let w = g.size.width * 0.78, h = min(g.size.height * 0.62, w * 1.45)
+                let hole = RoundedRectangle(cornerRadius: 28, style: .continuous)
+                ZStack {
+                    Color.black.opacity(0.62)
+                    hole.frame(width: w, height: h).position(x: g.size.width / 2, y: g.size.height * 0.44).blendMode(.destinationOut)
+                }
+                .compositingGroup()
+                hole.strokeBorder(.white.opacity(0.9), lineWidth: 3)
+                    .frame(width: w, height: h).position(x: g.size.width / 2, y: g.size.height * 0.44)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+
+            VStack {
+                Text(cam.error ?? L("Đặt hoá đơn vào khung rồi bấm chụp"))
+                    .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center).padding(.horizontal, 24)
+                    .padding(.top, 20)
+                Spacer()
+                HStack(spacing: 12) {
+                    Button { finish(nil) } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
+                    Button { cam.capture { finish($0) } } label: {
+                        Circle().fill(.white).frame(width: 64, height: 64)
+                            .padding(5).overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                    }
+                    .buttonStyle(Pressable())
+                    .disabled(cam.error != nil)
+                    PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh")) }
+                }
+                .padding(.horizontal, 16).padding(.bottom, 12)
+            }
+        }
+        .onAppear { cam.start() }
+        .onDisappear { cam.stop() }
+        .task(id: photo) {
+            guard let item = photo, let data = try? await item.loadTransferable(type: Data.self), !Task.isCancelled,
+                  let img = UIImage(data: data) else { return }
+            finish(img)
+        }
     }
 
-    func updateUIViewController(_ vc: VNDocumentCameraViewController, context: Context) {}
+    private func pill(_ s: String) -> some View {
+        Text(s).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(.white.opacity(0.18), in: Capsule())
+    }
 
-    func makeCoordinator() -> Coordinator { Coordinator(done: done) }
+    private func finish(_ img: UIImage?) {
+        guard !finished else { return }
+        finished = true
+        if img != nil { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+        done(img)
+    }
+}
 
-    final class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
-        let done: (UIImage?) -> Void
-        init(done: @escaping (UIImage?) -> Void) { self.done = done }
+/// Camera chụp ảnh tĩnh cho màn chụp hoá đơn
+@MainActor
+final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
+    let session = AVCaptureSession()
+    private let output = AVCapturePhotoOutput()
+    private var configured = false
+    private var onPhoto: ((UIImage?) -> Void)?
+    @Published var error: String?
 
-        func documentCameraViewController(_ c: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
-            done(scan.pageCount > 0 ? scan.imageOfPage(at: 0) : nil)
+    func start() {
+        AVCaptureDevice.requestAccess(for: .video) { ok in
+            Task { @MainActor in
+                guard ok else { self.error = L("Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh\"."); return }
+                self.configure()
+            }
         }
-        func documentCameraViewControllerDidCancel(_ c: VNDocumentCameraViewController) { done(nil) }
-        func documentCameraViewController(_ c: VNDocumentCameraViewController, didFailWithError error: Error) { done(nil) }
+    }
+
+    private func configure() {
+        if !configured {
+            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                  let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input), session.canAddOutput(output) else {
+                error = L("Không mở được camera. Bấm \"Chọn ảnh\" để dùng ảnh có sẵn."); return
+            }
+            session.sessionPreset = .photo
+            session.addInput(input)
+            session.addOutput(output)
+            configured = true
+        }
+        let s = session
+        DispatchQueue.global(qos: .userInitiated).async { if !s.isRunning { s.startRunning() } }
+    }
+
+    func stop() {
+        let s = session
+        DispatchQueue.global().async { if s.isRunning { s.stopRunning() } }
+    }
+
+    func capture(_ done: @escaping (UIImage?) -> Void) {
+        guard configured else { return }
+        onPhoto = done
+        output.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
+    }
+
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        let img = photo.fileDataRepresentation().flatMap(UIImage.init(data:))
+        Task { @MainActor in self.onPhoto?(img); self.onPhoto = nil }
+    }
+}
+
+private struct CameraPreview: UIViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeUIView(context: Context) -> PreviewView {
+        let v = PreviewView()
+        v.layer.session = session
+        v.layer.videoGravity = .resizeAspectFill
+        v.backgroundColor = .black
+        return v
+    }
+
+    func updateUIView(_ v: PreviewView, context: Context) {}
+
+    final class PreviewView: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        override var layer: AVCaptureVideoPreviewLayer { super.layer as! AVCaptureVideoPreviewLayer }
     }
 }
 

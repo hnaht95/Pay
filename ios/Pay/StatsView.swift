@@ -144,7 +144,7 @@ struct StatsView: View {
             if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 8).id(d) }
+                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 14).id(d) }
                 }
                 .scrollTargetLayout()
             }
@@ -220,7 +220,7 @@ struct StatsView: View {
         return ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 8).id(m) }
+                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 14).id(m) }
                 }
                 .scrollTargetLayout()
             }
@@ -1049,12 +1049,11 @@ struct SevenColumns: ViewModifier {
     func body(content: Content) -> some View {
         content.mask {
             HStack(spacing: 0) {
-                // Chỉ tan trong 8 pt sát mép màn hình
-                Color.clear.frame(width: 4)
-                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 8)
+                // Vùng tan đúng bằng lề 16: từ mép màn hình tới mép cột đầu / cột cuối; 7 cột đứng yên thì nét hoàn toàn
+                // (14 thay vì 16: tấm Thống kê của iOS 26 lùi vào ~1,5 pt mỗi bên, lề thật còn chừng 14,5)
+                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 14)
                 Color.black
-                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 8)
-                Color.clear.frame(width: 4)
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 14)
             }
             .padding(.vertical, -30)
         }

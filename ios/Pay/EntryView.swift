@@ -618,7 +618,8 @@ struct DateSheet: View {
                         .padding(.top, 8)
                     GeometryReader { g in
                         if spent > 0 {
-                            let h = max(8, g.size.height * r)
+                            // Thấp nhất 18: thấp hơn thì lớp chỉ còn một vệt mỏng cong theo đáy viên, nhìn như lỗi vẽ
+                            let h = max(18, g.size.height * r)
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
                                 .fill(on ? Self.pillInkText.opacity(0.22) : Color.primary.opacity(0.09))
                                 .frame(height: h)

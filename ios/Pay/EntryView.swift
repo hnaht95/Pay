@@ -150,7 +150,7 @@ struct EntryView: View {
                         Button { scanningReceipt = true } label: {
                             Group {
                                 if readingReceipt { ProgressView() } else {
-                                    Image(systemName: "doc.text.viewfinder").font(.system(size: 20, weight: .medium))
+                                    Image(systemName: "camera.aperture").font(.system(size: 20, weight: .medium))
                                 }
                             }
                             .foregroundStyle(.primary)

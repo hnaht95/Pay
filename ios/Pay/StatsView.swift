@@ -62,14 +62,7 @@ struct StatsView: View {
             .softTopEdge()
             .background(Self.page.ignoresSafeArea())
             .screenTitle(L("Thống kê"))
-            // Ngày / Tháng ở góc phải thanh tiêu đề, nhường hàng dưới cho tên tháng và nút Hôm nay
-            .toolbar {
-                if #available(iOS 26.0, *) {
-                    ToolbarItem(placement: .topBarTrailing) { scopeToggle }.sharedBackgroundVisibility(.hidden)
-                } else {
-                    ToolbarItem(placement: .topBarTrailing) { scopeToggle }
-                }
-            }
+
             .navigationBarTitleDisplayMode(.inline)
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
@@ -165,6 +158,8 @@ struct StatsView: View {
                 }
             }
             }
+            // Công tắc Ngày / Tháng ngay dưới dải, giữa màn
+            scopeToggle.frame(maxWidth: .infinity)
         }
         // Không nền thẻ, dải ngày tràn ra hai mép màn hình (bù lại lề 16 của trang); chữ tiêu đề vẫn thẳng lề
         .padding(.horizontal, -16)

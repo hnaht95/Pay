@@ -891,8 +891,8 @@ struct CategoryEditor: View {
             }
             .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
-            // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày; phía sau mờ dần như thanh tiêu đề
+            .bottomBar {
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
                     BigButton(title: L("Lưu"), icon: "", primary: true) { save() }
@@ -902,9 +902,8 @@ struct CategoryEditor: View {
                 // Sát đáy như màn nhập: cách mép dưới 16 bằng lề hai bên (vùng an toàn 34, lùi xuống 18)
                 .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
-            // Mép trên và dưới vùng cuộn mờ dần (không cắt ngang dưới tiêu đề, không dải nền đặc sau hai nút)
+            // Mép trên vùng cuộn mờ dần (không cắt ngang dưới tiêu đề)
             .softTopEdge()
-            .softBottomEdge()
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone }
                 else { tone = store.cats.count % 16; nameFocused = true }

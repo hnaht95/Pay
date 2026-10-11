@@ -753,8 +753,13 @@ extension View {
         if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.soft, for: .top) } else { self }
     }
 
-    @ViewBuilder func softBottomEdge() -> some View {
-        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.soft, for: .bottom) } else { self }
+    /// Thanh nút ở đáy, phía sau mờ dần đúng kiểu thanh tiêu đề (mép cuộn mềm của iOS 26)
+    @ViewBuilder func bottomBar<B: View>(@ViewBuilder _ bar: () -> B) -> some View {
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom, spacing: 0, content: bar).scrollEdgeEffectStyle(.soft, for: .bottom)
+        } else {
+            safeAreaInset(edge: .bottom, spacing: 0, content: bar)
+        }
     }
 
     /// Tiêu đề màn hình: cỡ 21 đậm, bằng "Sửa / Lưu khoản chi" (tiêu đề mặc định của iOS nhỏ quá)

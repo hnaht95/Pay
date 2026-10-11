@@ -48,13 +48,13 @@ struct ReceiptCamera: View {
                 Color.clear
                     .aspectRatio(0.72, contentMode: .fit)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { holeRect = $0 }
-                // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai. Hai góc dưới ngoài cùng bo theo góc
+                // Ba nút to: cột trái Chọn ảnh / Đóng, cột phải nút chụp cao bằng cả hai. Hai góc dưới ngoài cùng bo theo góc
                 // màn hình (cụm nút cách mép dưới bằng lề hai bên, 16 pt)
                 let corner: CGFloat = 18, screen: CGFloat = 18
                 HStack(spacing: 12) {
                     VStack(spacing: 12) {
-                        Button { finish(nil) } label: { pill(L("Đóng"), bottomLeading: corner) }.buttonStyle(Pressable())
-                        PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh"), bottomLeading: screen) }
+                        PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh"), bottomLeading: corner) }
+                        Button { finish(nil) } label: { pill(L("Đóng"), bottomLeading: screen) }.buttonStyle(Pressable())
                     }
                     Button {
                         // Bấm chụp: rung một nhịp như nút chụp của Camera, màn loé trắng thoáng qua
@@ -63,7 +63,8 @@ struct ReceiptCamera: View {
                         withAnimation(.easeOut(duration: 0.35)) { flash = false }
                         cam.capture { finish($0) }
                     } label: {
-                        Image(systemName: "camera.aperture").font(.system(size: 36, weight: .medium))
+                        // Không icon, không chữ: một mảng vàng to là nút chụp (VoiceOver vẫn đọc "Chụp")
+                        Color.clear.contentShape(Rectangle())
                             .accessibilityLabel(L("Chụp"))
                         // Vàng mù tạt retro (cùng bảng màu các ô Thống kê), icon xanh navy
                         .foregroundStyle(Color(hex: 0x1F3F6E))

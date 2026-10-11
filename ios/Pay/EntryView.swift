@@ -398,6 +398,8 @@ struct DateSheet: View {
     @Environment(\.dismiss) private var dismiss
     /// Tháng đang xem
     @State private var month = Date()
+    /// Lần đổi tháng gần nhất là tới tháng sau (lưới trượt lên) hay lùi tháng trước (trượt xuống)
+    @State private var forward = true
 
     private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
     private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
@@ -408,10 +410,19 @@ struct DateSheet: View {
             HStack {
                 Text(title).font(.system(size: 21, weight: .bold))
                 Spacer()
-                arrow("chevron.left", L("Tháng trước")) { shift(-1) }
-                arrow("chevron.right", L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
+                // Như hai mũi tên đổi tuần của Peek: chỉ có nét, không nền; tháng xếp dọc nên mũi tên lên / xuống
+                arrow("chevron.up", L("Tháng trước")) { shift(-1) }
+                arrow("chevron.down", L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
-            monthGrid
+            // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
+            ZStack {
+                monthGrid
+                    .id(first)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
+                        removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
+            }
+            .clipped()
             Spacer(minLength: 0)
             HStack(spacing: 4) {
                 Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
@@ -443,8 +454,8 @@ struct DateSheet: View {
 
     private func arrow(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: symbol).font(.system(size: 14, weight: .bold)).foregroundStyle(.primary)
-                .frame(width: 38, height: 38).background(Palette.pill, in: Circle())
+            Image(systemName: symbol).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.5))
+                .frame(width: 38, height: 34).contentShape(Rectangle())
         }
         .buttonStyle(Pressable()).accessibilityLabel(label)
     }
@@ -518,7 +529,8 @@ struct DateSheet: View {
 
     private func shift(_ by: Int) {
         guard let m = cal.date(byAdding: .month, value: by, to: first), m <= Date() else { return }
-        withAnimation(.snappy) { month = m }
+        forward = by > 0
+        withAnimation(.snappy(duration: 0.32)) { month = m }
     }
 
     /// Đổi ngày, giữ nguyên giờ phút

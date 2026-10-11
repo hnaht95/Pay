@@ -649,11 +649,12 @@ struct DateSheet: View {
                         .frame(height: 24)
                         .padding(.top, 8)
                     GeometryReader { g in
-                        if spent > 0 {
+                        // Ngày / tháng không chi vẫn có khối thấp nhất, rất mờ (không để trống viên)
+                        Group {
                             // Thấp nhất 18: thấp hơn thì lớp chỉ còn một vệt mỏng cong theo đáy viên, nhìn như lỗi vẽ
                             let h = max(18, g.size.height * r)
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
-                                .fill(on ? Self.pillInkText.opacity(0.22) : Color.primary.opacity(0.09))
+                                .fill(on ? Self.pillInkText.opacity(spent > 0 ? 0.22 : 0.08) : Color.primary.opacity(spent > 0 ? 0.09 : 0.035))
                                 .frame(height: h)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
                                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))

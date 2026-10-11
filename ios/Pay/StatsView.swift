@@ -273,10 +273,11 @@ struct StatsView: View {
                         .frame(height: 24)
                         .padding(.top, 8)
                     GeometryReader { g in
-                        if spent > 0 {
+                        // Ngày / tháng không chi vẫn có khối thấp nhất, rất mờ (không để trống viên)
+                        Group {
                             let h = max(18, g.size.height * r)   // thấp nhất 18: thấp hơn thì chỉ còn vệt mỏng cong theo đáy viên
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
-                                .fill(on ? Self.inkText.opacity(0.22) : Color.primary.opacity(0.09))
+                                .fill(on ? Self.inkText.opacity(spent > 0 ? 0.22 : 0.08) : Color.primary.opacity(spent > 0 ? 0.09 : 0.035))
                                 .frame(height: h)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
                                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -322,12 +323,13 @@ struct StatsView: View {
                         .frame(height: 24)
                         .padding(.top, 8)
                     GeometryReader { g in
-                        if spent > 0 {
+                        // Ngày / tháng không chi vẫn có khối thấp nhất, rất mờ (không để trống viên)
+                        Group {
                             // Cắt theo khung bo góc cao hết phần dưới số: lúc thấp, góc dưới vẫn khớp góc viên ngoài
                             // (tự bo theo chiều cao của lớp xanh thì lớp thấp thành viên thuốc, lệch góc)
                             let h = max(18, g.size.height * r)   // thấp nhất 18: thấp hơn thì chỉ còn vệt mỏng cong theo đáy viên
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
-                                .fill(on ? Self.inkText.opacity(0.22) : Color.primary.opacity(0.09))
+                                .fill(on ? Self.inkText.opacity(spent > 0 ? 0.22 : 0.08) : Color.primary.opacity(spent > 0 ? 0.09 : 0.035))
                                 .frame(height: h)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
                                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))

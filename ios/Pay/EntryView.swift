@@ -1048,13 +1048,15 @@ struct BankChooser: View {
                     ForEach(BankData.apps.filter(\.fill)) { row($0) }
                 } header: {
                     Text(L("Mở sẵn người nhận + số tiền"))
+                } footer: {
+                    Text(L("Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận."))
                 }
                 Section {
                     ForEach(BankData.apps.filter { !$0.fill }) { row($0) }
                 } header: {
                     Text(L("Chỉ mở app (quét lại QR)"))
                 } footer: {
-                    Text(L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
+                    Text(L("Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Pay ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả.") + "\n\n" + L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
                 }
             }
             .screenTitle(L("Bạn dùng app ngân hàng nào?"))

@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận.": "After scanning, Pay opens the transfer screen in your bank app with the recipient and amount filled in. You just confirm.",
+        "Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Pay ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả.": "These banks don't let other apps fill in a transfer yet. Pay logs the expense and opens your bank app; scan the QR code again there to pay.",
         "Bạn dùng app ngân hàng nào?": "Which bank app do you use?",
         "Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán.": "Change it anytime in Settings › Payments.",
         "Xem **toàn bộ lịch sử**, từ khoản chi đầu tiên": "See your **full history**, back to your first expense",

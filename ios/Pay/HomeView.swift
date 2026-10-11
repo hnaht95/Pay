@@ -264,8 +264,8 @@ struct HomeView: View {
         // đúng như hàng của nó đang hiện, để tổng các ô vẫn bằng tổng tháng
         for e in store.monthItems(now) { perCat[Category.get(e.c).k, default: 0] += e.a }
         // Mỗi danh mục dài cả hàng hoặc nửa hàng (đổi trong bảng nhấn giữ). Ô nửa hàng đứng lẻ ngay trước một ô dài
-        // thì giãn ra cho kín hàng. Ô dấu + luôn ở cuối, nửa hàng.
-        var rows: [[Category?]] = [], half: [Category?] = []   // nil = ô dấu +
+        // thì giãn ra cho kín hàng. Nút thêm danh mục là một dòng thấp riêng ở cuối, dài cả hàng.
+        var rows: [[Category?]] = [], half: [Category?] = []
         for c in Category.all {
             if store.isWide(c.k) {
                 if !half.isEmpty { rows.append(half); half = [] }
@@ -275,7 +275,7 @@ struct HomeView: View {
                 if half.count == 2 { rows.append(half); half = [] }
             }
         }
-        half.append(nil); rows.append(half)
+        if !half.isEmpty { rows.append(half) }
         return VStack(spacing: 12) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: 12) {
@@ -297,18 +297,17 @@ struct HomeView: View {
                                 .buttonStyle(Pressable())
                                 .accessibilityLabel(L("Nhập khoản %@", c.name))
                             }
-                        } else {
-                            addTile
                         }
                     }
-                    // Ô dấu + đứng một mình vẫn chỉ rộng nửa hàng
-                    if row.count == 1, row[0] == nil { Color.clear.frame(maxWidth: .infinity) }
+                    // Ô nửa hàng đứng lẻ ở cuối vẫn chỉ rộng nửa hàng
+                    if row.count == 1, let c = row[0], !store.isWide(c.k) { Color.clear.frame(maxWidth: .infinity) }
                 }
             }
+            addTile
         }
     }
 
-    /// Ô cuối: tạo danh mục riêng. Dấu + nhỏ và chữ ở giữa ô (giống nút Tạo nhóm mới)
+    /// Dòng cuối: tạo danh mục riêng. Thấp, dài cả hàng, dấu + nhỏ và chữ ở giữa (giống nút Tạo nhóm mới)
     private var addTile: some View {
         Button { addingCat = true } label: {
             HStack(spacing: 8) {
@@ -317,7 +316,7 @@ struct HomeView: View {
             }
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity, minHeight: 140)
+                .frame(maxWidth: .infinity, minHeight: 64)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
         }

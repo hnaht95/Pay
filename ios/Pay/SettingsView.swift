@@ -437,16 +437,8 @@ struct BudgetSlider: View {
 
     private static func level(at p: Double) -> Int { levels[Int((min(max(p, 0), 1) * last).rounded())] }
 
-    /// 8.000.000 -> "8tr", 8.500.000 -> "8,5tr", 7.250.000 -> "7,25tr", 500.000 -> "500k" (tiếng Anh: "8M", "8.5M", "7.25M").
-    /// Số nhập tay giữ đúng tới hàng nghìn (1.004.000 -> "1,004tr", không làm tròn thành "1tr"); lẻ dưới một nghìn thì hiện đủ số.
-    static func compact(_ v: Int) -> String {
-        if v % 1000 != 0 { return "\(fmt(v))" }
-        if v < 1_000_000 { return "\(v / 1000)k" }
-        var s = String(format: "%.3f", Double(v) / 1_000_000)
-        while s.hasSuffix("0") { s.removeLast() }
-        if s.hasSuffix(".") { s.removeLast() }
-        return Lang.isEnglish ? s + "M" : s.replacingOccurrences(of: ".", with: ",") + "tr"
-    }
+    /// Số tiền trên thanh: ghi đủ số (8.000.000), không viết tắt kiểu "8tr" / "500k"
+    static func compact(_ v: Int) -> String { fmt(v) }
 
     private var shown: Int { draft ?? value }
     /// Mức 0 không phải bề rộng 0: mảng sáng phải bọc trọn nhãn chữ và vạch tay nắm

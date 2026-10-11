@@ -645,7 +645,7 @@ struct StatsView: View {
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 3])).foregroundStyle(Color.primary.opacity(0.1))
                     }
                     // Số căn trái theo mép thẻ
-                    AxisValueLabel { if let n = v.as(Double.self) { Text(short(Int(n))).frame(width: 30, alignment: .leading) } }
+                    AxisValueLabel { if let n = v.as(Double.self) { Text(short(Int(n))).frame(width: 74, alignment: .leading) } }
                 }
             }
             .chartGesture { proxy in
@@ -865,20 +865,8 @@ struct StatsView: View {
         return f.string(from: d)
     }
 
-    /// 1250000 -> "1,3tr", 45000 -> "45k" (tiếng Anh: "1.3M", "45k")
-    private func short(_ n: Int) -> String {
-        if n >= 1_000_000 {
-            let v = Double(n) / 1e6
-            if Lang.isEnglish {
-                let t = v >= 10 ? String(Int(v.rounded())) : String(format: "%.1f", v)
-                return (t.hasSuffix(".0") ? String(t.dropLast(2)) : t) + "M"
-            }
-            let t = v >= 10 ? String(Int(v.rounded())) : String(format: "%.1f", v).replacingOccurrences(of: ".", with: ",")
-            return (t.hasSuffix(",0") ? String(t.dropLast(2)) : t) + "tr"
-        }
-        if n >= 1000 { return "\(n / 1000)k" }
-        return "\(n)"
-    }
+    /// Số tiền ghi đủ (1.250.000), không viết tắt kiểu "1,3tr" / "45k"
+    private func short(_ n: Int) -> String { fmt(n) }
 }
 
 /// Nền sọc chéo (kiểu ảnh mẫu) cho cột "Chi tiêu khác" và phần còn trống của thanh hạn mức.

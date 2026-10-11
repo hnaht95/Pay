@@ -17,9 +17,6 @@ struct StatsView: View {
     @State private var centerDay: Date? = Calendar.current.startOfDay(for: Date())
     /// Mờ mép trái / phải của dải ngày (chỉ khi còn ngày khuất bên đó; mở ra ở hôm nay nên mép phải không mờ)
     @State private var stripFade = [true, false]
-    /// Tháng đầu tiên đang hiện trên biểu đồ chi theo tháng (biểu đồ cuộn ngang, mỗi lần thấy 6 tháng)
-    @State private var chartStart = Calendar.current.date(byAdding: .month, value: -5,
-        to: Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))!)!
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -234,10 +231,6 @@ struct StatsView: View {
     /// Tháng hiện trên lịch mở rộng cũng là tháng đang xem (và trang 6 tháng của biểu đồ chứa nó)
     private func showMonth(_ d: Date) {
         month = d
-        // Biểu đồ tháng cuộn tới cho thấy tháng đang xem (ở cột cuối nếu đang nằm ngoài khung 6 tháng)
-        let m = cal.date(from: cal.dateComponents([.year, .month], from: d))!
-        let end = cal.date(byAdding: .month, value: 6, to: chartStart)!
-        if m < chartStart || m >= end { chartStart = max(allMonths.first ?? m, cal.date(byAdding: .month, value: -5, to: m)!) }
         let start = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
         page = max(0, (cal.dateComponents([.month], from: cal.date(from: cal.dateComponents([.year, .month], from: d))!, to: start).month ?? 0) / 6)
     }
@@ -530,14 +523,95 @@ struct StatsView: View {
                   selected: { d in day.map { cal.isDate($0, inSameDayAs: d) } ?? true },
                   tap: { d in if d <= Date() { day = d } })
         case .month:
-            trend(L("Chi theo tháng"), allMonths, unit: .month, label: shortMonth, selected: isSelected, tap: { d in
-                day = nil
-                showMonth(d)
-                // Dải ngày cuộn tới ngày cuối của tháng đó (tháng này thì tới hôm nay)
-                let last = cal.date(byAdding: .day, value: -1, to: cal.dateInterval(of: .month, for: d)!.end)!
-                withAnimation(.snappy) { centerDay = cal.startOfDay(for: min(last, Date())) }
-            })
+            monthTrend
         }
+    }
+
+    // MARK: Chi theo tháng — số lớn của tháng đang xem + dải cột tháng vuốt ngang (chạm cột để chọn tháng)
+
+    private var monthTrend: some View {
+        let months = allMonths
+        let totals = months.map { sum(spending(in: cal.dateInterval(of: .month, for: $0)!)) }
+        let used = totals.filter { $0 > 0 }
+        let avg = used.isEmpty ? 0 : used.reduce(0, +) / used.count
+        // Mốc chiều cao: tháng cao nhất, trừ khi nó vọt hẳn (gấp 2 tháng cao thứ hai) — khi đó cột ấy đầy khung,
+        // các tháng khác vẫn so được với nhau
+        let sorted = used.sorted(by: >)
+        let top = max(sorted.count > 1 && sorted[0] > sorted[1] * 2 ? sorted[1] : (sorted.first ?? 1), 1)
+        let current = sum(spending(in: cal.dateInterval(of: .month, for: month)!))
+        let vsAvg = avg > 0 ? Int((Double(current - avg) / Double(avg) * 100).rounded()) : 0
+        return card {
+            Text(L("Chi theo tháng")).font(.system(size: 17, weight: .semibold))
+            Group {
+                if avg > 0 && current > 0 {
+                    Text(monthName(month) + " · " + (vsAvg == 0 ? L("bằng mức trung bình")
+                        : vsAvg > 0 ? L("cao hơn TB %ld%%", vsAvg) : L("thấp hơn TB %ld%%", -vsAvg)))
+                } else {
+                    Text(monthName(month))
+                }
+            }
+            .font(.system(size: 13)).foregroundStyle(.secondary)
+            .padding(.top, 2)
+            Text(fmt(current))
+                .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
+                .foregroundStyle(Color(light: 0x1F3F6E, dark: 0xB9CDEB))
+                .contentTransition(.numericText())
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal) {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(Array(months.enumerated()), id: \.element) { i, m in
+                            monthColumn(m, total: totals[i], top: top).id(m)
+                        }
+                    }
+                    .scrollTargetLayout()
+                    .padding(.horizontal, 20)
+                }
+                .scrollIndicators(.hidden)
+                .defaultScrollAnchor(.trailing)
+                .padding(.horizontal, -20)
+                .onChange(of: month) {
+                    withAnimation(.snappy) { proxy.scrollTo(cal.date(from: cal.dateComponents([.year, .month], from: month))!, anchor: .center) }
+                }
+            }
+            .frame(height: 118)
+            .padding(.top, 8)
+            if !used.isEmpty {
+                HStack(spacing: 8) {
+                    stat(L("Trung bình"), avg)
+                    stat(L("Thấp nhất"), used.min()!)
+                    stat(L("Cao nhất"), used.max()!)
+                }
+                .padding(.top, 10)
+            }
+        }
+    }
+
+    /// Một cột tháng: cột bo góc cao theo mức chi (tháng đang xem tô vàng mù tạt), tên tháng ở dưới
+    private func monthColumn(_ m: Date, total: Int, top: Int) -> some View {
+        let on = isSelected(m)
+        let h = total > 0 ? max(8, 88 * min(Double(total) / Double(top), 1)) : 4
+        return Button {
+            withAnimation(.snappy) {
+                day = nil
+                showMonth(m)
+                // Dải ngày cuộn tới ngày cuối của tháng đó (tháng này thì tới hôm nay)
+                let last = cal.date(byAdding: .day, value: -1, to: cal.dateInterval(of: .month, for: m)!.end)!
+                centerDay = cal.startOfDay(for: min(last, Date()))
+            }
+        } label: {
+            VStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(on ? Color(hex: 0xF2B82E) : Color(light: 0xE9E3D2, dark: 0x3A3730))
+                    .frame(width: 40, height: h)
+                    .frame(height: 88, alignment: .bottom)
+                Text(shortMonth(m))
+                    .font(.system(size: 12, weight: on ? .semibold : .regular))
+                    .foregroundStyle(on ? Color.primary : Color.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(Pressable())
+        .sensoryFeedback(.selection, trigger: on)
     }
 
     /// Mọi tháng từ tháng có khoản chi đầu tiên tới tháng này, ít nhất 12 tháng (dữ liệu ít vẫn vuốt được về năm trước)
@@ -555,20 +629,9 @@ struct StatsView: View {
             let bills = sum(items.filter { $0.c == "hd" })
             return MonthBar(date: m, bills: bills, other: sum(items) - bills)
         }
-        // Biểu đồ tháng cuộn ngang: trục dọc và ba ô Trung bình / Thấp / Cao tính theo 6 tháng đang thấy,
-        // để một tháng chi vọt lên (vd 150tr) không làm mọi cột khác dẹt lép — vuốt tới tháng đó trục mới giãn ra
-        let scrolls = unit == .month && bars.count > 6
-        // Tháng đầu đang thấy (vị trí cuộn làm tròn về đầu tháng gần nhất)
-        let seenFrom = cal.date(from: cal.dateComponents([.year, .month], from: chartStart.addingTimeInterval(15 * 86400)))!
-        let seen = scrolls
-            ? bars.filter { $0.date >= cal.date(byAdding: .month, value: -1, to: seenFrom)! && $0.date < cal.date(byAdding: .month, value: 7, to: seenFrom)! }
-            : bars
-        // Các tháng đang thấy chưa chi gì: trục vẫn lên tới 1tr cho có vạch, không thành "0 / 0 / 1"
-        // Trục tính cả tháng ló một nửa ở hai mép (không thì cột đó bị cắt ngọn); ba ô số chỉ tính 6 tháng thấy trọn
-        let full = scrolls ? bars.filter { $0.date >= seenFrom && $0.date < cal.date(byAdding: .month, value: 6, to: seenFrom)! } : bars
-        let top = max(seen.map(\.total).max() ?? 0, 1_000_000)
+        let top = max(bars.map(\.total).max() ?? 0, 1)
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
-        let used = full.filter { $0.total > 0 }.map(\.total)
+        let used = bars.filter { $0.total > 0 }.map(\.total)
         return card {
             Text(title).font(.system(size: 17, weight: .semibold))
             HStack(spacing: 14) {
@@ -595,11 +658,6 @@ struct StatsView: View {
             // Giữ đủ 6 tháng trên trục kể cả tháng chưa có khoản chi nào
             .chartXScale(domain: bars.first!.date...cal.date(byAdding: unit, value: 1, to: bars.last!.date)!)
             // Nhiều hơn 6 tháng: vuốt ngang để xem các tháng trước, mỗi lần thấy 6 cột (trục số bên trái đứng yên)
-            .chartYScale(domain: 0...Double(top) * 1.1)
-            .chartScrollableAxes(scrolls ? .horizontal : [])
-            .chartXVisibleDomain(length: scrolls ? 6 * 30.5 * 86400
-                                 : cal.date(byAdding: unit, value: 1, to: bars.last!.date)!.timeIntervalSince(bars.first!.date))
-            .chartScrollPosition(x: $chartStart)
             .chartXAxis {
                 AxisMarks(values: .stride(by: unit)) { v in
                     AxisValueLabel(centered: true) { if let d = v.as(Date.self) { Text(label(d)) } }

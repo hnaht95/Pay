@@ -5,6 +5,8 @@ enum EntryMode: Identifiable {
     case new(cat: String?)
     case scan(VietQR)
     case raw(String)
+    /// Nhập từ hoá đơn vừa chụp (vuốt lên ở nút Nhập): điền sẵn số tiền và tên quán đọc được
+    case receipt(amount: Int?, merchant: String?)
     case edit(Expense)
     /// Như .edit nhưng mở ra là sửa được ngay: người dùng vừa bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ), không qua bước chỉ xem
     case editNow(Expense)
@@ -14,6 +16,7 @@ enum EntryMode: Identifiable {
         case .new(let c): return "new-\(c ?? "")"
         case .scan(let q): return "scan-\(q.raw)"
         case .raw(let s): return "raw-\(s)"
+        case .receipt(let a, let m): return "receipt-\(a ?? 0)-\(m ?? "")"
         case .edit(let e), .editNow(let e): return "edit-\(e.id)"
         }
     }
@@ -24,6 +27,7 @@ struct HomeView: View {
     @EnvironmentObject var quick: QuickAction
     @State private var entry: EntryMode?
     @State private var scanning = false
+    @State private var receiptScan = false
     @State private var showHistory = false
     @State private var showSettings = false
     @State private var showStats = false
@@ -86,6 +90,19 @@ struct HomeView: View {
         }
         // Nhập / sửa khoản chi mở dạng tấm (sheet) như danh mục, thống kê, cài đặt — không phủ kín màn hình
         .sheet(item: $entry) { EntryView(mode: $0).sheetGrabber() }
+        .fullScreenCover(isPresented: $receiptScan) {
+            ReceiptCamera { img in
+                receiptScan = false
+                guard let img else { return }
+                Task {
+                    let r = await ReceiptReader.read(img)
+                    if r.amount == nil { store.show(L("Không đọc được tổng tiền trên hoá đơn")) }
+                    try? await Task.sleep(for: .milliseconds(350))   // đợi màn chụp đóng hẳn rồi mới mở màn nhập
+                    entry = .receipt(amount: r.amount, merchant: r.merchant)
+                }
+            }
+            .ignoresSafeArea()
+        }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }
             scanned = nil
@@ -429,7 +446,8 @@ struct HomeView: View {
     private var dock: some View {
         GlassGroup {
             HStack(spacing: 12) {
-                BigButton(title: L("Nhập"), icon: "plus", primary: false) { entry = .new(cat: nil) }
+                // Chạm: nhập tay. Vuốt lên: chụp hoá đơn, đọc xong mở màn nhập điền sẵn số tiền và tên quán
+                BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in receiptScan = true }) { entry = .new(cat: nil) }
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in

@@ -146,7 +146,7 @@ struct EntryView: View {
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .overlay(alignment: .trailing) {
                     // Nhập mới: chụp hoá đơn để điền sẵn số tiền, tên quán và danh mục
-                    if case .new = mode {
+                    if isNewEntry {
                         Button { scanningReceipt = true } label: {
                             Group {
                                 if readingReceipt { ProgressView() } else {
@@ -167,6 +167,11 @@ struct EntryView: View {
         .padding(.top, 8)
     }
 
+    /// Nhập mới (tay hoặc từ hoá đơn): có nút chụp hoá đơn ở góc trên
+    private var isNewEntry: Bool {
+        switch mode { case .new, .receipt: return true; default: return false }
+    }
+
     private var isEdit: Bool {
         switch mode { case .edit, .editNow: return true; default: return false }
     }
@@ -174,6 +179,7 @@ struct EntryView: View {
     private var title: String {
         switch mode {
         case .new(let c): return c.map { "\(Category.get($0).icon) \(Category.get($0).name)" } ?? L("Lưu khoản chi")
+        case .receipt: return L("Lưu khoản chi")
         case .scan(let q): return L("Trả cho %@", q.name.isEmpty ? L("TK %@", q.acct ?? "") : q.name)
         case .raw: return L("Mã QR không phải VietQR")
         case .edit, .editNow: return L("Sửa khoản chi")
@@ -182,7 +188,7 @@ struct EntryView: View {
 
     private var sub: String? {
         switch mode {
-        case .new: return nil
+        case .new, .receipt: return nil
         case .scan(let q): return [q.bank, q.acct ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         case .raw(let s): return String(s.prefix(80))
         case .edit(let e), .editNow(let e): return stamp(e.date)
@@ -267,7 +273,7 @@ struct EntryView: View {
     @ViewBuilder private var actions: some View {
         VStack(spacing: 8) {
             switch mode {
-            case .new, .raw:
+            case .new, .raw, .receipt:
                 // Huỷ và Lưu cùng một hàng, cùng kiểu hai nút Nhập / Quét QR ở màn hình chính
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
@@ -369,6 +375,12 @@ struct EntryView: View {
             cat = c; catPicked = c != nil
         case .raw:
             break
+        case .receipt(let a, let m):
+            // Từ hoá đơn vừa chụp: số tiền, tên quán làm ghi chú, danh mục đoán theo tên quán
+            if let a, a > 0 { digits = String(a) }
+            note = m ?? ""
+            cat = store.guessCategory(note)
+            baseCat = cat
         case .scan(let q):
             let m = q.memoKey.flatMap { store.memo[$0] }
             note = m?.n ?? (!q.name.isEmpty ? q.name : q.purpose)

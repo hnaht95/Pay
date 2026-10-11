@@ -267,6 +267,7 @@ struct EntryView: View {
                 }
                 .padding(.horizontal, 18)
             }
+            .scrollClipDisabled()   // chip nhoè ở mép lan ra ngoài khung, không bị cắt vạch trên / dưới
             .padding(.horizontal, -18)
             // Hai mép mờ dần khi cuộn: chip đi ra mép thì tan vào nền thay vì bị cắt thẳng
             // Chỉ mờ phía còn chip bị che: đang ở đầu hàng thì mép trái không mờ, cuộn hết thì mép phải không mờ

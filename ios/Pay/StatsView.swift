@@ -149,6 +149,8 @@ struct StatsView: View {
                 .padding(.horizontal, 16)
             }
             .scrollIndicators(.hidden)
+            // Không cắt ở khung dải: viên trôi ra mép nhoè lan ra ngoài khung (cắt thì thấy rõ vạch trên / dưới ở viên tối)
+            .scrollClipDisabled()
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centerDay, anchor: .center)
             .defaultScrollAnchor(.trailing)
@@ -218,6 +220,7 @@ struct StatsView: View {
                 .padding(.horizontal, 16)
             }
             .scrollIndicators(.hidden)
+            .scrollClipDisabled()
             .defaultScrollAnchor(.trailing)
             .frame(height: Self.pillHeight + 20)
             .onChange(of: month) {

@@ -51,6 +51,7 @@ struct SettingsView: View {
                     Text(L("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR."))
                 }
             }
+            .softTopEdge()
             .screenTitle(L("Cài đặt"))
             .navigationBarTitleDisplayMode(.inline)
         }

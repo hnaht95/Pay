@@ -236,9 +236,12 @@ struct VoiceEntryView: View {
                     let r = CGRect(x: from.minX + (to.minX - from.minX) * morph, y: from.minY + (to.minY - from.minY) * morph,
                                    width: from.width + (to.width - from.width) * morph, height: from.height + (to.height - from.height) * morph)
                     let shape = RoundedRectangle(cornerRadius: from.height / 2 + (42 - from.height / 2) * morph, style: .continuous)
-                    shape.fill(Palette.cta)
-                        // Đổi màu nhanh ở đầu (xong khi khối mới lớn được 40%): đổi đều suốt quãng thì khối cứ xám lửng lơ, trông như khựng
-                        .overlay(shape.fill(Palette.surface).opacity(Double(min(1, max(0, morph) * 2.5))))
+                    // Đổi màu nhanh ở đầu (xong khi khối mới lớn được 40%): đổi đều suốt quãng thì khối cứ xám lửng lơ, trông như khựng.
+                    // Lớp đen mờ dần đi đúng bằng lớp nền hiện lên: để lớp đen đặc nằm dưới thì mép bo (khử răng cưa, nửa trong suốt)
+                    // của lớp nền để lộ một viền tối mảnh quanh góc thẻ
+                    let t = Double(min(1, max(0, morph) * 2.5))
+                    shape.fill(Palette.cta).opacity(1 - t)
+                        .overlay(shape.fill(Palette.surface).opacity(t))
                         .frame(width: r.width, height: r.height)
                         .position(x: r.midX - o.x, y: r.midY - o.y)
                         .opacity(blob ? 1 : 0)

@@ -715,6 +715,11 @@ extension View {
 }
 
 extension View {
+    /// Mép trên vùng cuộn mờ dần dưới thanh tiêu đề (kiểu mềm của iOS 26), như màn nhóm chung — không phải vạch cắt ngang
+    @ViewBuilder func softTopEdge() -> some View {
+        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.soft, for: .top) } else { self }
+    }
+
     /// Tiêu đề màn hình: cỡ 21 đậm, bằng "Sửa / Lưu khoản chi" (tiêu đề mặc định của iOS nhỏ quá)
     func screenTitle(_ title: String) -> some View {
         navigationTitle(title).toolbar {

@@ -38,6 +38,7 @@ struct HistoryView: View {
                 }
             }
             .listStyle(.plain)
+            .softTopEdge()
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)

@@ -529,14 +529,12 @@ struct DateSheet: View {
             .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisWeek)
             // Dải ngày vuốt ngang liền một mạch như Thống kê (không mũi tên): từ ngày cũ nhất cần tới hôm nay, mở ra ở ngày
             // đang chọn; 7 viên vừa một màn, cuộn dừng đúng viên. Tiêu đề tháng theo ngày đang ở giữa dải
+            // Danh sách ngày và tổng chi từng ngày tính một lần lúc mở (như Thống kê): tính lại mỗi lần cuộn thì vuốt bị giật
             let w = max(0, (rowW - 6 * 6) / 7)
-            let days = stripDays
-            let totals = days.map { Store.shared.total(on: $0) }
-            let top = max(totals.max() ?? 1, 1)
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(Array(days.enumerated()), id: \.element) { i, d in
-                        stripDay(d, spent: totals[i], top: top).frame(width: w).id(d)
+                    ForEach(days, id: \.self) { d in
+                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).id(d)
                     }
                 }
                 .scrollTargetLayout()
@@ -549,7 +547,7 @@ struct DateSheet: View {
             .frame(height: 84 + 22)
             .frame(maxWidth: .infinity)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
-            .onChange(of: centerDay) { if let c = centerDay { withAnimation(.snappy) { month = c } } }
+            .onChange(of: centerDay) { if let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month) { month = c } }
             // Giờ : phút, cùng khung xám bo góc với dải tuần; hai bánh xe cuộn dọc (phút nhảy 5), hàng giữa là giờ đang chọn
             HStack(spacing: 0) {
                 // Đồng hồ báo thức (Tabler alarm-minus, bản đặc) trước nhãn
@@ -598,12 +596,18 @@ struct DateSheet: View {
         .presentationDetents([.height(max(contentH, 200))])
         .onAppear {
             month = when; if original == nil { original = when }
+            days = stripDays
+            byDay = Store.shared.items.reduce(into: [:]) { m, e in m[cal.startOfDay(for: e.date), default: 0] += e.a }
+            topSpent = max(byDay.values.max() ?? 1, 1)
             centerDay = cal.startOfDay(for: when)
         }
     }
 
     /// Ngày đang nằm giữa dải (cuộn tới đâu, tiêu đề tháng theo đó)
     @State private var centerDay: Date?
+    @State private var days: [Date] = []
+    @State private var byDay: [Date: Int] = [:]
+    @State private var topSpent = 1
     /// Hôm nay đang nằm trong 7 viên đang thấy (viên giữa cách hôm nay không quá 3 ngày): khỏi hiện nút "Hôm nay"
     private var isThisWeek: Bool {
         let c = centerDay ?? cal.startOfDay(for: when)

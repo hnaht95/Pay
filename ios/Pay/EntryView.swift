@@ -105,7 +105,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(600)]).sheetGrabber()
+            DateSheet(when: $when).presentationDetents([.height(660)]).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -410,9 +410,20 @@ struct DateSheet: View {
             HStack {
                 Text(title).font(.system(size: 21, weight: .bold))
                 Spacer()
-                // Như hai mũi tên đổi tuần của Peek: chỉ có nét, không nền; tháng xếp dọc nên mũi tên lên / xuống
-                arrow("chevron.up", L("Tháng trước")) { shift(-1) }
-                arrow("chevron.down", L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
+                // Như hàng tiêu đề lịch của Peek: nút "Hôm nay" (viên thuốc, chỉ hiện khi đang ở tháng khác) và hai tam giác
+                // lên / xuống (lịch mở cả tháng thì các tuần xếp dọc, lùi tháng là đi lên)
+                Button { jumpToToday() } label: {
+                    Text(L("Hôm nay")).font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.primary.opacity(0.6))
+                        .padding(.horizontal, 12).frame(height: 32)
+                        .background(Capsule().fill(Color.primary.opacity(0.08)))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(Pressable())
+                .opacity(isThisMonth ? 0 : 1)
+                .allowsHitTesting(!isThisMonth)
+                arrow(angle: 0, L("Tháng trước")) { shift(-1) }
+                arrow(angle: 180, L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
             // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
             ZStack {
@@ -422,7 +433,9 @@ struct DateSheet: View {
                         insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
                         removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
             }
-            .clipped()
+            // Cắt rìa khi trượt, nhưng chừa 2 pt: nét khung 1,5 chạy đúng mép lưới, cắt sát thì nửa nét ở mép ngoài mất,
+            // cạnh ngoài mỏng hơn cạnh trong
+            .padding(2).clipped().padding(-2)
             Spacer(minLength: 0)
             HStack(spacing: 4) {
                 Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
@@ -452,77 +465,101 @@ struct DateSheet: View {
         return f.string(from: month)
     }
 
-    private func arrow(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
+    /// Tam giác bo góc của Peek (TriangleShape), mờ 45%, không nền
+    private func arrow(angle: Double, _ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: symbol).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.5))
-                .frame(width: 38, height: 34).contentShape(Rectangle())
+            TriangleShape().fill(Color.primary.opacity(0.45))
+                .frame(width: 11, height: 11)
+                .rotationEffect(.degrees(angle))
+                .frame(width: 34, height: 34).contentShape(Circle())
         }
         .buttonStyle(Pressable()).accessibilityLabel(label)
     }
 
-    /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
-    // MARK: Lưới ngày (theo lịch của Peek): hàng thứ ở trên, đủ các tuần (ngày tháng trước / sau mờ), các ngày của tháng đang xem
-    // được khoanh một viền mảnh bo theo bậc, hai cột T7 / CN có nền nhạt (từ hàng ngày, không gồm hàng thứ), hôm nay chữ xanh,
-    // ngày đang chọn là ô vuông bo nền xám
+    private func jumpToToday() {
+        forward = Date() > first
+        withAnimation(.snappy(duration: 0.32)) { month = Date() }
+    }
 
-    /// Tỉ lệ đo trên lịch của Peek: bước cột ≈ 3,5 lần chiều cao chữ số, bước hàng ≈ 0,89 bước cột. Bề ngang lưới cố định theo
-    /// tấm (≈ 49 pt một cột) nên chữ số 19 pt, hàng 44 pt — chữ nhỏ quá thì các ngày trông xa nhau
-    private static let rowH: CGFloat = 44
-    private static let headH: CGFloat = 28
+    /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
+    // MARK: Lưới ngày — chép hình học lịch tháng của Peek (CalendarPanel / CalendarShapes, lúc mở cả tháng), phóng theo bề ngang
+    //
+    // Số gốc của Peek ở nhịp cột 28 pt: chữ số 11, chữ thứ 10, phần số mỗi hàng 23, hở hàng 2, hở cột 4, dải chữ thứ = 23 + 2,
+    // viên nền cao 23 + 2 − 2×2 bo 0,31 chiều cao, khung tháng bo = bo viên + 2, nét 1,5 màu đặc nhạt, dải cuối tuần đậm 0,08,
+    // ngày tháng khác mờ còn 0,42. Ở đây nhịp cột ≈ 49 pt nên mọi số nhân cùng hệ số k = nhịp / 28 (nét khung giữ 1,5).
+
+    private enum P {
+        static let pitch: CGFloat = 28, font: CGFloat = 11, symbolFont: CGFloat = 10
+        static let row: CGFloat = 23, rowGap: CGFloat = 2, colGap: CGFloat = 4, frameGap: CGFloat = 2
+        static var band: CGFloat { row + 2 }
+        static var pillH: CGFloat { row + rowGap - frameGap * 2 }
+        static var pillR: CGFloat { pillH * 0.31 }
+        static var frameR: CGFloat { pillR + frameGap }
+        static func height(rows: Int) -> CGFloat { band + CGFloat(rows) * (row + rowGap) - rowGap }
+    }
 
     private var monthGrid: some View {
         let blanks = (cal.component(.weekday, from: first) + 5) % 7
         let days = cal.range(of: .day, in: .month, for: first)!.count
         let rows = Int(ceil(Double(blanks + days) / 7))
-        let lastCol = (blanks + days - 1) % 7
         let names = Lang.isEnglish ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+        let todayCol = (cal.component(.weekday, from: Date()) + 5) % 7
         return GeometryReader { g in
-            let cw = g.size.width / 7, rh = Self.rowH, top = Self.headH
+            let k = g.size.width / 7 / P.pitch
+            let rowH = P.row * k, gap = P.rowGap * k, band = P.band * k
+            let grid = DayGrid(width: g.size.width - P.colGap * k, rowPitch: rowH + gap, columnGap: P.colGap * k, rowGap: gap)
             ZStack(alignment: .topLeading) {
-                // Cột T7 / CN: nền nhạt từ hàng ngày đầu tiên xuống (hàng thứ không đóng khung)
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.06))
-                    .frame(width: cw * 2, height: rh * CGFloat(rows))
-                    .offset(x: cw * 5, y: top)
-                MonthOutline(blanks: blanks, lastCol: lastCol, rows: rows, cw: cw, rh: rh)
-                    .stroke(Color.primary.opacity(0.25), lineWidth: 1.5)
-                    .offset(y: top)
+                // Dải cuối tuần ở lớp nền, dưới con số và viên nền
+                WeekendBand(rows: rows, grid: grid, radius: P.frameR * k)
+                    .fill(Color.primary.opacity(0.07))
+                    .offset(x: P.colGap * k / 2, y: band)
+                // Khung tháng: màu đặc (không trong suốt) để đoạn đi qua dải cuối tuần không sáng hơn đoạn khác
+                MonthFrame(first: blanks, last: blanks + days - 1, grid: grid, radius: P.frameR * k)
+                    .stroke(Color(light: 0xD9D9DC, dark: 0x3A3A3E), lineWidth: 1.5)
+                    .offset(x: P.colGap * k / 2, y: band)
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(names.indices, id: \.self) { i in
-                            Text(names[i]).font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(i >= 5 ? Color.primary.opacity(0.7) : Color.secondary)
-                                .frame(width: cw, height: top)
+                            Text(names[i]).font(.system(size: P.symbolFont * k, weight: .medium))
+                                .foregroundStyle(Color.primary.opacity(i == todayCol && isThisMonth ? 0.6 : 0.35))
+                                .frame(maxWidth: .infinity)
                         }
                     }
-                    ForEach(0..<rows, id: \.self) { r in
-                        HStack(spacing: 0) {
-                            ForEach(0..<7, id: \.self) { c in
-                                dayCell(cal.date(byAdding: .day, value: r * 7 + c - blanks, to: first)!)
-                                    .frame(width: cw, height: rh)
+                    .frame(height: band)
+                    VStack(spacing: gap) {
+                        ForEach(0..<rows, id: \.self) { r in
+                            HStack(spacing: 0) {
+                                ForEach(0..<7, id: \.self) { c in
+                                    dayCell(cal.date(byAdding: .day, value: r * 7 + c - blanks, to: first)!, k: k)
+                                        .frame(maxWidth: .infinity).frame(height: rowH)
+                                }
                             }
                         }
                     }
                 }
             }
         }
-        .frame(height: Self.headH + Self.rowH * CGFloat(rows))
+        .aspectRatio(7 * P.pitch / P.height(rows: rows), contentMode: .fit)
     }
 
-    private func dayCell(_ date: Date) -> some View {
+    private func dayCell(_ date: Date, k: CGFloat) -> some View {
         let inMonth = cal.isDate(date, equalTo: first, toGranularity: .month)
         let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
         return Button { pick(date) } label: {
             Text("\(cal.component(.day, from: date))")
-                .font(.system(size: 19, weight: on || today ? .bold : .medium, design: .rounded)).monospacedDigit()
-                .foregroundStyle(today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : inMonth ? Color.primary : Color.secondary.opacity(0.6))
-                .frame(width: 42, height: 38)
-                .background(on ? Color.primary.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .font(.system(size: P.font * k, weight: today ? .semibold : .medium, design: .rounded)).monospacedDigit()
+                .foregroundStyle(today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : Color.primary.opacity(0.85))
+                .frame(maxWidth: .infinity)
+                .frame(height: P.pillH * k)
+                // Viên nền lấp cả ô trừ hở 2 mỗi bên (cách nét khung đúng 2 ở mọi phía); hôm nay cũng có nền như ngày đang chọn
+                .background(on || today ? Color.primary.opacity(0.16) : .clear,
+                            in: RoundedRectangle(cornerRadius: P.pillR * k, style: .continuous))
+                .padding(.horizontal, P.frameGap * k)
+                .opacity(inMonth ? 1 : 0.42)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .opacity(future ? 0.3 : 1).disabled(future)
+        .opacity(future ? 0.35 : 1).disabled(future)
     }
 
     private func wheel(_ count: Int, _ value: Binding<Int>) -> some View {
@@ -616,31 +653,66 @@ private struct FlatWheel: View {
     }
 }
 
-/// Viền quanh các ô của một tháng trên lưới 7 cột: đa giác bậc thang (hàng đầu bắt đầu từ ngày 1, hàng cuối dừng ở ngày cuối),
-/// mọi góc — lồi lẫn lõm — đều bo cùng bán kính, vẽ thành một nét liền
-private struct MonthOutline: Shape {
-    let blanks: Int, lastCol: Int, rows: Int
-    let cw: CGFloat, rh: CGFloat
-    var radius: CGFloat = 12
+/// Lưới 7 cột của Peek (CalendarShapes.swift): mép ô nằm giữa khe, nên khung tháng và dải cuối tuần chạy đúng giữa hai ô
+private struct DayGrid {
+    var width: CGFloat, rowPitch: CGFloat, columnGap: CGFloat, rowGap: CGFloat
+    var columnPitch: CGFloat { (width + columnGap) / 7 }
+    func left(_ c: Int) -> CGFloat { CGFloat(c) * columnPitch - columnGap / 2 }
+    func right(_ c: Int) -> CGFloat { CGFloat(c + 1) * columnPitch - columnGap / 2 }
+    func top(_ r: Int) -> CGFloat { CGFloat(r) * rowPitch - rowGap / 2 }
+    func bottom(_ r: Int) -> CGFloat { CGFloat(r + 1) * rowPitch - rowGap / 2 }
+}
+
+/// Khung bậc thang ôm trọn một tháng (chép MonthFrame của Peek): mọi góc bo bằng đường cong bậc hai, cắt ngắn lại nếu cạnh ngắn
+private struct MonthFrame: Shape {
+    let first: Int, last: Int
+    let grid: DayGrid
+    let radius: CGFloat
 
     func path(in _: CGRect) -> Path {
-        let w = cw * 7, h = rh * CGFloat(rows)
-        let bx = cw * CGFloat(blanks), lx = cw * CGFloat(lastCol + 1), lastTop = rh * CGFloat(rows - 1)
-        var pts: [CGPoint] = []
-        if blanks > 0 { pts += [CGPoint(x: bx, y: 0)] } else { pts += [CGPoint(x: 0, y: 0)] }
-        pts += [CGPoint(x: w, y: 0)]
-        if lastCol < 6 { pts += [CGPoint(x: w, y: lastTop), CGPoint(x: lx, y: lastTop), CGPoint(x: lx, y: h)] } else { pts += [CGPoint(x: w, y: h)] }
-        pts += [CGPoint(x: 0, y: h)]
-        if blanks > 0 { pts += [CGPoint(x: 0, y: rh), CGPoint(x: bx, y: rh)] }
-        var p = Path()
-        let n = pts.count
-        let start = CGPoint(x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2)
-        p.move(to: start)
-        for i in 1...n {
-            let v = pts[i % n], next = pts[(i + 1) % n]
-            p.addArc(tangent1End: v, tangent2End: next, radius: radius)
+        let fr = first / 7, fc = first % 7, lr = last / 7, lc = last % 7
+        guard lr > fr else {
+            return Self.rounded([CGPoint(x: grid.left(fc), y: grid.top(fr)), CGPoint(x: grid.right(lc), y: grid.top(fr)),
+                                 CGPoint(x: grid.right(lc), y: grid.bottom(lr)), CGPoint(x: grid.left(fc), y: grid.bottom(lr))], radius: radius)
         }
-        p.addLine(to: start)
-        return p
+        return Self.rounded([CGPoint(x: grid.left(fc), y: grid.top(fr)), CGPoint(x: grid.right(6), y: grid.top(fr)),
+                             CGPoint(x: grid.right(6), y: grid.top(lr)), CGPoint(x: grid.right(lc), y: grid.top(lr)),
+                             CGPoint(x: grid.right(lc), y: grid.bottom(lr)), CGPoint(x: grid.left(0), y: grid.bottom(lr)),
+                             CGPoint(x: grid.left(0), y: grid.bottom(fr)), CGPoint(x: grid.left(fc), y: grid.bottom(fr))], radius: radius)
+    }
+
+    private static func rounded(_ points: [CGPoint], radius: CGFloat) -> Path {
+        var corners: [CGPoint] = []
+        for (i, p) in points.enumerated() where p != points[(i + 1) % points.count] { corners.append(p) }
+        var path = Path()
+        let n = corners.count
+        guard n > 2 else { return path }
+        func cut(_ from: CGPoint, toward: CGPoint) -> CGPoint {
+            let dx = toward.x - from.x, dy = toward.y - from.y
+            let length = max(hypot(dx, dy), 0.0001)
+            let k = min(radius, length / 2) / length
+            return CGPoint(x: from.x + dx * k, y: from.y + dy * k)
+        }
+        for i in 0..<n {
+            let c = corners[i]
+            let start = cut(c, toward: corners[(i - 1 + n) % n]), end = cut(c, toward: corners[(i + 1) % n])
+            if i == 0 { path.move(to: start) } else { path.addLine(to: start) }
+            path.addQuadCurve(to: end, control: c)
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Dải nền hai cột T7 / CN, từ hàng ngày đầu tới hàng cuối (chép WeekendBand của Peek)
+private struct WeekendBand: Shape {
+    let rows: Int
+    let grid: DayGrid
+    let radius: CGFloat
+
+    func path(in _: CGRect) -> Path {
+        guard rows > 0 else { return Path() }
+        let box = CGRect(x: grid.left(5), y: grid.top(0), width: grid.right(6) - grid.left(5), height: grid.bottom(rows - 1) - grid.top(0))
+        return Path(roundedRect: box, cornerRadius: radius, style: .continuous)
     }
 }

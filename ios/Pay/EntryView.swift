@@ -505,11 +505,9 @@ struct DateSheet: View {
                 // cạnh ngoài mỏng hơn cạnh trong
                 .padding(2).clipped().padding(-2)
                 .frame(width: gw, height: gh)
-                // Cột phải: khung giờ gọn như Peek (5 hàng) và nút Xong vuông bo ngay dưới, cả cột cao đúng bằng dải T7 / CN
+                // Khung giờ như Peek (nền tối bo góc, giờ : phút, phút nhảy từng 5, hai mép trên dưới mờ dần), cao đúng bằng
+                // dải nền T7 / CN và nằm ngang hàng với dải ấy (không lên tới hàng chữ thứ)
                 let colH = 6 * (P.row + P.rowGap) * k
-                let wheelH = 5 * 18 * k
-                VStack(spacing: 8) {
-                // Khung giờ như Peek: nền tối bo góc, giờ : phút, phút nhảy từng 5, hai mép trên dưới mờ dần
                 HStack(spacing: 4 * k) {
                     PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
                               pitch: 18 * k, font: 17 * k)
@@ -521,28 +519,19 @@ struct DateSheet: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .mask {
-                    LinearGradient(stops: [.init(color: .black.opacity(0.06), location: 0), .init(color: .black, location: 0.4),
-                                           .init(color: .black, location: 0.6), .init(color: .black.opacity(0.06), location: 1)],
+                    LinearGradient(stops: [.init(color: .black.opacity(0.06), location: 0), .init(color: .black, location: 0.35),
+                                           .init(color: .black, location: 0.65), .init(color: .black.opacity(0.06), location: 1)],
                                    startPoint: .top, endPoint: .bottom)
                 }
-                .frame(height: wheelH)
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
-                Button { dismiss() } label: {
-                    Text(L("Xong")).font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .foregroundStyle(Palette.ctaInk)
-                        // Góc dưới phải bo to theo góc tấm (cùng độ cong với góc màn hình trừ lề 20)
-                        .background(Palette.cta, in: UnevenRoundedRectangle(
-                            topLeadingRadius: P.frameR * k, bottomLeadingRadius: P.frameR * k,
-                            bottomTrailingRadius: 35, topTrailingRadius: P.frameR * k, style: .continuous))
-                }
-                .buttonStyle(Pressable())
-                }
-                // Cả cột chạy từ hàng chữ thứ (đỉnh khung giờ thẳng hàng chữ thứ) xuống tới đáy dải nền T7 / CN (đáy nút Xong)
-                .frame(width: wheelsW, height: colH + (P.band - P.rowGap / 2) * k)
+                .frame(width: wheelsW, height: colH)
+                .padding(.top, (P.band - P.rowGap / 2) * k)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
+            // Nút Xong ở đáy, to bằng nút Quét QR của màn hình chính
+            BigButton(title: L("Xong"), icon: "", primary: true) { dismiss() }
+                .padding(.top, 10)
         }
         .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 8)
         // Cả cụm hạ xuống qua vùng thanh home: đáy lịch / nút Xong cách đáy tấm bằng lề phải, góc dưới phải nút Xong đồng tâm góc tấm.

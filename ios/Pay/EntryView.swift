@@ -517,23 +517,15 @@ struct DateSheet: View {
                 arrow(angle: 180, L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
             .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisMonth)
-            // Chỉ chọn ngày (không chọn giờ): lưới tháng chiếm hết bề ngang; giờ của khoản giữ nguyên
-            let gw = rowW
-            let k = gw / 7 / P.pitch
-            let gh = k * P.height(rows: 6)
-            // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
+            // Chỉ chọn ngày (không chọn giờ), lịch gọn: ô 40 pt, chỉ số của tháng đang xem, đủ số hàng cần (5 hoặc 6)
             ZStack {
-                monthGrid
+                compactGrid
                     .id(first)
                     .transition(.asymmetric(
                         insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
                         removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
             }
-            // Cắt rìa khi trượt, nhưng chừa 2 pt: nét khung 1,5 chạy đúng mép lưới, cắt sát thì nửa nét ở mép ngoài mất
-            .padding(2).clipped().padding(-2)
-            .frame(width: gw, height: gh)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
+            .clipped()
             // Huỷ / Lưu ở đáy, to bằng hai nút Nhập / Quét QR của màn hình chính. Huỷ trả ngày giờ về như lúc mở
             HStack(spacing: 12) {
                 BigButton(title: L("Huỷ"), icon: "", primary: false) { when = original ?? when; dismiss() }
@@ -552,6 +544,55 @@ struct DateSheet: View {
         .background(Palette.surface.ignoresSafeArea())
         .presentationDetents([.height(max(contentH, 200))])
         .onAppear { month = when; if original == nil { original = when } }
+    }
+
+    /// Lịch gọn: hàng chữ thứ nhỏ mờ, số ngày cỡ 17; ngày đang chọn là viên tròn đen (tối: trắng), hôm nay chữ đậm có chấm nhỏ
+    /// bên dưới; ngày tương lai mờ và không chọn được. Ô trống thay cho ngày của tháng khác
+    private var compactGrid: some View {
+        let blanks = (cal.component(.weekday, from: first) + 5) % 7
+        let days = cal.range(of: .day, in: .month, for: first)!.count
+        let rows = Int(ceil(Double(blanks + days) / 7))
+        let names = Lang.isEnglish ? ["M", "T", "W", "T", "F", "S", "S"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+        return VStack(spacing: 2) {
+            HStack(spacing: 0) {
+                ForEach(names.indices, id: \.self) { i in
+                    Text(names[i]).font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.primary.opacity(0.35))
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: 24)
+            ForEach(0..<rows, id: \.self) { r in
+                HStack(spacing: 0) {
+                    ForEach(0..<7, id: \.self) { c in
+                        let n = r * 7 + c - blanks
+                        if n >= 0 && n < days {
+                            compactDay(cal.date(byAdding: .day, value: n, to: first)!)
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity).frame(height: 40)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func compactDay(_ d: Date) -> some View {
+        let on = cal.isDate(d, inSameDayAs: when), today = cal.isDateInToday(d), future = d > Date()
+        return Button { pick(d) } label: {
+            Text("\(cal.component(.day, from: d))")
+                .font(.system(size: 17, weight: on || today ? .semibold : .regular, design: .rounded)).monospacedDigit()
+                .foregroundStyle(on ? Color(light: 0xFFFFFF, dark: 0x111114) : Color.primary.opacity(0.85))
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(on ? Color(light: 0x111114, dark: 0xFFFFFF) : .clear))
+                .overlay(alignment: .bottom) {
+                    if today && !on { Circle().fill(Color.primary.opacity(0.6)).frame(width: 4, height: 4).offset(y: -3) }
+                }
+                .frame(maxWidth: .infinity).frame(height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(future ? 0.25 : 1).disabled(future)
     }
 
     private var title: String {

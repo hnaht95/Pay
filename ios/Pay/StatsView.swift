@@ -581,12 +581,8 @@ struct StatsView: View {
             .frame(height: 118)
             .padding(.top, 8)
             if !used.isEmpty {
-                HStack(spacing: 8) {
-                    stat(L("Trung bình"), avg)
-                    stat(L("Thấp nhất"), used.min()!)
-                    stat(L("Cao nhất"), used.max()!)
-                }
-                .padding(.top, 10)
+                stat(L("Cao nhất"), used.max()!)
+                    .padding(.top, 10)
             }
         }
     }

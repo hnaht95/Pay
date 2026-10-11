@@ -268,7 +268,16 @@ struct EntryView: View {
         VStack(spacing: 8) {
             switch mode {
             case .new, .raw:
-                primary(L("Lưu")) { learn(); store.add(amount: amount, note: trimmed, cat: finalCat); dismiss() }
+                // Huỷ và Lưu cùng một hàng, cùng kiểu hai nút Nhập / Quét QR ở màn hình chính
+                HStack(spacing: 12) {
+                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Lưu"), icon: "", primary: true) {
+                        guard amount > 0 else { return }
+                        learn(); store.add(amount: amount, note: trimmed, cat: finalCat); dismiss()
+                    }
+                    .opacity(amount == 0 ? 0.35 : 1)
+                    .animation(.easeInOut(duration: 0.25), value: amount == 0)
+                }
             case .scan(let q):
                 let app = store.bankApp
                 primary(L("Lưu & mở %@", app.name)) {
@@ -283,16 +292,10 @@ struct EntryView: View {
                         .frame(maxWidth: .infinity)
                 }
             case .edit(var e), .editNow(var e):
-                // Xoá và Sửa / Lưu thay đổi cùng một hàng, cùng kiểu hai nút Nhập / Quét QR ở màn hình chính
+                // Huỷ và Sửa / Lưu thay đổi cùng một hàng. Xoá khoản: vuốt trái ở danh sách hoặc nhấn giữ
                 GlassGroup {
                     HStack(spacing: 12) {
-                        BigButton(title: L("Xoá"), icon: "", primary: false) {
-                            // Đóng màn hình trước, xoá khi nó trượt đi gần hết: xoá ngay thì thanh "Đã xoá" bật lên sau màn hình
-                            // đang trượt xuống, tới lúc thấy được thì nó đã đứng yên, như không có hiệu ứng
-                            let id = e.id
-                            dismiss()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { store.remove(id: id) }
-                        }
+                        BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
                         if editing {
                             BigButton(title: L("Lưu"), icon: "", primary: true) {
                                 guard amount > 0 else { return }

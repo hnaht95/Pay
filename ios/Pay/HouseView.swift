@@ -931,7 +931,9 @@ struct HouseView: View {
             }
         }
         .padding(14)
-        .background(incoming ? Palette.hero : Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        // Việc cần mình bấm: nền trắng như thẻ trên cùng (nền tím nhạt làm chữ khó đọc), viền mảnh cho nổi trên nền xám
+        .background(incoming ? Palette.surface : Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay { if incoming { RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1) } }
     }
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {

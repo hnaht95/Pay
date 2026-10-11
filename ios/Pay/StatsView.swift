@@ -114,9 +114,9 @@ struct StatsView: View {
                 if !cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!)) {
                     Button { withAnimation(.snappy) { goToday() } } label: {
                         Text(L("Hôm nay")).font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Self.todayTint)
+                            .foregroundStyle(.primary)
                             .padding(.horizontal, 12).frame(height: 30)
-                            .background(Capsule().fill(Self.todayTint.opacity(0.12)))
+                            .background(Capsule().fill(Self.card))
                     }
                     .buttonStyle(Pressable())
                     .transition(.opacity)
@@ -188,10 +188,14 @@ struct StatsView: View {
                         .padding(.top, 8)
                     GeometryReader { g in
                         if spent > 0 {
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .fill(on ? Color.white.opacity(0.22) : Color(hex: 0x61BE6E).opacity(0.32))
-                                .frame(height: max(8, g.size.height * r))
+                            // Cắt theo khung bo góc cao hết phần dưới số: lúc thấp, góc dưới vẫn khớp góc viên ngoài
+                            // (tự bo theo chiều cao của lớp xanh thì lớp thấp thành viên thuốc, lệch góc)
+                            let h = max(8, g.size.height * r)
+                            UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
+                                .fill(on ? Self.inkText.opacity(0.22) : Color.primary.opacity(0.09))
+                                .frame(height: h)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
+                                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                         }
                     }
                     .padding(4)
@@ -805,7 +809,7 @@ enum Hatch {
     }
 }
 
-/// Nền khung Tổng chi: một màu xanh lá phẳng, đúng màu icon app — không gradient, không hạt nhiễu.
+/// Nền khung Tổng chi: đen phẳng, cùng màu nút chính của app (Quét QR, Lưu) — giữ đen cả ở chế độ tối cho chữ trắng luôn đọc rõ.
 private struct HeroGreen: View {
-    var body: some View { Color(hex: 0x61BE6E) }
+    var body: some View { Color(light: 0x161618, dark: 0x232326) }
 }

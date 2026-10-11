@@ -540,11 +540,11 @@ struct StatsView: View {
         }
     }
 
-    /// Mọi tháng từ tháng có khoản chi đầu tiên tới tháng này, ít nhất 6 tháng
+    /// Mọi tháng từ tháng có khoản chi đầu tiên tới tháng này, ít nhất 12 tháng (dữ liệu ít vẫn vuốt được về năm trước)
     private var allMonths: [Date] {
         let now = cal.date(from: cal.dateComponents([.year, .month], from: Date()))!
         let first = store.items.min(by: { $0.t < $1.t }).map { cal.date(from: cal.dateComponents([.year, .month], from: $0.date))! } ?? now
-        let n = max(6, (cal.dateComponents([.month], from: first, to: now).month ?? 0) + 1)
+        let n = max(12, (cal.dateComponents([.month], from: first, to: now).month ?? 0) + 1)
         return (0..<n).reversed().map { cal.date(byAdding: .month, value: -$0, to: now)! }
     }
 
@@ -558,12 +558,17 @@ struct StatsView: View {
         // Biểu đồ tháng cuộn ngang: trục dọc và ba ô Trung bình / Thấp / Cao tính theo 6 tháng đang thấy,
         // để một tháng chi vọt lên (vd 150tr) không làm mọi cột khác dẹt lép — vuốt tới tháng đó trục mới giãn ra
         let scrolls = unit == .month && bars.count > 6
+        // Tháng đầu đang thấy (vị trí cuộn làm tròn về đầu tháng gần nhất)
+        let seenFrom = cal.date(from: cal.dateComponents([.year, .month], from: chartStart.addingTimeInterval(15 * 86400)))!
         let seen = scrolls
-            ? bars.filter { $0.date >= chartStart && $0.date < cal.date(byAdding: .month, value: 6, to: chartStart)! }
+            ? bars.filter { $0.date >= cal.date(byAdding: .month, value: -1, to: seenFrom)! && $0.date < cal.date(byAdding: .month, value: 7, to: seenFrom)! }
             : bars
-        let top = max(seen.map(\.total).max() ?? 0, 1)
+        // Các tháng đang thấy chưa chi gì: trục vẫn lên tới 1tr cho có vạch, không thành "0 / 0 / 1"
+        // Trục tính cả tháng ló một nửa ở hai mép (không thì cột đó bị cắt ngọn); ba ô số chỉ tính 6 tháng thấy trọn
+        let full = scrolls ? bars.filter { $0.date >= seenFrom && $0.date < cal.date(byAdding: .month, value: 6, to: seenFrom)! } : bars
+        let top = max(seen.map(\.total).max() ?? 0, 1_000_000)
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
-        let used = seen.filter { $0.total > 0 }.map(\.total)
+        let used = full.filter { $0.total > 0 }.map(\.total)
         return card {
             Text(title).font(.system(size: 17, weight: .semibold))
             HStack(spacing: 14) {
@@ -591,12 +596,10 @@ struct StatsView: View {
             .chartXScale(domain: bars.first!.date...cal.date(byAdding: unit, value: 1, to: bars.last!.date)!)
             // Nhiều hơn 6 tháng: vuốt ngang để xem các tháng trước, mỗi lần thấy 6 cột (trục số bên trái đứng yên)
             .chartYScale(domain: 0...Double(top) * 1.1)
-            .animation(.snappy, value: top)
             .chartScrollableAxes(scrolls ? .horizontal : [])
             .chartXVisibleDomain(length: scrolls ? 6 * 30.5 * 86400
                                  : cal.date(byAdding: unit, value: 1, to: bars.last!.date)!.timeIntervalSince(bars.first!.date))
             .chartScrollPosition(x: $chartStart)
-            .chartScrollTargetBehavior(.valueAligned(matching: DateComponents(day: 1)))
             .chartXAxis {
                 AxisMarks(values: .stride(by: unit)) { v in
                     AxisValueLabel(centered: true) { if let d = v.as(Date.self) { Text(label(d)) } }

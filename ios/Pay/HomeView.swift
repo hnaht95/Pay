@@ -305,8 +305,8 @@ struct HomeView: View {
                             // Dấu + ở góc: nhập khoản mới cho danh mục này
                             .overlay(alignment: .topTrailing) {
                                 Button { entry = .new(cat: c.k) } label: {
-                                    Image(systemName: "plus").font(.system(size: 14, weight: .bold))
-                                        .frame(width: 30, height: 30).background(.white.opacity(0.6), in: Circle())
+                                    Image(systemName: "plus").font(.system(size: 16, weight: .bold))
+                                        .frame(width: 30, height: 30)
                                         .foregroundStyle(Color(hex: 0x111114))
                                         .padding(16).contentShape(Rectangle())
                                 }

@@ -411,32 +411,7 @@ struct DateSheet: View {
                 arrow("chevron.left", L("Tháng trước")) { shift(-1) }
                 arrow("chevron.right", L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
-            let names = Lang.isEnglish ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-            HStack(spacing: 0) {
-                ForEach(names, id: \.self) { Text($0).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
-            }
-            // Ô trống đầu tháng cho ngày 1 rơi đúng cột thứ của nó
-            let blanks = (cal.component(.weekday, from: first) + 5) % 7
-            let days = cal.range(of: .day, in: .month, for: first)!.count
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 4) {
-                // Mã âm cho ô trống, kẻo trùng mã với ngày 1, 2… (trùng thì các ngày đó không được vẽ)
-                ForEach((0..<blanks).map { -1 - $0 }, id: \.self) { _ in Color.clear.frame(height: 42) }
-                ForEach(1...days, id: \.self) { d in
-                    let date = cal.date(byAdding: .day, value: d - 1, to: first)!
-                    let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
-                    Button { pick(date) } label: {
-                        Text("\(d)").font(.system(size: 17, weight: on || today ? .bold : .regular))
-                            .foregroundStyle(on ? Palette.ctaInk : .primary)
-                            .frame(width: 42, height: 42)
-                            .background(on ? Palette.cta : .clear, in: Circle())
-                            .overlay { if today && !on { Circle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1.5) } }
-                            .frame(maxWidth: .infinity)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(future ? 0.25 : 1).disabled(future)
-                }
-            }
+            monthGrid
             Spacer(minLength: 0)
             HStack(spacing: 4) {
                 Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
@@ -475,6 +450,68 @@ struct DateSheet: View {
     }
 
     /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
+    // MARK: Lưới ngày (theo lịch của Peek): hàng thứ ở trên, đủ các tuần (ngày tháng trước / sau mờ), các ngày của tháng đang xem
+    // được khoanh một viền mảnh bo theo bậc, hai cột T7 / CN có nền nhạt suốt từ hàng thứ xuống, hôm nay chữ xanh,
+    // ngày đang chọn là ô vuông bo nền xám
+
+    private static let rowH: CGFloat = 42
+    private static let headH: CGFloat = 28
+
+    private var monthGrid: some View {
+        let blanks = (cal.component(.weekday, from: first) + 5) % 7
+        let days = cal.range(of: .day, in: .month, for: first)!.count
+        let rows = Int(ceil(Double(blanks + days) / 7))
+        let lastCol = (blanks + days - 1) % 7
+        let names = Lang.isEnglish ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+        return GeometryReader { g in
+            let cw = g.size.width / 7, rh = Self.rowH, top = Self.headH
+            ZStack(alignment: .topLeading) {
+                // Cột T7 / CN: nền nhạt cả cột, kể cả hàng thứ
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+                    .frame(width: cw * 2, height: top + rh * CGFloat(rows))
+                    .offset(x: cw * 5)
+                MonthOutline(blanks: blanks, lastCol: lastCol, rows: rows, cw: cw, rh: rh)
+                    .stroke(Color.primary.opacity(0.25), lineWidth: 1.5)
+                    .offset(y: top)
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        ForEach(names.indices, id: \.self) { i in
+                            Text(names[i]).font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(i >= 5 ? Color.primary.opacity(0.7) : Color.secondary)
+                                .frame(width: cw, height: top)
+                        }
+                    }
+                    ForEach(0..<rows, id: \.self) { r in
+                        HStack(spacing: 0) {
+                            ForEach(0..<7, id: \.self) { c in
+                                dayCell(cal.date(byAdding: .day, value: r * 7 + c - blanks, to: first)!)
+                                    .frame(width: cw, height: rh)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(height: Self.headH + Self.rowH * CGFloat(rows))
+    }
+
+    private func dayCell(_ date: Date) -> some View {
+        let inMonth = cal.isDate(date, equalTo: first, toGranularity: .month)
+        let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
+        return Button { pick(date) } label: {
+            Text("\(cal.component(.day, from: date))")
+                .font(.system(size: 17, weight: on || today ? .bold : .medium, design: .rounded)).monospacedDigit()
+                .foregroundStyle(today ? Color(light: 0x2F9E50, dark: 0x6FD08A) : inMonth ? Color.primary : Color.secondary.opacity(0.6))
+                .frame(width: 38, height: 34)
+                .background(on ? Color.primary.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(future ? 0.3 : 1).disabled(future)
+    }
+
     private func wheel(_ count: Int, _ value: Binding<Int>) -> some View {
         FlatWheel(count: count, value: value).frame(width: 76)
     }
@@ -562,5 +599,34 @@ private struct FlatWheel: View {
         .onChange(of: pos) { _, p in if let p, p != value { value = p } }
         .onChange(of: value) { _, v in if pos != v { pos = v } }
         .sensoryFeedback(.selection, trigger: pos)
+    }
+}
+
+/// Viền quanh các ô của một tháng trên lưới 7 cột: đa giác bậc thang (hàng đầu bắt đầu từ ngày 1, hàng cuối dừng ở ngày cuối),
+/// mọi góc — lồi lẫn lõm — đều bo cùng bán kính, vẽ thành một nét liền
+private struct MonthOutline: Shape {
+    let blanks: Int, lastCol: Int, rows: Int
+    let cw: CGFloat, rh: CGFloat
+    var radius: CGFloat = 12
+
+    func path(in _: CGRect) -> Path {
+        let w = cw * 7, h = rh * CGFloat(rows)
+        let bx = cw * CGFloat(blanks), lx = cw * CGFloat(lastCol + 1), lastTop = rh * CGFloat(rows - 1)
+        var pts: [CGPoint] = []
+        if blanks > 0 { pts += [CGPoint(x: bx, y: 0)] } else { pts += [CGPoint(x: 0, y: 0)] }
+        pts += [CGPoint(x: w, y: 0)]
+        if lastCol < 6 { pts += [CGPoint(x: w, y: lastTop), CGPoint(x: lx, y: lastTop), CGPoint(x: lx, y: h)] } else { pts += [CGPoint(x: w, y: h)] }
+        pts += [CGPoint(x: 0, y: h)]
+        if blanks > 0 { pts += [CGPoint(x: 0, y: rh), CGPoint(x: bx, y: rh)] }
+        var p = Path()
+        let n = pts.count
+        let start = CGPoint(x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2)
+        p.move(to: start)
+        for i in 1...n {
+            let v = pts[i % n], next = pts[(i + 1) % n]
+            p.addArc(tangent1End: v, tangent2End: next, radius: radius)
+        }
+        p.addLine(to: start)
+        return p
     }
 }

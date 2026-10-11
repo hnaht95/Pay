@@ -72,8 +72,8 @@ struct StatsView: View {
             if film != nil { monthTabs } else { periodHeader }
             hero(items, prev)
             grid(items, prev)
-            if scope == .month { limitCard(items) }
             trendCard
+            if scope == .month { limitCard(items) }
             if !items.isEmpty {
                 categoryCard(items)
                 recentCard(items)
@@ -457,14 +457,19 @@ struct StatsView: View {
 
     // MARK: Hạn mức tháng
 
-    /// Hạn mức của tháng đang xem (mức đặt cho tháng đó). Tháng cũ chưa từng đặt thì ẩn hẳn thẻ.
+    /// Hạn mức của tháng này, chỉ hiện khi đang xem tháng hiện tại (cả tháng, không chọn ngày lẻ) và đã đặt ngân sách
     @ViewBuilder private func limitCard(_ items: [Expense]) -> some View {
         let spent = sum(items)
-        let limit = store.budget(for: month)
-        if limit != nil || isRunning {
+        if isRunning, let limit = store.budget(for: month), limit > 0 {
+        let pct = Int((Double(spent) / Double(limit) * 100).rounded())
         card {
-            Text(L("Hạn mức chi tháng")).font(.system(size: 17, weight: .semibold))
-            if let limit {
+            HStack(alignment: .firstTextBaseline) {
+                Text(L("Hạn mức tháng này")).font(.system(size: 17, weight: .semibold))
+                Spacer()
+                Text("\(pct)%").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(spent > limit ? Palette.danger : .secondary)
+            }
+            do {
                 // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám nhạt, mảng đen (chữ trắng) có vạch ở mép;
                 // trái là số đã chi, phải là hạn mức (vượt hạn mức: mảng đỏ đầy thanh)
                 let ratio = min(Double(spent) / Double(limit), 1)
@@ -499,12 +504,18 @@ struct StatsView: View {
                 }
                 .frame(height: 48)
                 .padding(.top, 6)
-                Text(over ? L("Vượt %@ · đã dùng %@%%", fmt(spent - limit), String(Int((Double(spent) / Double(limit) * 100).rounded())))
-                          : L("Còn %@ · đã dùng %@%%", fmt(limit - spent), String(Int((Double(spent) / Double(limit) * 100).rounded()))))
-                    .font(.system(size: 14)).foregroundStyle(over ? Palette.danger : .secondary)
-                    .padding(.top, 2)
-            } else {
-                Text(L("Chưa đặt hạn mức. Vào Cài đặt › Ngân sách để đặt.")).font(.system(size: 14)).foregroundStyle(.secondary)
+                // Dưới thanh: còn bao nhiêu, và mỗi ngày còn lại (tính cả hôm nay) nên tiêu chừng nào
+                let daysLeft = max(1, dayCount(span) - elapsedDays)
+                HStack {
+                    Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@", fmt(limit - spent)))
+                        .foregroundStyle(over ? Palette.danger : .primary)
+                    Spacer()
+                    if !over {
+                        Text(L("%@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000))).foregroundStyle(.secondary)
+                    }
+                }
+                .font(.system(size: 14, weight: .medium))
+                .padding(.top, 2)
             }
         }
         }

@@ -56,7 +56,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .fullScreenCover(item: $editing) { EntryView(mode: $0).environmentObject(store) }
+        .sheet(item: $editing) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .appMenu($menu)
         .sheetGrabber()

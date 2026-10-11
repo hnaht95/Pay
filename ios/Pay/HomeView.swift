@@ -84,7 +84,8 @@ struct HomeView: View {
                         pressed: film?.pressed["menu-item"].map { (0, $0) })
             }
         }
-        .fullScreenCover(item: $entry) { EntryView(mode: $0) }
+        // Nhập / sửa khoản chi mở dạng tấm (sheet) như danh mục, thống kê, cài đặt — không phủ kín màn hình
+        .sheet(item: $entry) { EntryView(mode: $0).sheetGrabber() }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }
             scanned = nil

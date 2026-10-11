@@ -194,14 +194,9 @@ struct SettingsView: View {
             } else {
                 Button { ProPaywall.present() } label: {
                     HStack(spacing: 10) {
-                        // "Nâng cấp" + chữ "Pay Pro" viết tay như màn mua Pro
+                        // "Nâng cấp" + chữ "Pro" viết tay xanh như màn mua Pro
                         Text(L("Nâng cấp")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
-                        ZStack {
-                            HandPayPro(word: 0).fill(Color.primary)
-                            HandPayPro(word: 1).fill(Color(hex: 0x61BE6E))
-                        }
-                        .frame(width: 30 * HandPayPro.aspect, height: 30)
-                        .accessibilityLabel("Pay Pro")
+                        ProBadge(height: 28)
                         Spacer()
                         Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
                     }

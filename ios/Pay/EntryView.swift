@@ -534,6 +534,30 @@ struct DateSheet: View {
             .gesture(DragGesture(minimumDistance: 20).onEnded { v in
                 if v.translation.width < -40 { shift(1) } else if v.translation.width > 40 { shift(-1) }
             })
+            // Giờ : phút, cùng khung xám bo góc với dải tuần; hai bánh xe cuộn dọc (phút nhảy 5), hàng giữa là giờ đang chọn
+            HStack(spacing: 0) {
+                Text(L("Giờ")).font(.system(size: 17, weight: .medium)).foregroundStyle(Color.primary.opacity(0.6))
+                Spacer(minLength: 8)
+                HStack(spacing: 4) {
+                    PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
+                              pitch: 30, font: 20)
+                        .frame(width: 40)
+                    Text(":").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
+                    PeekWheel(count: 12, step: 5, value: Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }),
+                              pitch: 30, font: 20)
+                        .frame(width: 40)
+                }
+                .frame(width: 120, height: 96)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.06)).frame(height: 34))
+                .mask {
+                    LinearGradient(stops: [.init(color: .black.opacity(0.08), location: 0), .init(color: .black, location: 0.35),
+                                           .init(color: .black, location: 0.65), .init(color: .black.opacity(0.08), location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                .clipped()
+            }
+            .padding(.leading, 20).padding(.trailing, 12)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             // Huỷ / Lưu ở đáy, to bằng hai nút Nhập / Quét QR của màn hình chính. Huỷ trả ngày giờ về như lúc mở
             HStack(spacing: 12) {
                 BigButton(title: L("Huỷ"), icon: "", primary: false) { when = original ?? when; dismiss() }
@@ -581,13 +605,12 @@ struct DateSheet: View {
         return Button { pick(d) } label: {
             VStack(spacing: 6) {
                 Text("\(cal.component(.day, from: d))")
-                    // Cùng cỡ, cùng độ đậm cho mọi ngày (hôm nay chỉ khác ở vòng viền)
+                    // Cùng cỡ, cùng độ đậm cho mọi ngày
                     .font(.system(size: 17, weight: on ? .medium : .regular, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(on ? .white : Color.primary.opacity(0.75))
+                    .foregroundStyle(on || today ? .white : Color.primary.opacity(0.75))
                     .frame(width: 36, height: 36)
-                    // Ngày chọn: tròn cam như mẫu
-                    .background(Circle().fill(on ? Self.orange : .clear))
-                    .overlay { if today && !on { Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 1.5) } }
+                    // Ngày chọn: tròn cam như mẫu; hôm nay (chưa chọn): tròn đen xám
+                    .background(Circle().fill(on ? Self.orange : today ? Color(light: 0x3A3A3E, dark: 0x5A5A5F) : .clear))
                 // Ngày có khoản chi: chấm nhỏ
                 Circle().fill(spent ? Self.orange : .clear).frame(width: 4, height: 4)
             }

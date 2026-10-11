@@ -723,9 +723,9 @@ extension View {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
         } else if #available(iOS 26.0, *) {
             // Chỉ dùng mép mờ của hệ thống, cùng kiểu thanh tiêu đề (không phủ thêm lớp chuyển màu tự làm)
-            // Thanh "Đã xoá · Hoàn tác" gắn trên mép dải nút (lớp phủ, không đổi kích thước dải): để làm lớp phủ riêng của
-            // màn hình thì nó nằm sau dải nút, không thấy đâu
-            safeAreaBar(edge: .bottom) { dock.overlay(alignment: .top) { above().alignmentGuide(.top) { $0[.bottom] + 8 } } }
+            // Thanh "Đã xoá · Hoàn tác" xếp ngay trên dải nút, trong cùng thanh đáy. Không làm lớp phủ: phủ lên nội dung thì nó
+            // nằm sau dải nút (không thấy), phủ ra ngoài khung dải nút thì thấy nhưng không bấm được (chạm lọt xuống hàng bên dưới)
+            safeAreaBar(edge: .bottom) { VStack(spacing: 8) { above(); dock } }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached } }

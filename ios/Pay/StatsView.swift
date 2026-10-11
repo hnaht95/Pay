@@ -15,6 +15,8 @@ struct StatsView: View {
     /// Lịch tuần đang mở rộng ra cả tháng, và tháng đang hiện khi mở rộng
     /// Ngày đang nằm giữa dải ngày cuộn ngang (để biết đang xem tháng nào)
     @State private var centerDay: Date? = Calendar.current.startOfDay(for: Date())
+    /// Mờ mép trái / phải của dải ngày (chỉ khi còn ngày khuất bên đó; mở ra ở hôm nay nên mép phải không mờ)
+    @State private var stripFade = [true, false]
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -134,6 +136,14 @@ struct StatsView: View {
             .scrollPosition(id: $centerDay, anchor: .center)
             .defaultScrollAnchor(.trailing)
             .frame(height: 82)
+            .modifier(ChipEdges(fade: $stripFade))
+            .mask {
+                HStack(spacing: 0) {
+                    LinearGradient(colors: [stripFade[0] ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing).frame(width: 32)
+                    Color.black
+                    LinearGradient(colors: [.black, stripFade[1] ? .clear : .black], startPoint: .leading, endPoint: .trailing).frame(width: 32)
+                }
+            }
         }
         // Không nền thẻ, dải ngày tràn ra hai mép màn hình (bù lại lề 16 của trang); chữ tiêu đề vẫn thẳng lề
         .padding(.horizontal, -16)

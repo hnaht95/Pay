@@ -520,7 +520,7 @@ struct DateSheet: View {
 }
 
 /// Theo dõi hàng chip đang cuộn tới đâu: còn chip bị che ở mép trái / phải không (iOS 17 không có, giữ mờ mép phải).
-private struct ChipEdges: ViewModifier {
+struct ChipEdges: ViewModifier {
     @Binding var fade: [Bool]
 
     func body(content: Content) -> some View {

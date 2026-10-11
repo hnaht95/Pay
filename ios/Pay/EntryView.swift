@@ -275,6 +275,7 @@ struct EntryView: View {
                                 learn(); store.update(e); dismiss()
                             }
                             .opacity(amount == 0 ? 0.35 : 1)
+                            .animation(.easeInOut(duration: 0.25), value: amount == 0)
                         } else {
                             BigButton(title: L("Sửa"), icon: "", primary: true) { withAnimation(.snappy) { editing = true } }
                         }
@@ -295,6 +296,7 @@ struct EntryView: View {
         .buttonStyle(Pressable())
         .disabled(amount == 0)
         .opacity(amount == 0 ? 0.35 : 1)
+        .animation(.easeInOut(duration: 0.25), value: amount == 0)   // sáng / mờ chuyển dần, không bật tắt
     }
 
     private func secondary(_ label: String, _ run: @escaping () -> Void) -> some View {
@@ -307,6 +309,7 @@ struct EntryView: View {
         .buttonStyle(Pressable())
         .disabled(amount == 0)
         .opacity(amount == 0 ? 0.35 : 1)
+        .animation(.easeInOut(duration: 0.25), value: amount == 0)   // sáng / mờ chuyển dần, không bật tắt
     }
 
     // MARK: Lưu

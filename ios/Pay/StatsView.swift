@@ -159,7 +159,7 @@ struct StatsView: View {
 
     private static let todayTint = Color(light: 0x3FA65A, dark: 0x7FD08B)
 
-    /// Viên ngày: thứ nhỏ, số ngày, cột mức chi (cao tối đa 16 pt, ngày không chi là vạch xám).
+    /// Viên ngày: thứ nhỏ, số ngày; lớp nền trong dâng cao theo mức chi.
     /// Đang chọn: nền đậm, chữ trắng; hôm nay: số xanh lá; ngày 1: ghi tháng thay cho thứ để thấy chỗ sang tháng.
     private func dayPill(_ d: Date, spent: Int, top: Int) -> some View {
         let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
@@ -174,24 +174,27 @@ struct StatsView: View {
                 }
             }
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 6) {
                 Text(firstOfMonth ? shortMonth(d) : weekdayShort(d))
                     .font(.system(size: 11, weight: firstOfMonth ? .bold : .medium))
                     .foregroundStyle(on ? Self.inkText.opacity(0.7) : Color.primary.opacity(firstOfMonth ? 0.7 : 0.4))
                 Text("\(cal.component(.day, from: d))")
                     .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                     .foregroundStyle(on ? Self.inkText : today ? Self.todayTint : Color.primary.opacity(0.8))
-                // Cột dọc mảnh cao theo mức chi (rộng 16 thì cột đầy thành hình tròn, đọc ra cái chấm)
-                ZStack(alignment: .bottom) {
-                    Color.clear.frame(width: 1, height: 18)
-                    Capsule()
-                        .fill(spent > 0 ? (on ? Self.inkText : Color(hex: 0x61BE6E)) : Color.primary.opacity(0.12))
-                        .frame(width: spent > 0 ? 6 : 14, height: spent > 0 ? max(4, 18 * r) : 3)
-                }
             }
             .frame(width: Self.pillWidth, height: 82)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(on ? Self.ink : today ? Self.todayTint.opacity(0.14) : Self.card))
+            // Hai lớp nền: viên ngoài trắng (đang chọn: đậm), bên trong một lớp xanh dâng từ đáy lên, cao theo mức chi
+            .background {
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous).fill(on ? Self.ink : Self.card)
+                    if spent > 0 {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(on ? Color.white.opacity(0.2) : Color(hex: 0x61BE6E).opacity(0.3))
+                            .frame(height: max(14, (82 - 8) * r))
+                            .padding(4)
+                    }
+                }
+            }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(Pressable())

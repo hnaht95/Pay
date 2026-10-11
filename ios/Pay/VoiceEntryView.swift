@@ -243,7 +243,7 @@ struct VoiceEntryView: View {
                         }
                         .animation(Self.settle, value: cardRect)
                     }
-                    .opacity(shown ? 1 : 0)
+                    .opacity(shown ? 0.55 : 0)   // nhòe nhẹ: lớp kính mỏng nhất cũng chỉ hiện một nửa
                     .animation(.easeOut(duration: 0.3).delay(shown ? 0.12 : 0), value: shown)
                 Color.black.opacity(shown ? 0.3 : 0)
             }

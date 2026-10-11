@@ -73,7 +73,6 @@ struct StatsView: View {
             hero(items, prev)
             grid(items, prev)
             trendCard
-            if scope == .month { limitCard(items) }
             if !items.isEmpty {
                 categoryCard(items)
                 recentCard(items)
@@ -455,72 +454,6 @@ struct StatsView: View {
             .background(tone.ink.opacity(0.1), in: Capsule())
     }
 
-    // MARK: Hạn mức tháng
-
-    /// Hạn mức của tháng này, chỉ hiện khi đang xem tháng hiện tại (cả tháng, không chọn ngày lẻ) và đã đặt ngân sách
-    @ViewBuilder private func limitCard(_ items: [Expense]) -> some View {
-        let spent = sum(items)
-        if isRunning, let limit = store.budget(for: month), limit > 0 {
-        let pct = Int((Double(spent) / Double(limit) * 100).rounded())
-        card {
-            HStack(alignment: .firstTextBaseline) {
-                Text(L("Hạn mức tháng này")).font(.system(size: 17, weight: .semibold))
-                Spacer()
-                Text("\(pct)%").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(spent > limit ? Palette.danger : .secondary)
-            }
-            do {
-                // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám nhạt, mảng đen (chữ trắng) có vạch ở mép;
-                // trái là số đã chi, phải là hạn mức (vượt hạn mức: mảng đỏ đầy thanh)
-                let ratio = min(Double(spent) / Double(limit), 1)
-                let over = spent > limit
-                GeometryReader { g in
-                    let w = max(g.size.width * ratio, over ? g.size.width : 0)
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 14, style: .circular).fill(Color.primary.opacity(0.07))
-                        RoundedRectangle(cornerRadius: 14, style: .circular)
-                            .fill(over ? Palette.danger : Self.ink)
-                            .frame(width: max(w, 30))
-                            .overlay(alignment: .trailing) {
-                                Capsule().fill(Self.inkText.opacity(0.6))
-                                    .frame(width: 4, height: 48 * 0.44)
-                                    .padding(.trailing, 13)
-                            }
-                        // Chữ vẽ hai lớp: phần nằm trên mảng đen là chữ trắng, phần nằm trên rãnh là chữ tối —
-                        // mảng ngắn hay dài cỡ nào, chữ vắt ngang mép cũng đổi màu đúng chỗ nên luôn đọc được
-                        let fillW = max(w, 30)
-                        let labels = HStack {
-                            Text(L("Đã chi %@", short(spent)))
-                            Spacer()
-                            Text(L("Hạn mức %@", short(limit)))
-                        }
-                        .font(.system(size: 17, weight: .medium, design: .rounded)).monospacedDigit()
-                        .padding(.horizontal, 18)
-                        labels.foregroundStyle(Color.primary.opacity(0.75))
-                            .mask(alignment: .trailing) { Rectangle().frame(width: max(0, g.size.width - fillW)) }
-                        labels.foregroundStyle(Self.inkText)
-                            .mask(alignment: .leading) { Rectangle().frame(width: fillW) }
-                    }
-                }
-                .frame(height: 48)
-                .padding(.top, 6)
-                // Dưới thanh: còn bao nhiêu, và mỗi ngày còn lại (tính cả hôm nay) nên tiêu chừng nào
-                let daysLeft = max(1, dayCount(span) - elapsedDays)
-                HStack {
-                    Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@", fmt(limit - spent)))
-                        .foregroundStyle(over ? Palette.danger : .primary)
-                    Spacer()
-                    if !over {
-                        Text(L("%@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000))).foregroundStyle(.secondary)
-                    }
-                }
-                .font(.system(size: 14, weight: .medium))
-                .padding(.top, 2)
-            }
-        }
-        }
-    }
-
     // MARK: Biểu đồ 6 tháng: Hoá đơn (đậm) + Chi tiêu khác (cam sọc)
 
     private struct MonthBar: Identifiable {
@@ -573,6 +506,7 @@ struct StatsView: View {
                 .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
                 .foregroundStyle(.primary)
                 .contentTransition(.numericText())
+            budgetLine(spent: current)
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
                     HStack(alignment: .bottom, spacing: 8) {
@@ -592,6 +526,36 @@ struct StatsView: View {
             }
             .frame(height: 118)
             .padding(.top, 8)
+        }
+    }
+
+    /// Hạn mức nằm ngay dưới số tiền: một vạch ngang mảnh đã dùng / hạn mức, kèm còn bao nhiêu và mức nên tiêu mỗi ngày.
+    /// Chỉ ở tháng hiện tại và khi đã đặt ngân sách.
+    @ViewBuilder private func budgetLine(spent: Int) -> some View {
+        if cal.isDate(month, equalTo: Date(), toGranularity: .month), let limit = store.budget(for: month), limit > 0 {
+            let over = spent > limit
+            let pct = Int((Double(spent) / Double(limit) * 100).rounded())
+            let monthDays = cal.range(of: .day, in: .month, for: Date())!.count
+            let daysLeft = max(1, monthDays - cal.component(.day, from: Date()) + 1)
+            VStack(alignment: .leading, spacing: 8) {
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.primary.opacity(0.08))
+                        Capsule().fill(over ? Palette.danger : Self.ink)
+                            .frame(width: max(6, g.size.width * min(Double(spent) / Double(limit), 1)))
+                    }
+                }
+                .frame(height: 6)
+                HStack {
+                    Text(L("%ld%% hạn mức %@", pct, short(limit)))
+                        .foregroundStyle(over ? Palette.danger : .secondary)
+                    Spacer()
+                    Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000)))
+                        .foregroundStyle(over ? Palette.danger : .secondary)
+                }
+                .font(.system(size: 13))
+            }
+            .padding(.top, 4)
         }
     }
 

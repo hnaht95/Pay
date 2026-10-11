@@ -498,15 +498,16 @@ struct DateSheet: View {
                 }
                 .buttonStyle(Pressable())
                 }
-                // Cả cột chạy từ hàng chữ thứ (đỉnh khung giờ thẳng hàng chữ thứ) xuống; nút Xong kéo dài qua vùng thanh home tới
-                // cách đáy tấm đúng bằng lề phải (20 pt) — góc dưới phải nhờ vậy đồng tâm với góc tấm. Phần thò xuống không làm tấm cao thêm
-                .frame(width: wheelsW, height: colH + (P.band - P.rowGap / 2) * k + Self.extendDown)
-                .padding(.bottom, -Self.extendDown)
+                // Cả cột chạy từ hàng chữ thứ (đỉnh khung giờ thẳng hàng chữ thứ) xuống tới đáy dải nền T7 / CN (đáy nút Xong)
+                .frame(width: wheelsW, height: colH + (P.band - P.rowGap / 2) * k)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
         }
         .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 8)
+        // Cả cụm hạ xuống qua vùng thanh home: đáy lịch / nút Xong cách đáy tấm bằng lề phải, góc dưới phải nút Xong đồng tâm góc tấm.
+        // (Bớt phần ấy khỏi chiều cao đo được: tấm thấp đi đúng chừng đó, nội dung tràn xuống vùng thanh home)
+        .padding(.bottom, -Self.extendDown)
         // Tấm cao vừa khít nội dung (đo thật), không chừa khoảng trống dưới lịch
         .fixedSize(horizontal: false, vertical: true)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentH = $0 }

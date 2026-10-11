@@ -156,13 +156,8 @@ struct StatsView: View {
             .modifier(ChipEdges(fade: $stripFade))
             // Rung nhẹ mỗi khi một ngày lướt qua giữa dải, như bánh xe chọn giờ của iOS
             .sensoryFeedback(.selection, trigger: centerDay)
-            .mask {
-                HStack(spacing: 0) {
-                    LinearGradient(colors: [stripFade[0] ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing).frame(width: 32)
-                    Color.black
-                    LinearGradient(colors: [.black, stripFade[1] ? .clear : .black], startPoint: .leading, endPoint: .trailing).frame(width: 32)
-                }
-            }
+            // Hai mép: nhoè dần như mép cuộn của iOS (kính mờ tan dần), không phủ màu nền lên
+            .modifier(EdgeBlur(fade: stripFade, width: 40))
             }
             // Công tắc Ngày / Tháng ngay dưới dải, giữa màn
             scopeToggle.frame(maxWidth: .infinity)

@@ -270,13 +270,7 @@ struct EntryView: View {
             // Hai mép mờ dần khi cuộn: chip đi ra mép thì tan vào nền thay vì bị cắt thẳng
             // Chỉ mờ phía còn chip bị che: đang ở đầu hàng thì mép trái không mờ, cuộn hết thì mép phải không mờ
             .modifier(ChipEdges(fade: $chipFade))
-            .mask {
-                HStack(spacing: 0) {
-                    LinearGradient(colors: [chipFade[0] ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing).frame(width: 24)
-                    Color.black
-                    LinearGradient(colors: [.black, chipFade[1] ? .clear : .black], startPoint: .leading, endPoint: .trailing).frame(width: 24)
-                }
-            }
+            .modifier(EdgeBlur(fade: chipFade, width: 30))
             // Sau khi setup() gán xong `cat` (onAppear của hàng chip chạy trước, lúc đó `cat` còn nil): đưa nó lên đầu hàng
             // (đứng đầu rồi nên hàng ở vị trí ban đầu là thấy, không cuộn: cuộn tới chip thì mất lề trái)
             .onChange(of: ready) { _, _ in leadCat = cat }
@@ -816,6 +810,33 @@ struct DateSheet: View {
 }
 
 /// Theo dõi hàng chip đang cuộn tới đâu: còn chip bị che ở mép trái / phải không (iOS 17 không có, giữ mờ mép phải).
+/// Mép trái / phải của dải cuộn ngang nhoè dần như mép cuộn của iOS: lớp kính mờ, rõ nhất sát mép rồi tan vào giữa.
+/// Chỉ hiện ở phía còn nội dung bị che (xem ChipEdges)
+struct EdgeBlur: ViewModifier {
+    let fade: [Bool]
+    var width: CGFloat = 36
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            HStack(spacing: 0) {
+                edge(.leading).opacity(fade[0] ? 1 : 0)
+                Spacer(minLength: 0)
+                edge(.trailing).opacity(fade[1] ? 1 : 0)
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func edge(_ side: HorizontalEdge) -> some View {
+        Rectangle().fill(.ultraThinMaterial)
+            .mask {
+                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.6), location: 0.4), .init(color: .clear, location: 1)],
+                               startPoint: side == .leading ? .leading : .trailing, endPoint: side == .leading ? .trailing : .leading)
+            }
+            .frame(width: width)
+    }
+}
+
 struct ChipEdges: ViewModifier {
     @Binding var fade: [Bool]
 

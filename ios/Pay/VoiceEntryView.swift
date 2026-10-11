@@ -226,12 +226,12 @@ struct VoiceEntryView: View {
 
     private var live: some View {
         ZStack(alignment: .bottom) {
-            // Cả màn tối nhẹ; riêng vùng quanh thẻ nhòe nhẹ, bắt đầu nhòe từ trên mép thẻ chừng 110 pt và theo thẻ khi thẻ đổi
-            // chiều cao (nghe xong thu gọn): chỉ tối thì các ô danh mục màu vẫn lộ sắc nét quanh hai góc trên của thẻ, nhìn như thẻ
-            // cắt vào ô (rõ nhất ở giao diện tối). Phần trên vẫn rõ để biết mình đang ở đâu.
-            // Lớp nhòe hiện sau lớp tối một nhịp, để không chen vào lúc thẻ đang bung
+            // Lớp tối, không nhòe: phần trên tối nhẹ (vẫn thấy rõ mình đang ở đâu), từ trên mép thẻ chừng 110 pt tối đậm dần lên,
+            // để các ô danh mục màu sát thẻ chìm xuống — chỉ tối đều thì chúng lộ sắc nét quanh hai góc trên của thẻ, nhìn như thẻ
+            // cắt vào ô (rõ nhất ở giao diện tối). Vùng đậm theo thẻ khi thẻ đổi chiều cao (nghe xong thu gọn)
             ZStack {
-                Rectangle().fill(.ultraThinMaterial)
+                Color.black.opacity(0.3)
+                Color.black.opacity(0.3)
                     .mask {
                         GeometryReader { g in
                             let top = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY
@@ -243,10 +243,8 @@ struct VoiceEntryView: View {
                         }
                         .animation(Self.settle, value: cardRect)
                     }
-                    .opacity(shown ? 0.55 : 0)   // nhòe nhẹ: lớp kính mỏng nhất cũng chỉ hiện một nửa
-                    .animation(.easeOut(duration: 0.3).delay(shown ? 0.12 : 0), value: shown)
-                Color.black.opacity(shown ? 0.3 : 0)
             }
+            .opacity(shown ? 1 : 0)
             .ignoresSafeArea()
             .onTapGesture { close() }
             if let from {

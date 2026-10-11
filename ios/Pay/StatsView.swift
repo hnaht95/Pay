@@ -116,7 +116,7 @@ struct StatsView: View {
         let shown = centerDay ?? today
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Text(byMonth ? String(cal.component(.year, from: month)) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
+                Text(byMonth ? monthYear(month) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
                     .contentTransition(.numericText())
                     .animation(.snappy, value: monthYear(shown))
                 Spacer()
@@ -235,8 +235,8 @@ struct StatsView: View {
             }
         } label: {
             VStack(spacing: 6) {
-                // Hàng năm nằm ngoài viên, cùng kiểu hàng thứ của dải ngày
-                Text(String(cal.component(.year, from: m)))
+                // Hàng năm nằm ngoài viên, cùng kiểu hàng thứ của dải ngày; chỉ ghi ở tháng hiện tại và tháng 12 (mốc sang năm)
+                Text(now || cal.component(.month, from: m) == 12 ? String(cal.component(.year, from: m)) : " ")
                     .font(.system(size: 11, weight: on ? .bold : .medium))
                     .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                 VStack(spacing: 0) {

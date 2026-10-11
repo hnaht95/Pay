@@ -196,7 +196,7 @@ struct ProPaywall: View {
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(height: 530)
+                    .frame(height: 400)
                     .sensoryFeedback(.selection, trigger: page)
 
                     // Chấm trang, chạm để nhảy
@@ -259,9 +259,11 @@ struct ProPaywall: View {
     /// Một thẻ: khung minh hoạ màu, tên và mô tả tính năng
     private func featureCard(_ f: ProFeature) -> some View {
         VStack(spacing: 14) {
-            ProScreen(feature: f)
-                .padding(.vertical, 18)
-                .frame(maxWidth: .infinity)
+            // Cận cảnh: iPhone phóng to, chỉ lộ đúng phần của tính năng (khung máy lộ ở hai bên và mép trên)
+            ProScreen(feature: f, scale: 0.8)
+                .offset(y: 22 - f.focusY * 0.8)
+                .frame(maxWidth: .infinity).frame(height: 300, alignment: .top)
+                .clipped()
                 .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(f.tint))
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             VStack(spacing: 4) {
@@ -297,6 +299,15 @@ struct ProPaywall: View {
 }
 
 extension ProFeature {
+    /// Phần màn hình (pt, từ mép trên màn 874) cần cận cảnh
+    var focusY: CGFloat {
+        switch self {
+        case .cloud, .house: 0
+        case .history, .recurring, .photos, .csv, .cardAuto: 96
+        case .categories: 300
+        }
+    }
+
     /// Nền thẻ minh hoạ: bảng màu danh mục của app
     var tint: Color {
         switch self {
@@ -348,7 +359,7 @@ struct ProScreen: View {
         case .photos:
             let c = Category.get("an")
             sheet { CategoryEditor(editing: CustomCat(k: c.k, name: c.rawName, icon: c.icon, tone: -1, on: true, u: 0)) }
-        case .categories: home(scroll: 250)
+        case .categories: home(scroll: 0)
         case .cardAuto: home(scroll: 760)
         case .csv: sheet(scroll: 900) { StatsView() }
         }

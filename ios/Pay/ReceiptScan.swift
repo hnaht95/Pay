@@ -58,10 +58,10 @@ struct ReceiptCamera: View {
                     Button { cam.capture { finish($0) } } label: {
                         Image(systemName: "camera.aperture").font(.system(size: 36, weight: .medium))
                             .accessibilityLabel(L("Chụp"))
-                        // Cam quýt retro (cùng bảng màu các ô Thống kê), chữ kem
-                        .foregroundStyle(Color(hex: 0xFFF4E0))
+                        // Vàng mù tạt retro (cùng bảng màu các ô Thống kê), icon xanh navy
+                        .foregroundStyle(Color(hex: 0x1F3F6E))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(hex: 0xEC7A2B), in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
+                        .background(Color(hex: 0xF2B82E), in: UnevenRoundedRectangle(topLeadingRadius: corner, bottomLeadingRadius: corner,
                                                                        bottomTrailingRadius: screen, topTrailingRadius: corner, style: .continuous))
                     }
                     .buttonStyle(Pressable())

@@ -498,7 +498,7 @@ struct DateSheet: View {
                     .contentTransition(.numericText())
                     .foregroundStyle(Color.primary.opacity(0.55))
                 Spacer(minLength: 8)
-                let showsToday = !isThisMonth
+                let showsToday = !isThisWeek
                 Button { jumpToToday() } label: {
                     Text(L("Hôm nay")).font(.system(size: 15.75, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.6))
@@ -513,19 +513,27 @@ struct DateSheet: View {
                 .buttonStyle(.plain)
                 .allowsHitTesting(showsToday)
                 .padding(.trailing, showsToday ? 4 : 0)
-                arrow(angle: 0, L("Tháng trước")) { shift(-1) }
-                arrow(angle: 180, L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
+                // Dải tuần đi ngang nên mũi tên trái / phải
+                arrow(angle: -90, L("Tuần trước")) { shift(-1) }
+                arrow(angle: 90, L("Tuần sau")) { shift(1) }.opacity(isThisWeek ? 0.3 : 1).disabled(isThisWeek)
             }
-            .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisMonth)
-            // Chỉ chọn ngày (không chọn giờ), lịch gọn: ô 40 pt, chỉ số của tháng đang xem, đủ số hàng cần (5 hoặc 6)
+            .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisWeek)
+            // Chỉ chọn ngày: một dải tuần (thứ trên, ngày dưới) trong khung xám nhạt bo góc; chấm nhỏ dưới ngày có khoản chi.
+            // Đổi tuần bằng mũi tên hoặc vuốt ngang
             ZStack {
-                compactGrid
-                    .id(first)
+                weekStrip
+                    .id(weekStart)
                     .transition(.asymmetric(
-                        insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
-                        removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
+                        insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)))
             }
-            .clipped()
+            .padding(.vertical, 14)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 20).onEnded { v in
+                if v.translation.width < -40 { shift(1) } else if v.translation.width > 40 { shift(-1) }
+            })
             // Huỷ / Lưu ở đáy, to bằng hai nút Nhập / Quét QR của màn hình chính. Huỷ trả ngày giờ về như lúc mở
             HStack(spacing: 12) {
                 BigButton(title: L("Huỷ"), icon: "", primary: false) { when = original ?? when; dismiss() }
@@ -546,50 +554,41 @@ struct DateSheet: View {
         .onAppear { month = when; if original == nil { original = when } }
     }
 
-    /// Lịch gọn: hàng chữ thứ nhỏ mờ, số ngày cỡ 17; ngày đang chọn là viên tròn đen (tối: trắng), hôm nay chữ đậm có chấm nhỏ
-    /// bên dưới; ngày tương lai mờ và không chọn được. Ô trống thay cho ngày của tháng khác
-    private var compactGrid: some View {
-        let blanks = (cal.component(.weekday, from: first) + 5) % 7
-        let days = cal.range(of: .day, in: .month, for: first)!.count
-        let rows = Int(ceil(Double(blanks + days) / 7))
+    /// Thứ Hai đầu tuần đang xem
+    private var weekStart: Date { cal.dateInterval(of: .weekOfYear, for: month)!.start }
+    private var isThisWeek: Bool { cal.isDate(month, equalTo: Date(), toGranularity: .weekOfYear) }
+
+    private var weekStrip: some View {
         let names = Lang.isEnglish ? ["M", "T", "W", "T", "F", "S", "S"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-        return VStack(spacing: 2) {
-            HStack(spacing: 0) {
-                ForEach(names.indices, id: \.self) { i in
-                    Text(names[i]).font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.primary.opacity(0.35))
-                        .frame(maxWidth: .infinity)
+        return HStack(spacing: 0) {
+            ForEach(0..<7, id: \.self) { i in
+                let d = cal.date(byAdding: .day, value: i, to: weekStart)!
+                VStack(spacing: 10) {
+                    Text(names[i]).font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.primary.opacity(0.8))
+                    stripDay(d)
                 }
-            }
-            .frame(height: 24)
-            ForEach(0..<rows, id: \.self) { r in
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { c in
-                        let n = r * 7 + c - blanks
-                        if n >= 0 && n < days {
-                            compactDay(cal.date(byAdding: .day, value: n, to: first)!)
-                        } else {
-                            Color.clear.frame(maxWidth: .infinity).frame(height: 40)
-                        }
-                    }
-                }
+                .frame(maxWidth: .infinity)
             }
         }
     }
 
-    private func compactDay(_ d: Date) -> some View {
+    private func stripDay(_ d: Date) -> some View {
         let on = cal.isDate(d, inSameDayAs: when), today = cal.isDateInToday(d), future = d > Date()
+        let spent = !future && Store.shared.total(on: d) > 0
         return Button { pick(d) } label: {
-            Text("\(cal.component(.day, from: d))")
-                .font(.system(size: 17, weight: on || today ? .semibold : .regular, design: .rounded)).monospacedDigit()
-                .foregroundStyle(on ? Color(light: 0xFFFFFF, dark: 0x111114) : Color.primary.opacity(0.85))
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(on ? Color(light: 0x111114, dark: 0xFFFFFF) : .clear))
-                .overlay(alignment: .bottom) {
-                    if today && !on { Circle().fill(Color.primary.opacity(0.6)).frame(width: 4, height: 4).offset(y: -3) }
-                }
-                .frame(maxWidth: .infinity).frame(height: 40)
-                .contentShape(Rectangle())
+            VStack(spacing: 6) {
+                Text("\(cal.component(.day, from: d))")
+                    .font(.system(size: 17, weight: on || today ? .semibold : .regular, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(on ? Color(light: 0xFFFFFF, dark: 0x111114) : Color.primary.opacity(0.75))
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(on ? Color(light: 0x111114, dark: 0xFFFFFF) : .clear))
+                    .overlay { if today && !on { Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 1.5) } }
+                // Ngày có khoản chi: chấm nhỏ
+                Circle().fill(Color.primary.opacity(spent ? 0.45 : 0)).frame(width: 5, height: 5)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .opacity(future ? 0.25 : 1).disabled(future)
@@ -634,7 +633,7 @@ struct DateSheet: View {
     }
 
     private func jumpToToday() {
-        forward = Date() > first
+        forward = Date() > weekStart
         withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = Date() }
     }
 
@@ -722,7 +721,7 @@ struct DateSheet: View {
     }
 
     private func shift(_ by: Int) {
-        guard let m = cal.date(byAdding: .month, value: by, to: first), m <= Date() else { return }
+        guard let m = cal.date(byAdding: .weekOfYear, value: by, to: weekStart), m <= Date() else { return }
         forward = by > 0
         withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = m }
     }

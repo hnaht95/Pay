@@ -5,6 +5,8 @@ extension English {
         "Xong": "Done",
         "Tháng sau": "Next month",
         "Tháng trước": "Previous month",
+        "Tuần trước": "Previous week",
+        "Tuần sau": "Next week",
         "Giờ": "Time",
         "Ngày giờ": "Date and time",
         "Chưa chi": "Nothing yet",

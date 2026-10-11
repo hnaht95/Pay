@@ -270,7 +270,6 @@ struct StatsView: View {
         let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
         let today = cal.isDateInToday(d)
         let r = min(sqrt(Double(spent) / Double(top)), 1)
-        let firstOfMonth = cal.component(.day, from: d) == 1
         return Button {
             withAnimation(.snappy(duration: 0.2)) {
                 if on { day = nil } else {

@@ -1047,21 +1047,31 @@ struct BankChooser: View {
                 Section {
                     ForEach(BankData.apps.filter(\.fill)) { row($0) }
                 } header: {
-                    Text(L("Mở sẵn người nhận + số tiền"))
-                } footer: {
-                    Text(L("Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận."))
+                    header(L("Mở sẵn người nhận + số tiền"),
+                           L("Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận."))
                 }
                 Section {
                     ForEach(BankData.apps.filter { !$0.fill }) { row($0) }
                 } header: {
-                    Text(L("Chỉ mở app (quét lại QR)"))
+                    header(L("Chỉ mở app (quét lại QR)"),
+                           L("Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Pay ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả."))
                 } footer: {
-                    Text(L("Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Pay ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả.") + "\n\n" + L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
+                    Text(L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
                 }
             }
             .screenTitle(L("Bạn dùng app ngân hàng nào?"))
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    /// Tên nhóm và lời giải thích ngay dưới, nằm trên danh sách ngân hàng của nhóm
+    private func header(_ title: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary)
+            Text(detail).font(.system(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
+        }
+        .textCase(nil)
+        .padding(.bottom, 4)
     }
 
     private func row(_ a: BankApp) -> some View {

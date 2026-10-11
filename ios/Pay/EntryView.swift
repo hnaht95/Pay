@@ -581,7 +581,8 @@ struct DateSheet: View {
         return Button { pick(d) } label: {
             VStack(spacing: 6) {
                 Text("\(cal.component(.day, from: d))")
-                    .font(.system(size: 17, weight: on || today ? .semibold : .regular, design: .rounded)).monospacedDigit()
+                    // Cùng cỡ, cùng độ đậm cho mọi ngày (hôm nay chỉ khác ở vòng viền)
+                    .font(.system(size: 17, weight: on ? .medium : .regular, design: .rounded)).monospacedDigit()
                     .foregroundStyle(on ? .white : Color.primary.opacity(0.75))
                     .frame(width: 36, height: 36)
                     // Ngày chọn: tròn cam như mẫu

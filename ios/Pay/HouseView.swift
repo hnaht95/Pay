@@ -498,7 +498,7 @@ struct HouseView: View {
         if mine > 0, let m = house.members.first(where: { $0.id == me }), !m.hasBank {
             Button { editingMember = m } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "building.columns.fill").font(.system(size: 15))
+                    Image(systemName: "creditcard.fill").font(.system(size: 15))
                     Text(L("Thêm tài khoản nhận tiền")).font(.system(size: 16, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
@@ -614,9 +614,9 @@ struct HouseView: View {
             menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: name, size: 56)), title: L("Bạn trả %@", name) + " · \(fmt(t.amount))",
                                subtitle: house.members.first { $0.id == t.to }?.hasBank == true ? L("Đã có tài khoản nhận tiền") : L("Chưa có tài khoản nhận tiền"),
                                items: [
-                AppMenuItem(icon: "building.columns.fill", title: L("Trả qua app ngân hàng")) { Task { await house.payNow(t, app: store.bankApp) } },
+                AppMenuItem(icon: "creditcard.fill", title: L("Trả qua app ngân hàng")) { Task { await house.payNow(t, app: store.bankApp) } },
                 AppMenuItem(icon: "checkmark", title: L("Đã chuyển bằng cách khác"), subtitle: L("Tiền mặt, ví điện tử…")) { paying = t },
-            ].filter { $0.icon != "building.columns.fill" || house.members.first { $0.id == t.to }?.hasBank == true })
+            ].filter { $0.icon != "creditcard.fill" || house.members.first { $0.id == t.to }?.hasBank == true })
         }
     }
 
@@ -680,7 +680,7 @@ struct HouseView: View {
             HouseAvatar(id: m.id, name: m.name, size: 40)
             HStack(spacing: 6) {
                 Text(name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
-                if m.hasBank { Image(systemName: "building.columns.fill").font(.system(size: 11)).foregroundStyle(.secondary) }
+                if m.hasBank { Image(systemName: "creditcard.fill").font(.system(size: 11)).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 4)
             Text(v > 0 ? L("sẽ nhận %@", fmt(v)) : v < 0 ? L("cần trả %@", fmt(-v)) : L("không nợ"))

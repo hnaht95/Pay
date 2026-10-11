@@ -35,7 +35,8 @@ struct StatsView: View {
     private var scope: Scope { .month }
 
     // Bảng màu của màn hình này
-    static let page = Color(light: 0xEFEFEF, dark: 0x1C1C1E)   // tối: sáng hơn nền màn chính (0D0D10) để tấm sheet tách khỏi màn phía sau
+    /// Cùng nền màn hình chính, để các hàng kiểu "Gần đây" (nền Palette.card) tương phản y như ngoài trang chủ
+    static let page = Palette.bg
     static let card = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
     static let ink = Color(light: 0x1C1C1E, dark: 0xF2F2F2)          // cột "Hoá đơn", tab đang chọn
     static let inkText = Color(light: 0xFFFFFF, dark: 0x111114)

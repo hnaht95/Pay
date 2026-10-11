@@ -87,10 +87,10 @@ struct StatsView: View {
     // MARK: Lịch — chép từ CalendarPanel của Peek (hàng tiêu đề + dải bảy ngày), chỉ đổi màu cho nền sáng
     //
     // Peek vẽ chữ trắng trên nền đen của notch; ở đây là chữ `primary` trên thẻ trắng, cùng các mức độ mờ.
-    // Tím của hôm nay -> xanh lá của app. Cỡ chữ / khung nhân 1,3 cho vừa màn hình điện thoại.
+    // Tím của hôm nay -> xanh lá của app. Cột giữ đúng tỉ lệ của Peek (rộng ~48, cao 56); chữ chỉ nhích lên chút cho dễ đọc.
 
-    private static let headerHeight: CGFloat = 30
-    private static let stripHeight: CGFloat = 72
+    private static let headerHeight: CGFloat = 28
+    private static let stripHeight: CGFloat = 56
     private static let todayTint = Color(light: 0x3FA65A, dark: 0x7FD08B)
 
     private var weekStrip: some View {
@@ -120,10 +120,10 @@ struct StatsView: View {
             Button { withAnimation(.snappy) { toggleExpanded() } } label: {
                 HStack(spacing: 8) {
                     CalendarShape().fill(style: FillStyle(eoFill: true))
-                        .frame(width: 19, height: 19)
+                        .frame(width: 17, height: 17)
                         .foregroundStyle(Color.primary.opacity(0.5))
                     Text(calendarLabel)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.55))
                 }
                 .padding(.horizontal, 10)
@@ -184,7 +184,7 @@ struct StatsView: View {
             HStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { i in
                     Text(weekdayShort(cal.date(byAdding: .day, value: i, to: start)!))
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.35))
                         .frame(maxWidth: .infinity)
                 }
@@ -201,7 +201,7 @@ struct StatsView: View {
                         }
                     }
                 }
-                .frame(height: 50)
+                .frame(height: 44)
             }
         }
     }
@@ -228,18 +228,18 @@ struct StatsView: View {
         let future = d > Date()
         let today = cal.isDateInToday(d)
         let spent = !future && store.total(on: d) > 0
-        return VStack(spacing: 6) {
+        return VStack(spacing: 5) {
             if weekday {
                 Text(weekdayShort(d))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.primary.opacity(today ? 0.6 : 0.35))
             }
             Text("\(cal.component(.day, from: d))")
-                .font(.system(size: 20, weight: today ? .semibold : .medium, design: .rounded))
+                .font(.system(size: 17, weight: today ? .semibold : .medium, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(today ? Self.todayTint : Color.primary.opacity(0.75))
             // Khung cao cố định để hàng số không nhấp nhô theo ngày có chấm hay không
-            Circle().fill(Self.todayTint).frame(width: 4.5, height: 4.5).opacity(spent ? 1 : 0)
+            Circle().fill(Self.todayTint).frame(width: 4, height: 4).opacity(spent ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(future ? 0.35 : 1)
@@ -254,7 +254,7 @@ struct StatsView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(on ? Color.primary.opacity(0.09) : today ? Color.primary.opacity(0.04) : .clear)
         )
     }

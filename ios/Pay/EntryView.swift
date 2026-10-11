@@ -251,7 +251,7 @@ struct EntryView: View {
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
                         .buttonStyle(Pressable())
-                        .softScrollEdge(inset: 18)
+                        .softScrollEdge()
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
@@ -536,7 +536,7 @@ struct DateSheet: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
                     ForEach(days, id: \.self) { d in
-                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(inset: 0).id(d)
+                        stripDay(d, spent: byDay[d] ?? 0, top: topSpent).frame(width: w).softScrollEdge(zone: 24).id(d)
                     }
                 }
                 .scrollTargetLayout()
@@ -817,18 +817,15 @@ struct DateSheet: View {
 
 /// Theo dõi hàng chip đang cuộn tới đâu: còn chip bị che ở mép trái / phải không (iOS 17 không có, giữ mờ mép phải).
 extension View {
-    /// Một phần tử trong dải cuộn ngang: ra tới mép dải thì nhoè dần và nhạt đi (như mép cuộn mềm của iOS), chính nó nhoè
-    /// chứ không phủ lớp nào lên. `inset`: lề trong của dải (phần tử nằm yên ở lề thì chưa nhoè)
-    func softScrollEdge(inset: CGFloat) -> some View {
+    /// Một phần tử trong dải cuộn ngang: phần nằm sát mép dải nhoè dần theo từng điểm ảnh như mép cuộn mềm của iOS
+    /// (shader EdgeBlur.metal). Độ nhoè tính theo vị trí trên dải nên vùng nhoè liền mạch qua các cột kề nhau.
+    /// (Không áp lên cả ScrollView được: hiệu ứng lớp không vẽ được vùng cuộn của UIKit)
+    func softScrollEdge(zone: CGFloat = 36, radius: CGFloat = 6) -> some View {
         visualEffect { content, g in
             let f = g.frame(in: .scrollView(axis: .horizontal))
-            let width = g.bounds(of: .scrollView(axis: .horizontal))?.width ?? f.maxX
-            // Chỉ nhoè sát mép: bắt đầu khi viên chạm mép dải (lề còn 4 pt), nhoè hết khi đã ra ngoài chừng 40% bề rộng viên
-            let reach = max(f.width * 0.4, 1), edge = min(inset, 4)
-            let left = min(max((edge - f.minX) / reach, 0), 1)
-            let right = min(max((f.maxX - (width - edge)) / reach, 0), 1)
-            let t = max(left, right)
-            return content.blur(radius: 6 * t).opacity(1 - 0.15 * t)   // nhoè là chính, chỉ nhạt rất ít (giữ màu viên)
+            let width = g.bounds(of: .scrollView(axis: .horizontal))?.width ?? 0
+            return content.layerEffect(ShaderLibrary.edgeBlur(.float(width), .float(zone), .float(radius), .float2(1, 1), .float(f.minX)),
+                                       maxSampleOffset: CGSize(width: radius * 1.5, height: radius * 1.5))
         }
     }
 }

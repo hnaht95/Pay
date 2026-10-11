@@ -811,7 +811,7 @@ enum Hatch {
     }
 }
 
-/// Nền khung Tổng chi: vàng phẳng, cùng màu ô "Cafe" ở màn chính (bảng màu danh mục của app), chữ đen.
+/// Nền khung Tổng chi: vàng pastel phẳng (nhạt hơn ô "Cafe" ở màn chính), chữ đen.
 private struct HeroGreen: View {
-    var body: some View { Color(hex: 0xFFD43B) }
+    var body: some View { Color(hex: 0xFFEBA6) }
 }

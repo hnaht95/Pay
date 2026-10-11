@@ -62,8 +62,9 @@ struct EntryView: View {
                     .accessibilityLabel(L("Ngày giờ"))
                 }
             }
-            // Ô số tiền: không nền, không viền (số to nằm thẳng trên nền màn hình)
-            .padding(.vertical, 6)
+            // Ô số tiền: khung viền mảnh, nhạt, không nền
+            .padding(.horizontal, 18).padding(.vertical, 12)
+            .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1) }
             .contentShape(Rectangle())
             .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)

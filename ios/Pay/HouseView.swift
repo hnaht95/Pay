@@ -385,16 +385,14 @@ struct HouseView: View {
         let old = house.groups.filter { house.archived.contains($0.id) }
         VStack(spacing: 10) {
             ForEach(active) { g in groupCard(g).filmPressed(film?.pressed["group-" + g.id] ?? 0) }
-            // Biểu tượng bên trái + chữ, cùng hàng với các thẻ nhóm phía trên
             Button { groupName = ""; creating = true } label: {
-                HStack(spacing: 12) {
+                // Biểu tượng + chữ đứng giữa nút (dồn trái thì bên phải trống một khoảng lớn)
+                HStack(spacing: 10) {
                     Image(systemName: "plus").font(.system(size: 16, weight: .bold))
-                        .frame(width: 36, height: 36).background(Palette.surface, in: Circle())
                     Text(L("Tạo nhóm mới")).font(.system(size: 17, weight: .semibold))
-                    Spacer(minLength: 0)
                 }
                 .foregroundStyle(.primary)
-                .padding(.horizontal, 16).frame(minHeight: 64)
+                .frame(maxWidth: .infinity, minHeight: 64)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }

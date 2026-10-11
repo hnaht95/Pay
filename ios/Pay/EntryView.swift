@@ -105,7 +105,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .sheet(isPresented: $pickingDate) {
-            DateSheet(when: $when).presentationDetents([.height(470)]).sheetGrabber()
+            DateSheet(when: $when).sheetGrabber()
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
@@ -404,6 +404,8 @@ struct DateSheet: View {
     @State private var todayW: CGFloat = 90
     /// Bề ngang hàng lịch + giờ, để chia chỗ cho lưới và hai bánh xe
     @State private var rowW: CGFloat = 340
+    /// Chiều cao nội dung tấm, để tấm cao vừa khít
+    @State private var contentH: CGFloat = 330
 
     private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
     private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
@@ -458,6 +460,10 @@ struct DateSheet: View {
                 // cạnh ngoài mỏng hơn cạnh trong
                 .padding(2).clipped().padding(-2)
                 .frame(width: gw, height: gh)
+                // Cột phải: khung giờ gọn như Peek (5 hàng) và nút Xong vuông bo ngay dưới, cả cột cao đúng bằng dải T7 / CN
+                let colH = 6 * (P.row + P.rowGap) * k
+                let wheelH = 5 * 18 * k
+                VStack(spacing: 8) {
                 // Khung giờ như Peek: nền tối bo góc, giờ : phút, phút nhảy từng 5, hai mép trên dưới mờ dần
                 HStack(spacing: 4 * k) {
                     PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
@@ -474,23 +480,30 @@ struct DateSheet: View {
                                            .init(color: .black, location: 0.6), .init(color: .black.opacity(0.06), location: 1)],
                                    startPoint: .top, endPoint: .bottom)
                 }
-                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12 * k, style: .continuous))
-                // Cao đúng bằng dải nền T7 / CN (từ hàng ngày đầu tới hàng cuối, không gồm hàng thứ), đặt ngang hàng với dải ấy
-                .frame(width: wheelsW, height: 6 * (P.row + P.rowGap) * k)
+                .frame(height: wheelH)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                Button { dismiss() } label: {
+                    Text(L("Xong")).font(.system(size: 17, weight: .semibold))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .foregroundStyle(Palette.ctaInk)
+                        .background(Palette.cta, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                }
+                .buttonStyle(Pressable())
+                }
+                // Đặt ngang hàng với dải nền T7 / CN (từ hàng ngày đầu tới hàng cuối, không gồm hàng thứ)
+                .frame(width: wheelsW, height: colH)
                 .padding(.top, (P.band - P.rowGap / 2) * k)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
-            Spacer(minLength: 0)
-            Button { dismiss() } label: {
-                Text(L("Xong")).font(.system(size: 19, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 58)
-                    .foregroundStyle(Palette.ctaInk).background(Palette.cta, in: Capsule())
-            }
-            .buttonStyle(Pressable())
         }
-        .padding(.horizontal, 20).padding(.top, 34).padding(.bottom, 12)
+        .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 8)
+        // Tấm cao vừa khít nội dung (đo thật), không chừa khoảng trống dưới lịch
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentH = $0 }
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Palette.surface.ignoresSafeArea())
+        .presentationDetents([.height(max(contentH, 200))])
         .onAppear { month = when }
     }
 

@@ -36,7 +36,23 @@ final class Pro: ObservableObject {
                 await self?.refresh()
             }
         }
-        Task { await load(); await refresh() }
+        Task { await checkTestBuild(); await load(); await refresh() }
+    }
+
+    /// Bản thử (TestFlight / chạy từ Xcode), không phải bản tải từ App Store: hiện công tắc "mở Pro" trong Cài đặt
+    @Published private(set) var isTestBuild = false
+    /// Công tắc mở Pro của bản thử (chỉ có tác dụng khi isTestBuild)
+    @Published var testerUnlock: Bool = UserDefaults.standard.bool(forKey: "testerPro") {
+        didSet { UserDefaults.standard.set(testerUnlock, forKey: "testerPro"); Task { await refresh() } }
+    }
+
+    private func checkTestBuild() async {
+        #if DEBUG
+        isTestBuild = true
+        #else
+        // App Store ký giao dịch môi trường .production; TestFlight là .sandbox, Xcode là .xcode
+        if case .verified(let t) = try? await AppTransaction.shared { isTestBuild = t.environment != .production }
+        #endif
     }
 
     func load() async {
@@ -55,6 +71,7 @@ final class Pro: ObservableObject {
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "proOn") { on = true }
         #endif
+        if isTestBuild && testerUnlock { on = true }
         set(on)
     }
 

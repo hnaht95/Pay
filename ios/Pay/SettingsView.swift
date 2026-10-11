@@ -189,6 +189,12 @@ struct SettingsView: View {
 
     private var proSection: some View {
         Section {
+            // Chỉ bản thử (TestFlight / Xcode): bật để dùng đủ tính năng Pro không cần mua, tắt để thử lại màn mua
+            if pro.isTestBuild {
+                Toggle(isOn: $pro.testerUnlock) {
+                    Text(L("Bản thử: mở khoá Pro"))
+                }
+            }
             if pro.active {
                 Label { Text(L("Đã có Pay Pro")) } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x61BE6E)) }
             } else {

@@ -517,54 +517,21 @@ struct DateSheet: View {
                 arrow(angle: 180, L("Tháng sau")) { shift(1) }.opacity(isThisMonth ? 0.3 : 1).disabled(isThisMonth)
             }
             .animation(.spring(response: 0.42, dampingFraction: 0.75), value: isThisMonth)
-            // Lịch tháng bên trái, giờ : phút bên phải trên cùng một hàng (như Peek chia hai cột khi mở cả tháng);
-            // hai bánh xe cao đúng bằng lưới
-            // Lưới chiếm hết phần ngang còn lại (bánh xe giờ phút gọn 96 pt); chữ số giờ phút cùng cỡ chữ số ngày
-            let wheelsW: CGFloat = 96
-            let gw = max(0, rowW - wheelsW - 10)
+            // Chỉ chọn ngày (không chọn giờ): lưới tháng chiếm hết bề ngang; giờ của khoản giữ nguyên
+            let gw = rowW
             let k = gw / 7 / P.pitch
             let gh = k * P.height(rows: 6)
-            HStack(alignment: .top, spacing: 10) {
-                // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
-                ZStack {
-                    monthGrid
-                        .id(first)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
-                            removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
-                }
-                // Cắt rìa khi trượt, nhưng chừa 2 pt: nét khung 1,5 chạy đúng mép lưới, cắt sát thì nửa nét ở mép ngoài mất,
-                // cạnh ngoài mỏng hơn cạnh trong
-                .padding(2).clipped().padding(-2)
-                .frame(width: gw, height: gh)
-                // Khung giờ như Peek (nền tối bo góc, giờ : phút, phút nhảy từng 5, hai mép trên dưới mờ dần), cao đúng bằng
-                // dải nền T7 / CN và nằm ngang hàng với dải ấy (không lên tới hàng chữ thứ)
-                let colH = 6 * (P.row + P.rowGap) * k
-                HStack(spacing: 4 * k) {
-                    PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
-                              pitch: 18 * k, font: 17 * k)
-                        .frame(width: 26 * k)
-                    Text(":").font(.system(size: 17 * k, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
-                    PeekWheel(count: 12, step: 5, value: Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }),
-                              pitch: 18 * k, font: 17 * k)
-                        .frame(width: 26 * k)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .mask {
-                    LinearGradient(stops: [.init(color: .black.opacity(0.06), location: 0), .init(color: .black, location: 0.35),
-                                           .init(color: .black, location: 0.65), .init(color: .black.opacity(0.06), location: 1)],
-                                   startPoint: .top, endPoint: .bottom)
-                }
-                .frame(height: 5 * 18 * k)
-                // Không nền, chỉ viền mảnh cùng màu khung tháng
-                .overlay(RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous)
-                    .strokeBorder(Color(light: 0xD9D9DC, dark: 0x3A3A3E), lineWidth: 1.5))
-                // Khung giờ gọn 5 hàng như Peek; phần còn lại của cột là nút "Bây giờ"
-                .frame(maxHeight: .infinity, alignment: .top)
-                .overlay(alignment: .bottom) { dayBox(k: k).frame(height: colH - 5 * 18 * k - 8) }
-                .frame(width: wheelsW, height: colH)
-                .padding(.top, (P.band - P.rowGap / 2) * k)
+            // Đổi tháng: lưới cũ trượt ra, lưới mới trượt vào theo chiều dọc (tháng sau từ dưới lên, tháng trước từ trên xuống)
+            ZStack {
+                monthGrid
+                    .id(first)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: forward ? .bottom : .top).combined(with: .opacity),
+                        removal: .move(edge: forward ? .top : .bottom).combined(with: .opacity)))
             }
+            // Cắt rìa khi trượt, nhưng chừa 2 pt: nét khung 1,5 chạy đúng mép lưới, cắt sát thì nửa nét ở mép ngoài mất
+            .padding(2).clipped().padding(-2)
+            .frame(width: gw, height: gh)
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
             // Huỷ / Lưu ở đáy, to bằng hai nút Nhập / Quét QR của màn hình chính. Huỷ trả ngày giờ về như lúc mở

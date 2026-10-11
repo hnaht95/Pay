@@ -259,7 +259,7 @@ struct StatsView: View {
                         .padding(.top, 8)
                     GeometryReader { g in
                         if spent > 0 {
-                            let h = max(8, g.size.height * r)
+                            let h = max(18, g.size.height * r)   // thấp nhất 18: thấp hơn thì chỉ còn vệt mỏng cong theo đáy viên
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
                                 .fill(on ? Self.inkText.opacity(0.22) : Color.primary.opacity(0.09))
                                 .frame(height: h)
@@ -307,7 +307,7 @@ struct StatsView: View {
                         if spent > 0 {
                             // Cắt theo khung bo góc cao hết phần dưới số: lúc thấp, góc dưới vẫn khớp góc viên ngoài
                             // (tự bo theo chiều cao của lớp xanh thì lớp thấp thành viên thuốc, lệch góc)
-                            let h = max(8, g.size.height * r)
+                            let h = max(18, g.size.height * r)   // thấp nhất 18: thấp hơn thì chỉ còn vệt mỏng cong theo đáy viên
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
                                 .fill(on ? Self.inkText.opacity(0.22) : Color.primary.opacity(0.09))
                                 .frame(height: h)

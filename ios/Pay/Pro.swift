@@ -189,23 +189,16 @@ struct ProPaywall: View {
                     }
                     .padding(.top, 30).padding(.horizontal, 24)
 
-                    // Mỗi tính năng một khung riêng: ô biểu tượng màu, tiêu đề tô dạ quang cùng màu (bút của Shot), mô tả.
+                    // Mỗi tính năng một khung riêng: tiêu đề và mô tả.
                     // Mở từ tính năng nào thì khung đó lên đầu, viền xanh
                     VStack(spacing: 10) {
                         ForEach(ordered) { f in
-                            HStack(alignment: .top, spacing: 14) {
-                                Image(systemName: f.icon).font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Color(hex: f.marker)))
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HighlightedText(text: "**" + f.title + "**", rgb: f.marker)
-                                        .font(.system(size: 18, weight: .semibold))
-                                    Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                Spacer(minLength: 0)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(f.title).font(.system(size: 18, weight: .semibold))
+                                Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
                             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)

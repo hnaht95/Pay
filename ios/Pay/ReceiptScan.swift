@@ -11,6 +11,7 @@ struct ReceiptCamera: View {
     @State private var photo: PhotosPickerItem?
     @State private var finished = false
     @State private var holeRect: CGRect = .zero
+    @State private var flash = false
     /// Chiều cao nút Quét QR ở màn hình chính
     private static let btnH: CGFloat = 64
 
@@ -55,7 +56,13 @@ struct ReceiptCamera: View {
                         Button { finish(nil) } label: { pill(L("Đóng"), bottomLeading: corner) }.buttonStyle(Pressable())
                         PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh"), bottomLeading: screen) }
                     }
-                    Button { cam.capture { finish($0) } } label: {
+                    Button {
+                        // Bấm chụp: rung một nhịp như nút chụp của Camera, màn loé trắng thoáng qua
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        flash = true
+                        withAnimation(.easeOut(duration: 0.35)) { flash = false }
+                        cam.capture { finish($0) }
+                    } label: {
                         Image(systemName: "camera.aperture").font(.system(size: 36, weight: .medium))
                             .accessibilityLabel(L("Chụp"))
                         // Vàng mù tạt retro (cùng bảng màu các ô Thống kê), icon xanh navy
@@ -77,6 +84,7 @@ struct ReceiptCamera: View {
             .padding(.horizontal, 36)
             .padding(.bottom, 8)
         }
+        .overlay { Color.white.opacity(flash ? 0.7 : 0).ignoresSafeArea().allowsHitTesting(false) }
         .onAppear { cam.start() }
         .onDisappear { cam.stop() }
         .task(id: photo) {

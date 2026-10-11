@@ -121,6 +121,7 @@ struct EntryView: View {
             ReceiptCamera { img in
                 scanningReceipt = false
                 guard let img else { return }
+                Haptic.tap()
                 withAnimation(.snappy) { photo = img; photoChanged = true; editing = true }
             }
         }
@@ -227,7 +228,7 @@ struct EntryView: View {
                     let all = Category.all
                     let ordered = all.filter { $0.k == leadCat } + all.filter { $0.k != leadCat }
                     ForEach(ordered) { c in
-                        Button { cat = c.k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } } label: {
+                        Button { if cat != c.k { Haptic.select() }; cat = c.k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } } label: {
                             let on = cat == c.k
                             // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
                             HStack(spacing: 8) {
@@ -677,6 +678,7 @@ struct DateSheet: View {
 
     private func jumpToToday() {
         forward = Date() > weekStart
+        Haptic.select()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = Date() }
     }
 
@@ -766,6 +768,7 @@ struct DateSheet: View {
     private func shift(_ by: Int) {
         guard let m = cal.date(byAdding: .weekOfYear, value: by, to: weekStart), m <= Date() else { return }
         forward = by > 0
+        Haptic.select()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { month = m }
     }
 
@@ -929,6 +932,8 @@ private struct PeekWheel: View {
     @State private var base = 0
     @State private var drag: CGFloat = 0
     @State private var ready = false
+    /// Nấc vừa rung gần nhất
+    @State private var tick = 0
 
     private var pos: CGFloat { CGFloat(base) - drag / pitch }
     private func wrap(_ i: Int) -> Int { ((i % count) + count) % count }
@@ -954,10 +959,16 @@ private struct PeekWheel: View {
         .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: 2)
-                .onChanged { v in drag = v.translation.height }
+                .onChanged { v in
+                    drag = v.translation.height
+                    // Rung từng nấc lúc kéo qua (như bánh xe giờ của iOS); sensoryFeedback theo `center` không chạy ổn trong cử chỉ
+                    let c = Int((CGFloat(base) - drag / pitch).rounded())
+                    if c != tick { tick = c; Haptic.select() }
+                }
                 .onEnded { v in
                     // Đà: lấy điểm dừng dự đoán của cú vuốt, rồi làm tròn về nấc
                     let target = Int((CGFloat(base) - v.predictedEndTranslation.height / pitch).rounded())
+                    if target != tick { tick = target; Haptic.select() }   // vuốt có đà: thêm một nhịp khi dừng ở nấc mới
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { base = target; drag = 0 }
                     commit(target)
                 }
@@ -965,9 +976,9 @@ private struct PeekWheel: View {
         .onAppear {
             guard !ready else { return }
             base = Int((Double(value) / Double(step)).rounded())
+            tick = base
             ready = true
         }
-        .sensoryFeedback(.selection, trigger: center)
     }
 
     private func commit(_ target: Int) {

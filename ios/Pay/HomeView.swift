@@ -515,6 +515,7 @@ private struct ExpenseSwipe: ViewModifier {
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
                 Button {
+                    Haptic.tap(.medium)   // xoá: rung rõ một nhịp
                     withAnimation(.easeIn(duration: 0.22)) { gone = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { delete() }
                     // Xoá xong (hàng đã rời danh sách) thì trả trạng thái về như cũ: bấm Hoàn tác, khoản quay lại đúng mã cũ và
@@ -827,7 +828,7 @@ struct ToastView: View {
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     // Hoàn tác có hiệu ứng: hàng vừa xoá trượt / hiện lại vào chỗ cũ, các hàng dưới dịch xuống nhường chỗ
-                    Button { withAnimation(.snappy(duration: 0.35)) { undo(); store.toast = nil } } label: {
+                    Button { Haptic.tap(); withAnimation(.snappy(duration: 0.35)) { undo(); store.toast = nil } } label: {
                         Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
                             .font(.system(size: 16, weight: .semibold))
                             .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài
@@ -859,4 +860,12 @@ struct ToastView: View {
             }
         }
     }
+}
+
+/// Rung phản hồi dùng chung: chọn (nấc bánh xe, đổi lựa chọn) và chạm (hành động)
+@MainActor
+enum Haptic {
+    private static let selection = UISelectionFeedbackGenerator()
+    static func select() { selection.selectionChanged(); selection.prepare() }
+    static func tap(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .light) { UIImpactFeedbackGenerator(style: style).impactOccurred() }
 }

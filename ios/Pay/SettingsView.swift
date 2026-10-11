@@ -731,7 +731,7 @@ struct CategoryEditor: View {
     private var emojiGrid: some View {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                         ForEach(Self.emojis, id: \.self) { e in
-                            Button { icon = e } label: {
+                            Button { if icon != e { Haptic.select() }; icon = e } label: {
                                 Text(e).font(.system(size: 26))
                                     .frame(maxWidth: .infinity, minHeight: 46)
                                     .background(fIcon == e ? previewColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -763,7 +763,7 @@ struct CategoryEditor: View {
                 VStack(spacing: 0) {
                     ForEach(p.colors.indices, id: \.self) { j in
                         let rgb = p.colors[j], t = CategoryTone.custom(rgb)
-                        Button { tone = t } label: {
+                        Button { if tone != t { Haptic.select() }; tone = t } label: {
                             Rectangle().fill(Color(hex: rgb))
                                 .frame(height: g.size.height * Self.shares[j])
                                 .overlay(alignment: .trailing) {
@@ -897,6 +897,7 @@ struct CategoryEditor: View {
                     guard let item else { return }
                     Task {
                         if let data = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: data) {
+                            Haptic.tap()
                             withAnimation(.snappy) { photo = img; photoChanged = true }
                         }
                         photoItem = nil

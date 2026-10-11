@@ -1441,8 +1441,18 @@ private struct PinnedHeader<H: View>: ViewModifier {
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *), !film {
+            // Cạnh nhoè của hệ thống quá nhẹ: nội dung vẫn lộ ở khoảng trên các nút rồi bị cắt ở mép bảng. Phủ thêm màu nền đặc
+            // ở trên cùng, nhạt dần xuống ngang các nút (như dải nút dưới đáy màn hình chính)
             content
-                .safeAreaBar(edge: .top) { header }
+                .safeAreaBar(edge: .top) {
+                    header.background(alignment: .bottom) {
+                        LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.45),
+                                               .init(color: Palette.bg.opacity(0.7), location: 0.7), .init(color: Palette.bg.opacity(0), location: 1)],
+                                       startPoint: .top, endPoint: .bottom)
+                            .padding(.bottom, -24).padding(.top, -40)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .scrollEdgeEffectStyle(.soft, for: .top)
         } else {
             content.overlay(alignment: .top) {

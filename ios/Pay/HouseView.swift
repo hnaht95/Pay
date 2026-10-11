@@ -200,18 +200,18 @@ struct HouseView: View {
                 circleButton("chevron.left", L("Các nhóm")) { if !house.busy { withAnimation(.snappy) { creating = false } } }
             } else {
                 // Ở danh sách nhóm không có nút đóng (vạch ngang trên cùng cho biết kéo xuống là đóng); giữ chỗ để tên vẫn ở giữa
-                Color.clear.frame(width: 42, height: 42)
+                Color.clear.frame(width: 36, height: 36)
             }
             Spacer()
             if inGroup && house.me != nil {
                 // Chuông: việc cần mình xác nhận + hoạt động gần đây
                 Button { showInbox = true } label: {
-                    Image(systemName: "bell.fill").font(.system(size: 17, weight: .semibold))
-                        .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+                    Image(systemName: "bell.fill").font(.system(size: 15, weight: .semibold))
+                        .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
                         .overlay(alignment: .topTrailing) {
                             if !pending.isEmpty {
                                 Text("\(pending.count)").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
-                                    .frame(minWidth: 20, minHeight: 20).background(Palette.danger, in: Circle())
+                                    .frame(minWidth: 18, minHeight: 18).background(Palette.danger, in: Circle())
                                     .offset(x: 4, y: -4)
                             }
                         }
@@ -222,8 +222,8 @@ struct HouseView: View {
             }
             if inGroup, film != nil {
                 // Phim: menu của hệ thống không vẽ ra PDF được, chỉ cần hình nút
-                Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold))
-                    .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+                Image(systemName: "ellipsis").font(.system(size: 15, weight: .bold))
+                    .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
             } else if inGroup {
                 Menu {
                     Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
@@ -231,12 +231,12 @@ struct HouseView: View {
                     Button(L("Đổi ảnh, màu, tên nhóm"), systemImage: "paintpalette") { editingGroup = house.current }
                     Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
                 } label: {
-                    Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold))
-                        .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+                    Image(systemName: "ellipsis").font(.system(size: 15, weight: .bold))
+                        .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
                 }
                 .foregroundStyle(.primary)
             } else {
-                Color.clear.frame(width: 42, height: 42)
+                Color.clear.frame(width: 36, height: 36)
             }
         }
         // Tên ở chính giữa màn hình, không theo khoảng trống giữa các nút (bên phải có hai nút, bên trái một nút)
@@ -252,8 +252,8 @@ struct HouseView: View {
 
     private func circleButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Image(systemName: symbol).font(.system(size: 17, weight: .bold))
-                .frame(width: 42, height: 42).background(Palette.pill, in: Circle())
+            Image(systemName: symbol).font(.system(size: 15, weight: .bold))
+                .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
         }
         .buttonStyle(Pressable())
         .foregroundStyle(.primary)

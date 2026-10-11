@@ -40,7 +40,7 @@ struct SheetGrabber: View {
     /// Khoảng cách từ mép trên của bảng tới vạch
     static let top: CGFloat = 11
     var body: some View {
-        Capsule().fill(Color.primary.opacity(0.22)).frame(width: 36, height: 4)
+        Capsule().fill(Color.primary.opacity(0.22)).frame(width: 36, height: 3)
     }
 }
 

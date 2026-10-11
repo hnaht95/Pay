@@ -307,8 +307,8 @@ struct HomeView: View {
                                 Button { entry = .new(cat: c.k) } label: {
                                     Image(systemName: "plus").font(.system(size: 16, weight: .bold))
                                         .frame(width: 30, height: 30)
-                                        // Cùng màu chữ của ô: nền tối thì trắng
-                                        .foregroundStyle(c.ink)
+                                        // Cùng màu tên và số tiền của ô: màu chữ của ô mờ 70% (nền tối thì trắng)
+                                        .foregroundStyle(c.ink.opacity(0.7))
                                         .padding(16).contentShape(Rectangle())
                                 }
                                 .buttonStyle(Pressable())

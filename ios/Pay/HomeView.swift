@@ -349,8 +349,12 @@ struct HomeView: View {
             CategoryIcon(c: c, size: 30)
                 .frame(width: 52, height: 52).background(.white, in: Circle())
             Spacer(minLength: 14)
-            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
-            Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+            // Tên và số tiền cùng một màu: màu chữ của ô pha nền (mờ 70%)
+            Group {
+                Text(c.name).font(.system(size: 16, weight: .medium))
+                Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+            }
+            .opacity(0.7)
         }
         .foregroundStyle(c.ink)
         .padding(16)

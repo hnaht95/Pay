@@ -326,7 +326,7 @@ struct EntryView: View {
                     .disabled(amount == 0)
                     .opacity(amount == 0 ? 0.35 : 1)
                     .frame(width: 104)
-                    primary(L("Lưu & mở %@", app.name)) {
+                    primary(L("Lưu & mở Bank")) {
                         saveScan(q); dismiss()
                         let a = amount
                         Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }

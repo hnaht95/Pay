@@ -471,8 +471,8 @@ struct StatsView: View {
         card {
             Text(L("Hạn mức chi tháng")).font(.system(size: 17, weight: .semibold))
             if let limit {
-                // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám, mảng xanh của icon app có vạch tay nắm ở mép,
-                // chữ đen nằm trong thanh (vượt hạn mức: mảng đỏ đầy thanh)
+                // Cùng kiểu thanh ngân sách trong Cài đặt: khối cao 48 bo 14, rãnh xám, mảng vàng mù tạt (chữ navy) có vạch ở mép;
+                // trái là số đã chi, phải là hạn mức (vượt hạn mức: mảng đỏ cà chua đầy thanh, chữ kem)
                 let ratio = min(Double(spent) / Double(limit), 1)
                 let over = spent > limit
                 GeometryReader { g in
@@ -480,19 +480,19 @@ struct StatsView: View {
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 14, style: .circular).fill(Color(light: 0xDCDCE2, dark: 0x2E2E31))
                         RoundedRectangle(cornerRadius: 14, style: .circular)
-                            .fill(over ? Color(hex: 0xF08A7E) : Color(hex: 0x61BE6E))
+                            .fill(over ? Color(hex: 0xE2462E) : Color(hex: 0xF2B82E))
                             .frame(width: max(w, 30))
                             .overlay(alignment: .trailing) {
-                                Capsule().fill(Color(hex: 0x111114).opacity(0.55))
+                                Capsule().fill((over ? Color(hex: 0xFFE9DF) : Color(hex: 0x1F3F6E)).opacity(0.6))
                                     .frame(width: 4, height: 48 * 0.44)
                                     .padding(.trailing, 13)
                             }
                         HStack {
-                            Text(L("Đã chi %@", BudgetSlider.compact(spent)))
-                                .foregroundStyle(Color(hex: 0x111114).opacity(0.78))
+                            Text(L("Đã chi %@", short(spent)))
+                                .foregroundStyle(over ? Color(hex: 0xFFE9DF) : Color(hex: 0x1F3F6E))
                             Spacer()
-                            Text("/ " + BudgetSlider.compact(limit))
-                                .foregroundStyle(Color.primary.opacity(0.85))
+                            Text(L("Hạn mức %@", short(limit)))
+                                .foregroundStyle(over ? Color(hex: 0xFFE9DF) : Color.primary.opacity(0.6))
                         }
                         .font(.system(size: 17, weight: .medium, design: .rounded)).monospacedDigit()
                         .padding(.horizontal, 18)

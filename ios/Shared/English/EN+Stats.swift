@@ -49,6 +49,7 @@ extension English {
         "Chi 6 tháng": "Last 6 months",
         "Chi theo tháng": "By month",
         "Đã chi %@": "Spent %@",
+        "Hạn mức %@": "Limit %@",
         "Còn %@ · đã dùng %@%%": "%@ left · %@%% used",
         "Vượt %@ · đã dùng %@%%": "%@ over · %@%% used",
         "Chi tiêu khác": "Other spending",

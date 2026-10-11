@@ -486,7 +486,10 @@ struct DateSheet: View {
                     Text(L("Xong")).font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .foregroundStyle(Palette.ctaInk)
-                        .background(Palette.cta, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                        // Góc dưới phải bo to theo góc tấm (cùng độ cong với góc màn hình trừ lề 20)
+                        .background(Palette.cta, in: UnevenRoundedRectangle(
+                            topLeadingRadius: P.frameR * k, bottomLeadingRadius: P.frameR * k,
+                            bottomTrailingRadius: 35, topTrailingRadius: P.frameR * k, style: .continuous))
                 }
                 .buttonStyle(Pressable())
                 }

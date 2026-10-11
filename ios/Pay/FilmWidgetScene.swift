@@ -92,7 +92,7 @@ extension FilmExport {
         let fieldColor = Color(red: 29 / 255, green: 29 / 255, blue: 28 / 255), sheetColor = Color(red: 35 / 255, green: 34 / 255, blue: 34 / 255)
 
         return Film(length: done.up + 1.6) { t in
-            let dot = touch([hold, edit, add, field, row, plus, done], t) ?? touch(swipes, t)
+            let dot = pointer([hold, edit, add, field, row, plus, done], swipes, t)
             let editing = ease(t, jiggle, jiggle + 0.22) * (1 - ease(t, done.up, done.up + 0.22))
             let menu = spring(t, edit.up, 0.32) * (1 - ease(t, add.up, add.up + 0.15))
             let up = ease(t, add.up + 0.05, add.up + 0.5), down = ease(t, landed, landed + 0.42)

@@ -88,6 +88,45 @@ enum FilmExport {
         return nil
     }
 
+    /// Chấm chạm như con trỏ, suốt phim: hiện ngay trước lần chạm đầu, giữa hai lần chạm trượt êm từ chỗ cũ sang chỗ mới
+    /// (không tắt rồi hiện lại — trước đây lúc thấy lúc không), co lại khi ấn, đi theo ngón tay khi kéo; mờ đi sau lần cuối.
+    static func pointer(_ taps: [Tap], _ drags: [Drag], _ t: Double) -> (at: CGPoint, alpha: CGFloat, scale: CGFloat)? {
+        // Mỗi việc: bắt đầu, kết thúc, chỗ đặt ngón khi bắt đầu, chỗ nhấc khi kết thúc
+        typealias Move = (start: Double, end: Double, from: CGPoint, to: CGPoint, tap: Tap?, drag: Drag?)
+        let moves: [Move] = (taps.map { ($0.down, $0.up, $0.at, $0.at, $0, nil) } + drags.map { ($0.start, $0.end, $0.from, $0.to, nil, $0) })
+            .sorted { $0.start < $1.start }
+        guard let first = moves.first, let last = moves.last else { return nil }
+        let lead = 0.15                    // tới nơi sớm hơn lúc ấn một chút
+        // Trước lần đầu: hiện dần tại chỗ sắp chạm
+        if t < first.start {
+            let a = ease(t, first.start - 0.7, first.start - 0.4)
+            return a > 0 ? (first.from, a, 1) : nil
+        }
+        for (i, m) in moves.enumerated() {
+            if t <= m.end {
+                guard t >= m.start else { break }
+                if let tap = m.tap { return (tap.at, 1, 1 - 0.2 * press(tap, t)) }
+                if let d = m.drag {
+                    let k = ease(t, d.start, d.end), down = ease(t, d.start - 0.08, d.start) * (1 - ease(t, d.end, d.end + 0.15))
+                    return (CGPoint(x: d.from.x + (d.to.x - d.from.x) * k, y: d.from.y + (d.to.y - d.from.y) * k), 1, 1 - 0.15 * down)
+                }
+            }
+            // Giữa việc này và việc sau: đứng chỗ vừa nhấc, rồi trượt sang chỗ sắp chạm
+            if i + 1 < moves.count, t < moves[i + 1].start, t > m.end {
+                let next = moves[i + 1], arrive = next.start - lead
+                let travel = min(0.6, max(0.15, (arrive - m.end) * 0.8))
+                let k = ease(t, arrive - travel, arrive)
+                let at = CGPoint(x: m.to.x + (next.from.x - m.to.x) * k, y: m.to.y + (next.from.y - m.to.y) * k)
+                let still = 1 - 0.2 * (m.tap.map { press($0, t) } ?? 0)
+                return (at, 1, still)
+            }
+        }
+        // Sau lần cuối: đứng tại chỗ một lúc rồi mờ đi
+        let out = ease(t, last.end + 1.0, last.end + 1.4)
+        let still = 1 - 0.2 * (last.tap.map { press($0, t) } ?? 0)
+        return out < 1 ? (last.to, 1 - out, still) : nil
+    }
+
     /// Mức nhấn của nút theo một lần chạm: xuống nhanh, nhả thì bật lại
     static func press(_ tap: Tap, _ t: Double) -> CGFloat {
         ease(t, tap.down, tap.down + 0.08) * (1 - ease(t, tap.up, tap.up + 0.25))
@@ -106,7 +145,7 @@ enum FilmExport {
             var sheet = FilmFrame()
             // Trang trôi theo ngón tay rồi trượt thêm một đoạn theo đà
             sheet.scroll = drags.reduce(0) { $0 + 420 * ease(t, $1.start, $1.end) + 110 * ease(t, $1.end, $1.end + 0.7) }
-            let dot = touch([open], t) ?? touch(drags, t)
+            let dot = pointer([open], drags, t)
             return AnyView(FilmScreen(touch: dot) {
                 FilmSheet(shown: ease(t, open.up, open.up + 0.45)) {
                     HomeView().environment(\.film, home)
@@ -166,7 +205,7 @@ enum FilmExport {
             cardFrame.pressed["voice-primary"] = press(done, t)
             let k = ease(t, unlock, unlock + 0.5)   // mở khoá: màn hình khoá trượt lên, app phía dưới thu về đúng cỡ
             let size = FilmScreen<EmptyView>.size
-            return AnyView(FilmScreen(lightStatus: k < 0.45, touch: touch([done], t)) {
+            return AnyView(FilmScreen(lightStatus: k < 0.45, touch: pointer([done], [], t)) {
                 ZStack {
                     HomeView().environment(\.film, home)
                         .scaleEffect(1.07 - 0.07 * k)
@@ -209,7 +248,7 @@ enum FilmExport {
             if let first { sheet.pressed["group-" + first.id] = press(pick, t) }
             sheet.pressed["received"] = press(got, t)
             sheet.scroll = 330 * ease(t, drag.start, drag.end) + 90 * ease(t, drag.end, drag.end + 0.7)
-            let dot = touch([open, pick, got], t) ?? touch([drag], t)
+            let dot = pointer([open, pick, got], [drag], t)
             return AnyView(FilmScreen(touch: dot) {
                 FilmSheet(shown: ease(t, open.up, open.up + 0.45)) {
                     HomeView().environment(\.film, home)
@@ -251,7 +290,7 @@ enum FilmExport {
             sheet.pressed["save"] = press(save, t)
             sheet.scroll = 220 * ease(t, drag.start, drag.end) + 40 * ease(t, drag.end, drag.end + 0.6)
             let shown = ease(t, item.up + 0.15, item.up + 0.6) * (1 - ease(t, save.up, save.up + 0.4))
-            let dot = touch([hold, item, emoji, color, save], t) ?? touch([drag], t)
+            let dot = pointer([hold, item, emoji, color, save], [drag], t)
             return AnyView(FilmScreen(touch: dot) {
                 FilmSheet(shown: shown) {
                     HomeView().environment(\.film, home)

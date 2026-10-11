@@ -406,6 +406,13 @@ struct DateSheet: View {
     @State private var rowW: CGFloat = 340
     /// Chiều cao nội dung tấm, để tấm cao vừa khít
     @State private var contentH: CGFloat = 330
+    /// Bán kính góc màn hình iPhone (khung có Dynamic Island ≈ 55 pt)
+    private static let screenCorner: CGFloat = 55
+    /// Nút Xong thò xuống dưới đáy nội dung chừng này: hết lề dưới 8 và vùng thanh home, chừa 20 pt tới mép màn hình
+    private static var extendDown: CGFloat {
+        let safe = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom ?? 34
+        return max(0, 8 + safe - 20)
+    }
 
     private var cal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
     private var first: Date { cal.date(from: cal.dateComponents([.year, .month], from: month))! }
@@ -486,12 +493,17 @@ struct DateSheet: View {
                     Text(L("Xong")).font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .foregroundStyle(Palette.ctaInk)
-                        .background(Palette.cta, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                        // Góc dưới phải đồng tâm với góc bo của màn hình (nút cách mép phải và mép dưới cùng 20 pt)
+                        .background(Palette.cta, in: UnevenRoundedRectangle(
+                            topLeadingRadius: P.frameR * k, bottomLeadingRadius: P.frameR * k,
+                            bottomTrailingRadius: Self.screenCorner - 20, topTrailingRadius: P.frameR * k, style: .continuous))
                 }
                 .buttonStyle(Pressable())
                 }
-                // Đặt ngang hàng với dải nền T7 / CN (từ hàng ngày đầu tới hàng cuối, không gồm hàng thứ)
-                .frame(width: wheelsW, height: colH)
+                // Đặt ngang hàng với dải nền T7 / CN (từ hàng ngày đầu tới hàng cuối, không gồm hàng thứ); nút Xong kéo dài
+                // xuống qua vùng thanh home tới cách mép dưới màn hình 20 pt (bằng lề phải), không làm tấm cao thêm
+                .frame(width: wheelsW, height: colH + Self.extendDown)
+                .padding(.bottom, -Self.extendDown)
                 .padding(.top, (P.band - P.rowGap / 2) * k)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

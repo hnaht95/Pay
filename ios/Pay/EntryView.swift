@@ -320,11 +320,6 @@ struct EntryView: View {
                     Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }
                 }
                 secondary(L("Chỉ lưu")) { saveScan(q); dismiss() }
-                if !app.fill {
-                    Text(L("Khi %@ mở ra, bạn quét lại mã QR. Chọn ACB One, MB, BIDV, VietinBank hoặc OCB trong Cài đặt để khỏi quét lại.", app.name))
-                        .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
             case .edit(var e), .editNow(var e):
                 // Huỷ và Sửa / Lưu thay đổi cùng một hàng. Xoá khoản: vuốt trái ở danh sách hoặc nhấn giữ
                 GlassGroup {

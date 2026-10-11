@@ -36,16 +36,26 @@ struct ReceiptCamera: View {
                     .multilineTextAlignment(.center).padding(.horizontal, 24)
                     .padding(.top, 20)
                 Spacer()
+                // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai
                 HStack(spacing: 12) {
-                    Button { finish(nil) } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
+                    VStack(spacing: 12) {
+                        Button { finish(nil) } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
+                        PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh")) }
+                    }
                     Button { cam.capture { finish($0) } } label: {
-                        Circle().fill(.white).frame(width: 64, height: 64)
-                            .padding(5).overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                        VStack(spacing: 8) {
+                            Image(systemName: "camera.aperture").font(.system(size: 30, weight: .medium))
+                            Text(L("Chụp")).font(.system(size: 18, weight: .semibold))
+                        }
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
                     }
                     .buttonStyle(Pressable())
                     .disabled(cam.error != nil)
-                    PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh")) }
+                    .opacity(cam.error != nil ? 0.4 : 1)
                 }
+                .frame(height: 64 * 2 + 12)
                 .padding(.horizontal, 16).padding(.bottom, 12)
             }
         }

@@ -54,6 +54,7 @@ extension English {
         "Bây giờ": "Now",
         "Đặt hoá đơn vào khung rồi bấm chụp": "Fit the receipt in the frame, then tap capture",
         "Chọn ảnh": "Choose photo",
+        "Chụp": "Capture",
         "Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh\".": "Allow Pay to use the camera in iPhone Settings, or tap \"Choose photo\".",
         "Không mở được camera. Bấm \"Chọn ảnh\" để dùng ảnh có sẵn.": "Couldn't open the camera. Tap \"Choose photo\" to use an existing photo.",
         "Không đọc được tổng tiền trên hoá đơn": "Couldn't find the total on the receipt",

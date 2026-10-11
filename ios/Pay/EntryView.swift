@@ -15,6 +15,10 @@ struct EntryView: View {
     /// Mở từ ô danh mục thì không tính (chọn trước khi gõ, chưa phải đổi so với app đoán)
     @State private var chosen = false
     @State private var note = ""
+    /// Danh mục đứng đầu hàng chip: danh mục của khoản lúc mở màn hình
+    @State private var leadCat: String?
+    /// Hàng chip còn chip bị che ở mép trái / phải (để làm mờ mép đó)
+    @State private var chipFade = [false, true]
     @State private var addingCat = false
     @State private var ready = false
     /// Ngày giờ của khoản đang sửa
@@ -167,7 +171,11 @@ struct EntryView: View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(Category.all) { c in
+                    // Danh mục đã chọn khi mở màn hình đứng đầu hàng (không bị cắt hai bên); bấm chọn danh mục khác thì
+                    // thứ tự giữ nguyên, khỏi nhảy chỗ dưới ngón tay
+                    let all = Category.all
+                    let ordered = all.filter { $0.k == leadCat } + all.filter { $0.k != leadCat }
+                    ForEach(ordered) { c in
                         Button { cat = c.k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } } label: {
                             let on = cat == c.k
                             // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
@@ -197,9 +205,19 @@ struct EntryView: View {
                 .padding(.horizontal, 18)
             }
             .padding(.horizontal, -18)
-            // Cuộn chip đang chọn vào giữa sau khi setup() gán xong `cat`. onAppear của hàng chip chạy trước
-            // onAppear ngoài cùng (nơi gọi setup), lúc đó `cat` còn nil nên không cuộn được
-            .onChange(of: ready) { _, _ in if let cat { proxy.scrollTo(cat, anchor: .center) } }
+            // Hai mép mờ dần khi cuộn: chip đi ra mép thì tan vào nền thay vì bị cắt thẳng
+            // Chỉ mờ phía còn chip bị che: đang ở đầu hàng thì mép trái không mờ, cuộn hết thì mép phải không mờ
+            .modifier(ChipEdges(fade: $chipFade))
+            .mask {
+                HStack(spacing: 0) {
+                    LinearGradient(colors: [chipFade[0] ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing).frame(width: 24)
+                    Color.black
+                    LinearGradient(colors: [.black, chipFade[1] ? .clear : .black], startPoint: .leading, endPoint: .trailing).frame(width: 24)
+                }
+            }
+            // Sau khi setup() gán xong `cat` (onAppear của hàng chip chạy trước, lúc đó `cat` còn nil): đưa nó lên đầu hàng
+            // (đứng đầu rồi nên hàng ở vị trí ban đầu là thấy, không cuộn: cuộn tới chip thì mất lề trái)
+            .onChange(of: ready) { _, _ in leadCat = cat }
         }
     }
 
@@ -492,4 +510,19 @@ struct DateSheet: View {
     }
 
     private func set(_ d: Date) { withAnimation(.snappy(duration: 0.2)) { when = min(d, Date()) } }
+}
+
+/// Theo dõi hàng chip đang cuộn tới đâu: còn chip bị che ở mép trái / phải không (iOS 17 không có, giữ mờ mép phải).
+private struct ChipEdges: ViewModifier {
+    @Binding var fade: [Bool]
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: [Bool].self) { g in
+                [g.contentOffset.x > 1, g.contentOffset.x < g.contentSize.width - g.containerSize.width - 1]
+            } action: { _, v in withAnimation(.easeOut(duration: 0.15)) { fade = v } }
+        } else {
+            content
+        }
+    }
 }

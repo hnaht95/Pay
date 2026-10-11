@@ -558,6 +558,8 @@ struct DateSheet: View {
     private var weekStart: Date { cal.dateInterval(of: .weekOfYear, for: month)!.start }
     private var isThisWeek: Bool { cal.isDate(month, equalTo: Date(), toGranularity: .weekOfYear) }
 
+    private static let orange = Color(hex: 0xF0884F)
+
     private var weekStrip: some View {
         let names = Lang.isEnglish ? ["M", "T", "W", "T", "F", "S", "S"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
         return HStack(spacing: 0) {
@@ -580,12 +582,13 @@ struct DateSheet: View {
             VStack(spacing: 6) {
                 Text("\(cal.component(.day, from: d))")
                     .font(.system(size: 17, weight: on || today ? .semibold : .regular, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(on ? Color(light: 0xFFFFFF, dark: 0x111114) : Color.primary.opacity(0.75))
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(on ? Color(light: 0x111114, dark: 0xFFFFFF) : .clear))
+                    .foregroundStyle(on ? .white : Color.primary.opacity(0.75))
+                    .frame(width: 36, height: 36)
+                    // Ngày chọn: tròn cam như mẫu
+                    .background(Circle().fill(on ? Self.orange : .clear))
                     .overlay { if today && !on { Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 1.5) } }
                 // Ngày có khoản chi: chấm nhỏ
-                Circle().fill(Color.primary.opacity(spent ? 0.45 : 0)).frame(width: 5, height: 5)
+                Circle().fill(spent ? Self.orange : .clear).frame(width: 4, height: 4)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())

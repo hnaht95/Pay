@@ -451,7 +451,7 @@ struct DateSheet: View {
 
     /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
     // MARK: Lưới ngày (theo lịch của Peek): hàng thứ ở trên, đủ các tuần (ngày tháng trước / sau mờ), các ngày của tháng đang xem
-    // được khoanh một viền mảnh bo theo bậc, hai cột T7 / CN có nền nhạt suốt từ hàng thứ xuống, hôm nay chữ xanh,
+    // được khoanh một viền mảnh bo theo bậc, hai cột T7 / CN có nền nhạt (từ hàng ngày, không gồm hàng thứ), hôm nay chữ xanh,
     // ngày đang chọn là ô vuông bo nền xám
 
     private static let rowH: CGFloat = 42
@@ -466,11 +466,11 @@ struct DateSheet: View {
         return GeometryReader { g in
             let cw = g.size.width / 7, rh = Self.rowH, top = Self.headH
             ZStack(alignment: .topLeading) {
-                // Cột T7 / CN: nền nhạt cả cột, kể cả hàng thứ
+                // Cột T7 / CN: nền nhạt từ hàng ngày đầu tiên xuống (hàng thứ không đóng khung)
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color.primary.opacity(0.06))
-                    .frame(width: cw * 2, height: top + rh * CGFloat(rows))
-                    .offset(x: cw * 5)
+                    .frame(width: cw * 2, height: rh * CGFloat(rows))
+                    .offset(x: cw * 5, y: top)
                 MonthOutline(blanks: blanks, lastCol: lastCol, rows: rows, cw: cw, rh: rh)
                     .stroke(Color.primary.opacity(0.25), lineWidth: 1.5)
                     .offset(y: top)

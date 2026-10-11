@@ -31,6 +31,8 @@ extension English {
         "Tổng chi năm %@": "Spent in %@",
         "Chi trong tuần": "This week",
         "Chi từng tháng": "By month",
+        "Trước": "Previous",
+        "Sau": "Next",
         "Hôm nay": "Today",
         "chưa có để so": "nothing to compare",
         "Ngày có chi": "Spending days",

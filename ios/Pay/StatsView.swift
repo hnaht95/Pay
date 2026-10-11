@@ -13,7 +13,9 @@ struct StatsView: View {
     @State private var scope: Scope = .month
     /// Tuần đang xem (ngày đầu tuần, thứ Hai) và trang tuần trên thanh ngày (0 = tuần này)
     @State private var week = Self.wcal.dateInterval(of: .weekOfYear, for: Date())!.start
-    @State private var weekPage: Int? = 0
+    /// Lịch tuần đang mở rộng ra cả tháng, và tháng đang hiện khi mở rộng
+    @State private var expanded = false
+    @State private var calMonth = Date()
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
     @State private var year = Date()
@@ -122,61 +124,138 @@ struct StatsView: View {
         return cal.date(byAdding: .day, value: -7 * p, to: now)!
     }
 
-    /// Số trang tuần: lùi đến tuần có khoản chi đầu tiên, ít nhất 8 tuần
-    private var weekCount: Int {
-        guard let first = store.items.min(by: { $0.t < $1.t })?.date else { return 8 }
-        let days = cal.dateComponents([.day], from: first, to: Date()).day ?? 0
-        return max(8, days / 7 + 2)
-    }
-
-    /// 7 ngày của tuần (thứ Hai -> Chủ nhật); vuốt ngang sang tuần trước. Chạm một ngày để xem riêng ngày đó, chạm lại để xem cả tuần.
+    /// Lịch kiểu Peek: dòng tháng + nút mở rộng / lùi / tới, rồi 7 ô ngày của tuần (mỗi ô một nền riêng, ghi số tiền đã chi).
+    /// Mở rộng: cả tháng. Chạm một ngày để xem riêng ngày đó, chạm lại để xem cả tuần.
     private var weekStrip: some View {
-        ScrollView(.horizontal) {
-            LazyHStack(spacing: 0) {
-                ForEach((0..<weekCount).reversed(), id: \.self) { p in
-                    let start = weekStart(page: p)
-                    HStack(spacing: 2) {
-                        ForEach(0..<7, id: \.self) { i in dayCell(cal.date(byAdding: .day, value: i, to: start)!) }
+        let shown = expanded ? calMonth : cal.date(byAdding: .day, value: 3, to: week)!   // tuần vắt hai tháng: lấy tháng của thứ Năm
+        let canNext = expanded
+            ? cal.date(byAdding: .month, value: 1, to: cal.dateInterval(of: .month, for: calMonth)!.start)! <= Date()
+            : cal.date(byAdding: .day, value: 7, to: week)! <= Date()
+        return VStack(alignment: .leading, spacing: 12) {
+            // Hàng tiêu đề như lịch của Peek: hình tờ lịch + "Tháng 10 năm 2026" (chạm để mở rộng / thu gọn), ◀ ▶ bên phải
+            HStack(spacing: 6) {
+                Button { withAnimation(.snappy) { toggleExpanded() } } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: expanded ? "calendar.badge.minus" : "calendar").font(.system(size: 16, weight: .medium))
+                        Text(monthYear(shown)).font(.system(size: 16, weight: .semibold))
+                            .contentTransition(.numericText())
                     }
-                    .padding(4)
-                    .containerRelativeFrame(.horizontal)
-                    .id(p)
+                    .foregroundStyle(Color.primary.opacity(0.55))
+                    .frame(minHeight: 32)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(Pressable())
+                Spacer()
+                stepButton("arrowtriangle.left.fill", L("Trước")) { step(-1) }
+                stepButton("arrowtriangle.right.fill", L("Sau")) { step(1) }.disabled(!canNext).opacity(canNext ? 1 : 0.3)
             }
-            .scrollTargetLayout()
+            if expanded {
+                // Cả tháng: hàng thứ, rồi từng tuần (ô ngoài tháng để trống)
+                let start = Self.wcal.dateInterval(of: .weekOfYear, for: cal.dateInterval(of: .month, for: calMonth)!.start)!.start
+                let end = cal.dateInterval(of: .month, for: calMonth)!.end
+                let weeks = Int(ceil(Double(cal.dateComponents([.day], from: start, to: end).day!) / 7))
+                VStack(spacing: 6) {
+                    // Hàng thứ riêng ở trên (tuần đầu tháng có ô trống thì vẫn đủ T2 -> CN)
+                    HStack(spacing: 6) {
+                        ForEach(0..<7, id: \.self) { i in
+                            Text(weekdayShort(cal.date(byAdding: .day, value: i, to: start)!))
+                                .font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    ForEach(0..<weeks, id: \.self) { w in
+                        HStack(spacing: 6) {
+                            ForEach(0..<7, id: \.self) { i in
+                                let d = cal.date(byAdding: .day, value: w * 7 + i, to: start)!
+                                if cal.isDate(d, equalTo: calMonth, toGranularity: .month) {
+                                    dayCell(d, weekday: false)
+                                } else {
+                                    Color.clear.frame(maxWidth: .infinity, minHeight: 54)
+                                }
+                            }
+                        }
+                    }
+                }
+                .transition(.opacity)
+            } else {
+                HStack(spacing: 6) {
+                    ForEach(0..<7, id: \.self) { i in dayCell(cal.date(byAdding: .day, value: i, to: week)!, weekday: true) }
+                }
+                .transition(.opacity)
+            }
         }
-        .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.paging)
-        .scrollPosition(id: $weekPage)
-        .defaultScrollAnchor(.trailing)
+        .padding(14)
         .background(Self.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .onChange(of: weekPage) {
-            let w = weekStart(page: weekPage ?? 0)
-            if w != week { week = w; day = nil }
+    }
+
+    private func stepButton(_ symbol: String, _ label: String, _ run: @escaping () -> Void) -> some View {
+        Button { withAnimation(.snappy) { run() } } label: {
+            Image(systemName: symbol).font(.system(size: 13)).foregroundStyle(Color.primary.opacity(0.45))
+                .frame(width: 34, height: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(label)
+    }
+
+    private func toggleExpanded() {
+        if !expanded { calMonth = day ?? cal.date(byAdding: .day, value: 3, to: week)! }
+        expanded.toggle()
+    }
+
+    /// ◀ ▶: lùi / tới một tuần, hoặc một tháng khi đang mở rộng
+    private func step(_ n: Int) {
+        if expanded {
+            calMonth = cal.date(byAdding: .month, value: n, to: calMonth)!
+        } else {
+            week = cal.date(byAdding: .day, value: 7 * n, to: week)!
+            day = nil
         }
     }
 
-    private func dayCell(_ d: Date) -> some View {
+    /// Ô ngày như lịch của Peek: mỗi ngày một viên nền bo góc riêng (hở 6 pt), chữ thứ nhỏ mờ ở trên, số tròn ở giữa,
+    /// chấm nhỏ ở dưới cho ngày có chi. Hôm nay: số màu nhấn (Peek tím, ở đây xanh lá của app). Đang chọn: nền đậm hơn.
+    private func dayCell(_ d: Date, weekday: Bool) -> some View {
         let on = day.map { cal.isDate($0, inSameDayAs: d) } ?? false
         let future = d > Date()
         let today = cal.isDateInToday(d)
         let spent = !future && store.total(on: d) > 0
-        return Button { withAnimation(.snappy) { day = on ? nil : d } } label: {
-            VStack(spacing: 3) {
-                Text(weekdayShort(d)).font(.system(size: 13, weight: on ? .semibold : .regular))
-                Text("\(cal.component(.day, from: d))").font(.system(size: 19, weight: .semibold))
-                // Chấm nhỏ: ngày có chi
-                Circle().fill(on ? Self.inkText : Color(hex: 0x61BE6E)).frame(width: 5, height: 5).opacity(spent ? 1 : 0)
+        let tint = Color(light: 0x3FA65A, dark: 0x7FD08B)
+        return Button {
+            withAnimation(.snappy) {
+                if on { day = nil } else {
+                    day = d
+                    week = Self.wcal.dateInterval(of: .weekOfYear, for: d)!.start
+                }
             }
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .foregroundStyle(on ? Self.inkText : today ? Color.primary : Color.secondary)
+        } label: {
+            VStack(spacing: 5) {
+                if weekday {
+                    Text(weekdayShort(d)).font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(on || today ? tint.opacity(0.85) : Color.primary.opacity(0.4))
+                }
+                Text("\(cal.component(.day, from: d))")
+                    .font(.system(size: 20, weight: today || on ? .semibold : .medium, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(on || today ? tint : Color.primary.opacity(0.8))
+                // Khung cao cố định để hàng số không nhấp nhô theo ngày có chấm hay không
+                Circle().fill(tint).frame(width: 4.5, height: 4.5).opacity(spent ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: weekday ? 70 : 54)
             .opacity(future ? 0.35 : 1)
-            .background(on ? Self.ink : .clear, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(on ? tint.opacity(0.16) : Color.primary.opacity(today ? 0.07 : 0.04)))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(Pressable())
         .disabled(future)
+    }
+
+    /// "Tháng 10 năm 2026" (tiếng Anh: "October 2026")
+    private func monthYear(_ d: Date) -> String {
+        if Lang.isEnglish {
+            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "LLLL yyyy"
+            return f.string(from: d)
+        }
+        return "Tháng \(cal.component(.month, from: d)) năm \(cal.component(.year, from: d))"
     }
 
     /// Các năm gần đây (3 đến 6 năm), năm đang xem là viên thuốc đậm
@@ -205,9 +284,9 @@ struct StatsView: View {
     private func goToday() {
         switch scope {
         case .week:
-            weekPage = 0
             week = weekStart(page: 0)
             day = Date()
+            calMonth = Date()
         case .month:
             page = 0
             month = Date()

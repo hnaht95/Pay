@@ -550,7 +550,7 @@ struct DateSheet: View {
                         .frame(width: 40)
                 }
                 .frame(width: 120, height: 96)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.06)).frame(height: 34))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(light: 0xFFFFFF, dark: 0x2C2C2E)).frame(height: 34))
                 .mask {
                     LinearGradient(stops: [.init(color: .black.opacity(0.08), location: 0), .init(color: .black, location: 0.35),
                                            .init(color: .black, location: 0.65), .init(color: .black.opacity(0.08), location: 1)],

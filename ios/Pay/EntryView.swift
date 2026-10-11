@@ -69,7 +69,7 @@ struct EntryView: View {
             .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)
 
-            chips.padding(.top, 20)
+            chips.padding(.top, 28)
 
             TextField(L("Ghi chú (không bắt buộc)"), text: $note)
                 .font(.system(size: 18))
@@ -77,7 +77,7 @@ struct EntryView: View {
                 .submitLabel(.done)
                 .padding(.horizontal, 18).padding(.vertical, 15)
                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .padding(.top, 16)
+                .padding(.top, 24)
                 .onChange(of: note) { _, v in
                     guard !catPicked else { return }
                     // Đoán lại theo ghi chú đang có, không giữ kết quả của lúc gõ dở (gõ "anh Tuấn mượn" thì "an" từng giữ Ăn uống).

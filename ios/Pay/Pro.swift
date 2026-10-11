@@ -167,6 +167,9 @@ struct ProPaywall: View {
     private var yearly: Product? { pro.products.first { $0.id == Pro.yearlyID } }
     private var chosen: Product? { pro.products.first { $0.id == pick } }
 
+    /// Nền khung nhạt (nhạt hơn nền thẻ ở màn chính)
+    private static let cardBG = Color(light: 0xF5F6F9, dark: 0x1D1D22)
+
     private var ordered: [ProFeature] {
         guard let feature else { return ProFeature.allCases }
         return [feature] + ProFeature.allCases.filter { $0 != feature }
@@ -201,7 +204,7 @@ struct ProPaywall: View {
                             // Khung nào cũng cao bằng nhau, chữ nằm giữa theo chiều dọc, lề trái phải bằng nhau
                             .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
                             .padding(.horizontal, 20)
-                            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
+                            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Self.cardBG))
                             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
                                 .strokeBorder(f == feature ? Color(hex: 0x61BE6E) : .clear, lineWidth: 2))
                         }
@@ -222,23 +225,34 @@ struct ProPaywall: View {
             }
 
             VStack(spacing: 12) {
-                if pro.active {
-                    BigButton(title: L("Đã mở Pro, cảm ơn bạn!"), icon: "", primary: true) { dismiss() }
-                } else {
-                    BigButton(title: chosen.map { L("Mua %@", $0.displayPrice) } ?? L("Mua"), icon: "", primary: true) {
-                        guard let p = chosen, !pro.buying else { return }
-                        Task { if await pro.buy(p) { Haptic.tap(.medium); dismiss() } }
-                    }
-                    .opacity(chosen == nil || pro.buying ? 0.5 : 1)
-                }
                 HStack(spacing: 18) {
                     Button(L("Khôi phục giao dịch")) { Task { await pro.restore(); if pro.active { dismiss() } } }
                     Link(L("Điều khoản"), destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                     Link(L("Quyền riêng tư"), destination: URL(string: "https://peakapp.vn/pay/privacy.html")!)
                 }
                 .font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+                // Nút mua ở dưới cùng (sát đáy như các màn khác), xanh lá của app, luôn đậm màu; đang tải giá thì hiện vòng xoay
+                Button {
+                    if pro.active { dismiss(); return }
+                    guard let p = chosen, !pro.buying else { return }
+                    Task { if await pro.buy(p) { Haptic.tap(.medium); dismiss() } }
+                } label: {
+                    Group {
+                        if pro.buying || (chosen == nil && !pro.active) {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text(pro.active ? L("Đã mở Pro, cảm ơn bạn!") : chosen.map { L("Mua %@", $0.displayPrice) } ?? L("Mua"))
+                                .font(.system(size: 19, weight: .semibold))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).frame(height: 64)
+                    .background(Capsule().fill(Color(hex: 0x61BE6E)))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(Pressable())
             }
-            .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 8)
+            .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
         }
         .background(Palette.surface.ignoresSafeArea())
         .task { await pro.load() }
@@ -260,7 +274,7 @@ struct ProPaywall: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Self.cardBG))
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(on ? Color(hex: 0x61BE6E) : .clear, lineWidth: 2.5))
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))

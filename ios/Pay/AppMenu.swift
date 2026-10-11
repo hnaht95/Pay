@@ -156,8 +156,7 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
                                  subtitle: L("Tự ghi vào ngày %@ mỗi tháng", String(Calendar.current.component(.day, from: e.date)))) { store.repeatMonthly(e) })
     }
     items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
-    return AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
-                        .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+    return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
                        title: "\(e.n?.isEmpty == false ? e.n!.capFirst : c.name) · \(fmt(e.a))",
                        subtitle: "\(c.name) · \(f.string(from: e.date))", items: items)
 }

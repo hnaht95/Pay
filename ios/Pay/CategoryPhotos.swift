@@ -96,6 +96,8 @@ struct CategoryBadge: View {
     var iconSize: CGFloat = 30
     /// Viền mảnh màu danh mục quanh ô (ở danh sách, nơi ô không nằm trên nền màu danh mục)
     var ring = false
+    /// Viền xám rất mảnh, để ô trắng không chìm khi nằm trên thẻ trắng
+    var edge = false
     @State private var tick = 0
 
     var body: some View {
@@ -111,6 +113,7 @@ struct CategoryBadge: View {
         .background(.white)
         .clipShape(shape)
         .overlay { if ring { shape.strokeBorder(c.color, lineWidth: 2.5) } }
+        .overlay { if edge { shape.strokeBorder(Color.black.opacity(0.08), lineWidth: 1) } }
         .id(tick)
         .onReceive(NotificationCenter.default.publisher(for: CategoryPhotos.changed)) { _ in tick += 1 }
     }

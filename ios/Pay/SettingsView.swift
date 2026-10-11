@@ -162,9 +162,7 @@ struct SettingsView: View {
             ForEach(list) { r in
                 let c = Category.get(r.c)
                 HStack(spacing: 12) {
-                    CategoryIcon(c: c, size: 20)
-                        .frame(width: 34, height: 34)
-                        .background(c.color, in: Circle())
+                    CategoryBadge(c: c, side: 34, radius: 10, iconSize: 20, edge: true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.n?.isEmpty == false ? r.n!.capFirst : c.name).lineLimit(1)
                         Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 14)).foregroundStyle(.secondary)

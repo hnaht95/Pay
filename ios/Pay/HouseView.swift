@@ -709,9 +709,7 @@ struct HouseView: View {
         let c = Category.get(e.cat)
         let payer = house.memberName(e.payer)
         return HStack(spacing: 14) {
-            CategoryIcon(c: c, size: 28)
-                .frame(width: 52, height: 52)
-                .background(c.color, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            CategoryBadge(c: c, side: 52, radius: 16, iconSize: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                 Text(L("%@ trả · %@", e.payer == house.me ? L("Bạn") : payer, day(e.date)))
@@ -732,8 +730,7 @@ struct HouseView: View {
         .onTapGesture { editingSpend = e }   // chạm để xem / sửa ai trả, chia cho ai
         .onHold {
             let c = Category.get(e.cat)
-            menu = AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
-                                .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+            menu = AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
                                title: "\(e.note.isEmpty ? c.name : e.note.capFirst) · \(fmt(e.amount))",
                                subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
                                items: [AppMenuItem(icon: "pencil", title: L("Sửa khoản này")) { editingSpend = e },
@@ -1349,8 +1346,7 @@ struct HouseSpendEditor: View {
                     let on = cat == c.k
                     Button { cat = c.k; catPicked = true } label: {
                         HStack(spacing: 8) {
-                            CategoryIcon(c: c, size: 20).frame(width: 32, height: 32)
-                                .background(on ? Color.white.opacity(0.7) : c.color, in: Circle())
+                            CategoryBadge(c: c, side: 32, radius: 9, iconSize: 20)
                             Text(c.name).font(.system(size: 16, weight: on ? .semibold : .medium))
                         }
                         .padding(.leading, 5).padding(.trailing, 14).padding(.vertical, 5)

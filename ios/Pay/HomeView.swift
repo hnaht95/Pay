@@ -373,8 +373,7 @@ struct HomeView: View {
         } else {
             items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá danh mục"), danger: true) { store.removeCategory(c.k) })
         }
-        return AppMenuSpec(icon: AnyView(CategoryIcon(c: c, size: 30).frame(width: 56, height: 56)
-                            .background(c.color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+        return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
                            title: c.name,
                            subtitle: L("%@: %@", monthLabel(now), fmt(month.reduce(0) { $0 + $1.a })) + " · " + (month.count == 1 ? L("1 khoản") : L("%d khoản", month.count)),
                            items: items)

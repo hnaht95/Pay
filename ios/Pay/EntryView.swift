@@ -159,7 +159,7 @@ struct EntryView: View {
     /// Chiều cao ô ghi chú, cũng là cạnh ô ảnh hoá đơn bên cạnh
     private static let noteH: CGFloat = 54
 
-    /// Ô ảnh hoá đơn cạnh ô ghi chú, khung 3:2, cao bằng ô ghi chú: có ảnh thì hiện ảnh (chạm để xem to / chụp lại / xoá),
+    /// Ô ảnh hoá đơn cạnh ô ghi chú, vuông, cao bằng ô ghi chú: có ảnh thì hiện ảnh (chạm để xem to / chụp lại / xoá),
     /// chưa có thì icon camera (chạm để chụp hoặc chọn ảnh). Màn quét QR / mã lạ không có ô này
     @ViewBuilder private var photoTile: some View {
         if isNewEntry || isEdit {
@@ -173,7 +173,7 @@ struct EntryView: View {
                             Image(systemName: "camera.aperture").font(.system(size: 22, weight: .medium)).foregroundStyle(.secondary)
                         }
                     }
-                    .frame(width: Self.noteH * 1.5, height: Self.noteH)   // khung ngang 3:2
+                    .frame(width: Self.noteH, height: Self.noteH)   // ô vuông, hợp với icon chụp
                 .clipShape(shape)
                 .contentShape(shape)
             }

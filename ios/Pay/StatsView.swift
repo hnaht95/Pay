@@ -467,7 +467,7 @@ struct StatsView: View {
                 let ratio = min(Double(spent) / Double(limit), 1)
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Hatch.gray)
+                        Capsule().fill(Self.chip)
                         Capsule().fill(spent > limit ? Color(hex: 0xD92D20) : Self.orange)
                             .frame(width: max(12, g.size.width * ratio))
                     }
@@ -530,7 +530,7 @@ struct StatsView: View {
             Text(title).font(.system(size: 17, weight: .semibold))
             HStack(spacing: 14) {
                 legend(AnyShapeStyle(Self.ink), L("Hoá đơn"))
-                legend(AnyShapeStyle(Hatch.orange), L("Chi tiêu khác"))
+                legend(AnyShapeStyle(Self.orange), L("Chi tiêu khác"))
                 Spacer()
             }
             .padding(.top, 4)
@@ -538,14 +538,14 @@ struct StatsView: View {
                 if b.bills > 0 {
                     BarMark(x: .value("Tháng", b.date, unit: unit), yStart: .value("Từ", 0), yEnd: .value("Hoá đơn", b.bills), width: .ratio(0.55))
                         .foregroundStyle(Self.ink)
-                        .cornerRadius(6)
+                        .cornerRadius(3)
                         .opacity(selected(b.date) ? 1 : 0.45)
                 }
                 if b.other > 0 {
                     let start = b.bills > 0 ? Double(b.bills) + gap : 0
                     BarMark(x: .value("Tháng", b.date, unit: unit), yStart: .value("Từ", start), yEnd: .value("Chi tiêu khác", start + Double(b.other)), width: .ratio(0.55))
-                        .foregroundStyle(Hatch.orange)
-                        .cornerRadius(6)
+                        .foregroundStyle(Self.orange)
+                        .cornerRadius(3)
                         .opacity(selected(b.date) ? 1 : 0.45)
                 }
             }
@@ -558,8 +558,12 @@ struct StatsView: View {
             }
             .chartYAxis {
                 AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { v in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 3])).foregroundStyle(Color.primary.opacity(0.1))
-                    AxisValueLabel { if let n = v.as(Double.self) { Text(short(Int(n))) } }
+                    // Không kẻ vạch ở mốc 0 (đáy cột đã là đường đáy)
+                    if (v.as(Double.self) ?? 0) > 0 {
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 3])).foregroundStyle(Color.primary.opacity(0.1))
+                    }
+                    // Số căn trái theo mép thẻ
+                    AxisValueLabel { if let n = v.as(Double.self) { Text(short(Int(n))).frame(width: 30, alignment: .leading) } }
                 }
             }
             .chartOverlay { proxy in

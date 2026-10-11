@@ -417,13 +417,14 @@ struct DateSheet: View {
                 }
             }
             Spacer(minLength: 0)
-            HStack(spacing: 10) {
+            HStack(spacing: 4) {
                 Text(L("Giờ")).font(.system(size: 17, weight: .semibold))
                 Spacer()
-                dial(cal.component(.hour, from: when)) { bump(.hour, $0) }
+                wheel(24, Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }))
                 Text(":").font(.system(size: 22, weight: .bold)).foregroundStyle(.secondary)
-                dial(cal.component(.minute, from: when)) { bump(.minute, $0 * 5) }
+                wheel(60, Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }))
             }
+            .frame(height: 120)
             Button { dismiss() } label: {
                 Text(L("Xong")).font(.system(size: 19, weight: .semibold))
                     .frame(maxWidth: .infinity, minHeight: 58)
@@ -451,16 +452,17 @@ struct DateSheet: View {
         .buttonStyle(Pressable()).accessibilityLabel(label)
     }
 
-    /// Một ô số có nút trừ / cộng hai bên
-    private func dial(_ value: Int, _ step: @escaping (Int) -> Void) -> some View {
-        HStack(spacing: 2) {
-            Button { step(-1) } label: { Image(systemName: "minus").font(.system(size: 13, weight: .bold)).frame(width: 34, height: 40) }
-            Text(String(format: "%02d", value)).font(.system(size: 22, weight: .bold).monospacedDigit()).frame(width: 34)
-                .contentTransition(.numericText())
-            Button { step(1) } label: { Image(systemName: "plus").font(.system(size: 13, weight: .bold)).frame(width: 34, height: 40) }
+    /// Bánh xe cuộn bằng ngón tay (bánh xe của iOS: kéo trong bảng không kéo theo cả bảng)
+    private func wheel(_ count: Int, _ value: Binding<Int>) -> some View {
+        Picker("", selection: value) {
+            ForEach(0..<count, id: \.self) { n in
+                Text(String(format: "%02d", n)).font(.system(size: 22, weight: .semibold).monospacedDigit()).tag(n)
+            }
         }
-        .foregroundStyle(.primary).buttonStyle(Pressable())
-        .background(Palette.pill, in: Capsule())
+        .pickerStyle(.wheel)
+        .labelsHidden()
+        .frame(width: 76)
+        .clipped()
     }
 
     private func shift(_ by: Int) {
@@ -475,12 +477,11 @@ struct DateSheet: View {
         set(cal.date(bySettingHour: t.hour ?? 0, minute: t.minute ?? 0, second: 0, of: day) ?? day)
     }
 
-    private func bump(_ unit: Calendar.Component, _ by: Int) {
-        // Giờ / phút xoay vòng trong chính ngày đó (không nhảy sang ngày khác)
+    /// Đổi giờ hoặc phút, giữ nguyên ngày
+    private func setTime(hour: Int? = nil, minute: Int? = nil) {
         var c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: when)
-        if unit == .hour { c.hour = ((c.hour ?? 0) + by + 24) % 24 }
-        else { c.minute = (((c.minute ?? 0) / 5 * 5) + by + 60) % 60 }
-        UISelectionFeedbackGenerator().selectionChanged()
+        if let hour { c.hour = hour }
+        if let minute { c.minute = minute }
         if let d = cal.date(from: c) { set(d) }
     }
 

@@ -723,8 +723,9 @@ extension View {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
         } else if #available(iOS 26.0, *) {
             // Chỉ dùng mép mờ của hệ thống, cùng kiểu thanh tiêu đề (không phủ thêm lớp chuyển màu tự làm)
-            overlay(alignment: .bottom) { above().padding(.bottom, 8) }
-                .safeAreaBar(edge: .bottom) { dock }
+            // Thanh "Đã xoá · Hoàn tác" gắn trên mép dải nút (lớp phủ, không đổi kích thước dải): để làm lớp phủ riêng của
+            // màn hình thì nó nằm sau dải nút, không thấy đâu
+            safeAreaBar(edge: .bottom) { dock.overlay(alignment: .top) { above().alignmentGuide(.top) { $0[.bottom] + 8 } } }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached } }
@@ -818,7 +819,8 @@ struct ToastView: View {
                     .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
-                    Button { undo(); store.toast = nil } label: {
+                    // Hoàn tác có hiệu ứng: hàng vừa xoá trượt / hiện lại vào chỗ cũ, các hàng dưới dịch xuống nhường chỗ
+                    Button { withAnimation(.snappy(duration: 0.35)) { undo(); store.toast = nil } } label: {
                         Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
                             .font(.system(size: 16, weight: .semibold))
                             .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài

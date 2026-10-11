@@ -3,7 +3,7 @@
   "nonRenewingSubscriptions" : [],
   "products" : [
     {
-      "displayPrice" : "199000",
+      "displayPrice" : "299000",
       "familyShareable" : true,
       "internalID" : "6700000001",
       "localizations" : [ { "description" : "Mở mọi tính năng Pro, trả một lần", "displayName" : "Pay Pro trọn đời", "locale" : "vi" } ],

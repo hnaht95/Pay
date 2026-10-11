@@ -72,8 +72,8 @@ struct ReceiptCamera: View {
                                                                        bottomTrailingRadius: screen, topTrailingRadius: corner, style: .continuous))
                     }
                     .buttonStyle(Pressable())
-                    .disabled(cam.error != nil)
-                    .opacity(cam.error != nil ? 0.4 : 1)
+                    .disabled(Self.noCamera(cam))
+                    .opacity(Self.noCamera(cam) ? 0.4 : 1)
                 }
                 // Mỗi nút trái cao bằng nút Quét QR ở màn hình chính, nút Chụp cao bằng cả hai cộng khe
                 .frame(height: Self.btnH * 2 + 12)
@@ -99,6 +99,15 @@ struct ReceiptCamera: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.white.opacity(0.18), in: UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: bottomLeading,
                                                                          bottomTrailingRadius: 18, topTrailingRadius: 18, style: .continuous))
+    }
+
+    /// Máy ảo không có camera: vẫn để nút Chụp sáng và bấm được để xem màu, hiệu ứng (chụp thì không ra ảnh)
+    private static func noCamera(_ cam: ReceiptCam) -> Bool {
+        #if targetEnvironment(simulator)
+        return false
+        #else
+        return cam.error != nil
+        #endif
     }
 
     private func finish(_ img: UIImage?) {

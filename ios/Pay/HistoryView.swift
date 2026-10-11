@@ -10,11 +10,31 @@ struct HistoryView: View {
     @State private var menu: AppMenuSpec?
     /// Ô tìm: lọc theo ghi chú hoặc tên danh mục, không phân biệt dấu ("ca phe" ra "cà phê")
     @State private var query = ""
+    @FocusState private var searching: Bool
 
     var body: some View {
         NavigationStack {
             let groups = grouped()
             List {
+                // Ô tìm tự vẽ, cùng kiểu ô ghi chú ở màn nhập (nền nhạt bo 18, không viền, không bóng) thay cho thanh tìm của iOS
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium)).foregroundStyle(.secondary)
+                    TextField(L("Tìm khoản chi"), text: $query)
+                        .font(.system(size: 17))
+                        .focused($searching)
+                        .submitLabel(.search)
+                        .autocorrectionDisabled()
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").font(.system(size: 17)).foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+                .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 // Đang tìm: một dòng tổng của các khoản tìm được
                 if !query.isEmpty, !groups.isEmpty {
                     let found = groups.flatMap(\.1)
@@ -51,7 +71,6 @@ struct HistoryView: View {
                 }
             }
             .listStyle(.plain)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: L("Tìm khoản chi"))
             .softTopEdge()
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)

@@ -440,6 +440,8 @@ struct DateSheet: View {
     @State private var month = Date()
     /// Lần đổi tháng gần nhất là tới tháng sau (lưới trượt lên) hay lùi tháng trước (trượt xuống)
     @State private var forward = true
+    /// Ngày giờ lúc mở bảng, để Huỷ trả về
+    @State private var original: Date?
     /// Bề ngang nút "Hôm nay" lúc bung (đo theo chữ), để co / nở được bằng một con số
     @State private var todayW: CGFloat = 90
     /// Bề ngang hàng lịch + giờ, để chia chỗ cho lưới và hai bánh xe
@@ -529,9 +531,12 @@ struct DateSheet: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowW = $0 }
-            // Nút Xong ở đáy, to bằng nút Quét QR của màn hình chính
-            BigButton(title: L("Xong"), icon: "", primary: true) { dismiss() }
-                .padding(.top, 10)
+            // Huỷ / Lưu ở đáy, to bằng hai nút Nhập / Quét QR của màn hình chính. Huỷ trả ngày giờ về như lúc mở
+            HStack(spacing: 12) {
+                BigButton(title: L("Huỷ"), icon: "", primary: false) { when = original ?? when; dismiss() }
+                BigButton(title: L("Lưu"), icon: "", primary: true) { dismiss() }
+            }
+            .padding(.top, 10)
         }
         .padding(.horizontal, 20).padding(.top, 28).padding(.bottom, 8)
         // Cả cụm hạ xuống qua vùng thanh home: đáy lịch / nút Xong cách đáy tấm bằng lề phải, góc dưới phải nút Xong đồng tâm góc tấm.
@@ -543,7 +548,7 @@ struct DateSheet: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Palette.surface.ignoresSafeArea())
         .presentationDetents([.height(max(contentH, 200))])
-        .onAppear { month = when }
+        .onAppear { month = when; if original == nil { original = when } }
     }
 
     private var title: String {

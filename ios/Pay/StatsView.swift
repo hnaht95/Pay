@@ -160,7 +160,7 @@ struct StatsView: View {
         .foregroundStyle(.white)
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LinearGradient(colors: [Color(hex: 0xF6814E), Color(hex: 0xE9561F)], startPoint: .topLeading, endPoint: .bottomTrailing),
+        .background(LinearGradient(colors: [Color(hex: 0x66C273), Color(hex: 0x3E9E50)], startPoint: .topLeading, endPoint: .bottomTrailing),
                     in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 

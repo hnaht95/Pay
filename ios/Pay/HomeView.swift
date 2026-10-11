@@ -551,8 +551,10 @@ struct ExpenseRow: View {
                 // Có ảnh hoá đơn đính kèm: chấm xanh lá (màu icon app) ở góc trên phải ô biểu tượng, viền màu thẻ cho tách nền
                 .overlay(alignment: .topTrailing) {
                     if ReceiptPhotos.has(e.id) {
-                        Circle().fill(Color(hex: 0x61BE6E)).frame(width: 12, height: 12)
-                            .overlay(Circle().strokeBorder(Palette.card, lineWidth: 2.5))
+                        // Vòng màu thẻ vẽ dưới, chấm xanh nhỏ hơn đè lên giữa: vẽ viền đè lên chấm xanh cùng cỡ thì mép xanh
+                        // (khử răng cưa) lộ ra ngoài viền thành một vệt mảnh
+                        Circle().fill(Palette.card).frame(width: 12, height: 12)
+                            .overlay(Circle().fill(Color(hex: 0x61BE6E)).frame(width: 7, height: 7))
                             .offset(x: 3, y: -3)
                             .accessibilityLabel(L("Có ảnh hoá đơn"))
                     }

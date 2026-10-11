@@ -47,7 +47,6 @@ struct ReceiptCamera: View {
                 Color.clear
                     .aspectRatio(0.72, contentMode: .fit)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { holeRect = $0 }
-                Spacer(minLength: 0)
                 // Ba nút to: cột trái Đóng / Chọn ảnh, cột phải nút chụp cao bằng cả hai. Hai góc dưới ngoài cùng bo theo góc
                 // màn hình (cụm nút cách mép dưới bằng lề hai bên, 16 pt)
                 let corner: CGFloat = 28, screen: CGFloat = 28
@@ -72,11 +71,12 @@ struct ReceiptCamera: View {
                 }
                 // Mỗi nút trái cao bằng nút Quét QR ở màn hình chính, nút Chụp cao bằng cả hai cộng khe
                 .frame(height: Self.btnH * 2 + 12)
+                // Khung và cụm nút đi liền nhau, cả cụm nằm giữa phần dưới dòng chữ (không dồn nút xuống đáy)
+                Spacer(minLength: 0)
             }
             // Khung và cụm nút thu vào giữa (lề 36): nhỏ gọn hơn cả bề ngang màn hình
             .padding(.horizontal, 36)
-            // Cụm nút xuống sát đáy: cách mép dưới màn hình 16 pt như hai nút ở màn hình chính
-            .padding(.bottom, 16 - Self.safeBottom)
+            .padding(.bottom, 8)
         }
         .onAppear { cam.start() }
         .onDisappear { cam.stop() }

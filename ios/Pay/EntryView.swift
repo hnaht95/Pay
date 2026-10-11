@@ -514,7 +514,7 @@ struct DateSheet: View {
                     PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
                               pitch: 18 * k, font: 17 * k)
                         .frame(width: 26 * k)
-                    Text(":").font(.system(size: 17 * k, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
+                    Text(":").font(.system(size: 17 * k, weight: .semibold)).foregroundStyle(Retro.green.opacity(0.7))
                     PeekWheel(count: 12, step: 5, value: Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }),
                               pitch: 18 * k, font: 17 * k)
                         .frame(width: 26 * k)
@@ -526,7 +526,9 @@ struct DateSheet: View {
                                    startPoint: .top, endPoint: .bottom)
                 }
                 .frame(height: 5 * 18 * k)
-                .background(Retro.wheel, in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
+                // Không nền, chỉ viền mảnh cùng màu khung tháng
+                .overlay(RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous)
+                    .strokeBorder(Color(light: 0xD9D9DC, dark: 0x3A3A3E), lineWidth: 1.5))
                 // Khung giờ gọn 5 hàng như Peek; phần còn lại của cột là nút "Bây giờ"
                 .frame(maxHeight: .infinity, alignment: .top)
                 .overlay(alignment: .bottom) { dayBox(k: k).frame(height: colH - 5 * 18 * k - 8) }
@@ -860,7 +862,8 @@ private struct PeekWheel: View {
                 let a = min(abs(d), 1)
                 Text(String(format: "%02d", wrap(i) * step))
                     .font(.system(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit())
-                    .foregroundStyle(Color.primary)
+                    // Hàng đang chọn (giờ / phút hiện tại của khoản) màu xanh lá
+                    .foregroundStyle(abs(d) < 0.5 ? Retro.green : Color.primary)
                     .scaleEffect((17 - 5 * a) / 17)
                     .opacity(1 - 0.4 * a)
                     .offset(y: d * pitch)

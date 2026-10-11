@@ -67,23 +67,15 @@ struct HouseView: View {
             Palette.bg.ignoresSafeArea()
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
-                    header.hidden()   // giữ chỗ; đầu trang thật nằm cố định phía trên (xem overlay bên dưới)
+                    if !Self.nativeTop { header.hidden() }   // iOS cũ: giữ chỗ cho đầu trang phủ bên trên
                     content
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 120)
             }
-            // Đầu trang (‹, chuông, ⋯) cố định; nội dung cuộn lên mờ dần dưới nó thay vì bị cắt ngang ở mép bảng
-            .overlay(alignment: .top) {
-                header.padding(.horizontal, 16)
-                    .background(alignment: .top) {
-                        LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.55),
-                                               .init(color: Palette.bg.opacity(0), location: 1)],
-                                       startPoint: .top, endPoint: .bottom)
-                            .padding(.bottom, -28)
-                            .allowsHitTesting(false)
-                    }
-            }
+            // Đầu trang (‹, chuông, ⋯) cố định. iOS 26: thanh của hệ thống, nội dung cuộn lên nhoè dưới nó (cạnh cuộn mềm như
+            // Ghi chú, Cài đặt). iOS cũ: phủ dải màu nền mờ dần
+            .modifier(PinnedHeader(header: header.padding(.horizontal, 16), film: film != nil))
             // Không có kéo-để-tải-lại: nó giành mất cử chỉ vuốt xuống để ẩn bảng. Sổ tự tải khi mở, khi app quay lại và khi có thông báo
             .withDock(dock: dock, fallbackBlur: bottomFade, film: film != nil)
 
@@ -173,6 +165,9 @@ struct HouseView: View {
                                     : L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from)))
         }
     }
+
+    /// iOS 26: đầu trang là thanh của hệ thống (safeAreaBar), không cần chừa chỗ trong nội dung
+    static var nativeTop: Bool { if #available(iOS 26.0, *) { true } else { false } }
 
     /// Nút "Thêm khoản chung" nổi ở đáy (chỉ khi đã vào nhóm)
     private var inGroup: Bool { house.phase == .ready && house.current != nil && !creating }
@@ -1436,5 +1431,29 @@ struct ChipFlow: Layout {
             }
         }
         return rows
+    }
+}
+
+/// Đầu trang cố định của màn Nhóm chung; iOS 26 dùng cạnh cuộn nhoè của hệ thống.
+private struct PinnedHeader<H: View>: ViewModifier {
+    let header: H
+    let film: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *), !film {
+            content
+                .safeAreaBar(edge: .top) { header }
+                .scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            content.overlay(alignment: .top) {
+                header.background(alignment: .top) {
+                    LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.55),
+                                           .init(color: Palette.bg.opacity(0), location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .padding(.bottom, -28)
+                        .allowsHitTesting(false)
+                }
+            }
+        }
     }
 }

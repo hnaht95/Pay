@@ -656,20 +656,25 @@ struct BigButton: View {
     /// Thẻ nói để ghi cũng vẽ mặt này lên khối biến hình, để nút và thẻ là một khối liền.
     static func face(title: String, icon: String, primary: Bool) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: icon).font(.system(size: 24, weight: .semibold))
-                .frame(width: 56, height: 56)
-                .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
-            if primary { Spacer(minLength: 0) }
+            // icon rỗng: nút chỉ có chữ ở giữa, cao bằng nút có icon (vd Xoá / Sửa ở màn sửa khoản chi)
+            if icon.isEmpty {
+                Color.clear.frame(width: 0, height: 56)
+            } else {
+                Image(systemName: icon).font(.system(size: 24, weight: .semibold))
+                    .frame(width: 56, height: 56)
+                    .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
+            }
+            if primary || icon.isEmpty { Spacer(minLength: 0) }
             Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
                 // Chữ được ưu tiên chỗ trước hai khoảng trống hai bên: không thì khi bật Chữ đậm (Trợ năng)
                 // chữ rộng ra mà vẫn bị cắt thành "Quét…" dù nút còn trống
                 .layoutPriority(1)
                 .minimumScaleFactor(0.7)
-            if primary { Spacer(minLength: 0) }
+            if primary || icon.isEmpty { Spacer(minLength: 0) }
         }
         .padding(BigButton.inset)
-        .padding(.trailing, 14)
-        .frame(maxWidth: primary ? .infinity : nil)
+        .padding(.trailing, icon.isEmpty ? 0 : 14)
+        .frame(maxWidth: primary || icon.isEmpty ? .infinity : nil)
         .foregroundStyle(primary ? Palette.ctaInk : .primary)
     }
 }

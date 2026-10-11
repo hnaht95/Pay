@@ -62,9 +62,8 @@ struct EntryView: View {
                     .accessibilityLabel(L("Ngày giờ"))
                 }
             }
-            // Ô số tiền: nền phẳng, không viền
-            .padding(.horizontal, 18).padding(.vertical, 12)
-            .background(Palette.pill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            // Ô số tiền: không nền, không viền (số to nằm thẳng trên nền màn hình)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
             .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)
@@ -238,7 +237,7 @@ struct EntryView: View {
                 // Xoá và Sửa / Lưu thay đổi cùng một hàng, cùng kiểu hai nút Nhập / Quét QR ở màn hình chính
                 GlassGroup {
                     HStack(spacing: 12) {
-                        BigButton(title: L("Xoá"), icon: "trash", primary: false) {
+                        BigButton(title: L("Xoá"), icon: "", primary: false) {
                             // Đóng màn hình trước, xoá khi nó trượt đi gần hết: xoá ngay thì thanh "Đã xoá" bật lên sau màn hình
                             // đang trượt xuống, tới lúc thấy được thì nó đã đứng yên, như không có hiệu ứng
                             let id = e.id
@@ -246,7 +245,7 @@ struct EntryView: View {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { store.remove(id: id) }
                         }
                         if editing {
-                            BigButton(title: L("Lưu"), icon: "checkmark", primary: true) {
+                            BigButton(title: L("Lưu"), icon: "", primary: true) {
                                 guard amount > 0 else { return }
                                 e.a = amount; e.n = trimmed; e.c = finalCat
                                 // Chỉ ghi lại thời điểm khi người dùng thật sự đổi (so theo phút), kẻo lệch mili giây làm xáo thứ tự
@@ -255,7 +254,7 @@ struct EntryView: View {
                             }
                             .opacity(amount == 0 ? 0.35 : 1)
                         } else {
-                            BigButton(title: L("Sửa"), icon: "pencil", primary: true) { withAnimation(.snappy) { editing = true } }
+                            BigButton(title: L("Sửa"), icon: "", primary: true) { withAnimation(.snappy) { editing = true } }
                         }
                     }
                 }

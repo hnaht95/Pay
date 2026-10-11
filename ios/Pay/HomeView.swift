@@ -757,7 +757,19 @@ extension View {
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .bottom, spacing: 0, content: bar).scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
-            safeAreaInset(edge: .bottom, spacing: 0, content: bar)
+            // iOS cũ: như trang chủ trước nay, lớp chuyển dần sang màu nền phía sau hai nút
+            safeAreaInset(edge: .bottom, spacing: 0) {
+                bar().background(alignment: .bottom) {
+                    let bg = Color(.systemGroupedBackground)
+                    LinearGradient(stops: [
+                        .init(color: bg, location: 0), .init(color: bg, location: 0.28),
+                        .init(color: bg.opacity(0.85), location: 0.45), .init(color: bg.opacity(0.55), location: 0.62),
+                        .init(color: bg.opacity(0.25), location: 0.8), .init(color: bg.opacity(0), location: 1),
+                    ], startPoint: .bottom, endPoint: .top)
+                    .frame(height: 220).offset(y: 50)
+                    .allowsHitTesting(false)
+                }
+            }
         }
     }
 

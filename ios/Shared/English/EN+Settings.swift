@@ -104,7 +104,7 @@ extension English {
         "Dữ liệu": "Data",
         "Sao lưu ra file": "Back up to file",
         "Khôi phục từ file sao lưu": "Restore from backup",
-        "Xuất CSV (Excel)": "Export CSV (Excel)",
+        "Xuất CSV cho Excel": "Export CSV for Excel",
         "File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè.": "Backups from the web version can be restored here too. Restoring only adds missing expenses and never overwrites.",
 
         // Hướng dẫn truy cập nhanh

@@ -385,9 +385,9 @@ struct SettingsView: View {
             }
             Button { importing = true } label: { row(L("Khôi phục từ file sao lưu")) }
             if pro.active, let csvURL {
-                ShareLink(item: csvURL) { row(L("Xuất CSV (Excel)")) }
+                ShareLink(item: csvURL) { row(L("Xuất CSV cho Excel")) }
             } else if !pro.active {
-                Button { Pro.shared.allow(.csv) } label: { proRow(L("Xuất CSV (Excel)")) }
+                Button { Pro.shared.allow(.csv) } label: { proRow(L("Xuất CSV cho Excel")) }
             }
             Button(role: .destructive) { confirmErase = true } label: {
                 row(L("Xoá tất cả khoản chi"), destructive: true)

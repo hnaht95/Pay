@@ -587,7 +587,8 @@ struct StatsView: View {
     /// Một cột tháng: cột bo góc cao theo mức chi (xám nhạt; tháng đang xem đen), tên tháng ở dưới
     private func monthColumn(_ m: Date, total: Int, top: Int) -> some View {
         let on = isSelected(m)
-        let h = total > 0 ? max(8, 88 * min(Double(total) / Double(top), 1)) : 4
+        // Tháng chưa có dữ liệu: cột thấp 14 pt, màu nhạt nhất
+        let h = total > 0 ? max(18, 88 * min(Double(total) / Double(top), 1)) : 14
         return Button {
             withAnimation(.snappy) {
                 day = nil
@@ -599,7 +600,8 @@ struct StatsView: View {
         } label: {
             VStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(on ? Self.ink : Color.primary.opacity(0.08))
+                    // Ba mức màu: chưa có dữ liệu (nhạt nhất) < có chi < tháng đang xem (đen)
+                    .fill(on ? Self.ink : Color.primary.opacity(total > 0 ? 0.1 : 0.04))
                     .frame(width: 40, height: h)
                     .frame(height: 88, alignment: .bottom)
                 Text(shortMonth(m))

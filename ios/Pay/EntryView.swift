@@ -527,9 +527,6 @@ struct DateSheet: View {
                         insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
                         removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)))
             }
-            .padding(.vertical, 14)
-            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 20).onEnded { v in
                 if v.translation.width < -40 { shift(1) } else if v.translation.width > 40 { shift(-1) }
@@ -589,41 +586,38 @@ struct DateSheet: View {
 
     private static let orange = Color(hex: 0xF0884F)
 
+    /// Dải tuần kiểu Peek: mỗi ngày một ô bo góc riêng (chữ thứ nhỏ trên, số to dưới, chấm dưới chân số),
+    /// các ô cách nhau 6. Ngày chọn: ô cam chữ trắng; hôm nay: ô đen xám chữ trắng; còn lại ô xám rất nhạt
     private var weekStrip: some View {
-        let names = Lang.isEnglish ? ["M", "T", "W", "T", "F", "S", "S"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-        return HStack(spacing: 0) {
+        let names = Lang.isEnglish ? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+        return HStack(spacing: 6) {
             ForEach(0..<7, id: \.self) { i in
-                let d = cal.date(byAdding: .day, value: i, to: weekStart)!
-                VStack(spacing: 10) {
-                    Text(names[i]).font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.primary.opacity(0.8))
-                    stripDay(d)
-                }
-                .frame(maxWidth: .infinity)
+                stripDay(cal.date(byAdding: .day, value: i, to: weekStart)!, name: names[i])
             }
         }
     }
 
-    private func stripDay(_ d: Date) -> some View {
+    private func stripDay(_ d: Date, name: String) -> some View {
         let on = cal.isDate(d, inSameDayAs: when), today = cal.isDateInToday(d), future = d > Date()
         let spent = !future && Store.shared.total(on: d) > 0
+        let filled = on || today
         return Button { pick(d) } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
+                Text(name).font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(filled ? Color.white.opacity(0.75) : Color.primary.opacity(0.45))
                 Text("\(cal.component(.day, from: d))")
-                    // Cùng cỡ, cùng độ đậm cho mọi ngày
-                    .font(.system(size: 17, weight: on ? .medium : .regular, design: .rounded)).monospacedDigit()
-                    .foregroundStyle(on || today ? .white : Color.primary.opacity(0.75))
-                    .frame(width: 36, height: 36)
-                    // Ngày chọn: tròn cam như mẫu; hôm nay (chưa chọn): tròn đen xám
-                    .background(Circle().fill(on ? Self.orange : today ? Color(light: 0x3A3A3E, dark: 0x5A5A5F) : .clear))
-                // Ngày có khoản chi: chấm nhỏ
-                Circle().fill(spent ? Self.orange : .clear).frame(width: 4, height: 4)
+                    .font(.system(size: 21, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .foregroundStyle(filled ? Color.white : Color.primary.opacity(0.85))
+                // Ngày có khoản chi: chấm nhỏ dưới chân số
+                Circle().fill(spent ? (filled ? Color.white : Self.orange) : .clear).frame(width: 4, height: 4)
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity).frame(height: 74)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(on ? Self.orange : today ? Color(light: 0x3A3A3E, dark: 0x5A5A5F) : Color.primary.opacity(0.05)))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
-        .opacity(future ? 0.25 : 1).disabled(future)
+        .buttonStyle(Pressable())
+        .opacity(future ? 0.3 : 1).disabled(future)
     }
 
     private var title: String {

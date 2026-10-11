@@ -11,6 +11,8 @@ struct ReceiptCamera: View {
     @State private var photo: PhotosPickerItem?
     @State private var finished = false
     @State private var holeRect: CGRect = .zero
+    /// Chiều cao nút Quét QR ở màn hình chính
+    private static let btnH: CGFloat = 56 + BigButton.inset * 2
 
     private static var safeBottom: CGFloat {
         (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.bottom ?? 34
@@ -66,7 +68,8 @@ struct ReceiptCamera: View {
                     .disabled(cam.error != nil)
                     .opacity(cam.error != nil ? 0.4 : 1)
                 }
-                .frame(height: 64 * 2 + 12)
+                // Mỗi nút trái cao bằng nút Quét QR ở màn hình chính, nút Chụp cao bằng cả hai cộng khe
+                .frame(height: Self.btnH * 2 + 12)
             }
             .padding(.horizontal, 16)
             // Cụm nút xuống sát đáy: cách mép dưới màn hình 16 pt như hai nút ở màn hình chính

@@ -510,6 +510,9 @@ private struct ExpenseSwipe: ViewModifier {
                 Button {
                     withAnimation(.easeIn(duration: 0.22)) { gone = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { delete() }
+                    // Xoá xong (hàng đã rời danh sách) thì trả trạng thái về như cũ: bấm Hoàn tác, khoản quay lại đúng mã cũ và
+                    // List dựng lại ô với trạng thái còn giữ — để "đã trượt đi" thì chỗ đó trắng trơn
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { gone = false }
                 } label: { Image(systemName: "trash.fill") }
                 .tint(.red)
                 .accessibilityLabel(L("Xoá"))

@@ -67,9 +67,9 @@ struct HistoryView: View {
                         .padding(.top, Self.titleTop).padding(.bottom, 18)
                     // Ô tìm tự vẽ, cùng kiểu ô ghi chú ở màn nhập (nền nhạt bo 18, không viền, không bóng) thay cho thanh tìm của iOS
                     HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium)).foregroundStyle(.secondary)
+                        Image(systemName: "magnifyingglass").font(.system(size: 19, weight: .medium)).foregroundStyle(.secondary)
                         TextField(L("Tìm khoản chi"), text: $query)
-                            .font(.system(size: 17))
+                            .font(.system(size: 18))
                             .focused($searching)
                             .submitLabel(.search)
                             .autocorrectionDisabled()
@@ -80,11 +80,11 @@ struct HistoryView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 16).padding(.vertical, 14)
+                    .padding(.horizontal, 18).padding(.vertical, 18)
                     // Nền đục (màu nền tấm + lớp nhạt): nội dung cuộn chui xuống dưới không lộ qua ô
                     .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .padding(.horizontal, 16).padding(.bottom, 10)
+                    .padding(.horizontal, 16).padding(.bottom, 16)
                     // Vạch ngăn mảnh, rộng bằng ô tìm: nội dung cuộn lên cắt gọn ngay dưới vạch
                     Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
                 }

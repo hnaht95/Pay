@@ -1111,11 +1111,12 @@ struct CategoryBreakdown: View {
                 let parts = top.map { (AnyView(Rectangle().fill($0.0.chart)), $0.1) } + (rest > 0 ? [(AnyView(HatchFill()), rest)] : [])
                 let gaps = CGFloat(max(0, parts.count - 1)) * 3
                 HStack(spacing: 3) {
+                    // Mỗi đoạn tự bo góc (không chỉ hai đầu thanh)
                     ForEach(Array(parts.enumerated()), id: \.offset) { _, p in
                         p.0.frame(width: max(4, (g.size.width - gaps) * CGFloat(p.1) / CGFloat(max(total, 1))))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .frame(height: 28)
             .animation(.snappy(duration: 0.4), value: top.map(\.1))

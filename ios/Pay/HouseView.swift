@@ -1297,16 +1297,34 @@ struct HouseSpendEditor: View {
                     }
                 }
                 .padding(.bottom, 20)
+                .padding(.horizontal, 18)
             }
+            // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
+            .padding(.horizontal, -18)
+            // Kéo nội dung lên để xem phần bên dưới: bàn phím số tự ẩn nhường chỗ (chạm số tiền để hiện lại)
+            .simultaneousGesture(DragGesture(minimumDistance: 16).onChanged { v in
+                if padShown, v.translation.height < -16, abs(v.translation.width) < 30 {
+                    withAnimation(.snappy(duration: 0.25)) { padShown = false }
+                }
+            })
             .scrollDismissesKeyboard(.interactively)
             // Gõ ghi chú thì bàn phím chữ của iOS lên, bàn phím số của app nhường chỗ
             .onChange(of: noteFocused) { _, f in if f { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
 
             if padShown {
-                NumberPad(digits: $amountText) { noteFocused = false }
-                    .frame(height: 248)
-                    .padding(.vertical, 6)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                VStack(spacing: 0) {
+                    // Nút ẩn bàn phím số
+                    Button { withAnimation(.snappy(duration: 0.25)) { padShown = false } } label: {
+                        Image(systemName: "chevron.compact.down").font(.system(size: 26, weight: .semibold)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity).frame(height: 26).contentShape(Rectangle())
+                    }
+                    .buttonStyle(Pressable())
+                    .accessibilityLabel(L("Ẩn bàn phím số"))
+                    NumberPad(digits: $amountText) { noteFocused = false }
+                        .frame(height: 248)
+                }
+                .padding(.bottom, 6)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             Button { save() } label: {

@@ -983,9 +983,10 @@ struct CategoryEditor: View {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     if trimmed.isEmpty || duplicate {
                         // Chưa lưu được: nút xám đặc (không làm mờ cả nút: mờ thì thấy xuyên nội dung cuộn phía sau)
-                        Text(L("Lưu")).font(.system(size: 21, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.35))
+                        Text(L("Lưu")).font(.system(size: 21, weight: .semibold)).foregroundStyle(Palette.ctaInk.opacity(0.85))
                             .frame(maxWidth: .infinity).frame(height: 56 + BigButton.inset * 2)
-                            .background(Capsule().fill(Color(light: 0xDCDDE2, dark: 0x2C2C30)))
+                            // Chưa lưu được: cùng kiểu nút Lưu mờ ở màn nhập (nút đen mờ 55%), đậm hơn xám nhạt cũ
+                            .background(Capsule().fill(Palette.cta.opacity(0.55)))
                     } else {
                         BigButton(title: L("Lưu"), icon: "", primary: true) { save() }
                     }

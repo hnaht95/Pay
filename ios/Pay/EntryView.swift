@@ -342,7 +342,7 @@ struct EntryView: View {
                         if let photo, let id = store.items.last?.id { ReceiptPhotos.save(photo, id: id) }
                         dismiss()
                     }
-                    .opacity(amount == 0 ? 0.35 : 1)
+                    .opacity(amount == 0 ? 0.55 : 1)
                     .animation(.easeInOut(duration: 0.25), value: amount == 0)
                 }
             case .scan(let q):
@@ -357,7 +357,7 @@ struct EntryView: View {
                     }
                     .buttonStyle(Pressable())
                     .disabled(amount == 0)
-                    .opacity(amount == 0 ? 0.35 : 1)
+                    .opacity(amount == 0 ? 0.55 : 1)
                     .frame(width: 104)
                     primary(L("Lưu & mở Bank")) {
                         saveScan(q); dismiss()
@@ -381,7 +381,7 @@ struct EntryView: View {
                                 if photoChanged { if let photo { ReceiptPhotos.save(photo, id: e.id) } else { ReceiptPhotos.remove(e.id) } }
                                 dismiss()
                             }
-                            .opacity(amount == 0 ? 0.35 : 1)
+                            .opacity(amount == 0 ? 0.55 : 1)
                             .animation(.easeInOut(duration: 0.25), value: amount == 0)
                         } else {
                             BigButton(title: L("Sửa"), icon: "", primary: true) { withAnimation(.snappy) { editing = true } }
@@ -403,7 +403,7 @@ struct EntryView: View {
         }
         .buttonStyle(Pressable())
         .disabled(amount == 0)
-        .opacity(amount == 0 ? 0.35 : 1)
+        .opacity(amount == 0 ? 0.55 : 1)
         .animation(.easeInOut(duration: 0.25), value: amount == 0)   // sáng / mờ chuyển dần, không bật tắt
     }
 
@@ -416,7 +416,7 @@ struct EntryView: View {
         }
         .buttonStyle(Pressable())
         .disabled(amount == 0)
-        .opacity(amount == 0 ? 0.35 : 1)
+        .opacity(amount == 0 ? 0.55 : 1)
         .animation(.easeInOut(duration: 0.25), value: amount == 0)   // sáng / mờ chuyển dần, không bật tắt
     }
 

@@ -25,7 +25,8 @@ struct StatsView: View {
     @Namespace private var scopeNS
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
-    @State private var showHistory = false
+    /// Khoản lớn nhất: đang mở rộng ra mọi khoản của kỳ
+    @State private var showAllBig = false
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
 
@@ -74,7 +75,6 @@ struct StatsView: View {
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
-        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store).sheetCorners() }
         }
     }
 
@@ -899,17 +899,20 @@ struct StatsView: View {
     // MARK: Khoản lớn nhất
 
     /// 5 khoản nhiều tiền nhất của kỳ đang xem (tháng, hoặc ngày đang chọn): trả lời "tiền đi đâu" (khoản mới nhất đã có ở trang
-    /// chủ). Bấm Xem tất cả mở Lịch sử
+    /// chủ). Xem tất cả: mở rộng ngay tại chỗ ra mọi khoản của kỳ, vẫn xếp theo số tiền; Thu gọn để về 5 khoản
     private func recentCard(_ items: [Expense]) -> some View {
-        let rows = Array(items.sorted { $0.a != $1.a ? $0.a > $1.a : $0.t > $1.t }.prefix(5))
+        let sorted = items.sorted { $0.a != $1.a ? $0.a > $1.a : $0.t > $1.t }
+        let rows = showAllBig ? sorted : Array(sorted.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(L("Khoản lớn nhất")).font(.system(size: 17, weight: .semibold))
                 Spacer()
-                Button { showHistory = true } label: {
-                    Text(L("Xem tất cả")).font(.system(size: 15, weight: .medium)).padding(3)
+                if sorted.count > 5 {
+                    Button { withAnimation(.snappy) { showAllBig.toggle() } } label: {
+                        Text(showAllBig ? L("Thu gọn") : L("Xem tất cả")).font(.system(size: 15, weight: .medium)).padding(3)
+                    }
+                    .buttonStyle(Pressable()).foregroundStyle(.primary)
                 }
-                .buttonStyle(Pressable()).foregroundStyle(.primary)
             }
             .padding(.horizontal, 4)
             ForEach(rows) { e in ExpenseRow(e: e, showDay: true, repeats: Store.shared.rule(for: e) != nil) }

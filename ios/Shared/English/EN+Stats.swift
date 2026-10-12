@@ -96,6 +96,7 @@ extension English {
         "Cao nhất": "Highest",
         "Theo danh mục": "By category",
         "Khoản lớn nhất": "Biggest expenses",
+        "Thu gọn": "Show less",
         "%ld khoản": "%ld items",   // số ít dùng "1 khoản" (EN+Home: "1 item")
 
         // Thông báo (Model)

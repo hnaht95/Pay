@@ -1311,12 +1311,11 @@ struct HouseSpendEditor: View {
                         .buttonStyle(Pressable())
                         .font(.system(size: 15, weight: .semibold)).padding(.top, 22)
                     }
-                    // Cùng kiểu viên thuốc với "Ai ứng tiền": chọn thì nền đậm, không chọn nền nhạt; xếp ngang, hết chỗ thì xuống dòng.
-                    // Chạm: chọn / bỏ người đó. Nhấn giữ: gõ số tiền riêng của người đó bằng bàn phím số (viên có viền xanh),
-                    // những người không có số riêng chia đều phần còn lại
+                    // Mỗi người một dòng trọn bề ngang (viên thuốc xếp hàng thì chật khi có thêm số tiền): chạm dòng để chọn / bỏ,
+                    // chạm ô số tiền bên phải để gõ số riêng của người đó; ai không có số riêng chia đều phần còn lại
                     VStack(alignment: .leading, spacing: 0) {
-                        ChipFlow(spacing: 10) {
-                            ForEach(house.members) { m in shareChip(m) }
+                        VStack(spacing: 8) {
+                            ForEach(house.members) { m in shareRow(m) }
                         }
                         splitNote
                     }
@@ -1495,37 +1494,51 @@ struct HouseSpendEditor: View {
         .buttonStyle(Pressable())
     }
 
-    /// Một người trong phần chia tiền. Chạm: chọn / bỏ (đang gõ số riêng của họ thì chạm là gõ xong). Nhấn giữ: gõ số riêng
-    private func shareChip(_ m: HouseMember) -> some View {
+    /// Một người trong phần chia tiền: dòng trọn bề ngang. Chạm dòng: chọn / bỏ. Chạm ô số tiền: gõ số riêng của người đó
+    private func shareRow(_ m: HouseMember) -> some View {
         let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
-        let sub: String? = typing ? fmt(mine ?? 0) : !on || amount <= 0 && mine == nil ? nil
-            : fmt(mine ?? parts[m.id] ?? 0)
-        return TapHold(tap: {
-            if typing { target = nil }
-            else if on { shares.remove(m.id); ownText[m.id] = nil }
-            else { shares.insert(m.id) }
-        }, hold: {
-            shares.insert(m.id); noteFocused = false; target = m.id
-            withAnimation(Self.padAnim) { padShown = true }
-        }) {
-            HStack(spacing: 10) {
-                HouseAvatar(id: m.id, name: m.name, size: 36)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
-                    if let line = sub {
-                        // Số riêng: chữ đậm, rõ nét; số chia đều: chữ thường, nhạt hơn (không thêm chữ "riêng" cho viên khỏi dài)
-                        Text(line).font(.system(size: 13, weight: typing || mine != nil ? .bold : .regular))
-                            .foregroundStyle(on ? Palette.ctaInk.opacity(typing || mine != nil ? 1 : 0.6) : .secondary).lineLimit(1)
+        return HStack(spacing: 12) {
+            HouseAvatar(id: m.id, name: m.name, size: 36)
+            Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+            Spacer(minLength: 8)
+            if on {
+                // Ô số tiền: số riêng in đậm, số chia đều nhạt hơn; đang gõ thì viền xanh và có vạch nhấp nháy
+                Button {
+                    if typing { target = nil; return }
+                    noteFocused = false; target = m.id
+                    withAnimation(Self.padAnim) { padShown = true }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(typing ? fmt(mine ?? 0) : amount > 0 || mine != nil ? fmt(mine ?? parts[m.id] ?? 0) : "0")
+                            .font(.system(size: 16, weight: typing || mine != nil ? .bold : .medium))
+                            .foregroundStyle(typing || mine != nil ? Color.primary : Color.secondary)
                             .contentTransition(.numericText())
+                            .lineLimit(1)
+                        if typing {
+                            TimelineView(.periodic(from: .now, by: 0.55)) { t in
+                                let lit = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
+                                Capsule().fill(Palette.goodInk).frame(width: 2, height: 18).opacity(lit ? 1 : 0)
+                            }
+                        }
                     }
+                    .padding(.horizontal, 14).frame(minWidth: 84, minHeight: 38, alignment: .trailing)
+                    .background(Palette.surface, in: Capsule())
+                    .overlay { Capsule().strokeBorder(typing ? Palette.goodInk : Color.primary.opacity(0.12), lineWidth: typing ? 2 : 1) }
                 }
+                .buttonStyle(Pressable())
+                .accessibilityLabel(L("Số tiền riêng của %@", m.name))
             }
-            .padding(.leading, 6).padding(.trailing, 18).padding(.vertical, 6)
-            .foregroundStyle(on ? Palette.ctaInk : .primary)
-            .background(on ? Palette.cta : Color.primary.opacity(0.05), in: Capsule())
-            .overlay { if typing { Capsule().strokeBorder(Palette.goodInk, lineWidth: 3) } }
+            Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 24)).foregroundStyle(on ? Color.primary : Color.primary.opacity(0.2))
         }
-        .accessibilityHint(L("Nhấn giữ để nhập số tiền riêng"))
+        .padding(.leading, 8).padding(.trailing, 12).frame(height: 54)
+        .background(on ? Palette.card : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if on { shares.remove(m.id); ownText[m.id] = nil; if typing { target = nil } }
+            else { shares.insert(m.id) }
+        }
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
     }
 
     /// Dòng dưới các viên tên: hướng dẫn nhấn giữ, hoặc báo số riêng chưa khớp tổng kèm nút đặt lại tổng
@@ -1544,7 +1557,7 @@ struct HouseSpendEditor: View {
             .padding(.top, 10)
         } else if !shares.isEmpty {
             Text(target != nil ? L("Đang nhập số riêng. Xoá hết số để người này chia đều lại.")
-                 : L("Nhấn giữ một người để nhập số tiền riêng."))
+                 : L("Chạm vào số tiền của một người để nhập số riêng."))
                 .font(.system(size: 13)).foregroundStyle(.secondary)
                 .padding(.top, 14)
         }

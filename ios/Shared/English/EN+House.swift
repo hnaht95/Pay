@@ -3,13 +3,13 @@ import Foundation
 extension English {
     static let house: [String: String] = [
         "Chia cho": "Split between",
-        "Nhấn giữ để nhập số tiền riêng": "Touch and hold to enter their own amount",
+        "Số tiền riêng của %@": "%@'s own amount",
         "Số riêng cộng lại %@": "Own amounts add up to %@",
         "Số riêng cộng lại %@, nhiều hơn tổng": "Own amounts add up to %@, more than the total",
         "Còn %@ chưa chia cho ai": "%@ is not assigned to anyone",
         "Đặt tổng %@": "Set total to %@",
         "Đang nhập số riêng. Xoá hết số để người này chia đều lại.": "Entering their own amount. Clear it to split evenly again.",
-        "Nhấn giữ một người để nhập số tiền riêng.": "Touch and hold a person to enter their own amount.",
+        "Chạm vào số tiền của một người để nhập số riêng.": "Tap a person's amount to enter their own.",
         "Ẩn bàn phím số": "Hide number pad",
         "iCloud tạm thời chưa sẵn sàng. Kiểm tra iCloud trong Cài đặt rồi thử lại.": "iCloud is temporarily unavailable. Check iCloud in Settings and try again.",
         "Nhóm đang mở vừa đổi nên chưa lưu được. Mở lại rồi nhập lại.": "The open group just changed, so this wasn't saved. Open it again and re-enter.",

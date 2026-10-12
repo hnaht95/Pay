@@ -420,8 +420,8 @@ struct HomeView: View {
             // Không cắt ở mép khung: lúc xoá, hàng mới trượt vào từ dưới bị xẻ ngang ở mép dưới danh sách
             .scrollClipDisabled()
             .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
-            // Rộng hết màn (hàng tự lùi 16 trong expenseSwipe): vuốt xoá thì hàng trượt ra tận mép màn
-            .padding(.horizontal, -16)
+            // Tràn ra mép trái màn (hàng tự lùi 16 trong expenseSwipe): vuốt xoá thì hàng trượt ra tận mép màn
+            .padding(.leading, -16).padding(.trailing, -8)
         }
     }
 
@@ -576,13 +576,15 @@ private struct HorizontalPan: UIGestureRecognizerRepresentable {
 
 /// Vuốt xoá có sẵn của iOS (mượt như mọi danh sách của hệ thống). iOS 26+: nút xoá mặc định là thùng rác trắng trong vòng
 /// tròn đỏ. iOS cũ hơn vẽ nút ô vuông đỏ cao hết hàng: thay bằng ảnh vòng tròn đỏ tự vẽ trên nền trong suốt cho giống iOS 26+.
-/// Danh sách rộng hết màn (hàng lùi vào 16 bằng listRowInsets) để hàng vuốt đi trượt ra tận mép màn, không bị cắt ở mép lề
+/// Danh sách tràn ra mép trái màn (hàng lùi vào 16 bằng listRowInsets) để hàng vuốt đi trượt ra tận mép màn, không bị cắt
+/// ở lề; mép phải danh sách cách mép màn 8 và hàng lùi thêm 8: nút xoá (hệ thống đặt sát mép phải danh sách) cách thẻ và cách
+/// mép màn đều ~18pt (đo trên máy ảo iOS 18 và 27)
 private struct ExpenseSwipe: ViewModifier {
     let delete: () -> Void
 
     func body(content: Content) -> some View {
         content
-            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 8))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -600,15 +602,16 @@ private struct ExpenseSwipe: ViewModifier {
 
     private static var tint: Color { if #available(iOS 26.0, *) { .red } else { .clear } }
 
-    /// Thùng rác trắng trong vòng tròn đỏ 50pt (như nút của iOS 26+), giữ nguyên màu (không bị tô trắng như ảnh mẫu)
+    /// Thùng rác trắng trong vòng tròn đỏ 50pt (như nút của iOS 26+), giữ nguyên màu (không bị tô trắng như ảnh mẫu). Hai bên
+    /// chừa trống (trái 6, phải 8) để khoảng thẻ → nút và nút → mép màn bằng nhau, bằng iOS 26+ (~18pt, đo trên máy ảo)
     private static let roundTrash: UIImage = {
-        let side: CGFloat = 50
-        let img = UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+        let side: CGFloat = 50, pad: CGFloat = 6, padR: CGFloat = 8
+        let img = UIGraphicsImageRenderer(size: CGSize(width: side + pad + padR, height: side)).image { _ in
             UIColor.systemRed.setFill()
-            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: side, height: side)).fill()
+            UIBezierPath(ovalIn: CGRect(x: pad, y: 0, width: side, height: side)).fill()
             let cfg = UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold)
             if let t = UIImage(systemName: "trash.fill", withConfiguration: cfg)?.withTintColor(.white, renderingMode: .alwaysOriginal) {
-                t.draw(at: CGPoint(x: (side - t.size.width) / 2, y: (side - t.size.height) / 2))
+                t.draw(at: CGPoint(x: pad + (side - t.size.width) / 2, y: (side - t.size.height) / 2))
             }
         }
         return img.withRenderingMode(.alwaysOriginal)

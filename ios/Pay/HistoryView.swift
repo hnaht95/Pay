@@ -25,6 +25,7 @@ struct HistoryView: View {
                         Text(fmt(found.reduce(0) { $0 + $1.a })).fontWeight(.semibold)
                     }
                     .font(.system(size: 16))
+                    .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 12))
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
                 if groups.isEmpty {
@@ -41,7 +42,7 @@ struct HistoryView: View {
                         }
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
                         .padding(.top, 14).padding(.bottom, 2)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                         ForEach(list) { e in
                             // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
@@ -56,6 +57,8 @@ struct HistoryView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            // Lề phải 8 (xem expenseSwipe: nút xoá cách mép màn bằng khoảng tới thẻ); bên trái hàng tự lùi 16
+            .contentMargins(.trailing, 8, for: .scrollContent)
             .background(Palette.surface)
             // Tiêu đề và ô tìm tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS);
             // nội dung cuộn lên cắt gọn ở vạch dưới ô tìm. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)

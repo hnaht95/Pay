@@ -3,7 +3,6 @@ import Foundation
 extension English {
     static let house: [String: String] = [
         "Chia cho": "Split between",
-        "riêng": "own",
         "Nhấn giữ để nhập số tiền riêng": "Touch and hold to enter their own amount",
         "Số riêng cộng lại %@": "Own amounts add up to %@",
         "Số riêng cộng lại %@, nhiều hơn tổng": "Own amounts add up to %@, more than the total",

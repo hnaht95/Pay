@@ -1315,7 +1315,7 @@ struct HouseSpendEditor: View {
                     // Chạm: chọn / bỏ người đó. Nhấn giữ: gõ số tiền riêng của người đó bằng bàn phím số (viên có viền xanh),
                     // những người không có số riêng chia đều phần còn lại
                     VStack(alignment: .leading, spacing: 0) {
-                        ChipFlow(spacing: 8) {
+                        ChipFlow(spacing: 10) {
                             ForEach(house.members) { m in shareChip(m) }
                         }
                         splitNote
@@ -1499,7 +1499,7 @@ struct HouseSpendEditor: View {
     private func shareChip(_ m: HouseMember) -> some View {
         let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
         let sub: String? = typing ? fmt(mine ?? 0) : !on || amount <= 0 && mine == nil ? nil
-            : mine != nil ? fmt(mine ?? 0) + " · " + L("riêng") : fmt(parts[m.id] ?? 0)
+            : fmt(mine ?? parts[m.id] ?? 0)
         return TapHold(tap: {
             if typing { target = nil }
             else if on { shares.remove(m.id); ownText[m.id] = nil }
@@ -1513,13 +1513,14 @@ struct HouseSpendEditor: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
                     if let line = sub {
-                        Text(line).font(.system(size: 13, weight: typing ? .semibold : .regular))
-                            .foregroundStyle(on ? Palette.ctaInk.opacity(typing ? 1 : 0.7) : .secondary).lineLimit(1)
+                        // Số riêng: chữ đậm, rõ nét; số chia đều: chữ thường, nhạt hơn (không thêm chữ "riêng" cho viên khỏi dài)
+                        Text(line).font(.system(size: 13, weight: typing || mine != nil ? .bold : .regular))
+                            .foregroundStyle(on ? Palette.ctaInk.opacity(typing || mine != nil ? 1 : 0.6) : .secondary).lineLimit(1)
                             .contentTransition(.numericText())
                     }
                 }
             }
-            .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 6)
+            .padding(.leading, 6).padding(.trailing, 18).padding(.vertical, 6)
             .foregroundStyle(on ? Palette.ctaInk : .primary)
             .background(on ? Palette.cta : Color.primary.opacity(0.05), in: Capsule())
             .overlay { if typing { Capsule().strokeBorder(Palette.goodInk, lineWidth: 3) } }
@@ -1545,7 +1546,7 @@ struct HouseSpendEditor: View {
             Text(target != nil ? L("Đang nhập số riêng. Xoá hết số để người này chia đều lại.")
                  : L("Nhấn giữ một người để nhập số tiền riêng."))
                 .font(.system(size: 13)).foregroundStyle(.secondary)
-                .padding(.top, 10)
+                .padding(.top, 14)
         }
     }
 

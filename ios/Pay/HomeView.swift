@@ -408,8 +408,11 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
+                    // Không gắn topScrollBlur cho hàng trong List: trên iOS cũ hơn 27 mỗi hàng thành lớp hiệu ứng riêng (shader nhoè
+                    // mép trên và mép đáy), vuốt xoá thì hàng dịch mỗi khung hình nên SwiftUI tính và vẽ lại lớp đó liên tục, vuốt bị
+                    // giật. Hàng trôi lên dưới thanh trạng thái / xuống sau hai nút chỉ còn lớp màu nền mờ dần (không nhoè)
                     TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
-                        ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil).topScrollBlur()
+                        ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
                     .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                 }

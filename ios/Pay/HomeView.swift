@@ -384,7 +384,7 @@ struct HomeView: View {
                 : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, true) } },
         ]
         if Category.isBuiltin(c.k) {
-            if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: L("Về mặc định")) { store.resetCategory(c.k) }) }
+            if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward.circle", title: L("Về mặc định"), plain: true) { store.resetCategory(c.k) }) }
         } else {
             items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá danh mục"), danger: true) { store.removeCategory(c.k) })
         }

@@ -1321,33 +1321,51 @@ struct HouseSpendEditor: View {
             .scrollDismissesKeyboard(.interactively)
             // Gõ ghi chú thì bàn phím chữ của iOS lên, bàn phím số của app nhường chỗ
             .onChange(of: noteFocused) { _, f in if f { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
-
-            if padShown {
+            // Bàn phím số và hàng nút nổi trên vùng cuộn: nội dung cuộn chui xuống dưới, mép trên của tấm này làm mờ (blur) dần
+            // nội dung đang trôi qua, từ đó trở xuống là nền đục
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
-                    // Nút ẩn bàn phím số
-                    Button { withAnimation(.snappy(duration: 0.25)) { padShown = false } } label: {
-                        Image(systemName: "chevron.compact.down").font(.system(size: 26, weight: .semibold)).foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity).frame(height: 26).contentShape(Rectangle())
-                    }
-                    .buttonStyle(Pressable())
-                    .accessibilityLabel(L("Ẩn bàn phím số"))
-                    NumberPad(digits: $amountText) { noteFocused = false }
-                        .frame(height: 248)
-                }
-                .padding(.bottom, 6)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
 
-            // Huỷ và Lưu cùng một hàng sát đáy, như màn nhập khoản chi (vùng an toàn dưới 34 điểm, lùi xuống 18)
-            HStack(spacing: 12) {
-                BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
-                // Đang lưu: nút mờ và không nhận bấm (bấm lần nữa sẽ thành hai khoản giống nhau)
-                BigButton(title: L("Lưu"), icon: "", primary: true) { if valid && !saving { save() } }
-                    .overlay { if saving { ProgressView().tint(Palette.ctaInk) } }
-                    .opacity(valid && !saving ? 1 : 0.35)
-                    .animation(.easeInOut(duration: 0.25), value: valid && !saving)
+                if padShown {
+                    VStack(spacing: 0) {
+                        // Nút ẩn bàn phím số
+                        Button { withAnimation(.snappy(duration: 0.25)) { padShown = false } } label: {
+                            Image(systemName: "chevron.compact.down").font(.system(size: 26, weight: .semibold)).foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity).frame(height: 26).contentShape(Rectangle())
+                        }
+                        .buttonStyle(Pressable())
+                        .accessibilityLabel(L("Ẩn bàn phím số"))
+                        NumberPad(digits: $amountText) { noteFocused = false }
+                            .frame(height: 248)
+                    }
+                    .padding(.bottom, 6)
+                    .transition(.opacity)   // chỉ mờ đi: trượt xuống thì các phím số chạy ngang qua hàng nút Huỷ / Lưu
+                }
+
+                // Huỷ và Lưu cùng một hàng sát đáy, như màn nhập khoản chi (vùng an toàn dưới 34 điểm, lùi xuống 18)
+                HStack(spacing: 12) {
+                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    // Đang lưu: nút mờ và không nhận bấm (bấm lần nữa sẽ thành hai khoản giống nhau)
+                    BigButton(title: L("Lưu"), icon: "", primary: true) { if valid && !saving { save() } }
+                        .overlay { if saving { ProgressView().tint(Palette.ctaInk) } }
+                        .opacity(valid && !saving ? 1 : 0.35)
+                        .animation(.easeInOut(duration: 0.25), value: valid && !saving)
+                }
+                .padding(.bottom, -18)
+                }
+                .padding(.top, 20)
+                .background {
+                    VStack(spacing: 0) {
+                        Rectangle().fill(.ultraThinMaterial)
+                            .mask(LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom))
+                            .overlay(LinearGradient(colors: [Palette.surface.opacity(0), Palette.surface], startPoint: .top, endPoint: .bottom))
+                            .frame(height: 30)
+                        Palette.surface
+                    }
+                    .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
+                    .ignoresSafeArea(edges: .bottom)
+                }
             }
-            .padding(.bottom, -18)
         }
         .padding(.horizontal, 18)
         .background(Palette.surface.ignoresSafeArea())

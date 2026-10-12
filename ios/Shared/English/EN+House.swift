@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let house: [String: String] = [
+        "Nhóm chung có cập nhật mới": "There is an update in your shared group",
         "%@ ứng. Phần bạn %@.": "%@ paid. Your share is %@.",
         "%@ ứng. Bạn không chịu khoản này.": "%@ paid. You are not part of this one.",
         "Chia cho": "Split between",

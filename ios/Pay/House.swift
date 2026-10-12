@@ -755,6 +755,11 @@ final class House: ObservableObject {
             let sub = CKDatabaseSubscription(subscriptionID: id)
             let info = CKSubscription.NotificationInfo()
             info.shouldSendContentAvailable = true
+            // Kèm một câu có chữ để iOS tự hiện thông báo, kể cả khi app đã bị tắt hẳn (tín hiệu im lặng thì iOS hay hoãn,
+            // và không đánh thức app đã tắt). iCloud không điền được nội dung khoản chi vào đây nên chỉ là câu chung;
+            // app còn chạy nền thì tự soạn thông báo đầy đủ rồi gỡ câu chung này đi (xem dropGenericAlerts)
+            info.alertBody = L("Nhóm chung có cập nhật mới")
+            info.soundName = "default"
             sub.notificationInfo = info
             // Lệnh không ném lỗi của riêng từng đăng ký: phải xem kết quả của chính nó mới coi là xong, không thì lần sau thử lại
             if let r = try? await container.database(with: scope).modifySubscriptions(saving: [sub], deleting: []),
@@ -766,7 +771,12 @@ final class House: ObservableObject {
 
     /// Máy khác vừa đổi dữ liệu (app đang chạy nền): tải lại rồi báo. Không hỏi quyền hay đăng ký lại ở nền.
     /// Ghi bản lưu luôn: thông báo vừa hiện có nút "Đã nhận", lần mở app sau (để trả lời) phải thấy đúng lần trả đó
-    func backgroundRefresh() async { await load(prompt: false); flushCache() }
+    func backgroundRefresh() async {
+        await load(prompt: false); flushCache()
+        // iOS giao câu chung của iCloud gần như cùng lúc đánh thức app: chờ một nhịp cho nó vào Trung tâm thông báo rồi mới gỡ
+        try? await Task.sleep(for: .milliseconds(800))
+        dropGenericAlerts()
+    }
 
     /// Báo những lần trả liên quan tới mình mà máy này chưa báo: có người báo đã chuyển cho mình,
     /// người nhận xác nhận hoặc báo chưa nhận được tiền mình chuyển. Lần đầu mở nhóm thì chỉ ghi nhớ, không báo dồn.
@@ -824,6 +834,18 @@ final class House: ObservableObject {
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "spend.\(e.id)", content: c, trigger: nil))
         }
         UserDefaults.standard.set(Array(seenSpends), forKey: spendKey)
+    }
+
+    /// Thông báo có chữ do iCloud gửi thẳng (câu chung "Nhóm chung có cập nhật mới"): nhận ra nhờ khoá "ck" trong dữ liệu kèm theo
+    static func isGenericAlert(_ info: [AnyHashable: Any]) -> Bool { info["ck"] != nil }
+
+    /// Gỡ các câu chung đang nằm trong Trung tâm thông báo: app đã chạy và đã tự báo đầy đủ (hoặc người dùng đang mở app), câu chung thành thừa
+    func dropGenericAlerts() {
+        let center = UNUserNotificationCenter.current()
+        center.getDeliveredNotifications { list in
+            let ids = list.filter { House.isGenericAlert($0.request.content.userInfo) }.map(\.request.identifier)
+            if !ids.isEmpty { center.removeDeliveredNotifications(withIdentifiers: ids) }
+        }
     }
 
     /// Xin quyền thông báo và đăng ký nhận đẩy (một lần, khi đã ở trong nhóm).
@@ -943,13 +965,22 @@ final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationC
 
     /// Đang mở app vẫn hiện thông báo
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // Câu chung của iCloud tới lúc app đang mở trước mắt: không hiện (thay đổi đã thấy ngay trong app), chỉ tải lại nhóm
+        if House.isGenericAlert(notification.request.content.userInfo) {
+            Task { await House.shared.load(prompt: false) }
+            return []
+        }
+        return [.banner, .sound]
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
         // Thông báo khoản chung mới chỉ có mã nhóm (chạm là mở nhóm); thông báo lần trả có thêm mã lần trả và hai nút trả lời
-        guard let group = info["group"] as? String else { return }
+        // Chạm vào câu chung của iCloud (không có mã nhóm): mở mục Nhóm chung
+        guard let group = info["group"] as? String else {
+            if House.isGenericAlert(info) { await MainActor.run { QuickAction.shared.openHouse = true } }
+            return
+        }
         let id = info["settle"] as? String
         switch (response.actionIdentifier, id) {
         case ("yes", let id?): await House.shared.respondFromNotification(id, group: group, received: true)

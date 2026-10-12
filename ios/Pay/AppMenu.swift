@@ -73,7 +73,7 @@ struct AppMenu: View {
 
     private func row(_ item: AppMenuItem) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: item.icon).font(.system(size: item.plain ? 34 : 16, weight: item.plain ? .regular : .semibold))
+            Image(systemName: item.icon).font(.system(size: item.plain ? 26 : 16, weight: item.plain ? .regular : .semibold))
                 .frame(width: 40, height: 40)
                 .foregroundStyle(Appearance.minimalOn ? AnyShapeStyle(.primary) : item.tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.primary))
                 .background(item.plain ? Color.clear : item.danger ? Palette.danger.opacity(0.12) : Palette.pill, in: Circle())

@@ -244,16 +244,16 @@ struct VoiceEntryView: View {
                             Rectangle().fill(.ultraThinMaterial)
                                 .mask {
                                     VStack(spacing: 0) {
-                                        Color.clear.frame(height: max(0, top - 220 + CGFloat(i) * 70))
-                                        LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 150)
+                                        Color.clear.frame(height: max(0, top - 110 + CGFloat(i) * 25))
+                                        LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 80)
                                         Color.black
                                     }
                                 }
                         }
                         VStack(spacing: 0) {
-                            Color.clear.frame(height: max(0, top - 200))
+                            Color.clear.frame(height: max(0, top - 100))
                             LinearGradient(colors: [Palette.bg.opacity(0), Palette.bg.opacity(0.55)], startPoint: .top, endPoint: .bottom)
-                                .frame(height: 200)
+                                .frame(height: 100)
                             Palette.bg.opacity(0.55)
                         }
                     }

@@ -1077,6 +1077,7 @@ struct HouseGroupEditor: View {
                     if photo != nil { Text(L("Đang dùng ảnh. Bỏ ảnh để hiện màu.")) }
                 }
             }
+            .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
             .screenTitle(L("Sửa nhóm"))
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
@@ -1190,6 +1191,7 @@ struct HouseMemberEditor: View {
                     Text(L("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung."))
                 }
             }
+            .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác

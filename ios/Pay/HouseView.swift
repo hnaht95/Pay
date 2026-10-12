@@ -1213,6 +1213,8 @@ struct HouseSpendEditor: View {
     @State private var padShown = true
     /// Nền tấm bàn phím số và hàng nút: lệch rất nhẹ so với nền bảng (nằm giữa màu nền app và màu nền bảng)
     private static let padBack = Color(light: 0xF9FAFC, dark: 0x121215)
+    /// Lớp kính mờ sau hai nút Huỷ / Lưu nhô lên trên nút bấy nhiêu điểm
+    private static let dockRise: CGFloat = 40
     /// Nhịp hiện / ẩn bàn phím số: trượt từ dưới lên, lò xo có nảy nhẹ ở cuối
     private static let padAnim: Animation = .spring(response: 0.42, dampingFraction: 0.66)
     @FocusState private var noteFocused: Bool
@@ -1352,8 +1354,22 @@ struct HouseSpendEditor: View {
                         .opacity(valid && !saving ? 1 : 0.35)
                         .animation(.easeInOut(duration: 0.25), value: valid && !saving)
                 }
-                // Nền đục sau hàng nút (tràn hai bên và xuống đáy): phím số trượt lên / xuống luồn phía sau, không lộ qua nút Lưu đang mờ
-                .background(Self.padBack.padding(.horizontal, -18).padding(.top, -6).padding(.bottom, -80).opacity(padShown ? 1 : 0))
+                // Nền của hai nút, như dải nút Nhập / Quét QR ở trang chủ: lớp kính mờ nhô lên trên nút, mép trên tan dần, càng xuống
+                // càng ngả về màu nền. Nội dung cuộn và cả bàn phím số lúc ẩn xuống đều luồn bên dưới lớp này.
+                // Bàn phím đang hiện: lớp này lấy đúng màu tấm phím nên liền với tấm, không thành một vệt riêng
+                .background {
+                    ZStack {
+                        Rectangle().fill(.ultraThinMaterial)
+                        // Tới mép trên của nút là đã đục hẳn (dải nhô lên chiếm 0.23 chiều cao): phím số trượt xuống không lộ qua nút Lưu đang mờ
+                        LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0), .init(color: Palette.surface.opacity(0.6), location: 0.13),
+                                               .init(color: Palette.surface, location: 0.24), .init(color: Palette.surface, location: 1)],
+                                       startPoint: .top, endPoint: .bottom)
+                        Self.padBack.opacity(padShown ? 1 : 0)
+                    }
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22), .init(color: .black, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .padding(.horizontal, -18).padding(.top, -Self.dockRise).padding(.bottom, -80)
+                }
                 .padding(.bottom, -18)
                 .zIndex(1)
                 }
@@ -1374,24 +1390,17 @@ struct HouseSpendEditor: View {
                         .accessibilityAddTraits(.isButton)
                 }
                 // Bàn phím đang hiện: nền đục, khác màu nền bảng một chút và bo hai góc trên, tách tấm phím khỏi nội dung phía sau.
-                // Bàn phím ẩn: chỉ còn hai nút nổi trên lớp kính mờ (mép trên tan dần), nội dung cuộn qua phía sau bị nhoè
+                // Bàn phím ẩn: không còn tấm nền, chỉ còn hai nút trên lớp kính mờ của chúng
                 .background {
-                    ZStack {
-                        Rectangle().fill(.ultraThinMaterial)
-                            .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.4), .init(color: .black, location: 1)],
-                                                 startPoint: .top, endPoint: .bottom))
-                            .padding(.top, -20)
-                            .opacity(padShown ? 0 : 1)
-                        UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous).fill(Self.padBack)
-                            .opacity(padShown ? 1 : 0)
-                    }
-                    .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
-                    .ignoresSafeArea(edges: .bottom)
+                    UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous).fill(Self.padBack)
+                        .opacity(padShown ? 1 : 0)
+                        .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
+                        .ignoresSafeArea(edges: .bottom)
                 }
-                // Cắt cả tấm theo đúng hình bo góc khi bàn phím hiện: nền chữ nhật sau hàng nút không lòi góc vuông ra ngoài
+                // Cắt cả tấm theo đúng hình bo góc khi bàn phím hiện; bàn phím ẩn thì nới lên cho lớp kính mờ của hai nút nhô ra
                 .mask {
                     UnevenRoundedRectangle(topLeadingRadius: padShown ? 26 : 0, topTrailingRadius: padShown ? 26 : 0, style: .continuous)
-                        .padding(.horizontal, -18).padding(.bottom, -100).padding(.top, padShown ? 0 : -20)
+                        .padding(.horizontal, -18).padding(.bottom, -100).padding(.top, padShown ? 0 : -Self.dockRise)
                 }
             }
         }

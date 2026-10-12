@@ -230,27 +230,10 @@ struct VoiceEntryView: View {
 
     private var live: some View {
         ZStack(alignment: .bottom) {
-            // Nền: chính lớp màu nền mờ dần sau hai nút Nhập / Quét QR ở trang chủ, mở rộng lên che tới quá mép trên thẻ ~110 pt
-            // khi thẻ hiện (mở từ nút thì đi lên cùng khối đang phóng to), thu về cỡ cũ khi thẻ đóng. Không kính mờ, không phủ tối
-            GeometryReader { g in
-                let h = g.size.height + g.safeAreaInsets.top + g.safeAreaInsets.bottom
-                let card = cardRect == .zero ? h * 0.55 : cardRect.minY
-                let top = from.map { $0.minY + (card - $0.minY) * morph } ?? card
-                let reach = shown ? max(120, h - top + 110) : 120
-                LinearGradient(stops: [
-                    .init(color: Palette.bg.opacity(0.95), location: 0),
-                    .init(color: Palette.bg.opacity(0.95), location: shown ? 1 - 110 / reach : 0),
-                    .init(color: Palette.bg.opacity(0.6), location: shown ? 1 - 60 / reach : 0.35),
-                    .init(color: Palette.bg.opacity(0.25), location: shown ? 1 - 25 / reach : 0.7),
-                    .init(color: Palette.bg.opacity(0), location: 1),
-                ], startPoint: .bottom, endPoint: .top)
-                .frame(height: reach)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .animation(Self.settle, value: cardRect)
-                .animation(.easeOut(duration: 0.3), value: shown)
-            }
-            .contentShape(Rectangle())
-            .ignoresSafeArea()
+            // Không phủ / nhoè nền: trang chủ để nguyên phía sau thẻ; lớp trong suốt chỉ để chạm ra ngoài là đóng
+            Color.clear
+                .contentShape(Rectangle())
+                .ignoresSafeArea()
             .onTapGesture { close() }
             if let from {
                 // Khối biến hình: từ khung và màu của nút tới khung và màu của thẻ

@@ -1510,7 +1510,7 @@ struct HouseSpendEditor: View {
                 } label: {
                     HStack(spacing: 3) {
                         Text(typing ? fmt(mine ?? 0) : amount > 0 || mine != nil ? fmt(mine ?? parts[m.id] ?? 0) : "0")
-                            .font(.system(size: 16, weight: typing || mine != nil ? .bold : .medium))
+                            .font(.system(size: 16, weight: .medium))   // không in đậm: số riêng chỉ khác ở màu chữ đậm hơn
                             .foregroundStyle(typing || mine != nil ? Color.primary : Color.secondary)
                             .contentTransition(.numericText())
                             .lineLimit(1)
@@ -1521,20 +1521,20 @@ struct HouseSpendEditor: View {
                             }
                         }
                     }
-                    // Không nền, không viền: chỉ con số, sát dấu tích; đang gõ thì số đậm kèm vạch nhấp nháy xanh
+                    // Không nền, không viền: chỉ con số, sát dấu tích; đang gõ thì có vạch nhấp nháy xanh sau số
                     .padding(.leading, 16).frame(minWidth: 70, minHeight: 44, alignment: .trailing)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(Pressable())
                 .accessibilityLabel(L("Số tiền riêng của %@", m.name))
             }
-            // Dấu tích tự vẽ cho đều nét: vòng tròn đặc 24pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
+            // Dấu tích tự vẽ cho đều nét: vòng tròn đặc 20pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
             ZStack {
                 Circle().fill(on ? Palette.cta : .clear)
                 Circle().strokeBorder(Color.primary.opacity(on ? 0 : 0.22), lineWidth: 1.5)
-                if on { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
+                if on { Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
             }
-            .frame(width: 24, height: 24)
+            .frame(width: 20, height: 20)
         }
         .padding(.leading, 8).padding(.trailing, 14).frame(height: 54)
         // Nền xám trung tính rất nhạt, cùng màu ô ghi chú (nền xám xanh của thẻ nhìn nặng); người không chọn thì mờ đi

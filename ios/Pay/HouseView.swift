@@ -1522,11 +1522,12 @@ private struct PinnedHeader<H: View>: ViewModifier {
 private struct PanelEdge: View {
     static let gap: CGFloat = 64      // đệm trên của tấm: vùng nhoè (hệ thống nhoè nội dung cuộn nằm dưới tấm, mạnh dần xuống dưới)
     static let rise: CGFloat = 12     // phần dải nhô lên trên mép tấm
-    static let height: CGFloat = rise + gap + 30   // trong suốt qua cả hàng nút mũi tên (26pt), tới sát hàng phím đầu mới đục hẳn
+    static let height: CGFloat = rise + gap + 26 + 155   // trong suốt qua hàng nút mũi tên (26pt) và hai hàng phím đầu, tới hàng 7 8 9 mới đục hẳn
     var body: some View {
         Group {
             if #available(iOS 26.0, *) {
-                LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0.62), .init(color: Palette.surface.opacity(0.6), location: 0.85), .init(color: Palette.surface, location: 1)],
+                LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0.2), .init(color: Palette.surface.opacity(0.35), location: 0.55),
+                                       .init(color: Palette.surface.opacity(0.75), location: 0.8), .init(color: Palette.surface, location: 1)],
                                startPoint: .top, endPoint: .bottom)
             } else {
                 Rectangle().fill(.ultraThinMaterial)

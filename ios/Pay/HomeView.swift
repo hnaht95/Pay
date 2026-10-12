@@ -476,7 +476,8 @@ struct HomeView: View {
         .padding(.horizontal, 16)
             // Sát vạch Home hơn (cách mép dưới 16 điểm, bằng lề hai bên): để nguyên vùng an toàn 34 điểm + 8 thì
             // dưới hai nút trống một khoảng lớn
-            .padding(.bottom, HomeView.nativeEdge ? -18 : 8)
+            // (Cả iOS cũ: dải nút phủ lên nội dung vẫn tính vùng an toàn, nên cùng lùi 18 cho bằng vị trí trên iOS 26+)
+            .padding(.bottom, -18)
     }
 
     /// "Tháng 10" / "October"

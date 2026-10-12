@@ -1228,18 +1228,29 @@ struct HouseSpendEditor: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
                     // Số tiền nhập bằng bàn phím số của app (bên dưới), chạm vào đây để hiện lại bàn phím
-                    HStack(alignment: .firstTextBaseline) {
+                    // Cùng kiểu ô số tiền của màn nhập khoản chi: khung viền mảnh, vạch nhấp nháy sau số khi đang nhập
+                    HStack(spacing: 4) {
                         Text(amount > 0 ? fmt(amount) : "0")
-                            .font(.system(size: 46, weight: .bold)).kerning(-1.5)
+                            .font(.system(size: 40, weight: .bold)).kerning(-1)
                             .foregroundStyle(amount > 0 ? .primary : .tertiary)
                             .contentTransition(.numericText())
                             .lineLimit(1).minimumScaleFactor(0.5)
-                        Spacer()
+                        if padShown && !noteFocused {
+                            TimelineView(.periodic(from: .now, by: 0.55)) { t in
+                                let on = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
+                                Capsule().fill(Palette.goodInk).frame(width: 3, height: 36).opacity(on ? 1 : 0)
+                                    .animation(.easeInOut(duration: 0.18), value: on)
+                            }
+                            .accessibilityHidden(true)
+                        }
+                        Spacer(minLength: 8)
                     }
+                    .padding(.horizontal, 18).padding(.vertical, 12)
+                    .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1) }
                     .contentShape(Rectangle())
                     .onTapGesture { noteFocused = false; withAnimation(.snappy(duration: 0.25)) { padShown = true } }
                     .animation(.snappy(duration: 0.15), value: amount)
-                    Rectangle().fill(.primary).frame(height: 2).padding(.top, 4)
+                    .padding(.top, 8)
 
                     TextField(L("Ghi chú, ví dụ: đi chợ"), text: $note)
                         .focused($noteFocused)
@@ -1327,19 +1338,16 @@ struct HouseSpendEditor: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
-            Button { save() } label: {
-                ZStack {
-                    // Đang lưu: vòng xoay ngay trên nút (vòng xoay ở màn nhóm bị bảng này che)
-                    if saving { ProgressView().tint(Palette.ctaInk) }
-                    else { Text(L("Lưu")).font(.system(size: 19, weight: .semibold)) }
-                }
-                .frame(maxWidth: .infinity, minHeight: 64)
-                .foregroundStyle(Palette.ctaInk)
-                .background(Palette.cta, in: Capsule())
+            // Huỷ và Lưu cùng một hàng sát đáy, như màn nhập khoản chi (vùng an toàn dưới 34 điểm, lùi xuống 18)
+            HStack(spacing: 12) {
+                BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                // Đang lưu: nút mờ và không nhận bấm (bấm lần nữa sẽ thành hai khoản giống nhau)
+                BigButton(title: L("Lưu"), icon: "", primary: true) { if valid && !saving { save() } }
+                    .overlay { if saving { ProgressView().tint(Palette.ctaInk) } }
+                    .opacity(valid && !saving ? 1 : 0.35)
+                    .animation(.easeInOut(duration: 0.25), value: valid && !saving)
             }
-            .buttonStyle(Pressable())
-            .disabled(!valid || saving).opacity(valid ? 1 : 0.35)
-            .padding(.bottom, 8)
+            .padding(.bottom, -18)
         }
         .padding(.horizontal, 18)
         .background(Palette.surface.ignoresSafeArea())

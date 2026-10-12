@@ -57,9 +57,10 @@ struct HistoryView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            // Danh sách cách mép phải màn 8, đúng như Gần đây ở trang chủ (xem expenseSwipe: nút xoá cách thẻ và mép màn bằng
-            // nhau); bên trái hàng tự lùi 16. Không dùng contentMargins: iOS 18 tính vị trí nút xoá khác, hàng trượt xa hơn
-            .padding(.trailing, 8)
+            // Nội dung cách mép phải màn 8, đúng như Gần đây ở trang chủ (xem expenseSwipe: nút xoá cách thẻ và mép màn bằng
+            // nhau); bên trái hàng tự lùi 16. iOS 26+: lề nội dung (thanh cuộn vẫn sát mép màn); iOS cũ: lùi cả danh sách vì
+            // lề nội dung làm iOS 18 đặt nút xoá khác, hàng trượt xa hơn
+            .historyTrailingInset()
             .background(Palette.surface)
             // Tiêu đề và ô tìm tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS);
             // nội dung cuộn lên cắt gọn ở vạch dưới ô tìm. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)
@@ -129,5 +130,11 @@ struct HistoryView: View {
         let dow = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][cal.component(.weekday, from: d) - 1]
         let c = cal.dateComponents([.day, .month], from: d)
         return "\(dow), \(c.day!)/\(c.month!)"
+    }
+}
+
+private extension View {
+    @ViewBuilder func historyTrailingInset() -> some View {
+        if #available(iOS 26.0, *) { contentMargins(.trailing, 8, for: .scrollContent) } else { padding(.trailing, 8) }
     }
 }

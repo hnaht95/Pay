@@ -491,11 +491,20 @@ struct NumberPad: View {
                             .background(lit == k ? Palette.pill : .clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }
                         .buttonStyle(KeyStyle())
+                        // Nhấn giữ phím xoá: xoá hết số đang nhập
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in if k == "del" { clearAll() } })
                         .accessibilityLabel(k == "del" ? L("Xoá") : k)
                     }
                 }
             }
         }
+    }
+
+    private func clearAll() {
+        guard !digits.isEmpty else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        onPress()
+        withAnimation(.snappy(duration: 0.15)) { digits = "" }
     }
 
     private func press(_ k: String) {

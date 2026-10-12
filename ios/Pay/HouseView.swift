@@ -1364,6 +1364,11 @@ struct HouseSpendEditor: View {
                         .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
                         .ignoresSafeArea(edges: .bottom)
                 }
+                // Cắt cả tấm theo đúng hình bo góc ấy: nền chữ nhật sau hàng nút không lòi góc vuông ra ngoài hai góc bo
+                .mask {
+                    UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous)
+                        .padding(.horizontal, -18).padding(.bottom, -100)
+                }
             }
         }
         .padding(.horizontal, 18)

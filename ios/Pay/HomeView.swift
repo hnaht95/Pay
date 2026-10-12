@@ -459,6 +459,7 @@ struct HomeView: View {
             HStack(spacing: 12) {
                 // Chạm: nhập tay. Vuốt lên: chụp hoá đơn rồi mở màn nhập với ảnh hoá đơn đính kèm
                 BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in if Pro.shared.allow(.photos) { receiptScan = true } }) { entry = .new(cat: nil) }
+                    .filmPressed(film?.pressed["dock-add"] ?? 0)
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in
@@ -468,6 +469,7 @@ struct HomeView: View {
                     voiceFrom = frame
                     // Thẻ hiện ngay trên màn hình chính (xem lớp phủ bên dưới), không qua fullScreenCover
                 }) { scanning = true }
+                .filmPressed(film?.pressed["dock-scan"] ?? 0)
             }
         }
         .padding(.horizontal, 16)

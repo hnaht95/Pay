@@ -5,6 +5,8 @@ struct EntryView: View {
     let mode: EntryMode
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
+    /// Dựng phim: số đã gõ, ghi chú, danh mục lấy từ khung hình (xem FilmFrame.Entry), không từ trạng thái
+    @Environment(\.film) private var film
 
     @State private var digits = ""
     @State private var cat: String?
@@ -35,7 +37,9 @@ struct EntryView: View {
     @State private var photoChanged = false
     @State private var viewingPhoto = false
 
-    private var amount: Int { Int(digits) ?? 0 }
+    private var amount: Int { Int(film?.entry?.digits ?? digits) ?? 0 }
+    private var shownNote: String { film?.entry?.note ?? note }
+    private var shownCat: String? { film?.entry.map { $0.cat } ?? cat }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -48,7 +52,10 @@ struct EntryView: View {
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 // Đang nhập số tiền: vạch nhấp nháy sau số, như con trỏ của ô nhập
-                if editing && !noteFocused {
+                if editing && !noteFocused, let film {
+                    // Phim: nhấp nháy theo thời điểm của khung hình
+                    Capsule().fill(Palette.goodInk).frame(width: 3, height: 36).opacity(Int(film.time / 0.55) % 2 == 0 ? 1 : 0)
+                } else if editing && !noteFocused {
                     TimelineView(.periodic(from: .now, by: 0.55)) { t in
                         let on = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
                         Capsule().fill(Palette.goodInk).frame(width: 3, height: 36).opacity(on ? 1 : 0)
@@ -80,10 +87,18 @@ struct EntryView: View {
             .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)
 
-            chips.padding(.top, 28)
+            Group { if film != nil { filmChips } else { chips } }.padding(.top, 28)
 
             // Ô ghi chú và bên phải là ô ảnh hoá đơn (cao bằng ô ghi chú)
             HStack(spacing: 10) {
+            if film != nil {
+                // Phim: ô nhập chữ của iOS không vẽ ra được, thay bằng chữ cùng kiểu
+                Text(shownNote.isEmpty ? L("Ghi chú (không bắt buộc)") : shownNote)
+                    .font(.system(size: 18)).foregroundStyle(shownNote.isEmpty ? .tertiary : .primary).lineLimit(1)
+                    .padding(.horizontal, 18)
+                    .frame(maxWidth: .infinity, minHeight: Self.noteH, alignment: .leading)
+                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            } else {
             TextField(L("Ghi chú (không bắt buộc)"), text: $note)
                 .font(.system(size: 18))
                 .focused($noteFocused)
@@ -101,6 +116,7 @@ struct EntryView: View {
                 }
                 // Chạm vào ghi chú cũng là bắt đầu sửa
                 .onChange(of: noteFocused) { _, on in if on { withAnimation(.snappy) { editing = true } } }
+            }
             photoTile
             }
             .padding(.top, 24)
@@ -117,7 +133,7 @@ struct EntryView: View {
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .onAppear {
-            if case .scan = mode, UserDefaults.standard.string(forKey: "bankApp") == nil {
+            if case .scan = mode, film == nil, UserDefaults.standard.string(forKey: "bankApp") == nil {
                 Task { try? await Task.sleep(for: .milliseconds(400)); choosingBank = true }
             }
         }
@@ -279,10 +295,31 @@ struct EntryView: View {
         }
     }
 
+    /// Phim: hàng chip không cuộn (vùng cuộn và hiệu ứng nhoè mép không vẽ ra được), danh mục đang chọn đứng đầu
+    private var filmChips: some View {
+        let all = Category.all, lead = shownCat
+        let ordered = all.filter { $0.k == lead } + all.filter { $0.k != lead }
+        return HStack(spacing: 8) {
+            ForEach(ordered) { c in
+                let on = shownCat == c.k
+                HStack(spacing: 8) {
+                    CategoryBadge(c: c, side: 36, radius: 10, iconSize: 22)
+                    Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
+                }
+                .padding(.leading, 6).padding(.trailing, 16).padding(.vertical, 6)
+                .foregroundStyle(on ? c.ink : Color.primary)
+                .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
+            }
+        }
+        // minWidth 0: hàng chip dài hơn màn hình không được kéo giãn cả màn (cắt ở mép phải như chip trôi ra ngoài)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading).clipped()
+    }
+
     // MARK: Bàn phím số
 
     private var keypad: some View {
-        NumberPad(digits: $digits) { noteFocused = false }
+        NumberPad(digits: $digits, lit: film?.entry?.key) { noteFocused = false }
         .frame(maxHeight: 320)
         .frame(maxHeight: .infinity)
         // Chưa bấm Sửa: bàn phím mờ và không nhận chạm
@@ -327,6 +364,7 @@ struct EntryView: View {
                         let a = amount
                         Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }
                     }
+                    .filmPressed(film?.pressed["bank"] ?? 0)
                 }
             case .edit(var e), .editNow(var e):
                 // Huỷ và Sửa / Lưu thay đổi cùng một hàng. Xoá khoản: vuốt trái ở danh sách hoặc nhấn giữ
@@ -432,6 +470,8 @@ struct EntryView: View {
 /// Bàn phím số của app (1–9, 000, 0, xoá): dùng ở màn nhập khoản chi và khoản chung thay cho bàn phím số của iOS.
 struct NumberPad: View {
     @Binding var digits: String
+    /// Phim: phím đang được nhấn (sáng nền như khi bấm thật)
+    var lit: String? = nil
     /// Gọi mỗi lần bấm phím (vd bỏ chọn ô ghi chú)
     var onPress: () -> Void = {}
 
@@ -448,6 +488,7 @@ struct NumberPad: View {
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .contentShape(Rectangle())
+                            .background(lit == k ? Palette.pill : .clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }
                         .buttonStyle(KeyStyle())
                         .accessibilityLabel(k == "del" ? L("Xoá") : k)

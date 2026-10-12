@@ -47,7 +47,7 @@ enum FilmExport {
         var frame: (Double) -> AnyView
     }
 
-    static let scenes: [String: (Store) -> Film] = ["stats": stats, "voice": voice, "group": group, "category": category, "widget": widget]
+    static let scenes: [String: (Store) -> Film] = ["stats": stats, "voice": voice, "group": group, "category": category, "widget": widget, "scan": scan]
 
     // MARK: Công cụ
 

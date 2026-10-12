@@ -19,6 +19,10 @@ struct FilmFrame {
     var menu: (key: String, shown: CGFloat)? = nil
     /// Màn sửa danh mục: đang chọn biểu tượng, màu nào
     var edit: Edit? = nil
+    /// Màn nhập / trả tiền: số đã gõ, ghi chú, danh mục, phím đang nhấn (nil = màn này không có trong khung hình)
+    var entry: Entry? = nil
+
+    struct Entry { var digits = ""; var note = ""; var cat: String? = nil; var key: String? = nil }
 
     struct Edit { var icon: String; var tone: Int }
 

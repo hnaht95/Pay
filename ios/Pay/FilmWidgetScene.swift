@@ -1,4 +1,5 @@
 #if DEBUG
+import CoreImage.CIFilterBuiltins
 import SwiftUI
 import WidgetKit
 
@@ -188,6 +189,275 @@ extension FilmExport {
                 }
                 .frame(width: size.width, height: size.height, alignment: .topLeading)
             })
+        }
+    }
+}
+#endif
+
+// MARK: - Phim "Quét QR, trả tiền"
+
+#if DEBUG
+
+/// Phim "Quét QR, trả tiền": bấm Quét QR, đưa mã của quán vào khung, lần đầu chọn app ngân hàng, gõ số tiền,
+/// Lưu & mở Bank (app ngân hàng mở màn chuyển tiền đã điền sẵn), xác nhận, quay lại Pay: khoản đã ghi.
+extension FilmExport {
+    static func scan(_ store: Store) -> Film {
+        let en = Lang.isEnglish
+        // Quán trong phim là quán bịa; mã QR vẽ ra chỉ chứa một đường dẫn vô hại (quét thử không trả tiền cho ai)
+        let qr = VietQR(raw: "", bin: "970436", acct: "0071000123456", amount: nil, name: "COM TAM BA NAM", purpose: "")
+        let shop = en ? "Ba Nam Broken Rice" : "Cơm tấm Bà Năm"
+        let scanTap = Tap(at: CGPoint(x: 290, y: 792), down: 1.0, up: 1.15)
+        let found = 3.4
+        let bankRow = Tap(at: SCAN.bankRow, down: 6.0, up: 6.2)
+        let keys: [(String, Double)] = [("6", 7.3), ("5", 7.8), ("000", 8.4)]
+        let keyTaps = keys.map { Tap(at: SCAN.key[$0.0]!, down: $0.1, up: $0.1 + 0.14) }
+        let open = Tap(at: CGPoint(x: 262, y: 818), down: 9.8, up: 10.0)
+        let confirm = Tap(at: CGPoint(x: 201, y: 790), down: 12.7, up: 12.9)
+        let back = 14.6
+        var saved = false
+        return Film(length: 18.6) { t in
+            if !saved, t >= open.up {
+                saved = true
+                store.appId = BankData.apps.first(where: \.fill)?.id ?? store.appId
+                store.add(amount: 65_000, note: qr.name, cat: store.guessCategory("cơm tấm"), acct: qr.memoKey, toast: false)
+            }
+            // Màn hình chính: nút Quét QR nhấn; quay lại từ app ngân hàng thì thanh Đã lưu hiện một lúc
+            var home = FilmFrame()
+            home.time = t
+            home.pressed["dock-scan"] = press(scanTap, t)
+            home.toast = ease(t, back + 0.5, back + 0.85) * (1 - ease(t, back + 3.3, back + 3.7))
+            // Máy quét trượt lên, quét được thì loé xanh rồi nhường chỗ cho màn trả tiền
+            let scanner = ease(t, scanTap.up, scanTap.up + 0.42) * (1 - ease(t, found + 0.35, found + 0.6))
+            let aim = ease(t, 1.8, found - 0.15)
+            let flash = ease(t, found, found + 0.12) * (1 - ease(t, found + 0.25, found + 0.5))
+            // Màn trả tiền: trượt lên sau khi quét, gõ số tiền, bấm Lưu & mở Bank thì lùi đi
+            let entryUp = ease(t, found + 0.4, found + 0.85) * (1 - ease(t, open.up + 0.1, open.up + 0.4))
+            var entry = FilmFrame()
+            entry.time = t
+            let typed = keys.filter { t >= $0.1 + 0.07 }.map(\.0).joined()
+            entry.entry = .init(digits: typed, note: qr.name, cat: store.guessCategory("cơm tấm"),
+                                key: keys.first(where: { t >= $0.1 && t < $0.1 + 0.16 })?.0)
+            entry.pressed["bank"] = press(open, t)
+            // Lần quét đầu: Pay hỏi dùng app ngân hàng nào
+            let chooser = ease(t, found + 1.2, found + 1.6) * (1 - ease(t, bankRow.up + 0.1, bankRow.up + 0.5))
+            // App ngân hàng: mở lên từ Pay, xác nhận, rồi quay về Pay
+            let bank = ease(t, open.up + 0.3, open.up + 0.75) * (1 - ease(t, back, back + 0.45))
+            let paid = ease(t, confirm.up + 0.1, confirm.up + 0.4)
+            let size = FilmScreen<EmptyView>.size
+            let dot = pointer([scanTap, bankRow] + keyTaps + [open, confirm], [], t)
+            return AnyView(FilmScreen(lightStatus: scanner > 0.5 || bank > 0.5, touch: dot) {
+                ZStack {
+                    HomeView().environment(\.film, home)
+                    if entryUp > 0 {
+                        FilmSheet(shown: chooser) {
+                            EntryView(mode: .scan(qr))
+                                .padding(.top, FilmScreen<EmptyView>.insets.top).padding(.bottom, FilmScreen<EmptyView>.insets.bottom)
+                                .background(Palette.surface)
+                                .environment(\.film, entry)
+                        } content: {
+                            FilmBankChooser(pressed: press(bankRow, t))
+                        }
+                        .offset(y: ((1 - entryUp) * size.height).rounded())
+                    }
+                    if scanner > 0 {
+                        FilmCamera(shop: shop, aim: aim, flash: flash)
+                            .offset(y: ((1 - scanner) * size.height).rounded())
+                    }
+                    if bank > 0 {
+                        FilmBankApp(name: qr.name, acct: qr.acct ?? "", bank: qr.bank, amount: 65_000, paid: paid,
+                                    pressed: press(confirm, t))
+                            .scaleEffect(0.9 + 0.1 * bank).opacity(Double(bank))
+                    }
+                }
+                .frame(width: size.width, height: size.height)
+            })
+        }
+    }
+
+    /// Chỗ chạm trong phim quét QR (đo trên khung hình đã vẽ)
+    enum SCAN {
+        static let bankRow = CGPoint(x: 140, y: 222)
+        static let key: [String: CGPoint] = ["6": CGPoint(x: 325, y: 556), "5": CGPoint(x: 201, y: 556), "000": CGPoint(x: 75, y: 718)]
+    }
+}
+
+/// Máy quét trong phim: không có camera, vẽ tấm biển mã QR của quán trước nền tối; `aim` 0…1 là đưa máy tới
+/// đúng khung, `flash` là lúc bắt được mã (viền khung xanh lên).
+private struct FilmCamera: View {
+    let shop: String
+    let aim: CGFloat
+    let flash: CGFloat
+
+    var body: some View {
+        let size = FilmScreen<EmptyView>.size, side = size.width * 0.68
+        let center = CGPoint(x: size.width / 2, y: size.height * 0.45)
+        ZStack {
+            // "Mặt quầy": nền tối ấm, vài mảng sáng mờ
+            LinearGradient(colors: [Color(hex: 0x3A2B22), Color(hex: 0x1B1512)], startPoint: .top, endPoint: .bottom)
+            Circle().fill(Color(hex: 0x5A4232)).frame(width: 420).offset(x: -150, y: -300).opacity(0.5)
+            Circle().fill(Color(hex: 0x4A3628)).frame(width: 360).offset(x: 170, y: 330).opacity(0.5)
+            // Tấm biển: lúc đầu lệch và nhỏ, đưa máy tới thì vào giữa khung
+            standee
+                .scaleEffect(0.78 + 0.22 * aim)
+                .rotationEffect(.degrees(Double(-7 * (1 - aim))))
+                .position(x: center.x + 70 * (1 - aim), y: center.y + 120 * (1 - aim))
+            // Khung ngắm: ngoài khung phủ tối (tô chẵn lẻ, PDF vẽ được), viền trắng, bắt được mã thì xanh
+            Path { p in
+                p.addRect(CGRect(origin: .zero, size: size))
+                p.addRoundedRect(in: CGRect(x: center.x - side / 2, y: center.y - side / 2, width: side, height: side),
+                                 cornerSize: CGSize(width: 36, height: 36), style: .continuous)
+            }
+            .fill(Color.black.opacity(0.72), style: FillStyle(eoFill: true))
+            RoundedRectangle(cornerRadius: 36, style: .continuous)
+                .strokeBorder(flash > 0 ? Palette.goodInk : .white.opacity(0.9), lineWidth: 3 + 2 * flash)
+                .frame(width: side, height: side).position(center)
+            Color.white.opacity(0.35 * Double(flash))
+            VStack {
+                Text(L("Đưa mã QR của quán vào khung"))
+                    .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
+                    .padding(.top, 20 + FilmScreen<EmptyView>.insets.top)
+                Spacer()
+                HStack(spacing: 12) { pill(L("Chọn ảnh QR")); pill(L("Đóng")) }
+                    .padding(.horizontal, 16).padding(.bottom, 12 + FilmScreen<EmptyView>.insets.bottom)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private var standee: some View {
+        VStack(spacing: 10) {
+            Text(shop).font(.system(size: 19, weight: .bold)).foregroundStyle(Color(hex: 0x1D1D1F))
+            if let img = Self.code { Image(uiImage: img).interpolation(.none).resizable().frame(width: 170, height: 170) }
+            Text("VietQR · NAPAS 247").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color(hex: 0x8A8A8E))
+        }
+        .padding(18)
+        .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func pill(_ s: String) -> some View {
+        Text(s).font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 68)
+            .background(.white.opacity(0.18), in: Capsule())
+    }
+
+    /// Mã QR vẽ trên biển: chỉ chứa đường dẫn tới trang của Pay, không phải mã chuyển tiền thật
+    static let code: UIImage? = {
+        let f = CIFilter.qrCodeGenerator()
+        f.message = Data("https://peakapp.vn/pay".utf8)
+        guard let out = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)),
+              let cg = CIContext().createCGImage(out, from: out.extent) else { return nil }
+        return UIImage(cgImage: cg)
+    }()
+}
+
+/// Bảng "Bạn dùng app ngân hàng nào?" của lần quét đầu, vẽ lại cho phim (danh sách của iOS không vẽ ra được)
+private struct FilmBankChooser: View {
+    var pressed: CGFloat
+
+    var body: some View {
+        let fill = BankData.apps.filter(\.fill), rest = BankData.apps.filter { !$0.fill }
+        VStack(alignment: .leading, spacing: 0) {
+            Text(L("Bạn dùng app ngân hàng nào?")).font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity).frame(height: 56)
+            VStack(alignment: .leading, spacing: 8) {
+                header(L("Mở sẵn người nhận + số tiền"),
+                       L("Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận."))
+                group(fill, first: true)
+                header(L("Chỉ mở app (quét lại QR)"),
+                       L("Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Pay ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả."))
+                    .padding(.top, 14)
+                group(Array(rest.prefix(6)), first: false)
+            }
+            .padding(.horizontal, 20)
+            Spacer(minLength: 0)
+        }
+        .background(Palette.bg)
+    }
+
+    private func header(_ title: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.system(size: 15, weight: .semibold))
+            Text(detail).font(.system(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func group(_ apps: [BankApp], first: Bool) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(apps.enumerated()), id: \.offset) { i, a in
+                Text(a.name).font(.system(size: 17)).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16).frame(height: 46)
+                    .background(first && i == 0 ? Color.primary.opacity(0.08 * Double(pressed)) : .clear)
+                if i < apps.count - 1 { Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5).padding(.leading, 16) }
+            }
+        }
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+/// App ngân hàng trong phim: một màn chuyển tiền chung chung (không phải app của ngân hàng nào), Pay đã điền sẵn
+/// người nhận và số tiền; xác nhận thì hiện đã chuyển.
+private struct FilmBankApp: View {
+    let name: String
+    let acct: String
+    let bank: String
+    let amount: Int
+    var paid: CGFloat
+    var pressed: CGFloat
+
+    var body: some View {
+        let en = Lang.isEnglish
+        let size = FilmScreen<EmptyView>.size
+        ZStack {
+            Color(hex: 0x14365C)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 10) {
+                    Image(systemName: "building.columns.fill").font(.system(size: 20))
+                    Text(en ? "Your bank app" : "App ngân hàng của bạn").font(.system(size: 17, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.9))
+                .padding(.top, FilmScreen<EmptyView>.insets.top + 14)
+                Text(en ? "Transfer" : "Chuyển tiền").font(.system(size: 30, weight: .bold)).foregroundStyle(.white).padding(.top, 18)
+                VStack(alignment: .leading, spacing: 16) {
+                    field(en ? "To" : "Người nhận", name)
+                    field(en ? "Account" : "Số tài khoản", "\(acct) · \(bank)")
+                    field(en ? "Amount" : "Số tiền", fmt(amount), big: true)
+                    field(en ? "Note" : "Nội dung", en ? "Paid via Pay" : "Thanh toán qua Pay")
+                }
+                .padding(20)
+                .background(.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .padding(.top, 20)
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x7BE495))
+                    Text(en ? "Filled in by Pay" : "Pay đã điền sẵn").foregroundStyle(.white.opacity(0.85))
+                }
+                .font(.system(size: 15, weight: .medium)).padding(.top, 14)
+                Spacer()
+                Text(en ? "Confirm" : "Xác nhận").font(.system(size: 21, weight: .semibold)).foregroundStyle(Color(hex: 0x14365C))
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .background(.white, in: Capsule())
+                    .filmPressed(pressed)
+                    .padding(.bottom, FilmScreen<EmptyView>.insets.bottom + 6)
+            }
+            .padding(.horizontal, 20)
+            if paid > 0 {
+                Color(hex: 0x14365C).opacity(0.94 * Double(paid))
+                VStack(spacing: 14) {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 76)).foregroundStyle(Color(hex: 0x7BE495))
+                    Text(en ? "Sent" : "Đã chuyển").font(.system(size: 28, weight: .bold)).foregroundStyle(.white)
+                    Text(fmt(amount)).font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                }
+                .scaleEffect(0.85 + 0.15 * paid).opacity(Double(paid))
+            }
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func field(_ label: String, _ value: String, big: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.system(size: 14)).foregroundStyle(Color(hex: 0x6E6E73))
+            Text(value).font(.system(size: big ? 28 : 18, weight: big ? .bold : .semibold)).foregroundStyle(Color(hex: 0x1D1D1F)).lineLimit(1)
         }
     }
 }

@@ -972,7 +972,28 @@ extension View {
                         .allowsHitTesting(false)
                     }
                 }
-        } else { self }
+        } else {
+            // iOS cũ hơn 26 không có mép cuộn mềm: thanh tiêu đề của hệ thống hiện một dải nền đục, cắt ngang khi nội dung cuộn
+            // lên. Bỏ dải đó, tự phủ kính mờ sau thanh tiêu đề, phần ló xuống dưới tan dần, cộng một lớp màu nền nhẹ: giống mép
+            // mềm của iOS 26+ (thanh tiêu đề vẽ trên lớp này nên chữ tiêu đề vẫn rõ)
+            toolbarBackground(.hidden, for: .navigationBar)
+                .overlay(alignment: .top) {
+                    GeometryReader { g in
+                        let bar = g.safeAreaInsets.top, tail: CGFloat = 24, end = bar / (bar + tail)
+                        let color = fade ?? Palette.bg
+                        ZStack {
+                            Rectangle().fill(.ultraThinMaterial)
+                                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: end * 0.85),
+                                                             .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                            LinearGradient(stops: [.init(color: color.opacity(0.75), location: 0), .init(color: color.opacity(0.5), location: end),
+                                                   .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                        }
+                        .frame(height: bar + tail)
+                        .offset(y: -bar)
+                    }
+                    .allowsHitTesting(false)
+                }
+        }
     }
 
     /// Thanh nút ở đáy, phía sau mờ dần đúng kiểu thanh tiêu đề (mép cuộn mềm của iOS 26)

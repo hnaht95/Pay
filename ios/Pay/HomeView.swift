@@ -863,7 +863,7 @@ extension View {
         if #available(iOS 26.0, *) { self } else {
             visualEffect { content, g in
                 let y = g.frame(in: .global).minY
-                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(edge - 34 - y), .float(44), .float(7)),
+                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(edge - 34 - y), .float(44), .float(3)),
                                            maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: edge > 0 && y < edge + 10)
             }
         }

@@ -522,7 +522,12 @@ extension View {
     }
 
     /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
-    func expenseSwipe(delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete)) }
+    func expenseSwipe(delete: @escaping () -> Void) -> some View {
+        SwipeRow(delete: delete) { self }
+            .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
 }
 
 /// Kéo ngang theo tay (translation, và khi thả: translation + vận tốc ngang). iOS 18+: cử chỉ kéo của UIKit chỉ bắt đầu khi
@@ -572,18 +577,159 @@ private struct HorizontalPan: UIGestureRecognizerRepresentable {
     }
 }
 
-/// Hàng khoản chi trong List vuốt sang trái tự vẽ (như cardSwipe), không dùng swipeActions của iOS: thao tác của hệ thống cắt
-/// thẳng hàng ở mép trái ô (bo góc mất, hàng như bị xẻ) và nút xoá mỗi bản iOS một kiểu (iOS 18 ô vuông đỏ, iOS 26+ tròn).
-/// Tự vẽ thì hàng trượt nguyên vẹn ra ngoài mép màn, nút thùng rác tròn đỏ giống nhau ở mọi bản
-private struct ExpenseSwipe: ViewModifier {
+/// Hàng khoản chi vuốt sang trái lộ nút thùng rác tròn đỏ, giống nhau mọi bản iOS (swipeActions của hệ thống: iOS 18 cắt
+/// thẳng hàng ở mép trái và nút ô vuông đỏ). Toàn bộ chuyển động do UIKit lo như vuốt của hệ thống: nội dung SwiftUI nằm
+/// trong một UIHostingController, cử chỉ kéo đổi thẳng transform của view (không qua cập nhật SwiftUI mỗi khung hình), thả
+/// tay thì lò xo UIKit nhận luôn vận tốc ngón tay. Kéo dọc không nhận nên trang vẫn cuộn
+struct SwipeRow<Content: View>: UIViewRepresentable {
     let delete: () -> Void
+    @ViewBuilder let content: Content
 
-    func body(content: Content) -> some View {
-        content
-            .modifier(CardSwipe(radius: ExpenseRow.radius, label: L("Xoá"), delete: delete))
-            .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+    func makeCoordinator() -> SwipeRowCoordinator<Content> { SwipeRowCoordinator(content: content) }
+
+    func makeUIView(context: Context) -> SwipeRowView {
+        let v = SwipeRowView(host: context.coordinator.host.view)
+        context.coordinator.attach(v)
+        return v
+    }
+
+    func updateUIView(_ v: SwipeRowView, context: Context) {
+        context.coordinator.host.rootView = content
+        context.coordinator.delete = delete
+        v.setNeedsLayout()
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: SwipeRowView, context: Context) -> CGSize? {
+        let w = proposal.width ?? uiView.window?.bounds.width ?? 390
+        let h = context.coordinator.host.sizeThatFits(in: CGSize(width: w, height: .greatestFiniteMagnitude)).height
+        return CGSize(width: w, height: h)
+    }
+}
+
+final class SwipeRowView: UIView {
+    let host: UIView
+    let buttonBox = UIView()
+    let button = UIButton(type: .custom)
+    static let width: CGFloat = 76
+
+    init(host: UIView) {
+        self.host = host
+        super.init(frame: .zero)
+        clipsToBounds = false
+        host.backgroundColor = .clear
+        button.backgroundColor = .systemRed
+        button.layer.cornerRadius = 25
+        button.setImage(UIImage(systemName: "trash.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold)), for: .normal)
+        button.tintColor = .white
+        button.accessibilityLabel = L("Xoá")
+        buttonBox.addSubview(button)
+        buttonBox.alpha = 0
+        addSubview(buttonBox)
+        addSubview(host)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // bounds / center thay vì frame: host đang có transform khi vuốt
+        host.bounds = CGRect(origin: .zero, size: bounds.size)
+        host.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        buttonBox.frame = CGRect(x: bounds.width - Self.width, y: 0, width: Self.width, height: bounds.height)
+        button.frame = CGRect(x: (Self.width - 50) / 2, y: (bounds.height - 50) / 2, width: 50, height: 50)
+    }
+}
+
+final class SwipeRowCoordinator<Content: View>: NSObject, UIGestureRecognizerDelegate {
+    let host: UIHostingController<Content>
+    var delete: () -> Void = {}
+    private weak var view: SwipeRowView?
+    private var x: CGFloat = 0, start: CGFloat = 0
+    private let pan = UIPanGestureRecognizer()
+    private let closeTap = UITapGestureRecognizer()
+    private var button: CGFloat { SwipeRowView.width }
+
+    init(content: Content) {
+        host = UIHostingController(rootView: content)
+        host.sizingOptions = .intrinsicContentSize
+        host.safeAreaRegions = []
+        super.init()
+    }
+
+    func attach(_ v: SwipeRowView) {
+        view = v
+        pan.addTarget(self, action: #selector(onPan(_:)))
+        pan.delegate = self
+        v.addGestureRecognizer(pan)
+        // Đang mở: chạm vào hàng thì đóng lại (không mở màn sửa)
+        closeTap.addTarget(self, action: #selector(onCloseTap))
+        closeTap.delegate = self
+        closeTap.isEnabled = false
+        v.addGestureRecognizer(closeTap)
+        v.button.addTarget(self, action: #selector(onDelete), for: .touchUpInside)
+    }
+
+    private func apply(_ nx: CGFloat) {
+        x = nx
+        view?.host.transform = CGAffineTransform(translationX: nx, y: 0)
+        view?.buttonBox.alpha = min(1, -nx / button)
+    }
+
+    private func settle(open: Bool, velocity: CGFloat = 0) {
+        let target: CGFloat = open ? -button : 0
+        let dist = target - x
+        let rel = abs(dist) > 1 ? max(-12, min(12, velocity / dist)) : 0
+        start = target
+        closeTap.isEnabled = open
+        view?.host.isUserInteractionEnabled = !open
+        UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.88, initialSpringVelocity: rel,
+                       options: [.allowUserInteraction, .beginFromCurrentState]) { self.apply(target) }
+    }
+
+    @objc private func onPan(_ g: UIPanGestureRecognizer) {
+        let w = g.translation(in: g.view).x
+        switch g.state {
+        case .began:
+            view?.host.layer.removeAllAnimations(); view?.buttonBox.layer.removeAllAnimations()
+        case .changed:
+            let t = start + w
+            apply(t > 0 ? 0 : (t < -button ? -button + (t + button) * 0.3 : t))
+        case .ended, .cancelled, .failed:
+            // Theo hướng tay lúc thả: kéo ngược lại thì đóng, đang kéo sang trái thì mở; gần như đứng yên thì quá 60% nút mới mở
+            let v = g.velocity(in: g.view).x
+            settle(open: v > 150 ? false : (v < -250 ? x < -12 : x < -button * 0.6), velocity: v)
+        default: break
+        }
+    }
+
+    @objc private func onCloseTap() { settle(open: false) }
+
+    @objc private func onDelete() {
+        Haptic.tap(.medium)
+        closeTap.isEnabled = false
+        UIView.animate(withDuration: 0.22, delay: 0, options: .curveEaseIn) {
+            self.view?.host.transform = CGAffineTransform(translationX: -500, y: 0)
+            self.view?.host.alpha = 0
+            self.view?.buttonBox.alpha = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { self.delete() }
+        // Xoá xong trả về như cũ: bấm Hoàn tác, khoản quay lại và ô có thể được dùng lại
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            self.x = 0; self.start = 0
+            self.view?.host.transform = .identity; self.view?.host.alpha = 1
+            self.view?.host.isUserInteractionEnabled = true
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+        guard g === pan else { return true }
+        let v = pan.velocity(in: pan.view)
+        return abs(v.x) > abs(v.y) * 2
+    }
+
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        // Chạm vào nút thùng rác để nút tự xử lý
+        if g === closeTap, let b = view?.button, touch.view?.isDescendant(of: b) == true { return false }
+        return true
     }
 }
 

@@ -1520,14 +1520,14 @@ private struct PinnedHeader<H: View>: ViewModifier {
 /// iOS 26: nhoè bằng mép cuộn mềm của hệ thống (cùng hiệu ứng với thanh nút ở trang chủ), dải này chỉ để trống phần trên
 /// cho thấy lớp nhoè và ngả sang nền đục ở cuối. iOS cũ: tự làm bằng lớp kính mờ.
 private struct PanelEdge: View {
-    static let gap: CGFloat = 64      // đệm trên của tấm: vùng nhoè (hệ thống nhoè nội dung cuộn nằm dưới tấm, mạnh dần xuống dưới)
-    static let rise: CGFloat = 12     // phần dải nhô lên trên mép tấm
+    static let gap: CGFloat = 12      // đệm trên của tấm: vùng nhoè chỉ nhô lên trên nút mũi tên một chút (hệ thống nhoè nội dung cuộn nằm dưới tấm)
+    static let rise: CGFloat = 0
     static let height: CGFloat = rise + gap + 26 + 155   // trong suốt qua hàng nút mũi tên (26pt) và hai hàng phím đầu, tới hàng 7 8 9 mới đục hẳn
     var body: some View {
         Group {
             if #available(iOS 26.0, *) {
-                LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0.2), .init(color: Palette.surface.opacity(0.35), location: 0.55),
-                                       .init(color: Palette.surface.opacity(0.75), location: 0.8), .init(color: Palette.surface, location: 1)],
+                // Đục dần đều từ mép trên xuống tới hàng 7 8 9
+                LinearGradient(colors: [Palette.surface.opacity(0), Palette.surface],
                                startPoint: .top, endPoint: .bottom)
             } else {
                 Rectangle().fill(.ultraThinMaterial)

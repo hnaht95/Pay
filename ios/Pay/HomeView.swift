@@ -726,6 +726,13 @@ final class SwipeRowCoordinator<Content: View>: NSObject, UIGestureRecognizerDel
         return abs(v.x) > abs(v.y) * 2
     }
 
+    /// Như vuốt của UITableView: cử chỉ cuộn của các vùng cuộn bên ngoài (trang chủ, danh sách) phải chờ cử chỉ vuốt này hỏng
+    /// mới được chạy. Kéo dọc thì vuốt hỏng ngay (gestureRecognizerShouldBegin), trang cuộn bình thường; kéo ngang thì vuốt
+    /// thắng hẳn, trang không nhích theo và không giành lại ngón tay giữa chừng (trước hai cử chỉ tranh nhau nên hàng khựng)
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+        g === pan && other.view is UIScrollView && other is UIPanGestureRecognizer
+    }
+
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         // Chạm vào nút thùng rác để nút tự xử lý
         if g === closeTap, let b = view?.button, touch.view?.isDescendant(of: b) == true { return false }

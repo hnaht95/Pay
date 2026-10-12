@@ -1328,7 +1328,7 @@ struct HouseSpendEditor: View {
             .onChange(of: noteFocused) { _, f in if f { withAnimation(Self.padAnim) { padShown = false } } }
             // Bàn phím số và hàng nút nổi trên vùng cuộn: nội dung cuộn chui xuống dưới, mép trên của tấm này làm mờ (blur) dần
             // nội dung đang trôi qua, từ đó trở xuống là nền đục
-            .softBottomPanel {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
 
                 // Bàn phím số luôn nằm sẵn trong tấm; hiện / ẩn bằng chiều cao và độ trượt (đổi được mượt, không phụ thuộc hiệu ứng
@@ -1519,40 +1519,24 @@ private struct PinnedHeader<H: View>: ViewModifier {
     }
 }
 
-/// Mép trên của tấm bàn phím số: nội dung cuộn tới đây bị làm nhoè dần rồi mới chìm vào nền đục bên dưới.
-/// iOS 26: nhoè bằng mép cuộn mềm của hệ thống (cùng hiệu ứng với thanh nút ở trang chủ), dải này chỉ để trống phần trên
-/// cho thấy lớp nhoè và ngả sang nền đục ở cuối. iOS cũ: tự làm bằng lớp kính mờ.
+/// Phần trên của tấm bàn phím số: nội dung cuộn chui xuống dưới bị nhoè (lớp kính mờ), đục dần đều xuống tới hàng 7 8 9.
+/// Tự làm bằng lớp kính mờ chứ không nhờ mép cuộn mềm của hệ thống: hiệu ứng ấy mỗi bản iOS một khác (iOS 27 trên máy thật
+/// không nhoè, nội dung hiện rõ nét sau các phím).
 private struct PanelEdge: View {
-    static let gap: CGFloat = 22      // đệm trên của tấm: vùng nhoè chỉ nhô lên trên hàng phím đầu một chút (hệ thống nhoè nội dung cuộn nằm dưới tấm)
+    static let gap: CGFloat = 22      // đệm trên của tấm: vùng nhoè nhô lên trên hàng phím đầu một chút
     static let rise: CGFloat = 0
-    static let height: CGFloat = rise + gap + 155   // trong suốt qua hai hàng phím đầu, tới hàng 7 8 9 mới đục hẳn
+    static let height: CGFloat = rise + gap + 155   // tới hàng 7 8 9 thì đục hẳn
     var tall = true   // bàn phím số đang hiện: dải kéo xuống tới hàng 7 8 9; đang ẩn: chỉ một dải ngắn trên hàng nút
     var body: some View {
-        Group {
-            if #available(iOS 26.0, *) {
-                // Đục dần đều từ mép trên xuống tới hàng 7 8 9
-                LinearGradient(colors: [Palette.surface.opacity(0), Palette.surface],
-                               startPoint: .top, endPoint: .bottom)
-            } else {
-                Rectangle().fill(.ultraThinMaterial)
-                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.4), .init(color: .black, location: 1)],
-                                         startPoint: .top, endPoint: .bottom))
-                    .overlay(LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0.55), .init(color: Palette.surface, location: 1)],
-                                            startPoint: .top, endPoint: .bottom))
-            }
-        }
-        .frame(height: tall ? Self.height : Self.gap + 6)
-        .allowsHitTesting(false)
-    }
-}
-
-private extension View {
-    /// Gắn tấm ở đáy vùng cuộn. iOS 26: safeAreaBar để hệ thống tự nhoè nội dung cuộn chui xuống dưới tấm.
-    @ViewBuilder func softBottomPanel<P: View>(@ViewBuilder _ panel: () -> P) -> some View {
-        if #available(iOS 26.0, *) {
-            safeAreaBar(edge: .bottom, spacing: 0) { panel() }.scrollEdgeEffectStyle(.soft, for: .bottom)
-        } else {
-            safeAreaInset(edge: .bottom, spacing: 0) { panel() }
-        }
+        Rectangle().fill(.ultraThinMaterial)
+            // Mép trên của lớp kính tan dần để không thấy vạch ranh giới
+            .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22), .init(color: .black, location: 1)],
+                                 startPoint: .top, endPoint: .bottom))
+            // Phủ thêm màu nền, đậm dần: ngay hàng phím đầu đã đủ đục để số đọc rõ trên các ô tối màu nằm phía sau
+            .overlay(LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0), .init(color: Palette.surface.opacity(0.5), location: 0.3),
+                                            .init(color: Palette.surface.opacity(0.85), location: 0.65), .init(color: Palette.surface, location: 1)],
+                                    startPoint: .top, endPoint: .bottom))
+            .frame(height: tall ? Self.height : Self.gap + 6)
+            .allowsHitTesting(false)
     }
 }

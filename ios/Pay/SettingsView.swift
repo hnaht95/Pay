@@ -897,12 +897,11 @@ struct CategoryEditor: View {
     private var form: some View {
         NavigationStack {
             BlurForm {
-                Section {
-                    previewCard
+                // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
+                Section { previewCard }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .cardless()
-                }
 
                 Section {
                     TextField(L("Ví dụ: Thú cưng"), text: $name)

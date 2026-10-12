@@ -1066,9 +1066,10 @@ struct HouseGroupEditor: View {
                         .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng
                     }
                     .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-                    .cardless()
                 }
+                // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
+                .listRowBackground(Color.clear)
+                .cardless()
                 Section(L("Tên")) { TextField(L("Tên nhóm"), text: $name) }
                 Section {
                     VStack(spacing: 10) {
@@ -1181,9 +1182,10 @@ struct HouseMemberEditor: View {
                         .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng (thiếu thì chạm "Đổi ảnh" là "Bỏ ảnh" cũng chạy)
                     }
                     .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-                    .cardless()
                 }
+                // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
+                .listRowBackground(Color.clear)
+                .cardless()
                 Section(L("Tên")) { TextField(L("Tên"), text: $name) }
                 Section {
                     Picker(L("Ngân hàng"), selection: $bin) {

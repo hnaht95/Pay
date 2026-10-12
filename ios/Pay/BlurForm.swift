@@ -20,10 +20,17 @@ struct BlurForm<Content: View>: View {
                         Group(subviews: sec.content) { rows in
                             ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                                 let rowPlain = plain || row.containerValues.cardless
-                                row
-                                    .titleEdgeBlur(edge)
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(rowPlain ? nil : CellBackground(first: i == 0, last: i == rows.count - 1).titleEdgeBlur(edge))
+                                // Hàng không nền ô: dựng lại ở đây làm mất listRowInsets / listRowBackground gắn trên mục hay hàng, nên
+                                // gắn lại: sát mép, nền trong suốt (các mục cardless đều như vậy)
+                                if rowPlain {
+                                    row.titleEdgeBlur(edge).listRowSeparator(.hidden)
+                                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                                } else {
+                                    row
+                                        .titleEdgeBlur(edge)
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(CellBackground(first: i == 0, last: i == rows.count - 1).titleEdgeBlur(edge))
+                                }
                             }
                         }
                     } header: {

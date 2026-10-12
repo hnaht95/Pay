@@ -799,6 +799,31 @@ final class House: ObservableObject {
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: tag, content: c, trigger: nil))
         }
         UserDefaults.standard.set(Array(seen), forKey: key)
+
+        // Khoản chung người khác vừa thêm: báo kèm phần mình phải chịu. Sổ riêng (không dùng chung với sổ các lần trả ở trên):
+        // máy đã dùng từ trước chưa có sổ này, lần đầu chỉ ghi nhớ các khoản đang có chứ không báo dồn
+        let spendKey = "house.seenSpends.\(g.id)"
+        let firstSpends = UserDefaults.standard.object(forKey: spendKey) == nil
+        var seenSpends = Set(UserDefaults.standard.stringArray(forKey: spendKey) ?? [])
+        let inFront = UIApplication.shared.applicationState == .active
+        for e in g.spends {
+            guard seenSpends.insert(e.id).inserted, !firstSpends else { continue }
+            // App đang mở trước mắt thì không bật băng báo: khoản mới đã hiện ngay trong nhóm và trong chuông của app
+            guard !inFront else { continue }
+            // Khoản do chính tài khoản iCloud này tạo (ở máy này hay máy khác của mình) thì không báo; chưa rõ ai tạo cũng không báo
+            guard let who = g.records.first(where: { $0.key.recordName == e.id })?.value.creatorUserRecordID?.recordName,
+                  who != CKCurrentUserDefaultName else { continue }
+            let c = UNMutableNotificationContent()
+            c.sound = .default
+            c.subtitle = g.name
+            c.userInfo = ["group": g.id]
+            c.title = "\(e.note.isEmpty ? Category.get(e.cat).name : e.note) · \(fmt(e.amount))"
+            let part = e.shares.contains(me) ? Settle.parts(e)[me] ?? 0 : 0
+            let payer = e.payer == me ? L("Bạn") : name(e.payer)
+            c.body = part > 0 ? L("%@ ứng. Phần bạn %@.", payer, fmt(part)) : L("%@ ứng. Bạn không chịu khoản này.", payer)
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "spend.\(e.id)", content: c, trigger: nil))
+        }
+        UserDefaults.standard.set(Array(seenSpends), forKey: spendKey)
     }
 
     /// Xin quyền thông báo và đăng ký nhận đẩy (một lần, khi đã ở trong nhóm).
@@ -923,10 +948,12 @@ final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationC
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
-        guard let id = info["settle"] as? String, let group = info["group"] as? String else { return }
-        switch response.actionIdentifier {
-        case "yes": await House.shared.respondFromNotification(id, group: group, received: true)
-        case "no": await House.shared.respondFromNotification(id, group: group, received: false)
+        // Thông báo khoản chung mới chỉ có mã nhóm (chạm là mở nhóm); thông báo lần trả có thêm mã lần trả và hai nút trả lời
+        guard let group = info["group"] as? String else { return }
+        let id = info["settle"] as? String
+        switch (response.actionIdentifier, id) {
+        case ("yes", let id?): await House.shared.respondFromNotification(id, group: group, received: true)
+        case ("no", let id?): await House.shared.respondFromNotification(id, group: group, received: false)
         default: await MainActor.run { House.shared.open(group); QuickAction.shared.openHouse = true }
         }
     }

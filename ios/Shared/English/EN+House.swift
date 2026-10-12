@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let house: [String: String] = [
+        "%@ ứng. Phần bạn %@.": "%@ paid. Your share is %@.",
+        "%@ ứng. Bạn không chịu khoản này.": "%@ paid. You are not part of this one.",
         "Chia cho": "Split between",
         "Số tiền riêng của %@": "%@'s own amount",
         "Số riêng cộng lại %@": "Own amounts add up to %@",

@@ -85,8 +85,8 @@ struct HistoryView: View {
             .softTitleBar(plain: true) {
                 Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
                     .frame(maxWidth: .infinity)
-                    // Đo trên máy ảo: iOS 26+ đặt thanh này thấp hơn mép tấm sẵn ~7 pt so với iOS cũ, nên lề trên khác nhau để
-                    // khoảng trên và dưới tiêu đề đều ~15 pt ở mọi bản
+                    // Đo trên máy ảo (iOS 18 và 27): thanh tiêu đề bắt đầu ngay mép tấm, lề trên 14 + dưới 8 (cộng khoảng của ô tìm
+                    // kiếm) cho khoảng trên và dưới chữ đều ~14 pt
                     .padding(.top, Self.titleTop).padding(.bottom, 8)
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { titleEdge = $0 }
             }
@@ -98,7 +98,7 @@ struct HistoryView: View {
         .sheetGrabber()
     }
 
-    private static var titleTop: CGFloat { if #available(iOS 26.0, *) { 14 } else { 22 } }
+    private static let titleTop: CGFloat = 14
 
     private func grouped() -> [(Date, [Expense])] {
         let cal = Calendar.current

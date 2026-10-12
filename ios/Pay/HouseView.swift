@@ -1341,6 +1341,20 @@ struct HouseSpendEditor: View {
             }
             // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
             .padding(.horizontal, -18)
+            // Mép trên, ngay dưới tiêu đề: nội dung cuộn lên bị nhoè và tan dần vào nền, không bị cắt ngang (như mép trên các màn khác).
+            // Tự làm bằng lớp kính mờ, cùng kiểu với lớp sau hai nút Huỷ / Lưu
+            .overlay(alignment: .top) {
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    LinearGradient(stops: [.init(color: Palette.surface, location: 0), .init(color: Palette.surface.opacity(0.7), location: 0.4),
+                                           .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                }
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45), .init(color: .clear, location: 1)],
+                                     startPoint: .top, endPoint: .bottom))
+                .frame(height: 30)
+                .padding(.horizontal, -18)
+                .allowsHitTesting(false)
+            }
             // Bàn phím số ẩn đi thì thôi gõ số riêng: lần hiện sau lại gõ tổng tiền
             .onChange(of: padShown) { _, on in if !on { target = nil } }
             // Kéo nội dung lên để xem phần bên dưới: bàn phím số tự ẩn nhường chỗ (chạm số tiền để hiện lại)
@@ -1528,13 +1542,13 @@ struct HouseSpendEditor: View {
                 .buttonStyle(Pressable())
                 .accessibilityLabel(L("Số tiền riêng của %@", m.name))
             }
-            // Dấu tích tự vẽ cho đều nét: vòng tròn đặc 20pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
+            // Dấu tích tự vẽ cho đều nét: vòng tròn đặc 14pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
             ZStack {
                 Circle().fill(on ? Palette.cta : .clear)
-                Circle().strokeBorder(Color.primary.opacity(on ? 0 : 0.22), lineWidth: 1.5)
-                if on { Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
+                Circle().strokeBorder(Color.primary.opacity(on ? 0 : 0.25), lineWidth: 1.2)
+                if on { Image(systemName: "checkmark").font(.system(size: 7, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
             }
-            .frame(width: 20, height: 20)
+            .frame(width: 14, height: 14)
         }
         .padding(.leading, 8).padding(.trailing, 14).frame(height: 54)
         // Nền xám trung tính rất nhạt, cùng màu ô ghi chú (nền xám xanh của thẻ nhìn nặng); người không chọn thì mờ đi

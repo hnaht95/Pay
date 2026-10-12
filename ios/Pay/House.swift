@@ -29,6 +29,20 @@ struct HouseSpend: Identifiable, Hashable {
     var shares: [String]
     var date: Date
     var cat: String
+    /// Số tiền riêng của một số người trong `shares` (mã thành viên → số tiền), vd mỗi người gọi một món giá khác nhau.
+    /// Người trong `shares` mà không có ở đây thì chia đều phần còn lại. Trống = chia đều cả khoản
+    var fixed: [String: Int] = [:]
+
+    /// Trên iCloud: danh sách chuỗi "mã=số tiền" (trường `fixed` của bản ghi Spend)
+    var fixedField: [String] { fixed.filter { $0.value > 0 }.map { "\($0.key)=\($0.value)" }.sorted() }
+    static func fixed(from field: [String]) -> [String: Int] {
+        var out: [String: Int] = [:]
+        for s in field {
+            guard let i = s.lastIndex(of: "="), let v = Int(s[s.index(after: i)...]), v > 0 else { continue }
+            out[String(s[..<i])] = v
+        }
+        return out
+    }
 }
 
 /// Một lần chuyển trả nhau.
@@ -68,12 +82,29 @@ enum Settle {
         return out
     }
 
+    /// Phần mỗi người phải chịu trong một khoản: ai có số riêng thì chịu đúng số đó, phần còn lại chia đều cho những người kia.
+    /// Số riêng không khớp tổng (cộng lại quá tổng, hoặc ai cũng có số riêng mà chưa đủ tổng) thì coi như chia đều cả khoản
+    static func parts(_ amount: Int, _ shareIds: [String], fixed: [String: Int], seed: String) -> [String: Int] {
+        let ids = Set(shareIds)
+        let own = fixed.filter { ids.contains($0.key) && $0.value > 0 }
+        guard !own.isEmpty else { return split(amount, shareIds, seed: seed) }
+        let rest = amount - own.values.reduce(0, +)
+        let free = ids.subtracting(own.keys)
+        guard rest >= 0, !(free.isEmpty && rest != 0) else { return split(amount, shareIds, seed: seed) }
+        var out = own
+        for id in free { out[id] = 0 }
+        for (id, p) in split(rest, Array(free), seed: seed) { out[id] = p }
+        return out
+    }
+
+    static func parts(_ e: HouseSpend) -> [String: Int] { parts(e.amount, e.shares, fixed: e.fixed, seed: e.id) }
+
     /// > 0: cả nhóm còn nợ người này; < 0: người này còn nợ nhóm.
     static func balances(_ spends: [HouseSpend], _ settles: [HouseSettle]) -> [String: Int] {
         var net: [String: Int] = [:]
         for e in spends {
             net[e.payer, default: 0] += e.amount
-            for (id, part) in split(e.amount, e.shares, seed: e.id) { net[id, default: 0] -= part }
+            for (id, part) in parts(e) { net[id, default: 0] -= part }
         }
         // Lần trả đang chờ xác nhận vẫn tính (để không gợi ý trả lần nữa); bị báo chưa nhận được thì bỏ
         for s in settles where s.status != "no" {
@@ -400,7 +431,8 @@ final class House: ObservableObject {
             case "Spend":
                 sp.append(HouseSpend(id: id, amount: (r["amount"] as? Int64).map(Int.init) ?? 0, note: r["note"] as? String ?? "",
                                      payer: r["payer"] as? String ?? "", shares: r["shares"] as? [String] ?? [],
-                                     date: r["date"] as? Date ?? r.creationDate ?? Date(), cat: r["cat"] as? String ?? "khac"))
+                                     date: r["date"] as? Date ?? r.creationDate ?? Date(), cat: r["cat"] as? String ?? "khac",
+                                     fixed: HouseSpend.fixed(from: r["fixed"] as? [String] ?? [])))
             case "Settle":
                 st.append(HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
                                       amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
@@ -636,12 +668,15 @@ final class House: ObservableObject {
         guard let r = record(e.id) else { stale(); return false }
         guard knows(e.shares + [e.payer]) else { stale(); return false }
         r["amount"] = Int64(e.amount); r["note"] = e.note; r["payer"] = e.payer; r["shares"] = e.shares; r["cat"] = e.cat
+        // Chỉ đụng tới trường `fixed` khi khoản có số riêng, hoặc trước đó có mà nay bỏ: khoản chia đều không cần trường này
+        let f = e.fixedField
+        if !f.isEmpty { r["fixed"] = f } else if r["fixed"] != nil { r["fixed"] = nil }
         return await run([r])
     }
 
-    func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String) async -> Bool {
+    func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String, fixed: [String: Int] = [:]) async -> Bool {
         if demo, let i = cur {
-            groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat), at: 0)
+            groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat, fixed: fixed), at: 0)
             return true
         }
         guard let zone, !addingSpend else { return false }
@@ -649,6 +684,8 @@ final class House: ObservableObject {
         addingSpend = true; defer { addingSpend = false }
         let r = CKRecord(recordType: "Spend", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["amount"] = Int64(amount); r["note"] = note; r["payer"] = payer; r["shares"] = shares; r["date"] = Date(); r["cat"] = cat
+        let f = HouseSpend(id: "", amount: amount, note: "", payer: payer, shares: shares, date: Date(), cat: cat, fixed: fixed).fixedField
+        if !f.isEmpty { r["fixed"] = f }
         return await run([r])
     }
 

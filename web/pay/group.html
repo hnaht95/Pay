@@ -209,11 +209,33 @@ function splitExpense(amount, shareIds, seed = '') {
   for (let k = 0; k < rem; k++) { const id = ids[(off + k) % n]; out.set(id, out.get(id) + 1); }
   return out;
 }
+// Số tiền riêng của một số người (trường `fixed` của khoản chi: danh sách "mã=số tiền"): ai có số riêng thì chịu đúng số đó,
+// phần còn lại chia đều cho những người kia. Số riêng không khớp tổng thì coi như chia đều cả khoản (giống app iPhone)
+function parseFixed(list) {
+  const out = new Map();
+  for (const s of Array.isArray(list) ? list : []) {
+    const i = String(s).lastIndexOf('='); if (i < 0) continue;
+    const v = Number(String(s).slice(i + 1));
+    if (Number.isInteger(v) && v > 0) out.set(String(s).slice(0, i), v);
+  }
+  return out;
+}
+function partsOf(e) {
+  const ids = new Set(e.shares), own = new Map([...(e.fixed || new Map())].filter(([id, v]) => ids.has(id) && v > 0));
+  if (!own.size) return splitExpense(e.amount, e.shares, e.id);
+  let sum = 0; own.forEach(v => sum += v);
+  const rest = e.amount - sum, free = [...ids].filter(id => !own.has(id));
+  if (rest < 0 || (!free.length && rest !== 0)) return splitExpense(e.amount, e.shares, e.id);
+  const out = new Map(own);
+  free.forEach(id => out.set(id, 0));
+  for (const [id, p] of splitExpense(rest, free, e.id)) out.set(id, p);
+  return out;
+}
 function balances(spends, settles) {
   const net = {};
   for (const e of spends) {
     net[e.payer] = (net[e.payer] || 0) + e.amount;
-    for (const [id, p] of splitExpense(e.amount, e.shares, e.id)) net[id] = (net[id] || 0) - p;
+    for (const [id, p] of partsOf(e)) net[id] = (net[id] || 0) - p;
   }
   for (const s of settles) if (s.status !== 'no') { net[s.from] = (net[s.from] || 0) + s.amount; net[s.to] = (net[s.to] || 0) - s.amount; }
   return net;
@@ -309,7 +331,7 @@ function parseGroup(g, records) {
       case 'Info': g.name = f('name') || g.name; break;
       // bin, acct chỉ giữ chữ số (app và trang này cũng chỉ cho nhập số): người trong nhóm ghi thẳng lên iCloud được chuỗi bất kỳ, mà hai giá trị này đi vào địa chỉ ảnh QR
       case 'Member': g.members.push({ id: r.recordName, name: f('name') || '', bin: digits(f('bin')), acct: digits(f('acct')), user: f('user'), photo: f('photo')?.downloadURL }); break;
-      case 'Spend': g.spends.push({ id: r.recordName, amount: f('amount') || 0, note: f('note') || '', payer: f('payer') || '', shares: f('shares') || [], date: f('date') || r.created?.timestamp, cat: f('cat') || 'khac' }); break;
+      case 'Spend': g.spends.push({ id: r.recordName, amount: f('amount') || 0, note: f('note') || '', payer: f('payer') || '', shares: f('shares') || [], fixed: parseFixed(f('fixed')), date: f('date') || r.created?.timestamp, cat: f('cat') || 'khac' }); break;
       case 'Settle': g.settles.push({ id: r.recordName, from: f('from'), to: f('to'), amount: f('amount') || 0, date: f('date') || 0, status: f('status') || 'ok' }); break;
     }
   }
@@ -544,7 +566,7 @@ function renderGroup(g) {
 }
 
 function spendRow(g, e) {
-  const part = e.shares.includes(g.meId) ? splitExpense(e.amount, e.shares, e.id).get(g.meId) : 0;
+  const part = e.shares.includes(g.meId) ? partsOf(e).get(g.meId) : 0;
   return `<button class="card row press" data-sp="${esc(e.id)}" style="width:100%;text-align:left">
     <div class="tile" style="background:${catColor(e.cat)}">${catIcon(e.cat)}</div>
     <div class="grow"><div class="ell" style="font-weight:600">${esc(e.note || CATS[e.cat] || 'Khác')}</div>
@@ -676,7 +698,7 @@ function openInbox() {
   const g = cur(); if (!g) return;
   const name = id => memberName(g, id);
   const acts = [
-    ...g.spends.filter(e => e.payer !== g.meId).map(e => { const p = e.shares.includes(g.meId) ? splitExpense(e.amount, e.shares, e.id).get(g.meId) : 0;
+    ...g.spends.filter(e => e.payer !== g.meId).map(e => { const p = e.shares.includes(g.meId) ? partsOf(e).get(g.meId) : 0;
       return { t: e.date, who: e.payer, text: `${name(e.payer)} thêm ${e.note ? '“' + e.note + '”' : 'một khoản'} ${fmt(e.amount)}đ${p ? ', phần bạn ' + fmt(p) + 'đ' : ''}` }; }),
     ...g.settles.filter(s => s.from === g.meId || s.to === g.meId).map(s => {
       const out = s.from === g.meId;

@@ -724,7 +724,7 @@ struct HouseView: View {
             VStack(alignment: .trailing, spacing: 3) {
                 Text(fmt(e.amount)).font(.system(size: 17, weight: .bold))
                 if let me = house.me, e.shares.contains(me) {
-                    Text(L("bạn chịu %@", fmt(Settle.split(e.amount, e.shares, seed: e.id)[me] ?? 0)))
+                    Text(L("bạn chịu %@", fmt(Settle.parts(e)[me] ?? 0)))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
             }
@@ -862,7 +862,7 @@ struct HouseView: View {
         let me = house.me, name = house.memberName
         var out: [Activity] = []
         for e in house.spends where e.payer != me {
-            let part = me.flatMap { e.shares.contains($0) ? Settle.split(e.amount, e.shares, seed: e.id)[$0] : nil }
+            let part = me.flatMap { e.shares.contains($0) ? Settle.parts(e)[$0] : nil }
             out.append(Activity(id: e.id, who: e.payer, text: L("%@ thêm %@ %@", name(e.payer), e.note.isEmpty ? L("một khoản") : "\"\(e.note)\"", fmt(e.amount))
                                 + (part.map { L(", phần bạn %@", fmt($0)) } ?? ""), date: e.date))
         }
@@ -1211,6 +1211,10 @@ struct HouseSpendEditor: View {
     @State private var failed = false
     /// Bàn phím số của app đang hiện (ẩn khi gõ ghi chú, chạm số tiền thì hiện lại)
     @State private var padShown = true
+    /// Số tiền riêng từng người đang gõ (mã thành viên → chữ số). Không có = người đó chia đều phần còn lại
+    @State private var ownText: [String: String] = [:]
+    /// Bàn phím số đang gõ cho ai: nil = tổng tiền, mã thành viên = số riêng của người đó (nhấn giữ viên tên để chọn)
+    @State private var target: String?
     /// Nền tấm bàn phím số và hàng nút: lệch rất nhẹ so với nền bảng (nằm giữa màu nền app và màu nền bảng)
     private static let padBack = Color(light: 0xF9FAFC, dark: 0x121215)
     /// Lớp kính mờ sau hai nút Huỷ / Lưu nhô lên trên nút bấy nhiêu điểm
@@ -1220,7 +1224,21 @@ struct HouseSpendEditor: View {
     @FocusState private var noteFocused: Bool
 
     private var amount: Int { Int(amountText.filter(\.isNumber).prefix(12)) ?? 0 }
-    private var parts: [String: Int] { Settle.split(amount, Array(shares), seed: "") }
+    /// Số riêng hợp lệ đang có: của người đang được chọn, lớn hơn 0
+    private var own: [String: Int] {
+        var out: [String: Int] = [:]
+        for (id, t) in ownText where shares.contains(id) { if let v = Int(t.filter(\.isNumber).prefix(12)), v > 0 { out[id] = v } }
+        return out
+    }
+    private var ownSum: Int { own.values.reduce(0, +) }
+    /// Số riêng khớp với tổng: không quá tổng, và nếu ai cũng có số riêng thì cộng lại phải đúng bằng tổng
+    private var splitOK: Bool { own.isEmpty || (ownSum <= amount && !(own.count == shares.count && ownSum != amount)) }
+    private var parts: [String: Int] { Settle.parts(amount, Array(shares), fixed: own, seed: "") }
+    /// Bàn phím số gõ vào đâu: tổng tiền, hoặc số riêng của người đang chọn
+    private var padDigits: Binding<String> {
+        Binding(get: { target.map { ownText[$0] ?? "" } ?? amountText },
+                set: { v in if let t = target { ownText[t] = v } else { amountText = v } })
+    }
     private var myShare: Int? { house.me.flatMap { shares.contains($0) ? parts[$0] : nil } }
 
     var body: some View {
@@ -1230,6 +1248,7 @@ struct HouseSpendEditor: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 26)
 
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
@@ -1241,7 +1260,7 @@ struct HouseSpendEditor: View {
                             .foregroundStyle(amount > 0 ? .primary : .tertiary)
                             .contentTransition(.numericText())
                             .lineLimit(1).minimumScaleFactor(0.5)
-                        if padShown && !noteFocused {
+                        if padShown && !noteFocused && target == nil {
                             TimelineView(.periodic(from: .now, by: 0.55)) { t in
                                 let on = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
                                 Capsule().fill(Palette.goodInk).frame(width: 3, height: 36).opacity(on ? 1 : 0)
@@ -1254,7 +1273,7 @@ struct HouseSpendEditor: View {
                     .padding(.horizontal, 18).padding(.vertical, 12)
                     .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1) }
                     .contentShape(Rectangle())
-                    .onTapGesture { noteFocused = false; withAnimation(Self.padAnim) { padShown = true } }
+                    .onTapGesture { noteFocused = false; target = nil; withAnimation(Self.padAnim) { padShown = true } }
                     .animation(.snappy(duration: 0.15), value: amount)
                     .padding(.top, 8)
 
@@ -1283,23 +1302,25 @@ struct HouseSpendEditor: View {
                     .padding(.horizontal, -18)
 
                     HStack {
-                        label(L("Chia đều cho"))
+                        label(own.isEmpty ? L("Chia đều cho") : L("Chia cho"))
                         Spacer()
                         Button(shares.count == house.members.count ? L("Bỏ chọn") : L("Cả nhà")) {
-                            shares = shares.count == house.members.count ? [] : Set(house.members.map(\.id))
+                            if shares.count == house.members.count { shares = []; ownText = [:]; target = nil }
+                            else { shares = Set(house.members.map(\.id)) }
                         }
                         .buttonStyle(Pressable())
                         .font(.system(size: 15, weight: .semibold)).padding(.top, 22)
                     }
-                    // Cùng kiểu viên thuốc với "Ai ứng tiền": chọn thì nền đậm, không chọn nền nhạt; xếp ngang, hết chỗ thì xuống dòng
-                    ChipFlow(spacing: 8) {
-                        ForEach(house.members) { m in
-                            let on = shares.contains(m.id)
-                            personChip(m, on: on, sub: on && amount > 0 ? fmt(parts[m.id] ?? 0) : nil) {
-                                if on { shares.remove(m.id) } else { shares.insert(m.id) }
-                            }
+                    // Cùng kiểu viên thuốc với "Ai ứng tiền": chọn thì nền đậm, không chọn nền nhạt; xếp ngang, hết chỗ thì xuống dòng.
+                    // Chạm: chọn / bỏ người đó. Nhấn giữ: gõ số tiền riêng của người đó bằng bàn phím số (viên có viền xanh),
+                    // những người không có số riêng chia đều phần còn lại
+                    VStack(alignment: .leading, spacing: 0) {
+                        ChipFlow(spacing: 8) {
+                            ForEach(house.members) { m in shareChip(m) }
                         }
+                        splitNote
                     }
+                    .id("shares")
 
                     if editing == nil, let mine = myShare, mine > 0 {   // sửa khoản cũ: không ghi thêm vào chi tiêu cá nhân
                         Toggle(isOn: $logMine) {
@@ -1321,6 +1342,8 @@ struct HouseSpendEditor: View {
             }
             // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
             .padding(.horizontal, -18)
+            // Bàn phím số ẩn đi thì thôi gõ số riêng: lần hiện sau lại gõ tổng tiền
+            .onChange(of: padShown) { _, on in if !on { target = nil } }
             // Kéo nội dung lên để xem phần bên dưới: bàn phím số tự ẩn nhường chỗ (chạm số tiền để hiện lại)
             .simultaneousGesture(DragGesture(minimumDistance: 16).onChanged { v in
                 if padShown, v.translation.height < -16, abs(v.translation.width) < 30 {
@@ -1336,7 +1359,7 @@ struct HouseSpendEditor: View {
 
                 // Bàn phím số luôn nằm sẵn trong tấm; hiện / ẩn bằng chiều cao và độ trượt (đổi được mượt, không phụ thuộc hiệu ứng
                 // chèn / gỡ phần tử trong thanh đáy). Hiện: phím trượt từ dưới hàng nút Huỷ / Lưu lên, nảy nhẹ; ẩn: trượt ngược xuống
-                NumberPad(digits: $amountText) { noteFocused = false }
+                NumberPad(digits: padDigits) { noteFocused = false }
                     .frame(height: 248)
                     .padding(.bottom, 6)
                     .offset(y: padShown ? 0 : 150)
@@ -1403,6 +1426,15 @@ struct HouseSpendEditor: View {
                         .padding(.horizontal, -18).padding(.bottom, -100).padding(.top, padShown ? 0 : -Self.dockRise)
                 }
             }
+            // Gõ số riêng của một người: bàn phím số che phần chia tiền, nên cuộn phần này lên ngay trên bàn phím
+            // (chờ bàn phím lên xong, vùng cuộn mới có chỗ để cuộn)
+            .onChange(of: target) { _, t in
+                guard t != nil else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.snappy(duration: 0.3)) { proxy.scrollTo("shares", anchor: .bottom) }
+                }
+            }
+            }
         }
         .padding(.horizontal, 18)
         .background(Palette.surface.ignoresSafeArea())
@@ -1410,7 +1442,7 @@ struct HouseSpendEditor: View {
         .onAppear {
             if let e = editing {
                 amountText = String(e.amount); note = e.note; cat = e.cat; catPicked = true
-                payer = e.payer; shares = Set(e.shares)
+                payer = e.payer; shares = Set(e.shares); ownText = e.fixed.mapValues { String($0) }
                 padShown = false
             } else {
                 payer = house.me ?? house.members.first?.id ?? ""
@@ -1419,7 +1451,7 @@ struct HouseSpendEditor: View {
         }
     }
 
-    private var valid: Bool { amount > 0 && !shares.isEmpty && !payer.isEmpty }
+    private var valid: Bool { amount > 0 && !shares.isEmpty && !payer.isEmpty && splitOK }
 
     private func label(_ t: String) -> some View {
         Text(t).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 22).padding(.bottom, 10)
@@ -1463,19 +1495,73 @@ struct HouseSpendEditor: View {
         .buttonStyle(Pressable())
     }
 
+    /// Một người trong phần chia tiền. Chạm: chọn / bỏ (đang gõ số riêng của họ thì chạm là gõ xong). Nhấn giữ: gõ số riêng
+    private func shareChip(_ m: HouseMember) -> some View {
+        let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
+        let sub: String? = typing ? fmt(mine ?? 0) : !on || amount <= 0 && mine == nil ? nil
+            : mine != nil ? fmt(mine ?? 0) + " · " + L("riêng") : fmt(parts[m.id] ?? 0)
+        return TapHold(tap: {
+            if typing { target = nil }
+            else if on { shares.remove(m.id); ownText[m.id] = nil }
+            else { shares.insert(m.id) }
+        }, hold: {
+            shares.insert(m.id); noteFocused = false; target = m.id
+            withAnimation(Self.padAnim) { padShown = true }
+        }) {
+            HStack(spacing: 10) {
+                HouseAvatar(id: m.id, name: m.name, size: 36)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                    if let line = sub {
+                        Text(line).font(.system(size: 13, weight: typing ? .semibold : .regular))
+                            .foregroundStyle(on ? Palette.ctaInk.opacity(typing ? 1 : 0.7) : .secondary).lineLimit(1)
+                            .contentTransition(.numericText())
+                    }
+                }
+            }
+            .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 6)
+            .foregroundStyle(on ? Palette.ctaInk : .primary)
+            .background(on ? Palette.cta : Color.primary.opacity(0.05), in: Capsule())
+            .overlay { if typing { Capsule().strokeBorder(Palette.goodInk, lineWidth: 3) } }
+        }
+        .accessibilityHint(L("Nhấn giữ để nhập số tiền riêng"))
+    }
+
+    /// Dòng dưới các viên tên: hướng dẫn nhấn giữ, hoặc báo số riêng chưa khớp tổng kèm nút đặt lại tổng
+    @ViewBuilder private var splitNote: some View {
+        if !splitOK || (amount == 0 && ownSum > 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(amount == 0 ? L("Số riêng cộng lại %@", fmt(ownSum))
+                     : ownSum > amount ? L("Số riêng cộng lại %@, nhiều hơn tổng", fmt(ownSum))
+                     : L("Còn %@ chưa chia cho ai", fmt(amount - ownSum)))
+                    .font(.system(size: 14)).foregroundStyle(amount == 0 ? Color.secondary : Palette.danger)
+                Spacer(minLength: 0)
+                Button(L("Đặt tổng %@", fmt(ownSum))) { withAnimation(.snappy(duration: 0.15)) { amountText = String(ownSum) } }
+                    .buttonStyle(Pressable())
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .padding(.top, 10)
+        } else if !shares.isEmpty {
+            Text(target != nil ? L("Đang nhập số riêng. Xoá hết số để người này chia đều lại.")
+                 : L("Nhấn giữ một người để nhập số tiền riêng."))
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .padding(.top, 10)
+        }
+    }
+
     private func save() {
         guard !saving else { return }
         saving = true; failed = false
-        let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare
+        let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare, f = own
         let log = logMine
         Task {
             if var e = editing {
-                e.amount = a; e.note = n; e.cat = c; e.payer = p; e.shares = s
+                e.amount = a; e.note = n; e.cat = c; e.payer = p; e.shares = s; e.fixed = f
                 guard await house.updateSpend(e) else { saving = false; failed = true; return }
                 dismiss(); return
             }
             // Không lưu được: ở lại bảng, mở lại nút Lưu, House đã đưa lỗi lên thanh báo
-            guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c) else { saving = false; failed = true; return }
+            guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c, fixed: f) else { saving = false; failed = true; return }
             if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c) }
             dismiss()
         }

@@ -1211,6 +1211,8 @@ struct HouseSpendEditor: View {
     @State private var failed = false
     /// Bàn phím số của app đang hiện (ẩn khi gõ ghi chú, chạm số tiền thì hiện lại)
     @State private var padShown = true
+    /// Nhịp hiện / ẩn bàn phím số: trượt từ dưới lên, lò xo có nảy nhẹ ở cuối
+    private static let padAnim: Animation = .spring(response: 0.42, dampingFraction: 0.66)
     @FocusState private var noteFocused: Bool
 
     private var amount: Int { Int(amountText.filter(\.isNumber).prefix(12)) ?? 0 }
@@ -1248,7 +1250,7 @@ struct HouseSpendEditor: View {
                     .padding(.horizontal, 18).padding(.vertical, 12)
                     .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.14), lineWidth: 1) }
                     .contentShape(Rectangle())
-                    .onTapGesture { noteFocused = false; withAnimation(.snappy(duration: 0.25)) { padShown = true } }
+                    .onTapGesture { noteFocused = false; withAnimation(Self.padAnim) { padShown = true } }
                     .animation(.snappy(duration: 0.15), value: amount)
                     .padding(.top, 8)
 
@@ -1311,32 +1313,34 @@ struct HouseSpendEditor: View {
                 .padding(.horizontal, 18)
                 // Chạm vào chỗ trống ngoài bàn phím số: bàn phím ẩn đi (chạm ô số tiền để hiện lại)
                 .contentShape(Rectangle())
-                .onTapGesture { if padShown { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
+                .onTapGesture { if padShown { withAnimation(Self.padAnim) { padShown = false } } }
             }
             // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
             .padding(.horizontal, -18)
             // Kéo nội dung lên để xem phần bên dưới: bàn phím số tự ẩn nhường chỗ (chạm số tiền để hiện lại)
             .simultaneousGesture(DragGesture(minimumDistance: 16).onChanged { v in
                 if padShown, v.translation.height < -16, abs(v.translation.width) < 30 {
-                    withAnimation(.snappy(duration: 0.25)) { padShown = false }
+                    withAnimation(Self.padAnim) { padShown = false }
                 }
             })
             .scrollDismissesKeyboard(.interactively)
             // Gõ ghi chú thì bàn phím chữ của iOS lên, bàn phím số của app nhường chỗ
-            .onChange(of: noteFocused) { _, f in if f { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
+            .onChange(of: noteFocused) { _, f in if f { withAnimation(Self.padAnim) { padShown = false } } }
             // Bàn phím số và hàng nút nổi trên vùng cuộn: nội dung cuộn chui xuống dưới, mép trên của tấm này làm mờ (blur) dần
             // nội dung đang trôi qua, từ đó trở xuống là nền đục
             .softBottomPanel {
                 VStack(spacing: 0) {
 
-                if padShown {
-                    VStack(spacing: 0) {
-                        NumberPad(digits: $amountText) { noteFocused = false }
-                            .frame(height: 248)
-                    }
+                // Bàn phím số luôn nằm sẵn trong tấm; hiện / ẩn bằng chiều cao và độ trượt (đổi được mượt, không phụ thuộc hiệu ứng
+                // chèn / gỡ phần tử trong thanh đáy). Hiện: phím trượt từ dưới hàng nút Huỷ / Lưu lên, nảy nhẹ; ẩn: trượt ngược xuống
+                NumberPad(digits: $amountText) { noteFocused = false }
+                    .frame(height: 248)
                     .padding(.bottom, 6)
-                    .transition(.opacity)   // chỉ mờ đi: trượt xuống thì các phím số chạy ngang qua hàng nút Huỷ / Lưu
-                }
+                    .offset(y: padShown ? 0 : 150)
+                    .opacity(padShown ? 1 : 0)
+                    .frame(height: padShown ? 254 : 0, alignment: .top)
+                    .allowsHitTesting(padShown)
+                    .accessibilityHidden(!padShown)
 
                 // Huỷ và Lưu cùng một hàng sát đáy, như màn nhập khoản chi (vùng an toàn dưới 34 điểm, lùi xuống 18)
                 HStack(spacing: 12) {
@@ -1347,12 +1351,15 @@ struct HouseSpendEditor: View {
                         .opacity(valid && !saving ? 1 : 0.35)
                         .animation(.easeInOut(duration: 0.25), value: valid && !saving)
                 }
+                // Nền đục sau hàng nút (tràn hai bên và xuống đáy): phím số trượt lên / xuống luồn phía sau, không lộ qua nút Lưu đang mờ
+                .background(Palette.surface.padding(.horizontal, -18).padding(.top, -6).padding(.bottom, -80))
                 .padding(.bottom, -18)
+                .zIndex(1)
                 }
                 .padding(.top, PanelEdge.gap)   // khoảng trống phía trên phím: nội dung cuộn chui vào đây và bị nhoè dần
                 .background {
                     VStack(spacing: 0) {
-                        PanelEdge()
+                        PanelEdge(tall: padShown)
                         Palette.surface
                     }
                     .padding(.top, -PanelEdge.rise)   // dải mờ vươn lên trên tấm, phủ lên phần nội dung đang cuộn
@@ -1519,6 +1526,7 @@ private struct PanelEdge: View {
     static let gap: CGFloat = 22      // đệm trên của tấm: vùng nhoè chỉ nhô lên trên hàng phím đầu một chút (hệ thống nhoè nội dung cuộn nằm dưới tấm)
     static let rise: CGFloat = 0
     static let height: CGFloat = rise + gap + 155   // trong suốt qua hai hàng phím đầu, tới hàng 7 8 9 mới đục hẳn
+    var tall = true   // bàn phím số đang hiện: dải kéo xuống tới hàng 7 8 9; đang ẩn: chỉ một dải ngắn trên hàng nút
     var body: some View {
         Group {
             if #available(iOS 26.0, *) {
@@ -1533,7 +1541,7 @@ private struct PanelEdge: View {
                                             startPoint: .top, endPoint: .bottom))
             }
         }
-        .frame(height: Self.height)
+        .frame(height: tall ? Self.height : Self.gap + 6)
         .allowsHitTesting(false)
     }
 }

@@ -1135,7 +1135,7 @@ struct BankChooser: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            BlurForm {
                 Section {
                     ForEach(BankData.apps.filter(\.fill)) { row($0) }
                 } header: {
@@ -1151,7 +1151,7 @@ struct BankChooser: View {
                     Text(L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
                 }
             }
-            .softTopEdge()
+            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
             .screenTitle(L("Bạn dùng app ngân hàng nào?"))
             .navigationBarTitleDisplayMode(.inline)
         }

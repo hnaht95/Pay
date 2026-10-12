@@ -26,10 +26,11 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            BlurForm {
                 Section { summary }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+                    .cardless()
 
                 proSection
                 budgetSection
@@ -59,7 +60,7 @@ struct SettingsView: View {
                 }
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-            .softTopEdge()
+            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
             .screenTitle(L("Cài đặt"))
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -895,11 +896,12 @@ struct CategoryEditor: View {
 
     private var form: some View {
         NavigationStack {
-            Form {
+            BlurForm {
                 Section {
                     previewCard
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+                    .cardless()
                 }
 
                 Section {
@@ -995,7 +997,7 @@ struct CategoryEditor: View {
                 .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
             // Mép trên vùng cuộn mờ dần (không cắt ngang dưới tiêu đề)
-            .softTopEdge()
+            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
             // Bàn phím hiện lên thì Huỷ / Lưu nằm yên ở đáy, bị bàn phím che (không bị đẩy lên đè lên ô Ảnh)
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .onAppear {
@@ -1120,7 +1122,7 @@ struct EmojiField: UIViewRepresentable {
 /// Hướng dẫn thêm widget, gán nút Tác vụ và dùng Phím tắt.
 struct QuickAccessHelp: View {
     var body: some View {
-        Form {
+        BlurForm {
             Section {
                 step(1, "Ở màn hình chính, chạm và giữ vào chỗ trống đến khi biểu tượng rung.")
                 step(2, "Bấm Sửa › Thêm tiện ích, tìm \"Pay\".")
@@ -1167,7 +1169,7 @@ struct QuickAccessHelp: View {
             }
         }
         .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-        .softTopEdge()
+        .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
         .screenTitle(L("Truy cập nhanh"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1210,7 +1212,7 @@ struct SystemColorPicker: UIViewControllerRepresentable {
 /// Cách cài tự động hoá Phím tắt để mỗi lần trả bằng Apple Pay là Pay tự ghi một khoản chi
 struct ApplePayHelp: View {
     var body: some View {
-        List {
+        BlurForm {
             Section {
                 step(1, L("Mở app Phím tắt, chọn thẻ Tự động hoá, bấm + rồi chọn Giao dịch."))
                 step(2, L("Chọn thẻ trong Ví muốn theo dõi, đặt Chạy ngay (không cần xác nhận), bấm Tiếp."))
@@ -1221,7 +1223,7 @@ struct ApplePayHelp: View {
                 Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }
         }
-        .softTopEdge()
+        .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
         .screenTitle(L("Tự ghi khi trả Apple Pay"))
         .navigationBarTitleDisplayMode(.inline)
     }

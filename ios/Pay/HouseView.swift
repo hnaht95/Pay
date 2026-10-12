@@ -855,12 +855,14 @@ struct HouseView: View {
                             .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                         }
                         .buttonStyle(Pressable())
+                        .navEdgeBlur()
                     }
+                    // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur)
                     if !pending.isEmpty {
-                        Text(L("Cần xác nhận")).font(.system(size: 21, weight: .bold)).padding(.top, 8)
-                        ForEach(pending) { pendingCard($0) }
+                        Text(L("Cần xác nhận")).font(.system(size: 21, weight: .bold)).padding(.top, 8).navEdgeBlur()
+                        ForEach(pending) { pendingCard($0).navEdgeBlur() }
                     }
-                    Text(L("Gần đây")).font(.system(size: 21, weight: .bold)).padding(.top, 16)
+                    Text(L("Gần đây")).font(.system(size: 21, weight: .bold)).padding(.top, 16).navEdgeBlur()
                     let recent = activity
                     if recent.isEmpty {
                         Text(L("Chưa có gì mới.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.vertical, 20)
@@ -875,13 +877,15 @@ struct HouseView: View {
                             Spacer(minLength: 0)
                         }
                         .padding(.vertical, 6)
+                        .navEdgeBlur()
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)   // trải hết bề ngang, không co thành cột giữa
                 .padding(.horizontal, 16).padding(.bottom, 30)
             }
+            .coordinateSpace(name: "navScroll")
             .background(Palette.bg.ignoresSafeArea())
-            .softTopEdge()
+            .softTopEdge(fade: Palette.bg, home: true)
             .screenTitle(L("Thông báo"))
             .navigationBarTitleDisplayMode(.inline)
             .task {
@@ -1050,7 +1054,7 @@ struct HouseGroupEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            BlurForm {
                 Section {
                     VStack(spacing: 12) {
                         HouseGroupIcon(group: group, size: 96, photo: .some(photo), tone: .some(tone))
@@ -1063,6 +1067,7 @@ struct HouseGroupEditor: View {
                     }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
+                    .cardless()
                 }
                 Section(L("Tên")) { TextField(L("Tên nhóm"), text: $name) }
                 Section {
@@ -1082,7 +1087,7 @@ struct HouseGroupEditor: View {
             .screenTitle(L("Sửa nhóm"))
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
-            .softTopEdge()
+            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
             .bottomBar {
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
@@ -1157,7 +1162,7 @@ struct HouseMemberEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            BlurForm {
                 Section {
                     VStack(spacing: 12) {
                         Group {
@@ -1177,6 +1182,7 @@ struct HouseMemberEditor: View {
                     }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
+                    .cardless()
                 }
                 Section(L("Tên")) { TextField(L("Tên"), text: $name) }
                 Section {
@@ -1196,7 +1202,7 @@ struct HouseMemberEditor: View {
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
-            .softTopEdge()
+            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
             .bottomBar {
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }

@@ -1353,21 +1353,30 @@ struct HouseSpendEditor: View {
                         .animation(.easeInOut(duration: 0.25), value: valid && !saving)
                 }
                 // Nền đục sau hàng nút (tràn hai bên và xuống đáy): phím số trượt lên / xuống luồn phía sau, không lộ qua nút Lưu đang mờ
-                .background(Self.padBack.padding(.horizontal, -18).padding(.top, -6).padding(.bottom, -80))
+                .background(Self.padBack.padding(.horizontal, -18).padding(.top, -6).padding(.bottom, -80).opacity(padShown ? 1 : 0))
                 .padding(.bottom, -18)
                 .zIndex(1)
                 }
                 .padding(.top, 12)
-                // Nền đục, khác màu nền bảng một chút và bo hai góc trên, để tấm phím tách khỏi nội dung cuộn phía sau (không làm mờ)
+                // Bàn phím đang hiện: nền đục, khác màu nền bảng một chút và bo hai góc trên, tách tấm phím khỏi nội dung phía sau.
+                // Bàn phím ẩn: chỉ còn hai nút nổi trên lớp kính mờ (mép trên tan dần), nội dung cuộn qua phía sau bị nhoè
                 .background {
-                    UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous).fill(Self.padBack)
-                        .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
-                        .ignoresSafeArea(edges: .bottom)
+                    ZStack {
+                        Rectangle().fill(.ultraThinMaterial)
+                            .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.4), .init(color: .black, location: 1)],
+                                                 startPoint: .top, endPoint: .bottom))
+                            .padding(.top, -20)
+                            .opacity(padShown ? 0 : 1)
+                        UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous).fill(Self.padBack)
+                            .opacity(padShown ? 1 : 0)
+                    }
+                    .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
+                    .ignoresSafeArea(edges: .bottom)
                 }
-                // Cắt cả tấm theo đúng hình bo góc ấy: nền chữ nhật sau hàng nút không lòi góc vuông ra ngoài hai góc bo
+                // Cắt cả tấm theo đúng hình bo góc khi bàn phím hiện: nền chữ nhật sau hàng nút không lòi góc vuông ra ngoài
                 .mask {
-                    UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous)
-                        .padding(.horizontal, -18).padding(.bottom, -100)
+                    UnevenRoundedRectangle(topLeadingRadius: padShown ? 26 : 0, topTrailingRadius: padShown ? 26 : 0, style: .continuous)
+                        .padding(.horizontal, -18).padding(.bottom, -100).padding(.top, padShown ? 0 : -20)
                 }
             }
         }

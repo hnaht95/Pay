@@ -95,7 +95,7 @@ extension English {
         "Thấp nhất": "Lowest",
         "Cao nhất": "Highest",
         "Theo danh mục": "By category",
-        "Khoản chi gần đây": "Recent expenses",
+        "Khoản lớn nhất": "Biggest expenses",
         "%ld khoản": "%ld items",   // số ít dùng "1 khoản" (EN+Home: "1 item")
 
         // Thông báo (Model)

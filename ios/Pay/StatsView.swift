@@ -25,6 +25,7 @@ struct StatsView: View {
     @Namespace private var scopeNS
     /// Một ngày được chọn trong tuần (nil = cả tuần)
     @State private var day: Date?
+    @State private var showHistory = false
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
 
@@ -73,6 +74,7 @@ struct StatsView: View {
         }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
+        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store).sheetCorners() }
         }
     }
 
@@ -894,17 +896,20 @@ struct StatsView: View {
         }
     }
 
-    // MARK: Khoản chi gần đây
+    // MARK: Khoản lớn nhất
 
-    /// Cùng kiểu hàng "Gần đây" ở màn hình chính: mỗi khoản một thẻ riêng (ô biểu tượng trắng, tên, số tiền, ngày | giờ)
+    /// 5 khoản nhiều tiền nhất của kỳ đang xem (tháng, hoặc ngày đang chọn): trả lời "tiền đi đâu" (khoản mới nhất đã có ở trang
+    /// chủ). Bấm Xem tất cả mở Lịch sử
     private func recentCard(_ items: [Expense]) -> some View {
-        let rows = Array(items.sorted { $0.t > $1.t }.prefix(6))
+        let rows = Array(items.sorted { $0.a != $1.a ? $0.a > $1.a : $0.t > $1.t }.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Khoản chi gần đây")).font(.system(size: 17, weight: .semibold))
+                Text(L("Khoản lớn nhất")).font(.system(size: 17, weight: .semibold))
                 Spacer()
-                // "1 khoản" tách riêng để tiếng Anh có dạng số ít (như màn hình chính)
-                Text(items.count == 1 ? L("1 khoản") : L("%ld khoản", items.count)).font(.system(size: 13)).foregroundStyle(.secondary)
+                Button { showHistory = true } label: {
+                    Text(L("Xem tất cả")).font(.system(size: 15, weight: .medium)).padding(3)
+                }
+                .buttonStyle(Pressable()).foregroundStyle(.primary)
             }
             .padding(.horizontal, 4)
             ForEach(rows) { e in ExpenseRow(e: e, showDay: true, repeats: Store.shared.rule(for: e) != nil) }

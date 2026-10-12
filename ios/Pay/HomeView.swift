@@ -59,14 +59,14 @@ struct HomeView: View {
 
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
-                    header(now).topScrollBlur().voiceBlur()
+                    header(now).topScrollBlur()
                     Button { showStats = true } label: { hero(now) }
                         .buttonStyle(Pressable())
-                        .topScrollBlur().voiceBlur()
+                        .topScrollBlur()
                         .padding(.top, 14)
 
-                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }.topScrollBlur().voiceBlur()
-                    tiles(now).topScrollBlur().voiceBlur()
+                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }.topScrollBlur()
+                    tiles(now).topScrollBlur()
 
                     sectionTitle(L("Gần đây")) {
                         Button { showHistory = true } label: {
@@ -76,7 +76,7 @@ struct HomeView: View {
                         }
                         .buttonStyle(Pressable()).foregroundStyle(.primary)
                     }
-                    .topScrollBlur().voiceBlur()
+                    .topScrollBlur()
                     recent
                 }
                 .padding(.horizontal, 16)

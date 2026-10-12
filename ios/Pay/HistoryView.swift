@@ -80,11 +80,17 @@ struct HistoryView: View {
             .background(Palette.surface)
             .screenTitle(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
             .navigationBarTitleDisplayMode(.inline)
-        }
-        // Đang xem một danh mục: nút + nhập luôn khoản mới vào danh mục đó. Đặt ở góc tấm (không trong thanh tiêu đề của
-        // hệ thống, vị trí khác nhau giữa các bản iOS): cách mép trên và mép phải bằng nhau
-        .overlay(alignment: .topTrailing) {
-            if let category { addButton(category).padding(.top, 14).padding(.trailing, 14) }
+            .toolbar {
+                // Đang xem một danh mục: nút + nhập luôn khoản mới vào danh mục đó. Nằm trong thanh tiêu đề để luôn ngang
+                // hàng (giữa theo chiều dọc) với tiêu đề ở mọi bản iOS
+                if let category {
+                    if #available(iOS 26.0, *) {
+                        ToolbarItem(placement: .topBarTrailing) { addButton(category) }.sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .topBarTrailing) { addButton(category) }
+                    }
+                }
+            }
         }
         .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }

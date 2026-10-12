@@ -21,6 +21,7 @@ struct SettingsView: View {
     /// Ngôn ngữ đang chọn trong Cài đặt
     @State private var lang = Lang.current
     @AppStorage(Appearance.key) private var appearanceRaw = Appearance.system.rawValue
+    @AppStorage(Appearance.minimalKey) private var minimal = false
     private var appearance: Appearance {
         get { Appearance(rawValue: appearanceRaw) ?? .system }
         nonmutating set { appearanceRaw = newValue.rawValue }
@@ -378,13 +379,14 @@ struct SettingsView: View {
             Picker(selection: Binding(get: { appearance }, set: { appearance = $0; Appearance.apply() })) {
                 ForEach(Appearance.allCases, id: \.self) { Text($0.title).tag($0) }
             } label: {
-                row(L("Giao diện"))
+                row(L("Chế độ"))
             }
             .pickerStyle(.navigationLink)
+            Toggle(isOn: $minimal) { row(L("Tối giản")) }
         } header: {
             Text(L("Giao diện"))
         } footer: {
-            Text(L("Tối giản: danh mục không màu, chỉ biểu tượng giữ màu; sáng hay tối theo máy."))
+            Text(L("Tối giản: danh mục không màu, chỉ biểu tượng giữ màu. Dùng được với cả Sáng và Tối."))
         }
     }
 

@@ -378,7 +378,7 @@ struct HomeView: View {
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { Category.get($0.c).k == c.k }
         var items = [
-            AppMenuItem(icon: "paintpalette.fill", title: L("Đổi biểu tượng, màu, tên")) { editingCat = CatEdit.of(c.k, store: store) },
+            AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
                 ? AppMenuItem(icon: "rectangle.split.2x1", title: L("Thu ô về nửa hàng")) { withAnimation(.snappy) { store.setWide(c.k, false) } }
                 : AppMenuItem(icon: "rectangle", title: L("Kéo ô dài cả hàng")) { withAnimation(.snappy) { store.setWide(c.k, true) } },

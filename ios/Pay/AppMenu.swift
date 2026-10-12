@@ -7,6 +7,8 @@ struct AppMenuItem: Identifiable {
     let title: String
     var subtitle: String? = nil
     var danger = false
+    /// Biểu tượng đã có sẵn vòng tròn (vd pencil.tip.crop.circle): không vẽ nền tròn, vẽ to bằng ô nền
+    var plain = false
     let run: () -> Void
 }
 
@@ -69,9 +71,9 @@ struct AppMenu: View {
 
     private func row(_ item: AppMenuItem) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: item.icon).font(.system(size: 16, weight: .semibold))
+            Image(systemName: item.icon).font(.system(size: item.plain ? 34 : 16, weight: item.plain ? .regular : .semibold))
                 .frame(width: 40, height: 40)
-                .background(item.danger ? Palette.danger.opacity(0.12) : Palette.pill, in: Circle())
+                .background(item.plain ? Color.clear : item.danger ? Palette.danger.opacity(0.12) : Palette.pill, in: Circle())
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title).font(.system(size: 17, weight: .medium)).lineLimit(1)
                 if let s = item.subtitle {

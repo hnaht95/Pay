@@ -766,8 +766,26 @@ extension View {
 
 extension View {
     /// Mép trên vùng cuộn mờ dần dưới thanh tiêu đề (kiểu mềm của iOS 26), như màn nhóm chung — không phải vạch cắt ngang
-    @ViewBuilder func softTopEdge() -> some View {
-        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.soft, for: .top) } else { self }
+    /// fade: màu nền của màn. Mép nhoè của hệ thống khá nhẹ, nội dung sáng màu (các ô lịch trắng của Thống kê) vẫn lộ rõ quanh
+    /// tiêu đề; có màu này thì phủ thêm nền đặc sau thanh tiêu đề, nhạt dần xuống dưới (như đầu trang Nhóm chung, Khoản chung)
+    @ViewBuilder func softTopEdge(fade: Color? = nil) -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectStyle(.soft, for: .top)
+                .overlay(alignment: .top) {
+                    if let fade {
+                        // Đo chiều cao thanh tiêu đề (vùng an toàn phía trên của vùng cuộn) để phủ đúng từ mép trên bảng xuống
+                        // quá chân thanh tiêu đề 22pt: đặc sau tiêu đề, nhạt dần ở đoạn ló xuống
+                        GeometryReader { g in
+                            let bar = g.safeAreaInsets.top, tail: CGFloat = 22
+                            LinearGradient(stops: [.init(color: fade, location: 0), .init(color: fade, location: bar / (bar + tail)),
+                                                   .init(color: fade.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: bar + tail)
+                                .offset(y: -bar)
+                        }
+                        .allowsHitTesting(false)
+                    }
+                }
+        } else { self }
     }
 
     /// Thanh nút ở đáy, phía sau mờ dần đúng kiểu thanh tiêu đề (mép cuộn mềm của iOS 26)

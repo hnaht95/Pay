@@ -268,7 +268,6 @@ struct EntryView: View {
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
                         .buttonStyle(Pressable())
-                        .softScrollEdge(zone: 40, radius: 7)
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn

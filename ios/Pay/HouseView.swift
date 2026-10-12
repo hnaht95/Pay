@@ -1211,8 +1211,8 @@ struct HouseSpendEditor: View {
     @State private var failed = false
     /// Bàn phím số của app đang hiện (ẩn khi gõ ghi chú, chạm số tiền thì hiện lại)
     @State private var padShown = true
-    /// Nền tấm bàn phím số và hàng nút: màu nền app, lệch nhẹ so với nền bảng
-    private static let padBack = Palette.bg
+    /// Nền tấm bàn phím số và hàng nút: lệch rất nhẹ so với nền bảng (nằm giữa màu nền app và màu nền bảng)
+    private static let padBack = Color(light: 0xF9FAFC, dark: 0x121215)
     /// Nhịp hiện / ẩn bàn phím số: trượt từ dưới lên, lò xo có nảy nhẹ ở cuối
     private static let padAnim: Animation = .spring(response: 0.42, dampingFraction: 0.66)
     @FocusState private var noteFocused: Bool
@@ -1357,7 +1357,7 @@ struct HouseSpendEditor: View {
                 .padding(.bottom, -18)
                 .zIndex(1)
                 }
-                .padding(.top, padShown ? 28 : 12)   // bàn phím hiện: chừa khoảng thở phía trên hàng phím đầu
+                .padding(.top, padShown ? 40 : 12)   // bàn phím hiện: chừa khoảng thở phía trên hàng phím đầu
                 // Vạch ngang sát mép trên tấm phím (cùng kiểu vạch của bảng): chạm hoặc kéo xuống là ẩn bàn phím
                 .overlay(alignment: .top) {
                     SheetGrabber()

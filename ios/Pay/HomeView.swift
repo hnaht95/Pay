@@ -380,8 +380,8 @@ struct HomeView: View {
         var items = [
             AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
-                ? AppMenuItem(icon: "rectangle.split.2x1", title: L("Thu ô về nửa hàng")) { withAnimation(.snappy) { store.setWide(c.k, false) } }
-                : AppMenuItem(icon: "rectangle", title: L("Kéo ô dài cả hàng")) { withAnimation(.snappy) { store.setWide(c.k, true) } },
+                ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, false) } }
+                : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, true) } },
         ]
         if Category.isBuiltin(c.k) {
             if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: L("Về mặc định")) { store.resetCategory(c.k) }) }

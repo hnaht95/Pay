@@ -57,8 +57,9 @@ struct HistoryView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            // Lề phải 8 (xem expenseSwipe: nút xoá cách mép màn bằng khoảng tới thẻ); bên trái hàng tự lùi 16
-            .contentMargins(.trailing, 8, for: .scrollContent)
+            // Danh sách cách mép phải màn 8, đúng như Gần đây ở trang chủ (xem expenseSwipe: nút xoá cách thẻ và mép màn bằng
+            // nhau); bên trái hàng tự lùi 16. Không dùng contentMargins: iOS 18 tính vị trí nút xoá khác, hàng trượt xa hơn
+            .padding(.trailing, 8)
             .background(Palette.surface)
             // Tiêu đề và ô tìm tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS);
             // nội dung cuộn lên cắt gọn ở vạch dưới ô tìm. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)

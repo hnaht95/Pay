@@ -59,13 +59,14 @@ struct HomeView: View {
 
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
-                    header(now)
+                    header(now).topScrollBlur()
                     Button { showStats = true } label: { hero(now) }
                         .buttonStyle(Pressable())
+                        .topScrollBlur()
                         .padding(.top, 14)
 
-                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }
-                    tiles(now)
+                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }.topScrollBlur()
+                    tiles(now).topScrollBlur()
 
                     sectionTitle(L("Gần đây")) {
                         Button { showHistory = true } label: {
@@ -75,6 +76,7 @@ struct HomeView: View {
                         }
                         .buttonStyle(Pressable()).foregroundStyle(.primary)
                     }
+                    .topScrollBlur()
                     recent
                 }
                 .padding(.horizontal, 16)
@@ -407,7 +409,7 @@ struct HomeView: View {
             List {
                 ForEach(list) { e in
                     TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
-                        ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
+                        ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil).topScrollBlur()
                     }
                     .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                 }
@@ -837,6 +839,20 @@ extension View {
     /// Màn không có thanh tiêu đề (trang chủ). iOS 27 tự nhoè nội dung dưới thanh trạng thái; iOS cũ hơn thì không (đã thấy trên
     /// iOS 18 máy thật và máy ảo 26.2): chữ cuộn lên đè thẳng vào đồng hồ và pin. Ở các bản cũ đó tự phủ một dải lên vùng thanh
     /// trạng thái: lớp kính mờ làm nhoè nội dung, cộng màu nền đặc ở trên cùng nhạt dần xuống dưới
+    /// iOS cũ hơn 27 (trang chủ không có mép cuộn mềm của hệ thống): phần nội dung trôi lên dưới thanh trạng thái nhoè dần
+    /// theo từng điểm ảnh, càng sát mép trên càng nhoè (shader topEdgeBlur), như iOS 27. Áp cho từng khối nội dung, không áp
+    /// lên vùng cuộn / List được (hiệu ứng lớp không vẽ được phần của UIKit)
+    @ViewBuilder func topScrollBlur() -> some View {
+        if #available(iOS 27.0, *) { self } else {
+            let safeTop = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 59
+            visualEffect { content, g in
+                let y = g.frame(in: .global).minY
+                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(-y), .float(safeTop + 14), .float(7)),
+                                           maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < safeTop + 14)
+            }
+        }
+    }
+
     @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
         if #available(iOS 27.0, *) { self }
         else if on {
@@ -845,11 +861,8 @@ extension View {
                     // Giống mép cuộn mềm của iOS 27: kính mờ (nội dung trôi lên vẫn thấy nhoè nhoè), chỉ phủ nhẹ màu nền,
                     // tan dần qua chân thanh trạng thái thay vì một dải gần như đặc
                     let bar = g.safeAreaInsets.top, tail: CGFloat = 26
-                    ZStack {
-                        Rectangle().fill(.ultraThinMaterial)
-                        LinearGradient(stops: [.init(color: color.opacity(0.55), location: 0), .init(color: color.opacity(0.3), location: bar / (bar + tail)),
-                                               .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                    }
+                    LinearGradient(stops: [.init(color: color.opacity(0.6), location: 0), .init(color: color.opacity(0.3), location: bar / (bar + tail)),
+                                           .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.9), location: bar / (bar + tail) * 0.8),
                                                  .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                     .frame(height: bar + tail)

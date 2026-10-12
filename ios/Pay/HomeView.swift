@@ -1051,7 +1051,9 @@ extension View {
     /// Thanh nút ở đáy, phía sau mờ dần đúng kiểu thanh tiêu đề (mép cuộn mềm của iOS 26)
     @ViewBuilder func bottomBar<B: View>(@ViewBuilder _ bar: () -> B) -> some View {
         if #available(iOS 26.0, *) {
+            // Bàn phím hiện lên thì hai nút nằm yên ở đáy, bị bàn phím che (không bị đẩy lên đè vào nội dung)
             safeAreaBar(edge: .bottom, spacing: 0, content: bar).scrollEdgeEffectStyle(.soft, for: .bottom)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
         } else {
             // iOS cũ: gọn và trong như mép mềm của iOS 26+ (cùng dải màu sau hai nút ở trang chủ): chỉ phủ nhẹ màu nền tới quá
             // mép trên hai nút một chút. Trước: dải đặc cao 220 làm nội dung phía trên hai nút trắng đục
@@ -1066,6 +1068,7 @@ extension View {
                     .allowsHitTesting(false)
                 }
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
     }
 

@@ -1033,13 +1033,17 @@ private struct PeekWheel: View {
             ForEach(-4...4, id: \.self) { o in
                 let i = center + o
                 let d = CGFloat(i) - pos
-                let a = min(abs(d), 1)
+                // Ghi rõ kiểu số (CGFloat cho hình, Double cho độ mờ): để trình biên dịch tự đoán thì Xcode 26.3 báo mơ hồ
+                let a: CGFloat = min(abs(d), 1)
+                let face: Font = Font.system(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit()
+                let scale: CGFloat = (17 - 5 * a) / 17
+                let fade: Double = 1 - 0.4 * Double(a)
                 Text(String(format: "%02d", wrap(i) * step))
-                    .font(.system(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit())
+                    .font(face)
                     // Hàng đang chọn (giờ / phút hiện tại của khoản) màu xanh lá
                     .foregroundStyle(Color.primary)
-                    .scaleEffect((17 - 5 * a) / 17)
-                    .opacity(1 - 0.4 * a)
+                    .scaleEffect(scale)
+                    .opacity(fade)
                     .offset(y: d * pitch)
             }
         }

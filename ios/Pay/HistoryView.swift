@@ -10,7 +10,6 @@ struct HistoryView: View {
     @State private var menu: AppMenuSpec?
     /// Ô tìm: lọc theo ghi chú hoặc tên danh mục, không phân biệt dấu ("ca phe" ra "cà phê")
     @State private var query = ""
-    @State private var titleEdge: CGFloat = 0
     @FocusState private var searching: Bool
 
     var body: some View {
@@ -42,7 +41,6 @@ struct HistoryView: View {
                         }
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
                         .padding(.top, 14).padding(.bottom, 2)
-                        .titleEdgeBlur(titleEdge)
                         .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                         ForEach(list) { e in
@@ -50,7 +48,6 @@ struct HistoryView: View {
                             TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                 ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                             }
-                            .titleEdgeBlur(titleEdge)
                             .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                         }
                     }
@@ -62,7 +59,7 @@ struct HistoryView: View {
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
             // Tiêu đề và ô tìm tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS);
-            // nội dung cuộn lên chui xuống dưới ô tìm, nhoè dần. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)
+            // nội dung cuộn lên cắt gọn ở vạch dưới ô tìm. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)
             .softTitleBar(plain: true) {
                 VStack(spacing: 0) {
                     Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
@@ -87,9 +84,10 @@ struct HistoryView: View {
                     // Nền đục (màu nền tấm + lớp nhạt): nội dung cuộn chui xuống dưới không lộ qua ô
                     .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .padding(.horizontal, 16).padding(.bottom, 8)
+                    .padding(.horizontal, 16).padding(.bottom, 10)
+                    // Vạch ngăn mảnh, rộng bằng ô tìm: nội dung cuộn lên cắt gọn ngay dưới vạch
+                    Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
                 }
-                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { titleEdge = $0 }
             }
             .toolbar(.hidden, for: .navigationBar)
         }

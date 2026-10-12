@@ -1738,23 +1738,15 @@ private struct PinnedHeader<H: View>: ViewModifier {
 extension View {
     /// Ghim tiêu đề ở mép trên vùng cuộn. iOS 26: safeAreaBar + mép cuộn mềm của hệ thống (nội dung chui xuống dưới bị nhoè).
     /// iOS cũ: tiêu đề trên nền đặc, bên dưới có một dải tan dần vào nền
-    /// plain: như trang chủ, không phủ nền đặc sau tiêu đề; nội dung cuộn lên chỉ nhoè dần dưới tiêu đề
+    /// plain: nền đặc suốt thanh, nội dung cắt gọn ở chân thanh (thanh tự vẽ vạch ngăn nếu cần)
     @ViewBuilder func softTitleBar<T: View>(plain: Bool = false, @ViewBuilder _ title: () -> T) -> some View {
         if plain {
-            // Nền đặc suốt thanh (nội dung không lộ sau tiêu đề, ô tìm), chỉ một dải ngắn dưới chân thanh tan dần: nội dung trôi
-            // lên mờ dần ở đó rồi chui hẳn xuống. Nhoè: iOS 26+ do mép cuộn mềm của hệ thống; iOS cũ do từng dòng tự nhoè (titleEdgeBlur)
-            let tint = VStack(spacing: 0) {
-                Palette.surface
-                // Nối liền nền đặc phía trên (không có vạch cắt), tan dần mượt
-                LinearGradient(stops: [.init(color: Palette.surface, location: 0), .init(color: Palette.surface.opacity(0.55), location: 0.4),
-                                       .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom).frame(height: 28)
-            }
-            .padding(.horizontal, -18).padding(.bottom, -28)
-            .allowsHitTesting(false)
+            // Nền đặc suốt thanh, nội dung cuộn lên cắt gọn ở chân thanh (không nhoè)
+            let bg = Palette.surface.padding(.horizontal, -18).allowsHitTesting(false)
             if #available(iOS 26.0, *) {
-                safeAreaBar(edge: .top, spacing: 0) { title().background { tint } }.scrollEdgeEffectStyle(.soft, for: .top)
+                safeAreaBar(edge: .top, spacing: 0) { title().background { bg } }.scrollEdgeEffectStyle(.hard, for: .top)
             } else {
-                safeAreaInset(edge: .top, spacing: 0) { title().background { tint } }
+                safeAreaInset(edge: .top, spacing: 0) { title().background { bg } }
             }
         } else if #available(iOS 26.0, *) {
             // Mép nhoè của hệ thống khá nhẹ: nội dung cuộn lên vẫn lộ mờ mờ phía trên tiêu đề. Phủ thêm màu nền đặc ở trên cùng,

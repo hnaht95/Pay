@@ -64,7 +64,7 @@ struct StatsView: View {
         } else {
         NavigationStack {
             ScrollView { content(items, prev) }
-            .softTopEdge(fade: Self.page)
+            .softTopEdge()
             .background(Self.page.ignoresSafeArea())
             .screenTitle(L("Thống kê"))
 

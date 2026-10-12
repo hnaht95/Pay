@@ -31,7 +31,12 @@ extension View {
     /// vì vạch của iOS nằm sát mép trên, không dời xuống được.
     /// Không vẽ vạch ngang nữa: bảng không phủ kín màn hình (mép trên lộ màn hình phía sau) đã đủ cho biết vuốt xuống là đóng.
     /// Giữ hàm để các chỗ gọi không phải đổi.
-    func sheetGrabber() -> some View { self }
+    func sheetGrabber() -> some View { sheetCorners() }
+
+    /// Bo góc tấm như iOS 26+ (theo đường cong màn hình, ~38 pt) trên cả iOS cũ (mặc định chỉ ~10 pt)
+    @ViewBuilder func sheetCorners() -> some View {
+        if #available(iOS 26.0, *) { self } else { presentationCornerRadius(38) }
+    }
 }
 
 struct SheetGrabber: View {

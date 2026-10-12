@@ -140,6 +140,7 @@ struct EntryView: View {
         .sheet(isPresented: $choosingBank) {
             BankChooser { id in store.appId = id; choosingBank = false }
                 .presentationDetents([.large])
+                .sheetCorners()
         }
         .sheet(isPresented: $pickingDate) {
             DateSheet(when: $when).sheetGrabber()
@@ -267,7 +268,7 @@ struct EntryView: View {
                             .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                         }
                         .buttonStyle(Pressable())
-                        .softScrollEdge(zone: 16)
+                        .softScrollEdge(zone: 40, radius: 7)
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn

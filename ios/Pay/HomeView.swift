@@ -115,11 +115,11 @@ struct HomeView: View {
         }) {
             ScannerView { code in scanned = code; scanning = false }
         }
-        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store) }
-        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store) }
-        .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store) }
-        .sheet(isPresented: $showStats) { StatsView().environmentObject(store) }
-        .sheet(isPresented: $showHouse) { HouseView().environmentObject(store) }
+        .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store).sheetCorners() }
+        .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store).sheetCorners() }
+        .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store).sheetCorners() }
+        .sheet(isPresented: $showStats) { StatsView().environmentObject(store).sheetCorners() }
+        .sheet(isPresented: $showHouse) { HouseView().environmentObject(store).sheetCorners() }
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store).sheetGrabber() }

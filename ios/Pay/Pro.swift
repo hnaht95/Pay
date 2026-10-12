@@ -182,6 +182,7 @@ struct ProPaywall: View {
         let vc = UIHostingController(rootView: ProPaywall(feature: f))
         vc.modalPresentationStyle = .pageSheet
         vc.sheetPresentationController?.prefersGrabberVisible = false   // như các bảng khác của app: không có vạch kéo
+        if #unavailable(iOS 26.0) { vc.sheetPresentationController?.preferredCornerRadius = 38 }
         top.present(vc, animated: true)
     }
 

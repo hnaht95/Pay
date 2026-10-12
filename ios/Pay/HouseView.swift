@@ -115,6 +115,7 @@ struct HouseView: View {
                 bankFor = nil
                 if let t { Task { await house.payNow(t, app: store.bankApp) } }
             }
+            .sheetCorners()
         }
         .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
             TextField(L("Tên"), text: $newMember)
@@ -274,7 +275,7 @@ struct HouseView: View {
             }
         }
         .padding(.top, 14).padding(.bottom, 14)
-        .sheet(isPresented: $showInbox) { inbox }
+        .sheet(isPresented: $showInbox) { inbox.sheetCorners() }
         .sheet(item: $editingGroup) { HouseGroupEditor(group: $0).sheetGrabber() }
     }
 

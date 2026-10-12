@@ -1243,11 +1243,6 @@ struct HouseSpendEditor: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Bảng có vạch ngang, vuốt xuống là đóng: không cần nút quay lại
-            Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 26)
-
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -1322,14 +1317,23 @@ struct HouseSpendEditor: View {
                     .id("shares")
 
                     if editing == nil, let mine = myShare, mine > 0 {   // sửa khoản cũ: không ghi thêm vào chi tiêu cá nhân
-                        Toggle(isOn: $logMine) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(L("Ghi %@ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
-                                Text(L("Thống kê và ngân sách chỉ tính phần của bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
+                        // Cùng kiểu với các dòng chia tiền phía trên: nền xám trung tính nhạt, dấu tích bên phải (không dùng công tắc xanh của iOS)
+                        Button { logMine.toggle() } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(L("Ghi %@ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
+                                    Text(L("Thống kê và ngân sách chỉ tính phần của bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
+                                }
+                                .multilineTextAlignment(.leading)
+                                Spacer(minLength: 8)
+                                tick(logMine)
                             }
+                            .padding(.leading, 16).padding(.trailing, 14).padding(.vertical, 14)
+                            .foregroundStyle(.primary)
+                            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
-                        .padding(16)
-                        .background(Palette.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .buttonStyle(Pressable())
+                        .accessibilityAddTraits(logMine ? .isSelected : [])
                         .padding(.top, 18)
                     }
                 }
@@ -1341,19 +1345,12 @@ struct HouseSpendEditor: View {
             }
             // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
             .padding(.horizontal, -18)
-            // Mép trên, ngay dưới tiêu đề: nội dung cuộn lên bị nhoè và tan dần vào nền, không bị cắt ngang (như mép trên các màn khác).
-            // Tự làm bằng lớp kính mờ, cùng kiểu với lớp sau hai nút Huỷ / Lưu
-            .overlay(alignment: .top) {
-                ZStack {
-                    Rectangle().fill(.ultraThinMaterial)
-                    LinearGradient(stops: [.init(color: Palette.surface, location: 0), .init(color: Palette.surface.opacity(0.7), location: 0.4),
-                                           .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                }
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45), .init(color: .clear, location: 1)],
-                                     startPoint: .top, endPoint: .bottom))
-                .frame(height: 30)
-                .padding(.horizontal, -18)
-                .allowsHitTesting(false)
+            // Tiêu đề ghim ở mép trên vùng cuộn; nội dung cuộn lên chui xuống dưới và bị nhoè như mép trên các màn khác
+            // (Lịch sử, Thống kê, Cài đặt): cùng hiệu ứng mép cuộn mềm của hệ thống. Bảng có vạch ngang, vuốt xuống là đóng
+            .softTitleBar {
+                Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 26).padding(.bottom, 6)
             }
             // Bàn phím số ẩn đi thì thôi gõ số riêng: lần hiện sau lại gõ tổng tiền
             .onChange(of: padShown) { _, on in if !on { target = nil } }
@@ -1508,6 +1505,16 @@ struct HouseSpendEditor: View {
         .buttonStyle(Pressable())
     }
 
+    /// Dấu tích tự vẽ cho đều nét: vòng tròn đặc 14pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
+    private func tick(_ on: Bool) -> some View {
+        ZStack {
+            Circle().fill(on ? Palette.cta : .clear)
+            Circle().strokeBorder(Color.primary.opacity(on ? 0 : 0.25), lineWidth: 1.2)
+            if on { Image(systemName: "checkmark").font(.system(size: 7, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
+        }
+        .frame(width: 14, height: 14)
+    }
+
     /// Một người trong phần chia tiền: dòng trọn bề ngang. Chạm dòng: chọn / bỏ. Chạm ô số tiền: gõ số riêng của người đó
     private func shareRow(_ m: HouseMember) -> some View {
         let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
@@ -1542,13 +1549,7 @@ struct HouseSpendEditor: View {
                 .buttonStyle(Pressable())
                 .accessibilityLabel(L("Số tiền riêng của %@", m.name))
             }
-            // Dấu tích tự vẽ cho đều nét: vòng tròn đặc 14pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
-            ZStack {
-                Circle().fill(on ? Palette.cta : .clear)
-                Circle().strokeBorder(Color.primary.opacity(on ? 0 : 0.25), lineWidth: 1.2)
-                if on { Image(systemName: "checkmark").font(.system(size: 7, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
-            }
-            .frame(width: 14, height: 14)
+            tick(on)
         }
         .padding(.leading, 8).padding(.trailing, 14).frame(height: 54)
         // Nền xám trung tính rất nhạt, cùng màu ô ghi chú (nền xám xanh của thẻ nhìn nặng); người không chọn thì mờ đi
@@ -1676,3 +1677,34 @@ private struct PinnedHeader<H: View>: ViewModifier {
     }
 }
 
+
+private extension View {
+    /// Ghim tiêu đề ở mép trên vùng cuộn. iOS 26: safeAreaBar + mép cuộn mềm của hệ thống (nội dung chui xuống dưới bị nhoè).
+    /// iOS cũ: tiêu đề trên nền đặc, bên dưới có một dải tan dần vào nền
+    @ViewBuilder func softTitleBar<T: View>(@ViewBuilder _ title: () -> T) -> some View {
+        if #available(iOS 26.0, *) {
+            // Mép nhoè của hệ thống khá nhẹ: nội dung cuộn lên vẫn lộ mờ mờ phía trên tiêu đề. Phủ thêm màu nền đặc ở trên cùng,
+            // nhạt dần xuống ngang chân tiêu đề (như đầu trang màn Nhóm chung), phần nhoè của hệ thống lo đoạn chuyển tiếp
+            safeAreaBar(edge: .top, spacing: 0) {
+                title().background {
+                    LinearGradient(stops: [.init(color: Palette.surface, location: 0), .init(color: Palette.surface, location: 0.5),
+                                           .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                        .padding(.horizontal, -18)
+                        .allowsHitTesting(false)
+                }
+            }
+            .scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            safeAreaInset(edge: .top, spacing: 0) {
+                title().background(alignment: .top) {
+                    VStack(spacing: 0) {
+                        Palette.surface
+                        LinearGradient(colors: [Palette.surface, Palette.surface.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 18)
+                    }
+                    .padding(.horizontal, -18).padding(.bottom, -18)
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+    }
+}

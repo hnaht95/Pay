@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import Photos
 import PhotosUI
 import SwiftUI
 
@@ -311,7 +312,9 @@ struct ReceiptCamera: View {
         let r = aspect.value, f = filter
         cam.capture { img in
             guard let img else { finish(nil); return }
-            finish(CamFilter.develop(img, ratio: r, filter: f))
+            let out = CamFilter.develop(img, ratio: r, filter: f)
+            if UserDefaults.standard.object(forKey: CamFilter.saveKey) as? Bool ?? true { CamFilter.saveToPhotos(out) }
+            finish(out)
         }
     }
 
@@ -370,6 +373,17 @@ enum CamFilter: String, CaseIterable {
     }
 
     nonisolated(unsafe) static let context = CIContext()
+
+    /// Cài đặt: lưu ảnh chụp trong Pay vào app Ảnh (mặc định bật, như app máy ảnh)
+    static let saveKey = "cam.saveToPhotos"
+
+    /// Chỉ xin quyền thêm ảnh (không đọc thư viện); bị từ chối thì thôi, ảnh vẫn đính kèm khoản chi
+    static func saveToPhotos(_ img: UIImage) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { s in
+            guard s == .authorized || s == .limited else { return }
+            PHPhotoLibrary.shared().performChanges { PHAssetChangeRequest.creationRequestForAsset(from: img) }
+        }
+    }
 
     /// Ảnh chụp: xoay đúng chiều, cắt giữa theo tỉ lệ khung (khung xem là phần giữa của cảm biến), rồi qua bộ lọc
     static func develop(_ src: UIImage, ratio: CGFloat, filter: CamFilter) -> UIImage {

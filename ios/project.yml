@@ -48,6 +48,7 @@ targets:
         NSCameraUsageDescription: Pay dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.
         NSMicrophoneUsageDescription: Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
         NSSpeechRecognitionUsageDescription: Pay chuyển giọng nói thành chữ để ghi khoản chi.
+        NSPhotoLibraryAddUsageDescription: Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false

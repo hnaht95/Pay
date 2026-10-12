@@ -21,6 +21,7 @@ struct SettingsView: View {
     /// Ngôn ngữ đang chọn trong Cài đặt
     @State private var lang = Lang.current
     @AppStorage(Appearance.key) private var appearanceRaw = Appearance.system.rawValue
+    @AppStorage(CamFilter.saveKey) private var saveShots = true
     private var appearance: Appearance {
         get { Appearance(rawValue: appearanceRaw) ?? .system }
         nonmutating set { appearanceRaw = newValue.rawValue }
@@ -322,6 +323,7 @@ struct SettingsView: View {
                 }), displayedComponents: .hourAndMinute) { row(L("Giờ nhắc")) }
             }
             NavigationLink { ApplePayHelp() } label: { row(L("Tự ghi khi trả Apple Pay")) }
+            Toggle(isOn: $saveShots) { row(L("Lưu ảnh chụp vào app Ảnh")) }
         } header: {
             Text(L("Tự động"))
         } footer: {

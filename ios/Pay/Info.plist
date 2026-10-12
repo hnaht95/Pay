@@ -79,6 +79,8 @@
 	<string>Pay dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Pay chuyển giọng nói thành chữ để ghi khoản chi.</string>
 	<key>UIBackgroundModes</key>

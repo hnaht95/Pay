@@ -1133,10 +1133,8 @@ struct CategoryBreakdown: View {
     let total: Int
     let top: [(Category, Int)]
 
-    /// Màu đoạn / chấm: màu danh mục; Tối giản (danh mục không màu) thì các nấc đen xám theo thứ hạng, lớn nhất đậm nhất
-    static func tone(_ c: Category, rank: Int) -> Color {
-        Appearance.minimalOn ? Color.primary.opacity(max(0.15, 0.85 - Double(rank) * 0.17)) : c.color
-    }
+    /// Màu đoạn / chấm: luôn là màu đã chọn của danh mục, kể cả ở Tối giản (ô danh mục không màu nhưng biểu đồ vẫn cần màu)
+    static func tone(_ c: Category, rank: Int) -> Color { c.baseColor }
 
     var body: some View {
         let rest = max(0, total - top.map(\.1).reduce(0, +))

@@ -205,10 +205,12 @@ struct HouseView: View {
                     // Phim: cùng các mốc ấy, bằng dải màu đặc (xem FilmFade)
                     FilmFade(color: Palette.bg, stops: [(0, 1), (0.3, 1), (0.6, 0.6), (1, 0)], height: 170)
                 } else {
-                    LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.3),
-                                           .init(color: Palette.bg.opacity(0.6), location: 0.6), .init(color: Palette.bg.opacity(0), location: 1)],
+                    // iOS cũ hơn 26: gọn và trong như mép mềm của iOS 26+, cùng dải màu sau hai nút ở trang chủ (trước: dải đặc
+                    // cao 170 trông đục)
+                    LinearGradient(stops: [.init(color: Palette.bg.opacity(0.9), location: 0), .init(color: Palette.bg.opacity(0.7), location: 0.35),
+                                           .init(color: Palette.bg.opacity(0.3), location: 0.7), .init(color: Palette.bg.opacity(0), location: 1)],
                                    startPoint: .bottom, endPoint: .top)
-                        .frame(height: 170)
+                        .frame(height: 120)
                 }
             }
             .ignoresSafeArea()

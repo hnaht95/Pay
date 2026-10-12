@@ -53,6 +53,15 @@ struct HistoryView: View {
                 }
                 ForEach(groups, id: \.0) { day, list in
                     Section {
+                        // Tiêu đề ngày là một dòng thường, cuộn đi cùng danh sách (tiêu đề nhóm của List kiểu plain dính ở đầu
+                        // màn khi cuộn, nền trong suốt nên chồng lên nhau và lên khoản đang cuộn qua)
+                        HStack {
+                            Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))")
+                        }
+                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+                        .padding(.top, 14).padding(.bottom, 2)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+                        .listRowBackground(Color.clear).listRowSeparator(.hidden)
                         ForEach(list) { e in
                             // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
                             TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
@@ -60,12 +69,6 @@ struct HistoryView: View {
                             }
                             .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                         }
-                    } header: {
-                        HStack {
-                            Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))")
-                        }
-                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
-                        .textCase(nil)
                     }
                     .listSectionSeparator(.hidden)
                 }

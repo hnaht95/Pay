@@ -25,8 +25,23 @@ enum ReceiptPhotos {
 
     private static func name(_ id: String) -> String { id + ".jpg" }
 
+    /// Ảnh nhỏ (vuông, 168 px) làm ô biểu tượng ở danh sách khoản chi; giữ trong bộ nhớ
+    nonisolated(unsafe) private static let thumbs = NSCache<NSString, UIImage>()
+
+    static func thumb(_ id: String) async -> UIImage? {
+        if let t = thumbs.object(forKey: id as NSString) { return t }
+        guard has(id), let img = await load(id) else { return nil }
+        let side: CGFloat = 168, s = max(side / img.size.width, side / img.size.height)
+        let size = CGSize(width: img.size.width * s, height: img.size.height * s)
+        let t = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }())
+            .image { _ in img.draw(in: CGRect(x: (side - size.width) / 2, y: (side - size.height) / 2, width: size.width, height: size.height)) }
+        thumbs.setObject(t, forKey: id as NSString)
+        return t
+    }
+
     /// Thu nhỏ cạnh dài còn 1600 px, nén JPEG chất lượng 0,6
     static func save(_ image: UIImage, id: String) {
+        thumbs.removeObject(forKey: id as NSString)
         let maxSide: CGFloat = 1600
         let scale = min(1, maxSide / max(image.size.width, image.size.height))
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
@@ -65,6 +80,7 @@ enum ReceiptPhotos {
     }
 
     static func remove(_ id: String) {
+        thumbs.removeObject(forKey: id as NSString)
         try? fm.removeItem(at: localDir.appendingPathComponent(name(id)))
         cloudIndex.remove(id)
         DispatchQueue.global(qos: .utility).async {

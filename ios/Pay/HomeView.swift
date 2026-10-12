@@ -703,6 +703,7 @@ struct ExpenseRow: View {
     /// Danh mục của khoản, lấy sẵn lúc dựng hàng chứ không đọc trong body: Category.custom / edited là biến static, SwiftUI
     /// không theo dõi, nên phải là một đầu vào thì sửa / xoá danh mục xong hàng mới vẽ lại
     private let c: Category
+    @State private var thumb: UIImage?
 
     init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false) {
         self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats
@@ -712,10 +713,21 @@ struct ExpenseRow: View {
     var body: some View {
         HStack(spacing: 14) {
             // Ô vuông nền trắng như ô danh mục; bo đồng tâm với thẻ (bo thẻ trừ khoảng cách tới mép)
-            CategoryBadge(c: c, side: 56, radius: Self.radius - Self.inset)
-                // Có ảnh hoá đơn đính kèm: chấm xanh lá (màu icon app) ở góc trên phải ô biểu tượng, viền màu thẻ cho tách nền
+            // Có ảnh hoá đơn đính kèm: ảnh đó làm ô biểu tượng (cùng khung bo góc)
+            Group {
+                if let thumb {
+                    Image(uiImage: thumb).resizable().scaledToFill()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
+                        .accessibilityLabel(L("Có ảnh hoá đơn"))
+                } else {
+                    CategoryBadge(c: c, side: 56, radius: Self.radius - Self.inset)
+                }
+            }
+            .task(id: "\(e.id)\(e.u ?? 0)") { thumb = await ReceiptPhotos.thumb(e.id) }
+                // Có ảnh hoá đơn mà chưa tải được ảnh: chấm xanh lá (màu icon app) ở góc trên phải ô biểu tượng, viền màu thẻ cho tách nền
                 .overlay(alignment: .topTrailing) {
-                    if ReceiptPhotos.has(e.id) {
+                    if thumb == nil, ReceiptPhotos.has(e.id) {
                         // Vòng màu thẻ vẽ dưới, chấm xanh nhỏ hơn đè lên giữa: vẽ viền đè lên chấm xanh cùng cỡ thì mép xanh
                         // (khử răng cưa) lộ ra ngoài viền thành một vệt mảnh
                         Circle().fill(Palette.card).frame(width: 12, height: 12)

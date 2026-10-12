@@ -260,7 +260,7 @@ extension FilmExport {
                         .offset(y: ((1 - entryUp) * size.height).rounded())
                     }
                     if scanner > 0 {
-                        FilmCamera(shop: shop, aim: aim, flash: flash)
+                        FilmCamera(shop: shop, t: t, aim: aim, lock: ease(t, found - 0.55, found - 0.05), flash: flash)
                             .offset(y: ((1 - scanner) * size.height).rounded())
                     }
                     if bank > 0 {
@@ -281,37 +281,54 @@ extension FilmExport {
     }
 }
 
-/// Máy quét trong phim: không có camera, vẽ tấm biển mã QR của quán trước nền tối; `aim` 0…1 là đưa máy tới
-/// đúng khung, `flash` là lúc bắt được mã (viền khung xanh lên).
+/// Máy quét trong phim, như nhìn qua camera thật: tấm biển mã QR bằng mica trên mặt bàn gỗ của quán, ly trà đá bên cạnh,
+/// tường phía sau tối dần, góc ảnh tối như ống kính. Máy cầm tay: khung hình rung nhẹ và tiến lại gần (`aim` 0…1),
+/// càng gần càng đứng yên; khi mã vào khung thì góc ngắm vàng bám theo mã (`lock` 0…1), bắt được thì xanh và loé (`flash`).
 private struct FilmCamera: View {
     let shop: String
+    let t: Double
     let aim: CGFloat
+    let lock: CGFloat
     let flash: CGFloat
 
     var body: some View {
         let size = FilmScreen<EmptyView>.size, side = size.width * 0.68
         let center = CGPoint(x: size.width / 2, y: size.height * 0.45)
+        // Tay cầm máy: lắc theo vài nhịp chồng lên nhau, nhỏ dần khi đã ngắm trúng
+        let shake = 1 - 0.85 * aim
+        let jx = (sin(t * 5.3) * 6 + sin(t * 11.7) * 2.5) * shake, jy = (cos(t * 4.1) * 5 + sin(t * 9.3) * 2) * shake
+        let tilt = (sin(t * 3.2) * 1.4) * Double(shake)
+        // Tiến lại gần: cả cảnh to dần, tấm biển từ lệch dưới phải vào giữa khung
+        let zoom = 0.8 + 0.27 * aim
+        let standeeAt = CGPoint(x: center.x + 64 * (1 - aim), y: center.y + 96 * (1 - aim))
+        // Chỗ mã QR trên màn hình: theo tấm biển (mã nằm giữa biển, lệch lên một chút) và độ to của cả cảnh
+        let qrSide = Self.qrSide * zoom
+        let qrCenter = CGPoint(x: (standeeAt.x - center.x) * zoom + center.x + jx,
+                               y: (standeeAt.y - center.y) * zoom + center.y + jy + Self.qrOffsetY * zoom)
         ZStack {
-            // "Mặt quầy": nền tối ấm, vài mảng sáng mờ
-            LinearGradient(colors: [Color(hex: 0x3A2B22), Color(hex: 0x1B1512)], startPoint: .top, endPoint: .bottom)
-            Circle().fill(Color(hex: 0x5A4232)).frame(width: 420).offset(x: -150, y: -300).opacity(0.5)
-            Circle().fill(Color(hex: 0x4A3628)).frame(width: 360).offset(x: 170, y: 330).opacity(0.5)
-            // Tấm biển: lúc đầu lệch và nhỏ, đưa máy tới thì vào giữa khung
-            standee
-                .scaleEffect(0.78 + 0.22 * aim)
-                .rotationEffect(.degrees(Double(-7 * (1 - aim))))
-                .position(x: center.x + 70 * (1 - aim), y: center.y + 120 * (1 - aim))
-            // Khung ngắm: ngoài khung phủ tối (tô chẵn lẻ, PDF vẽ được), viền trắng, bắt được mã thì xanh
+            Color(hex: 0x241A14)
+            scene(size: size, standeeAt: standeeAt)
+                .scaleEffect(zoom, anchor: UnitPoint(x: center.x / size.width, y: center.y / size.height))
+                .rotationEffect(.degrees(tilt))
+                .offset(x: jx, y: jy)
+            vignette(size)
+            // Khung ngắm của Pay: ngoài khung phủ tối (tô chẵn lẻ, PDF vẽ được), viền trắng, bắt được mã thì xanh
             Path { p in
                 p.addRect(CGRect(origin: .zero, size: size))
                 p.addRoundedRect(in: CGRect(x: center.x - side / 2, y: center.y - side / 2, width: side, height: side),
                                  cornerSize: CGSize(width: 36, height: 36), style: .continuous)
             }
-            .fill(Color.black.opacity(0.72), style: FillStyle(eoFill: true))
+            .fill(Color.black.opacity(0.62), style: FillStyle(eoFill: true))
             RoundedRectangle(cornerRadius: 36, style: .continuous)
                 .strokeBorder(flash > 0 ? Palette.goodInk : .white.opacity(0.9), lineWidth: 3 + 2 * flash)
                 .frame(width: side, height: side).position(center)
-            Color.white.opacity(0.35 * Double(flash))
+            // Góc ngắm bám theo mã: hiện dần, co về đúng mép mã, bắt được thì đổi xanh
+            if lock > 0 {
+                let pad = 18 * (1 - lock) + 6
+                brackets(side: qrSide + pad * 2, color: flash > 0 ? Palette.goodInk : Color(hex: 0xFFD60A))
+                    .position(qrCenter).opacity(Double(min(1, lock * 2)))
+            }
+            Color.white.opacity(0.3 * Double(flash))
             VStack {
                 Text(L("Đưa mã QR của quán vào khung"))
                     .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
@@ -322,16 +339,121 @@ private struct FilmCamera: View {
             }
         }
         .frame(width: size.width, height: size.height)
+        .clipped()
     }
 
-    private var standee: some View {
-        VStack(spacing: 10) {
-            Text(shop).font(.system(size: 19, weight: .bold)).foregroundStyle(Color(hex: 0x1D1D1F))
-            if let img = Self.code { Image(uiImage: img).interpolation(.none).resizable().frame(width: 170, height: 170) }
-            Text("VietQR · NAPAS 247").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color(hex: 0x8A8A8E))
+    // MARK: Cảnh trong quán
+
+    /// Cảnh vẽ rộng hơn màn hình (máy lắc, nghiêng, thu nhỏ vẫn phủ kín): toạ độ trên màn hình cộng thêm (dx, dy)
+    private func scene(size screen: CGSize, standeeAt s: CGPoint) -> some View {
+        let size = CGSize(width: screen.width * 1.7, height: screen.height * 1.5)
+        let dx = (size.width - screen.width) / 2, dy = (size.height - screen.height) / 2
+        let standeeAt = CGPoint(x: s.x + dx, y: s.y + dy)
+        let tableTop = screen.height * 0.56 + dy
+        return ZStack(alignment: .topLeading) {
+            // Tường quán: ấm, tối dần lên trên; vài mảng đèn mờ phía xa
+            LinearGradient(colors: [Color(hex: 0x241A14), Color(hex: 0x5B4433), Color(hex: 0x6E5440)], startPoint: .top, endPoint: .bottom)
+            Circle().fill(Color(hex: 0xF3C98B)).frame(width: 150).position(x: 70 + dx, y: 150 + dy).opacity(0.18)
+            Circle().fill(Color(hex: 0xF3C98B)).frame(width: 90).position(x: 330 + dx, y: 110 + dy).opacity(0.14)
+            Circle().fill(Color(hex: 0xF3C98B)).frame(width: 60).position(x: 250 + dx, y: 230 + dy).opacity(0.1)
+            // Mặt bàn gỗ: các tấm ván, vân gỗ mảnh, mép bàn sáng
+            table(size: size, top: tableTop)
+            // Ly trà đá bên trái, sau tấm biển
+            iceTea.position(x: standeeAt.x - 128, y: standeeAt.y + 70)
+            // Bóng tấm biển trên mặt bàn, rồi tấm biển
+            Ellipse().fill(Color.black.opacity(0.35)).frame(width: 230, height: 34).position(x: standeeAt.x + 14, y: standeeAt.y + 168)
+            standee.position(standeeAt)
         }
-        .padding(18)
-        .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .frame(width: size.width, height: size.height)
+        .position(x: screen.width / 2, y: screen.height / 2)
+        .frame(width: screen.width, height: screen.height)
+    }
+
+    private func table(size: CGSize, top: CGFloat) -> some View {
+        let planks = 7
+        return ZStack(alignment: .topLeading) {
+            ForEach(0..<planks, id: \.self) { i in
+                let h = (size.height - top) / CGFloat(planks)
+                let tone = [0xA0714A, 0x96683F, 0xA87850, 0x8F6239, 0x9C6D45, 0xA4744C, 0x93653C][i]
+                Rectangle().fill(Color(hex: UInt32(tone))).frame(width: size.width, height: h + 1).offset(y: top + CGFloat(i) * h)
+                // Vân gỗ: vài đường cong mảnh trên mỗi tấm
+                Path { p in
+                    for k in 0..<3 {
+                        let y = top + CGFloat(i) * h + h * (0.25 + 0.25 * CGFloat(k))
+                        p.move(to: CGPoint(x: -10, y: y))
+                        p.addCurve(to: CGPoint(x: size.width + 10, y: y + CGFloat((i + k) % 3 - 1) * 4),
+                                   control1: CGPoint(x: size.width * 0.3, y: y - 5), control2: CGPoint(x: size.width * 0.7, y: y + 6))
+                    }
+                }
+                .stroke(Color.black.opacity(0.09), lineWidth: 1)
+                Rectangle().fill(Color.black.opacity(0.18)).frame(width: size.width, height: 1).offset(y: top + CGFloat(i + 1) * h)
+            }
+            Rectangle().fill(Color(hex: 0xC9976A)).frame(width: size.width, height: 3).offset(y: top)
+        }
+    }
+
+    private var iceTea: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: 0xC27A2C).opacity(0.85)).frame(width: 74, height: 120)
+            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.22)).frame(width: 74, height: 30).offset(y: -45)
+            ForEach(0..<4, id: \.self) { k in
+                RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.35)).frame(width: 18, height: 16)
+                    .offset(x: CGFloat([-16, 12, -6, 16][k]), y: CGFloat([-36, -30, -18, -6][k])).rotationEffect(.degrees(Double(k * 17)))
+            }
+            Rectangle().fill(Color.white.opacity(0.3)).frame(width: 6, height: 108).offset(x: -26)
+            RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color.white.opacity(0.45), lineWidth: 2).frame(width: 74, height: 120)
+        }
+    }
+
+    /// Tấm biển mica: khung trong dày, tấm in trắng bên trong, chân đế tối
+    private var standee: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 8) {
+                Text(shop).font(.system(size: 19, weight: .heavy)).foregroundStyle(Color(hex: 0xB0302A))
+                Text(Lang.isEnglish ? "Scan to pay" : "Quét mã để thanh toán").font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x3A3A3C))
+                if let img = Self.code { Image(uiImage: img).interpolation(.none).resizable().frame(width: Self.qrSide, height: Self.qrSide) }
+                Text("COM TAM BA NAM").font(.system(size: 13, weight: .bold)).foregroundStyle(Color(hex: 0x1D1D1F))
+                Text("0071 000 123 456").font(.system(size: 12, weight: .medium)).foregroundStyle(Color(hex: 0x6E6E73))
+            }
+            .padding(.horizontal, 18).padding(.vertical, 16)
+            .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .padding(9)
+            .background(Color.white.opacity(0.28), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.6), lineWidth: 1.5))
+            // Chân đế
+            UnevenRoundedRectangle(topLeadingRadius: 4, bottomLeadingRadius: 8, bottomTrailingRadius: 8, topTrailingRadius: 4, style: .continuous)
+                .fill(Color(hex: 0x2C2C2E)).frame(width: 214, height: 18)
+        }
+    }
+
+    private func vignette(_ size: CGSize) -> some View {
+        // Góc tối như ống kính: các vòng đồng tâm, ngoài đậm trong nhạt
+        ZStack {
+            ForEach(0..<6, id: \.self) { i in
+                let r = size.height * (0.62 + 0.08 * CGFloat(i))
+                Path { p in
+                    p.addRect(CGRect(origin: .zero, size: size))
+                    p.addEllipse(in: CGRect(x: size.width / 2 - r * 0.62, y: size.height * 0.45 - r * 0.55, width: r * 1.24, height: r * 1.1))
+                }
+                .fill(Color.black.opacity(0.07), style: FillStyle(eoFill: true))
+            }
+        }
+    }
+
+    private func brackets(side: CGFloat, color: Color) -> some View {
+        let arm = side * 0.22
+        return Path { p in
+            let h = side / 2
+            for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+                let c = CGPoint(x: h + CGFloat(sx) * h, y: h + CGFloat(sy) * h)
+                p.move(to: CGPoint(x: c.x, y: c.y - CGFloat(sy) * arm))
+                p.addLine(to: c)
+                p.addLine(to: CGPoint(x: c.x - CGFloat(sx) * arm, y: c.y))
+            }
+        }
+        .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+        .frame(width: side, height: side)
     }
 
     private func pill(_ s: String) -> some View {
@@ -339,6 +461,10 @@ private struct FilmCamera: View {
             .frame(maxWidth: .infinity, minHeight: 68)
             .background(.white.opacity(0.18), in: Capsule())
     }
+
+    /// Cạnh mã QR trên biển, và mã lệch lên khỏi tâm biển bao nhiêu (theo bố cục của `standee`)
+    static let qrSide: CGFloat = 150
+    static let qrOffsetY: CGFloat = -8
 
     /// Mã QR vẽ trên biển: chỉ chứa đường dẫn tới trang của Pay, không phải mã chuyển tiền thật
     static let code: UIImage? = {

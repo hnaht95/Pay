@@ -17,25 +17,6 @@ struct HistoryView: View {
         NavigationStack {
             let groups = grouped()
             List {
-                // Ô tìm tự vẽ, cùng kiểu ô ghi chú ở màn nhập (nền nhạt bo 18, không viền, không bóng) thay cho thanh tìm của iOS
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium)).foregroundStyle(.secondary)
-                    TextField(L("Tìm khoản chi"), text: $query)
-                        .font(.system(size: 17))
-                        .focused($searching)
-                        .submitLabel(.search)
-                        .autocorrectionDisabled()
-                    if !query.isEmpty {
-                        Button { query = "" } label: {
-                            Image(systemName: "xmark.circle.fill").font(.system(size: 17)).foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 16).padding(.vertical, 14)
-                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
-                .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 // Đang tìm: một dòng tổng của các khoản tìm được
                 if !query.isEmpty, !groups.isEmpty {
                     let found = groups.flatMap(\.1)
@@ -80,15 +61,35 @@ struct HistoryView: View {
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
-            // Tiêu đề tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS):
-            // khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tiêu đề tới ô tìm kiếm
+            // Tiêu đề và ô tìm tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS);
+            // nội dung cuộn lên chui xuống dưới ô tìm, nhoè dần. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)
             .softTitleBar(plain: true) {
-                Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                    // Đo trên máy ảo (iOS 18 và 27): thanh tiêu đề bắt đầu ngay mép tấm, lề trên 20 + dưới 14 (cộng khoảng của ô tìm
-                    // kiếm) cho khoảng trên và dưới chữ đều ~20 pt
-                    .padding(.top, Self.titleTop).padding(.bottom, 14)
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { titleEdge = $0 }
+                VStack(spacing: 0) {
+                    Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, Self.titleTop).padding(.bottom, 18)
+                    // Ô tìm tự vẽ, cùng kiểu ô ghi chú ở màn nhập (nền nhạt bo 18, không viền, không bóng) thay cho thanh tìm của iOS
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium)).foregroundStyle(.secondary)
+                        TextField(L("Tìm khoản chi"), text: $query)
+                            .font(.system(size: 17))
+                            .focused($searching)
+                            .submitLabel(.search)
+                            .autocorrectionDisabled()
+                        if !query.isEmpty {
+                            Button { query = "" } label: {
+                                Image(systemName: "xmark.circle.fill").font(.system(size: 17)).foregroundStyle(.tertiary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 14)
+                    // Nền đục (màu nền tấm + lớp nhạt): nội dung cuộn chui xuống dưới không lộ qua ô
+                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+                }
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { titleEdge = $0 }
             }
             .toolbar(.hidden, for: .navigationBar)
         }

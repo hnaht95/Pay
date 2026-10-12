@@ -254,12 +254,14 @@ const BANKS = { '970436': 'Vietcombank', '970418': 'BIDV', '970415': 'VietinBank
   '422589': 'CIMB', '796500': 'DBSBank', '970406': 'Vikki', '999888': 'VBSP', '970408': 'GPBank', '970463': 'KookminHCM', '970462': 'KookminHN',
   '970457': 'Woori', '970421': 'VRB', '458761': 'HSBC', '970455': 'IBKHN', '970456': 'IBKHCM', '970434': 'IndovinaBank', '970458': 'UnitedOverseas',
   '801011': 'Nonghyup', '970410': 'StandardChartered', '970439': 'PublicBank' };
+// Địa chỉ ảnh đặt trong url('…') của CSS: mã hoá hết dấu nháy, ngoặc, xuống dòng, để không thoát được ra ngoài url() mà chèn CSS khác
+const cssURL = u => encodeURI(String(u)).replace(/['()]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 // extra: CSS thêm cho riêng chỗ gọi (ví dụ canh giữa), nối vào cùng một thuộc tính style
 function avatar(m, size, extra = '') {
   const name = m?.name || '?', id = m?.id || '?';
   const init = (name.trim().split(/\s+/).pop() || '?')[0].toUpperCase();
   const st = extra + (size ? `width:${size}px;height:${size}px;font-size:${size * .42}px;` : '') +
-    (m?.photo ? `background-image:url('${esc(m.photo)}')` : `background-color:${TONES[stableHash(id) % TONES.length]}`);
+    (m?.photo ? `background-image:url('${esc(cssURL(m.photo))}')` : `background-color:${TONES[stableHash(id) % TONES.length]}`);
   return `<div class="av" style="${st}">${m?.photo ? '' : esc(init)}</div>`;
 }
 function day(t) {

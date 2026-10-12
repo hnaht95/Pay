@@ -1741,13 +1741,14 @@ extension View {
     /// plain: như trang chủ, không phủ nền đặc sau tiêu đề; nội dung cuộn lên chỉ nhoè dần dưới tiêu đề
     @ViewBuilder func softTitleBar<T: View>(plain: Bool = false, @ViewBuilder _ title: () -> T) -> some View {
         if plain {
-            // Như mép trên trang chủ: chỉ phủ nhẹ màu nền (đậm ở trên, tan dần quá chân tiêu đề), nội dung trôi lên vẫn thấy nhoè
-            // nhoè. Nhoè: iOS 26+ do mép cuộn mềm của hệ thống; iOS cũ do từng dòng tự nhoè (titleEdgeBlur)
-            let tint = LinearGradient(stops: [.init(color: Palette.surface.opacity(0.85), location: 0),
-                                              .init(color: Palette.surface.opacity(0.6), location: 0.55),
-                                              .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                .padding(.horizontal, -18).padding(.bottom, -18)
-                .allowsHitTesting(false)
+            // Nền đặc suốt thanh (nội dung không lộ sau tiêu đề, ô tìm), chỉ một dải ngắn dưới chân thanh tan dần: nội dung trôi
+            // lên mờ dần ở đó rồi chui hẳn xuống. Nhoè: iOS 26+ do mép cuộn mềm của hệ thống; iOS cũ do từng dòng tự nhoè (titleEdgeBlur)
+            let tint = VStack(spacing: 0) {
+                Palette.surface
+                LinearGradient(colors: [Palette.surface, Palette.surface.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 16)
+            }
+            .padding(.horizontal, -18).padding(.bottom, -16)
+            .allowsHitTesting(false)
             if #available(iOS 26.0, *) {
                 safeAreaBar(edge: .top, spacing: 0) { title().background { tint } }.scrollEdgeEffectStyle(.soft, for: .top)
             } else {

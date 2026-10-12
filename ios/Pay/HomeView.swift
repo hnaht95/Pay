@@ -975,7 +975,8 @@ extension View {
         if #available(iOS 26.0, *) {
             scrollEdgeEffectStyle(.soft, for: .top)
                 .overlay(alignment: .top) {
-                    if let fade {
+                    // home: màu fade chỉ dùng cho dải màu nhẹ của iOS cũ; iOS 26+ để nguyên mép mềm của hệ thống (trong như trang chủ)
+                    if let fade, !home {
                         // Đo chiều cao thanh tiêu đề (vùng an toàn phía trên của vùng cuộn) để phủ đúng từ mép trên bảng xuống
                         // quá chân thanh tiêu đề 22pt: đặc sau tiêu đề, nhạt dần ở đoạn ló xuống
                         GeometryReader { g in

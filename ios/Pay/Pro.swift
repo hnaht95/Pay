@@ -50,8 +50,16 @@ final class Pro: ObservableObject {
         #if DEBUG
         isTestBuild = true
         #else
-        // App Store ký giao dịch môi trường .production; TestFlight là .sandbox, Xcode là .xcode
-        if case .verified(let t) = try? await AppTransaction.shared { isTestBuild = t.environment != .production }
+        // Hoá đơn của bản TestFlight tên là "sandboxReceipt" (bản App Store là "receipt"): đọc tại chỗ, không cần mạng hay
+        // đăng nhập. Trước đây chỉ dựa vào AppTransaction.shared: trên máy người thử nó hay lỗi hoặc không xác minh được
+        // (chưa đăng nhập App Store, mất mạng, chưa có hoá đơn), `try?` nuốt lỗi nên công tắc không bao giờ hiện.
+        if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" { isTestBuild = true; return }
+        // Dự phòng: App Store ký giao dịch môi trường .production; TestFlight là .sandbox, Xcode là .xcode.
+        // Chỉ cần đọc môi trường nên bản chưa xác minh được chữ ký cũng dùng.
+        guard let result = try? await AppTransaction.shared else { return }
+        switch result {
+        case .verified(let t), .unverified(let t, _): isTestBuild = t.environment != .production
+        }
         #endif
     }
 

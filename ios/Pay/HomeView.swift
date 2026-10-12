@@ -443,14 +443,14 @@ struct HomeView: View {
         // Chỉ chuyển dần sang màu nền, không dùng lớp kính mờ: kính mờ cộng lớp màu nền phủ lên trông đục như sữa.
         // Nhiều mốc theo đường cong êm để không thấy vạch ranh giới.
         LinearGradient(stops: [
-            .init(color: Palette.bg, location: 0),
-            .init(color: Palette.bg, location: 0.28),
-            .init(color: Palette.bg.opacity(0.85), location: 0.45),
-            .init(color: Palette.bg.opacity(0.55), location: 0.62),
-            .init(color: Palette.bg.opacity(0.25), location: 0.8),
+            // Gọn và trong như mép mềm của iOS 26+: chỉ phủ nhẹ màu nền tới quá mép trên hai nút một chút, phần nhoè do
+            // từng khối nội dung tự làm (dockBlur). Trước: dải đặc cao 170 trông đục, rộng
+            .init(color: Palette.bg.opacity(0.9), location: 0),
+            .init(color: Palette.bg.opacity(0.7), location: 0.35),
+            .init(color: Palette.bg.opacity(0.3), location: 0.7),
             .init(color: Palette.bg.opacity(0), location: 1),
         ], startPoint: .bottom, endPoint: .top)
-        .frame(height: 170)
+        .frame(height: 120)
         .frame(maxHeight: .infinity, alignment: .bottom)
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -867,13 +867,29 @@ extension View {
     /// theo từng điểm ảnh, càng sát mép trên càng nhoè (shader topEdgeBlur), như iOS 27. Áp cho từng khối nội dung, không áp
     /// lên vùng cuộn / List được (hiệu ứng lớp không vẽ được phần của UIKit)
     @ViewBuilder func topScrollBlur() -> some View {
-        if #available(iOS 27.0, *) { self } else {
-            let safeTop = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 59
+        if #available(iOS 27.0, *) { self } else { topScrollBlurOld().dockBlur() }
+    }
+
+    /// iOS cũ hơn 26: nội dung trôi xuống sau hai nút ở đáy nhoè dần như mép cuộn mềm của iOS 26+ (hệ thống không làm)
+    @ViewBuilder func dockBlur() -> some View {
+        if #available(iOS 26.0, *) { self } else {
+            let screenH = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.height ?? 852
+            // Nhoè hết mức ngang giữa hai nút, nhạt dần trong 60 pt phía trên
+            let edge = screenH - 60
             visualEffect { content, g in
-                let y = g.frame(in: .global).minY
-                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(-y), .float(safeTop + 14), .float(7)),
-                                           maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < safeTop + 14)
+                let f = g.frame(in: .global)
+                return content.layerEffect(ShaderLibrary.bottomEdgeBlur(.float(edge - f.minY), .float(60), .float(6)),
+                                           maxSampleOffset: CGSize(width: 10, height: 10), isEnabled: f.maxY > edge - 60)
             }
+        }
+    }
+
+    private func topScrollBlurOld() -> some View {
+        let safeTop = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 59
+        return visualEffect { content, g in
+            let y = g.frame(in: .global).minY
+            return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(-y), .float(safeTop + 14), .float(7)),
+                                       maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < safeTop + 14)
         }
     }
 

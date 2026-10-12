@@ -1323,7 +1323,7 @@ struct HouseSpendEditor: View {
             .onChange(of: noteFocused) { _, f in if f { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
             // Bàn phím số và hàng nút nổi trên vùng cuộn: nội dung cuộn chui xuống dưới, mép trên của tấm này làm mờ (blur) dần
             // nội dung đang trôi qua, từ đó trở xuống là nền đục
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .softBottomPanel {
                 VStack(spacing: 0) {
 
                 if padShown {
@@ -1353,15 +1353,13 @@ struct HouseSpendEditor: View {
                 }
                 .padding(.bottom, -18)
                 }
-                .padding(.top, 20)
+                .padding(.top, PanelEdge.gap)   // khoảng trống phía trên phím: nội dung cuộn chui vào đây và bị nhoè dần
                 .background {
                     VStack(spacing: 0) {
-                        Rectangle().fill(.ultraThinMaterial)
-                            .mask(LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom))
-                            .overlay(LinearGradient(colors: [Palette.surface.opacity(0), Palette.surface], startPoint: .top, endPoint: .bottom))
-                            .frame(height: 30)
+                        PanelEdge()
                         Palette.surface
                     }
+                    .padding(.top, -PanelEdge.rise)   // dải mờ vươn lên trên tấm, phủ lên phần nội dung đang cuộn
                     .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
                     .ignoresSafeArea(edges: .bottom)
                 }
@@ -1514,6 +1512,42 @@ private struct PinnedHeader<H: View>: ViewModifier {
                         .allowsHitTesting(false)
                 }
             }
+        }
+    }
+}
+
+/// Mép trên của tấm bàn phím số: nội dung cuộn tới đây bị làm nhoè dần rồi mới chìm vào nền đục bên dưới.
+/// iOS 26: nhoè bằng mép cuộn mềm của hệ thống (cùng hiệu ứng với thanh nút ở trang chủ), dải này chỉ để trống phần trên
+/// cho thấy lớp nhoè và ngả sang nền đục ở cuối. iOS cũ: tự làm bằng lớp kính mờ.
+private struct PanelEdge: View {
+    static let gap: CGFloat = 48      // đệm trên của tấm: vùng nhoè (hệ thống nhoè nội dung cuộn nằm dưới tấm, mạnh dần xuống dưới)
+    static let height: CGFloat = 60
+    static let rise: CGFloat = 12     // phần dải nhô lên trên mép tấm; dải kết thúc (đục hẳn) đúng chỗ hết đệm trên
+    var body: some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0.6), .init(color: Palette.surface, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            } else {
+                Rectangle().fill(.ultraThinMaterial)
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.4), .init(color: .black, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .overlay(LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0.55), .init(color: Palette.surface, location: 1)],
+                                            startPoint: .top, endPoint: .bottom))
+            }
+        }
+        .frame(height: Self.height)
+        .allowsHitTesting(false)
+    }
+}
+
+private extension View {
+    /// Gắn tấm ở đáy vùng cuộn. iOS 26: safeAreaBar để hệ thống tự nhoè nội dung cuộn chui xuống dưới tấm.
+    @ViewBuilder func softBottomPanel<P: View>(@ViewBuilder _ panel: () -> P) -> some View {
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom, spacing: 0) { panel() }.scrollEdgeEffectStyle(.soft, for: .bottom)
+        } else {
+            safeAreaInset(edge: .bottom, spacing: 0) { panel() }
         }
     }
 }

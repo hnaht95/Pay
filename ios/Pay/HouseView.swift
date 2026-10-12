@@ -1735,7 +1735,7 @@ private struct PinnedHeader<H: View>: ViewModifier {
 }
 
 
-private extension View {
+extension View {
     /// Ghim tiêu đề ở mép trên vùng cuộn. iOS 26: safeAreaBar + mép cuộn mềm của hệ thống (nội dung chui xuống dưới bị nhoè).
     /// iOS cũ: tiêu đề trên nền đặc, bên dưới có một dải tan dần vào nền
     @ViewBuilder func softTitleBar<T: View>(@ViewBuilder _ title: () -> T) -> some View {

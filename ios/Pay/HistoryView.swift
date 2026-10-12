@@ -74,23 +74,19 @@ struct HistoryView: View {
                 }
             }
             .listStyle(.plain)
-            .softTopEdge()
             .scrollContentBackground(.hidden)
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .background(Palette.surface)
-            .screenTitle(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Đang xem một danh mục: nút + nhập luôn khoản mới vào danh mục đó. Nằm trong thanh tiêu đề để luôn ngang
-                // hàng (giữa theo chiều dọc) với tiêu đề ở mọi bản iOS
-                if let category {
-                    if #available(iOS 26.0, *) {
-                        ToolbarItem(placement: .topBarTrailing) { addButton(category) }.sharedBackgroundVisibility(.hidden)
-                    } else {
-                        ToolbarItem(placement: .topBarTrailing) { addButton(category) }
-                    }
-                }
+            // Tiêu đề tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS):
+            // khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tiêu đề tới ô tìm kiếm
+            .softTitleBar {
+                Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                    // Đo trên máy ảo: iOS 26+ đặt thanh này thấp hơn mép tấm sẵn ~7 pt so với iOS cũ, nên lề trên khác nhau để
+                    // khoảng trên và dưới tiêu đề đều ~15 pt ở mọi bản
+                    .padding(.top, Self.titleTop).padding(.bottom, 8)
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
@@ -98,16 +94,7 @@ struct HistoryView: View {
         .sheetGrabber()
     }
 
-    private func addButton(_ category: String) -> some View {
-        Button { editing = .new(cat: category) } label: {
-            // plus.circle.fill: vòng xanh lá của app (như sóng âm), dấu cộng trắng
-            Image(systemName: "plus.circle.fill").font(.system(size: 26))
-                .foregroundStyle(.white, Color(hex: 0x61BE6E))
-                .frame(width: 40, height: 40).contentShape(Rectangle())
-        }
-        .buttonStyle(Pressable())
-        .accessibilityLabel(L("Nhập khoản %@", Category.get(category).name))
-    }
+    private static var titleTop: CGFloat { if #available(iOS 26.0, *) { 14 } else { 22 } }
 
     private func grouped() -> [(Date, [Expense])] {
         let cal = Calendar.current

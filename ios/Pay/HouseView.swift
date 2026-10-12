@@ -1357,7 +1357,22 @@ struct HouseSpendEditor: View {
                 .padding(.bottom, -18)
                 .zIndex(1)
                 }
-                .padding(.top, 12)
+                .padding(.top, padShown ? 28 : 12)   // bàn phím hiện: chừa khoảng thở phía trên hàng phím đầu
+                // Vạch ngang sát mép trên tấm phím (cùng kiểu vạch của bảng): chạm hoặc kéo xuống là ẩn bàn phím
+                .overlay(alignment: .top) {
+                    SheetGrabber()
+                        .padding(.top, 9)
+                        .frame(width: 120, height: 28, alignment: .top)
+                        .contentShape(Rectangle())
+                        .onTapGesture { withAnimation(Self.padAnim) { padShown = false } }
+                        .gesture(DragGesture(minimumDistance: 8).onEnded { v in
+                            if v.translation.height > 8 { withAnimation(Self.padAnim) { padShown = false } }
+                        })
+                        .opacity(padShown ? 1 : 0)
+                        .allowsHitTesting(padShown)
+                        .accessibilityLabel(L("Ẩn bàn phím số"))
+                        .accessibilityAddTraits(.isButton)
+                }
                 // Bàn phím đang hiện: nền đục, khác màu nền bảng một chút và bo hai góc trên, tách tấm phím khỏi nội dung phía sau.
                 // Bàn phím ẩn: chỉ còn hai nút nổi trên lớp kính mờ (mép trên tan dần), nội dung cuộn qua phía sau bị nhoè
                 .background {

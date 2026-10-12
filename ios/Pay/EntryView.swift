@@ -1102,7 +1102,9 @@ private struct PhotoViewer: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let image {
-                Image(uiImage: image).resizable().scaledToFit().padding(.horizontal, 16)
+                Image(uiImage: image).resizable().scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))   // bo góc như các thẻ trong app
+                    .padding(.horizontal, 16)
             }
             VStack {
                 Spacer()

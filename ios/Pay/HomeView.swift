@@ -633,8 +633,13 @@ private struct CardSwipe: ViewModifier {
                 // Như vuốt của hệ thống: theo hướng tay lúc thả. Đang kéo ngược lại (sang phải) thì đóng, đang kéo sang trái thì mở;
                 // gần như đứng yên mới xét vị trí (quá 60% nút thì mở). Trước: lướt nhẹ đã mở, kéo ngược tay lại vẫn mở
                 let open = v > 150 ? false : (v < -250 ? x < -12 : x < -button * 0.6)
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { x = open ? -button : 0 }
-                start = open ? -button : 0
+                // Lò xo nhận luôn vận tốc ngón tay lúc thả (như UIKit / vuốt của hệ thống): hàng đi tiếp đà tay rồi mới dừng, không
+                // khựng lại một nhịp rồi mới chạy như lò xo bắt đầu từ vận tốc 0
+                let target: CGFloat = open ? -button : 0
+                let dist = target - x
+                let rel = abs(dist) > 1 ? max(-12, min(12, v / dist)) : 0
+                withAnimation(.interpolatingSpring(mass: 1, stiffness: 320, damping: 34, initialVelocity: rel)) { x = target }
+                start = target
             })
     }
 }

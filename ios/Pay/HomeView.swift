@@ -378,10 +378,10 @@ struct HomeView: View {
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { Category.get($0.c).k == c.k }
         var items = [
-            AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true) { editingCat = CatEdit.of(c.k, store: store) },
+            AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true, tint: Color(hex: 0xF07B3F)) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
-                ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, false) } }
-                : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, true) } },
+                ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, false) } }
+                : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, true) } },
         ]
         if Category.isBuiltin(c.k) {
             if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward", title: L("Về mặc định")) { store.resetCategory(c.k) }) }

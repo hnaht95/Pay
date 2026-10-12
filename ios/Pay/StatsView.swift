@@ -893,7 +893,7 @@ struct StatsView: View {
                         // Chấm màu của đoạn trên thanh, ở góc trên phải ô biểu tượng như chấm "có ảnh hoá đơn" của Gần đây
                         .overlay(alignment: .topTrailing) {
                             Circle().fill(Palette.card).frame(width: 14, height: 14)
-                                .overlay(Circle().fill(c.chart).frame(width: 9, height: 9))
+                                .overlay(Circle().fill(c.color).frame(width: 9, height: 9))
                                 .offset(x: 3, y: -3)
                         }
                     VStack(alignment: .leading, spacing: 8) {
@@ -1113,7 +1113,8 @@ struct CategoryBreakdown: View {
         let rest = max(0, total - top.map(\.1).reduce(0, +))
         VStack(alignment: .leading, spacing: 0) {
             GeometryReader { g in
-                let parts = top.map { (AnyView(Rectangle().fill($0.0.chart)), $0.1) } + (rest > 0 ? [(AnyView(HatchFill()), rest)] : [])
+                // Màu danh mục đã chọn (như ô danh mục ở trang chủ), không phải màu đậm của biểu đồ
+                let parts = top.map { (AnyView(Rectangle().fill($0.0.color)), $0.1) } + (rest > 0 ? [(AnyView(HatchFill()), rest)] : [])
                 let gaps = CGFloat(max(0, parts.count - 1)) * 3
                 HStack(spacing: 3) {
                     // Mỗi đoạn tự bo góc (không chỉ hai đầu thanh)

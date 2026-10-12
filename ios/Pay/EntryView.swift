@@ -491,8 +491,9 @@ struct NumberPad: View {
                             .background(lit == k ? Palette.pill : .clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }
                         .buttonStyle(KeyStyle())
-                        // Nhấn giữ phím xoá: xoá hết số đang nhập
-                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in if k == "del" { clearAll() } })
+                        // Nhấn giữ phím xoá: xoá hết số đang nhập. Chỉ gắn cử chỉ nhấn giữ cho phím xoá: phím số không có cử chỉ nào
+                        // chen vào, gõ nhanh vẫn ăn từng phím
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in clearAll() }, including: k == "del" ? .all : .subviews)
                         .accessibilityLabel(k == "del" ? L("Xoá") : k)
                     }
                 }

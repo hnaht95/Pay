@@ -1402,6 +1402,8 @@ struct HouseSpendEditor: View {
                     .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22), .init(color: .black, location: 1)],
                                          startPoint: .top, endPoint: .bottom))
                     .padding(.horizontal, -18).padding(.top, -Self.dockRise).padding(.bottom, -80)
+                    // Lớp nền này nhô lên đè nửa dưới hàng phím 000 · 0 · xoá: không cho nó nhận chạm, kẻo bấm phím ở đó không ăn
+                    .allowsHitTesting(false)
                 }
                 .padding(.bottom, -18)
                 .zIndex(1)

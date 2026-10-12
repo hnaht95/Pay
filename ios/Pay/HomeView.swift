@@ -859,13 +859,13 @@ extension View {
     }
 
     /// Như topScrollBlur nhưng theo chân thanh tiêu đề tự vẽ (edge: toạ độ toàn màn), cho iOS cũ hơn 26 (không có mép cuộn mềm)
+    /// Mọi bản iOS: thanh có nền đặc nên mép cuộn mềm của hệ thống bị che, dải dưới chân thanh phải tự nhoè. Nhoè hết mức ở
+    /// chân thanh, nhạt dần trong 28 pt bên dưới (cùng dải màu tan dần của softTitleBar plain)
     @ViewBuilder func titleEdgeBlur(_ edge: CGFloat) -> some View {
-        if #available(iOS 26.0, *) { self } else {
-            visualEffect { content, g in
-                let y = g.frame(in: .global).minY
-                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(edge - y), .float(20), .float(3)),
-                                           maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: edge > 0 && y < edge + 20)
-            }
+        visualEffect { content, g in
+            let y = g.frame(in: .global).minY
+            return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(edge - y), .float(28), .float(7)),
+                                       maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: edge > 0 && y < edge + 28)
         }
     }
 

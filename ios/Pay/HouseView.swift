@@ -1745,9 +1745,9 @@ extension View {
             // lên mờ dần ở đó rồi chui hẳn xuống. Nhoè: iOS 26+ do mép cuộn mềm của hệ thống; iOS cũ do từng dòng tự nhoè (titleEdgeBlur)
             let tint = VStack(spacing: 0) {
                 Palette.surface
-                LinearGradient(colors: [Palette.surface, Palette.surface.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 16)
+                LinearGradient(colors: [Palette.surface.opacity(0.7), Palette.surface.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 24)
             }
-            .padding(.horizontal, -18).padding(.bottom, -16)
+            .padding(.horizontal, -18).padding(.bottom, -24)
             .allowsHitTesting(false)
             if #available(iOS 26.0, *) {
                 safeAreaBar(edge: .top, spacing: 0) { title().background { tint } }.scrollEdgeEffectStyle(.soft, for: .top)

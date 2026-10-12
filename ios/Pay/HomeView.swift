@@ -842,13 +842,15 @@ extension View {
         else if on {
             overlay(alignment: .top) {
                 GeometryReader { g in
-                    let bar = g.safeAreaInsets.top, tail: CGFloat = 18
+                    // Giống mép cuộn mềm của iOS 27: kính mờ (nội dung trôi lên vẫn thấy nhoè nhoè), chỉ phủ nhẹ màu nền,
+                    // tan dần qua chân thanh trạng thái thay vì một dải gần như đặc
+                    let bar = g.safeAreaInsets.top, tail: CGFloat = 26
                     ZStack {
                         Rectangle().fill(.ultraThinMaterial)
-                        LinearGradient(stops: [.init(color: color, location: 0), .init(color: color.opacity(0.85), location: bar / (bar + tail)),
+                        LinearGradient(stops: [.init(color: color.opacity(0.55), location: 0), .init(color: color.opacity(0.3), location: bar / (bar + tail)),
                                                .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     }
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: bar / (bar + tail)),
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.9), location: bar / (bar + tail) * 0.8),
                                                  .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                     .frame(height: bar + tail)
                     .offset(y: -bar)

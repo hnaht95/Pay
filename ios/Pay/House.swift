@@ -487,10 +487,20 @@ final class House: ObservableObject {
     func share() async throws -> CKShare {
         guard let zone else { throw CKError(.zoneNotFound) }
         let shareID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zone)
-        if let s = try? await db.record(for: shareID) as? CKShare { return s }
+        if let s = try? await db.record(for: shareID) as? CKShare {
+            // Nhóm tạo từ bản cũ là "chỉ người được mời": ai mở link mà Apple ID không khớp đúng email / số điện thoại đã mời
+            // thì iCloud bắt đăng nhập trên web để xác minh. Chưa mời ai (chỉ có chủ nhóm) thì chuyển sang "ai có link cũng vào được".
+            if s.publicPermission == .none, s.participants.count <= 1 {
+                s.publicPermission = .readWrite
+                try? await save([s])
+            }
+            return s
+        }
         let s = CKShare(recordZoneID: zone)
         s[CKShare.SystemFieldKey.title] = name.isEmpty ? "Nhóm chung" : name
-        s.publicPermission = .none
+        // Ai có link cũng vào và ghi được: gửi link qua Zalo, Tin nhắn là xong, người nhận không phải xác minh danh tính.
+        // Chủ nhóm đổi lại thành "chỉ người được mời" trong bảng chia sẻ được.
+        s.publicPermission = .readWrite
         try await save([s])
         return s
     }
@@ -839,7 +849,7 @@ final class House: ObservableObject {
 enum HouseInvite {
     @MainActor static func present(share: CKShare, container: CKContainer) {
         let c = UICloudSharingController(share: share, container: container)
-        c.availablePermissions = [.allowReadWrite, .allowPrivate]
+        c.availablePermissions = [.allowReadWrite, .allowPublic, .allowPrivate]
         guard let root = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController else { return }
         var top = root
         while let p = top.presentedViewController { top = p }

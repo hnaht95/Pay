@@ -172,9 +172,7 @@ struct SettingsView: View {
                     Spacer(minLength: 8)
                     Text("\(fmt(r.a))").fontWeight(.semibold).lineLimit(1)
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) { store.stopRepeating(r) } label: { Text(L("Bỏ lặp")) }
-                }
+                .trashSwipe(L("Bỏ lặp")) { withAnimation(.snappy) { store.stopRepeating(r) } }
             }
         } header: {
             Text(L("Khoản định kỳ"))
@@ -1165,6 +1163,7 @@ struct QuickAccessHelp: View {
                 Label(L("Siri và Phím tắt"), systemImage: "wand.and.stars")
             }
         }
+        .softTopEdge()
         .screenTitle(L("Truy cập nhanh"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1218,6 +1217,7 @@ struct ApplePayHelp: View {
                 Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }
         }
+        .softTopEdge()
         .screenTitle(L("Tự ghi khi trả Apple Pay"))
         .navigationBarTitleDisplayMode(.inline)
     }

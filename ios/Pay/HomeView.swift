@@ -503,6 +503,21 @@ struct HomeView: View {
 // MARK: Thành phần dùng chung
 
 extension View {
+    /// Nút xoá khi vuốt sang trái, dùng chung cho mọi hàng trong List / Form: chỉ thùng rác trên nền đỏ, không xoá khi vuốt hết,
+    /// rung một nhịp. Hoàn tác do chỗ gọi lo (thanh "Đã xoá · Hoàn tác")
+    func trashSwipe(_ label: String = L("Xoá"), delete: @escaping () -> Void) -> some View {
+        swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button { Haptic.tap(.medium); delete() } label: { Image(systemName: "trash.fill") }
+                .tint(.red)
+                .accessibilityLabel(label)
+        }
+    }
+
+    /// Như trashSwipe cho thẻ nằm ngoài List (VStack trong ScrollView): kéo thẻ sang trái lộ nút thùng rác đỏ cùng bo góc
+    func cardSwipe(radius: CGFloat = 24, _ label: String = L("Xoá"), delete: @escaping () -> Void) -> some View {
+        modifier(CardSwipe(radius: radius, label: label, delete: delete))
+    }
+
     /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
     func expenseSwipe(delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete)) }
 }
@@ -533,6 +548,57 @@ private struct ExpenseSwipe: ViewModifier {
                 .tint(.red)
                 .accessibilityLabel(L("Xoá"))
             }
+    }
+}
+
+/// Thẻ vuốt sang trái lộ nút thùng rác (ngoài List không có swipeActions): kéo quá nửa nút thì mở hẳn, thả sớm thì về;
+/// chạm thùng rác: thẻ trượt đi rồi mới gọi xoá. Kéo dọc thì để vùng cuộn lo
+private struct CardSwipe: ViewModifier {
+    let radius: CGFloat
+    let label: String
+    let delete: () -> Void
+    @State private var x: CGFloat = 0
+    @State private var start: CGFloat = 0
+    @State private var gone = false
+    private let button: CGFloat = 76
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: gone ? -500 : x)
+            .opacity(gone ? 0 : 1)
+            .background(alignment: .trailing) {
+                Button {
+                    Haptic.tap(.medium)
+                    withAnimation(.easeIn(duration: 0.22)) { gone = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { delete() }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { gone = false; x = 0; start = 0 }
+                } label: {
+                    // Giống nút xoá của List trên iOS 26+: thùng rác trắng trong vòng tròn đỏ, giữa theo chiều cao thẻ
+                    Image(systemName: "trash.fill").font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
+                        .frame(width: 50, height: 50)
+                        .background(Color.red, in: Circle())
+                        .frame(width: button)
+                }
+                .buttonStyle(Pressable())
+                .opacity(gone ? 0 : min(1, -x / button))
+                .accessibilityLabel(label)
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 14)
+                    .onChanged { v in
+                        guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                        let t = start + v.translation.width
+                        x = t > 0 ? 0 : (t < -button ? -button + (t + button) * 0.3 : t)
+                    }
+                    .onEnded { v in
+                        guard abs(v.translation.width) > abs(v.translation.height) || x != start else { return }
+                        let open = x < -button / 2 || v.predictedEndTranslation.width < -button
+                        withAnimation(.snappy(duration: 0.25)) { x = open ? -button : 0 }
+                        start = x
+                    }
+            )
+            // Đang mở: chạm vào thẻ thì đóng lại (không mở màn sửa)
+            .overlay { if x < 0 && !gone { Color.white.opacity(0.001).onTapGesture { withAnimation(.snappy(duration: 0.25)) { x = 0; start = 0 } } } }
     }
 }
 

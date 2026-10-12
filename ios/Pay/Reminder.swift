@@ -51,7 +51,16 @@ enum DailyReminder {
         }
     }
 
+    /// Chạy nền: gỡ / đặt lịch thông báo là lời gọi chờ dịch vụ thông báo của hệ thống trả lời. Gọi trên luồng chính lúc mở
+    /// app (Store.init) mà dịch vụ chậm (máy vừa khởi động) thì app treo màn trắng
+    private static let queue = DispatchQueue(label: "pay.reminder", qos: .utility)
+
     static func reschedule(loggedToday: Bool) {
+        let on = isOn, minute = minute
+        queue.async { schedule(loggedToday: loggedToday, on: on, minute: minute) }
+    }
+
+    private static func schedule(loggedToday: Bool, on isOn: Bool, minute: Int) {
         let center = UNUserNotificationCenter.current()
         let ids = (0..<8).map { prefix + String($0) }
         center.removePendingNotificationRequests(withIdentifiers: ids)

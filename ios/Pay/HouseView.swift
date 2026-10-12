@@ -55,6 +55,8 @@ struct HouseView: View {
     @State private var creating = false
     @State private var showArchived = false
     @State private var menu: AppMenuSpec?
+    /// Khoản / lần trả vừa vuốt xoá: ẩn ngay trên máy, chờ hết thanh Hoàn tác (3,5 giây) mới xoá thật trên iCloud
+    @State private var hidden: Set<String> = []
     @State private var notifyOn: Bool?
     /// Khoản chung đang sửa
     @State private var editingSpend: HouseSpend?
@@ -267,7 +269,7 @@ struct HouseView: View {
             // Trong nhóm: tên nhóm nằm ngay trên số tiền (xem youCard), đầu trang chỉ còn các nút
             if !inGroup {
                 Text(creating ? L("Nhóm mới") : L("Nhóm chung"))
-                    .font(.system(size: 19, weight: .bold)).lineLimit(1)
+                    .font(.system(size: 21, weight: .bold)).lineLimit(1)   // cùng cỡ tiêu đề các màn khác
                     .padding(.horizontal, 100)
             }
         }
@@ -694,7 +696,7 @@ struct HouseView: View {
 
                 if !house.settles.isEmpty {
                     Text(L("Lịch sử trả tiền")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
-                    ForEach(house.settles.sorted { $0.date > $1.date }) { settleRow($0) }
+                    ForEach(house.settles.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { settleRow($0) }
                 }
             }
         }
@@ -730,7 +732,7 @@ struct HouseView: View {
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         VStack(spacing: 10) {
-            ForEach(house.spends.sorted { $0.date > $1.date }) { spendRow($0) }
+            ForEach(house.spends.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { spendRow($0) }
         }
     }
 
@@ -757,6 +759,7 @@ struct HouseView: View {
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture { editingSpend = e }   // chạm để xem / sửa ai trả, chia cho ai
+        .cardSwipe { softDelete(e.id) }
         .onHold {
             let c = Category.get(e.cat)
             menu = AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
@@ -764,8 +767,21 @@ struct HouseView: View {
                                subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
                                items: [AppMenuItem(icon: "pencil", title: L("Sửa khoản này")) { editingSpend = e },
                                        AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
-                                   Task { await house.delete(e.id) }
+                                   softDelete(e.id)
                                }])
+        }
+    }
+
+    /// Xoá có Hoàn tác: ẩn ngay, hiện "Đã xoá · Hoàn tác" như khoản chi của mình; hết thanh mà không hoàn tác mới xoá thật
+    /// (cả nhóm thấy mất sau lúc đó)
+    private func softDelete(_ id: String) {
+        withAnimation(.snappy) { _ = hidden.insert(id) }
+        store.show(L("Đã xoá")) { withAnimation(.snappy) { _ = hidden.remove(id) } }
+        Task {
+            try? await Task.sleep(for: .seconds(3.6))
+            guard hidden.contains(id) else { return }
+            await house.delete(id)
+            hidden.remove(id)
         }
     }
 
@@ -796,12 +812,13 @@ struct HouseView: View {
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         // Người khác báo đã chuyển cho mình, đang chờ: chạm để xác nhận đã nhận hay chưa
         .onTapGesture { if s.to == house.me && s.status == "wait" { confirming = s } }
+        .cardSwipe { softDelete(s.id) }
         .onHold {
             menu = AppMenuSpec(icon: AnyView(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(tint)
                                 .frame(width: 56, height: 56).background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                                title: L("%@ chuyển %@", from, to) + " · \(fmt(s.amount))", subtitle: "\(note) · \(day(s.date))",
                                items: [AppMenuItem(icon: "trash.fill", title: L("Xoá lần trả này"), subtitle: L("Số nợ sẽ tính lại như chưa trả"), danger: true) {
-                                   Task { await house.delete(s.id) }
+                                   softDelete(s.id)
                                }])
         }
     }
@@ -863,6 +880,7 @@ struct HouseView: View {
                 .padding(.horizontal, 16).padding(.bottom, 30)
             }
             .background(Palette.bg.ignoresSafeArea())
+            .softTopEdge()
             .screenTitle(L("Thông báo"))
             .navigationBarTitleDisplayMode(.inline)
             .task {
@@ -1061,10 +1079,13 @@ struct HouseGroupEditor: View {
             }
             .screenTitle(L("Sửa nhóm"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L("Lưu")) {
+            // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
+            .softTopEdge()
+            .bottomBar {
+                HStack(spacing: 12) {
+                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Lưu"), icon: "", primary: true) {
+                        guard !saving else { return }
                         let n = name.trimmingCharacters(in: .whitespaces)
                         let p: Data? = photoChanged ? (photo ?? Data()) : nil
                         saving = true
@@ -1073,8 +1094,9 @@ struct HouseGroupEditor: View {
                             dismiss()
                         }
                     }
-                    .disabled(saving)
+                    .opacity(saving ? 0.5 : 1)
                 }
+                .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
             .onAppear {
                 guard !loaded else { return }
@@ -1170,10 +1192,13 @@ struct HouseMemberEditor: View {
             }
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(L("Huỷ")) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L("Lưu")) {
+            // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
+            .softTopEdge()
+            .bottomBar {
+                HStack(spacing: 12) {
+                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Lưu"), icon: "", primary: true) {
+                        guard !saving else { return }
                         let n = name.trimmingCharacters(in: .whitespaces)
                         let a = acct.filter(\.isNumber)
                         let p: Data? = photoChanged ? (photo ?? Data()) : nil
@@ -1184,8 +1209,9 @@ struct HouseMemberEditor: View {
                             dismiss()
                         }
                     }
-                    .disabled(saving)
+                    .opacity(saving ? 0.5 : 1)
                 }
+                .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
             // Chỉ nạp lần đầu: chọn ngân hàng mở trang riêng, lúc quay lại onAppear chạy lần nữa — nạp lại thì
             // ngân hàng vừa chọn (và tên, số tài khoản đang gõ) bị trả về giá trị cũ
@@ -1373,8 +1399,9 @@ struct HouseSpendEditor: View {
             // Tiêu đề ghim ở mép trên vùng cuộn; nội dung cuộn lên chui xuống dưới và bị nhoè như mép trên các màn khác
             // (Lịch sử, Thống kê, Cài đặt): cùng hiệu ứng mép cuộn mềm của hệ thống. Bảng có vạch ngang, vuốt xuống là đóng
             .softTitleBar {
-                Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Giữa như tiêu đề các màn khác
+                Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold)).lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 26).padding(.bottom, 6)
             }
             // Bàn phím số ẩn đi thì thôi gõ số riêng: lần hiện sau lại gõ tổng tiền

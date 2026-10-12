@@ -601,7 +601,12 @@ final class Store: ObservableObject {
         r.u = now
         rules[r.id] = r
         persist()
-        show(L("Đã bỏ lặp %@", r.n?.isEmpty == false ? r.n! : Category.get(r.c).name))
+        show(L("Đã bỏ lặp %@", r.n?.isEmpty == false ? r.n! : Category.get(r.c).name)) { [weak self] in
+            guard let self, var back = self.rules[r.id] else { return }
+            back.on = true; back.u = self.now
+            self.rules[r.id] = back
+            self.persist()
+        }
     }
 
     /// Ghi các kỳ đã tới hạn. Mã khoản cố định theo (khoản định kỳ, tháng) nên nhiều máy cùng ghi vẫn không trùng;

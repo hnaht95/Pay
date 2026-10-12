@@ -955,7 +955,23 @@ extension View {
 
     /// fade: màu nền của màn. Mép nhoè của hệ thống khá nhẹ, nội dung sáng màu (các ô lịch trắng của Thống kê) vẫn lộ rõ quanh
     /// tiêu đề; có màu này thì phủ thêm nền đặc sau thanh tiêu đề, nhạt dần xuống dưới (như đầu trang Nhóm chung, Khoản chung)
-    @ViewBuilder func softTopEdge(fade: Color? = nil) -> some View {
+    /// iOS cũ hơn 26, như mép trên trang chủ (dưới đồng hồ): khối nội dung trôi lên dưới thanh tiêu đề nhoè dần theo từng điểm
+    /// ảnh (shader topEdgeBlur), càng sát mép trên càng nhoè. Vùng cuộn phải có coordinateSpace(name: "navScroll") và gắn
+    /// softTopEdge(home: true). Đo trên máy ảo iOS 18: thanh tiêu đề trong tấm cao 56
+    @ViewBuilder func navEdgeBlur() -> some View {
+        if #available(iOS 26.0, *) { self } else {
+            visualEffect { content, g in
+                let y = g.frame(in: .named("navScroll")).minY
+                // Gốc vùng cuộn có tên nằm ở chân thanh tiêu đề (đo trên máy ảo): nhoè hết mức ở mép trên tấm (-56), hết nhoè
+                // 14 pt dưới chân thanh, như trang chủ (hết nhoè 14 pt dưới thanh trạng thái)
+                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(-y - 56), .float(70), .float(7)),
+                                           maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < 14)
+            }
+        }
+    }
+
+    /// home: iOS cũ hơn 26 làm như mép trên trang chủ — chỉ phủ nhẹ màu nền, phần nhoè do từng khối tự làm (navEdgeBlur)
+    @ViewBuilder func softTopEdge(fade: Color? = nil, home: Bool = false) -> some View {
         if #available(iOS 26.0, *) {
             scrollEdgeEffectStyle(.soft, for: .top)
                 .overlay(alignment: .top) {
@@ -978,6 +994,17 @@ extension View {
             // mềm của iOS 26+ (thanh tiêu đề vẽ trên lớp này nên chữ tiêu đề vẫn rõ)
             toolbarBackground(.hidden, for: .navigationBar)
                 .overlay(alignment: .top) {
+                    if home {
+                        // Cùng dải màu của statusBarEdge (trang chủ)
+                        GeometryReader { g in
+                            let bar = g.safeAreaInsets.top, tail: CGFloat = 26, color = fade ?? Palette.bg
+                            LinearGradient(stops: [.init(color: color.opacity(0.6), location: 0), .init(color: color.opacity(0.3), location: bar / (bar + tail)),
+                                                   .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                            .frame(height: bar + tail)
+                            .offset(y: -bar)
+                        }
+                        .allowsHitTesting(false)
+                    } else {
                     GeometryReader { g in
                         let bar = g.safeAreaInsets.top, tail: CGFloat = 24, end = bar / (bar + tail)
                         let color = fade ?? Palette.bg
@@ -992,6 +1019,7 @@ extension View {
                         .offset(y: -bar)
                     }
                     .allowsHitTesting(false)
+                    }
                 }
         }
     }

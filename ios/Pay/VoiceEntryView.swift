@@ -235,10 +235,8 @@ struct VoiceEntryView: View {
             // cắt vào ô (rõ nhất ở giao diện tối). Vùng đậm theo thẻ khi thẻ đổi chiều cao (nghe xong thu gọn)
             ZStack {
                 Color.black.opacity(0.3)
-                // iOS 26: vùng sát thẻ mờ nhòe dần (như mép mờ dưới thanh tiêu đề); iOS cũ: tối đậm dần như trước
-                Group {
-                    if #available(iOS 26.0, *) { Rectangle().fill(.ultraThinMaterial) } else { Color.black.opacity(0.3) }
-                }
+                // Vùng sát thẻ mờ nhoè dần (như mép mờ dưới thanh tiêu đề), mọi bản iOS
+                Rectangle().fill(.ultraThinMaterial)
                     .mask {
                         GeometryReader { g in
                             let top = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY

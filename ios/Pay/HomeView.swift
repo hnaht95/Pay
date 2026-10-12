@@ -81,6 +81,7 @@ struct HomeView: View {
                 .padding(.bottom, Self.nativeEdge && film == nil ? 16 : 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
+            .statusBarEdge(on: film == nil)
             // Thanh "Đã xoá · Hoàn tác" nằm trên lớp mờ nhưng dưới hai nút: trồi lên từ sau dải nút, ẩn thì chui xuống lại sau
             // đó, không bao giờ đè lên nút. iOS 26 dải nút là safeAreaBar nên đáy lớp này đã nằm ngay trên dải nút
             .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil) { ToastView() }
@@ -766,6 +767,30 @@ extension View {
 
 extension View {
     /// Mép trên vùng cuộn mờ dần dưới thanh tiêu đề (kiểu mềm của iOS 26), như màn nhóm chung — không phải vạch cắt ngang
+    /// Màn không có thanh tiêu đề (trang chủ). iOS 27 tự nhoè nội dung dưới thanh trạng thái; iOS cũ hơn thì không (đã thấy trên
+    /// iOS 18 máy thật và máy ảo 26.2): chữ cuộn lên đè thẳng vào đồng hồ và pin. Ở các bản cũ đó tự phủ một dải lên vùng thanh
+    /// trạng thái: lớp kính mờ làm nhoè nội dung, cộng màu nền đặc ở trên cùng nhạt dần xuống dưới
+    @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
+        if #available(iOS 27.0, *) { self }
+        else if on {
+            overlay(alignment: .top) {
+                GeometryReader { g in
+                    let bar = g.safeAreaInsets.top, tail: CGFloat = 18
+                    ZStack {
+                        Rectangle().fill(.ultraThinMaterial)
+                        LinearGradient(stops: [.init(color: color, location: 0), .init(color: color.opacity(0.85), location: bar / (bar + tail)),
+                                               .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                    }
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: bar / (bar + tail)),
+                                                 .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                    .frame(height: bar + tail)
+                    .offset(y: -bar)
+                }
+                .allowsHitTesting(false)
+            }
+        } else { self }
+    }
+
     /// fade: màu nền của màn. Mép nhoè của hệ thống khá nhẹ, nội dung sáng màu (các ô lịch trắng của Thống kê) vẫn lộ rõ quanh
     /// tiêu đề; có màu này thì phủ thêm nền đặc sau thanh tiêu đề, nhạt dần xuống dưới (như đầu trang Nhóm chung, Khoản chung)
     @ViewBuilder func softTopEdge(fade: Color? = nil) -> some View {

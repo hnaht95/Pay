@@ -32,6 +32,7 @@ final class VoiceListener: ObservableObject {
         guard !starting, phase != .listening else { return }
         starting = true
         defer { starting = false }
+        cancelled = false   // lần bật mới: bỏ dấu "đã huỷ" của lần trước (xem isCancelled)
         text = ""
         #if DEBUG
         // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
@@ -152,6 +153,9 @@ final class VoiceListener: ObservableObject {
     /// stop() không đủ: sau task.cancel() iOS vẫn gọi lại kết quả / báo lỗi một lần nữa, lúc đó `phase` còn là .listening
     /// nên khoản chi vẫn bị ghi âm thầm trong lúc thẻ đang đóng. Không đổi `phase` ở đây, để thẻ đang trượt đi
     /// giữ nguyên dạng "Đang nghe" chứ không nháy sang dạng khác.
+    /// Lần bật gần nhất đã bị huỷ giữa chừng
+    var isCancelled: Bool { cancelled }
+
     func cancel() {
         cancelled = true
         onFinish = nil   // closure này giữ view (và qua view giữ lại chính listener): gỡ ra để listener được giải phóng
@@ -318,6 +322,13 @@ struct VoiceEntryView: View {
                 guard !Task.isCancelled else { return }
             }
             await mic.start()
+            // Lần đầu dùng, iOS hiện hộp hỏi quyền micro / nhận dạng giọng nói đè lên thẻ: trên iOS 18 thẻ nhận onDisappear, micro bị
+            // huỷ, cho phép xong thẻ quay lại thì đứng im ở "Đang bật micro…" không có nút nào. Thẻ vẫn còn đó mà micro bị huỷ
+            // (không phải do người dùng đóng) thì bật lại
+            if mic.isCancelled, shown {
+                mic.onFinish = { said in handle(said) }
+                await mic.start()
+            }
             starting = false
         }
         .onDisappear { mic.cancel() }
@@ -534,8 +545,9 @@ struct VoiceEntryView: View {
         if mic.phase == .denied {
             return (L("Mở Cài đặt"), false, { if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } })
         }
-        if notUnderstood || undone || mic.phase != .idle { return (L("Nói lại"), false, { retry() }) }
-        return nil
+        // Mọi trạng thái còn lại đều có nút "Nói lại" (kể cả khi micro chưa bật được mà không rõ vì sao): thẻ không bao giờ
+        // rơi vào cảnh không có nút nào để bấm
+        return (L("Nói lại"), false, { mic.onFinish = { said in handle(said) }; retry() })
     }
 
     /// Nút chính là cùng một nút qua mọi trạng thái (nghe xong nó chỉ hẹp lại, không biến mất rồi hiện lại);

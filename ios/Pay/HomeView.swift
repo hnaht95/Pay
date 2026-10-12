@@ -858,6 +858,17 @@ extension View {
         }
     }
 
+    /// Như topScrollBlur nhưng theo chân thanh tiêu đề tự vẽ (edge: toạ độ toàn màn), cho iOS cũ hơn 26 (không có mép cuộn mềm)
+    @ViewBuilder func titleEdgeBlur(_ edge: CGFloat) -> some View {
+        if #available(iOS 26.0, *) { self } else {
+            visualEffect { content, g in
+                let y = g.frame(in: .global).minY
+                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(edge - 34 - y), .float(44), .float(7)),
+                                           maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: edge > 0 && y < edge + 10)
+            }
+        }
+    }
+
     @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
         if #available(iOS 27.0, *) { self }
         else if on {

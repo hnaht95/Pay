@@ -10,6 +10,7 @@ struct HistoryView: View {
     @State private var menu: AppMenuSpec?
     /// Ô tìm: lọc theo ghi chú hoặc tên danh mục, không phân biệt dấu ("ca phe" ra "cà phê")
     @State private var query = ""
+    @State private var titleEdge: CGFloat = 0
     @FocusState private var searching: Bool
 
     var body: some View {
@@ -60,6 +61,7 @@ struct HistoryView: View {
                         }
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
                         .padding(.top, 14).padding(.bottom, 2)
+                        .titleEdgeBlur(titleEdge)
                         .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                         ForEach(list) { e in
@@ -67,6 +69,7 @@ struct HistoryView: View {
                             TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                 ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                             }
+                            .titleEdgeBlur(titleEdge)
                             .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                         }
                     }
@@ -79,12 +82,13 @@ struct HistoryView: View {
             .background(Palette.surface)
             // Tiêu đề tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS):
             // khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tiêu đề tới ô tìm kiếm
-            .softTitleBar {
+            .softTitleBar(plain: true) {
                 Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
                     .frame(maxWidth: .infinity)
                     // Đo trên máy ảo: iOS 26+ đặt thanh này thấp hơn mép tấm sẵn ~7 pt so với iOS cũ, nên lề trên khác nhau để
                     // khoảng trên và dưới tiêu đề đều ~15 pt ở mọi bản
                     .padding(.top, Self.titleTop).padding(.bottom, 8)
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { titleEdge = $0 }
             }
             .toolbar(.hidden, for: .navigationBar)
         }

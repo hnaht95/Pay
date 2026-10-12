@@ -1738,8 +1738,22 @@ private struct PinnedHeader<H: View>: ViewModifier {
 extension View {
     /// Ghim tiêu đề ở mép trên vùng cuộn. iOS 26: safeAreaBar + mép cuộn mềm của hệ thống (nội dung chui xuống dưới bị nhoè).
     /// iOS cũ: tiêu đề trên nền đặc, bên dưới có một dải tan dần vào nền
-    @ViewBuilder func softTitleBar<T: View>(@ViewBuilder _ title: () -> T) -> some View {
-        if #available(iOS 26.0, *) {
+    /// plain: như trang chủ, không phủ nền đặc sau tiêu đề; nội dung cuộn lên chỉ nhoè dần dưới tiêu đề
+    @ViewBuilder func softTitleBar<T: View>(plain: Bool = false, @ViewBuilder _ title: () -> T) -> some View {
+        if plain {
+            // Như mép trên trang chủ: chỉ phủ nhẹ màu nền (đậm ở trên, tan dần quá chân tiêu đề), nội dung trôi lên vẫn thấy nhoè
+            // nhoè. Nhoè: iOS 26+ do mép cuộn mềm của hệ thống; iOS cũ do từng dòng tự nhoè (titleEdgeBlur)
+            let tint = LinearGradient(stops: [.init(color: Palette.surface.opacity(0.85), location: 0),
+                                              .init(color: Palette.surface.opacity(0.6), location: 0.55),
+                                              .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                .padding(.horizontal, -18).padding(.bottom, -18)
+                .allowsHitTesting(false)
+            if #available(iOS 26.0, *) {
+                safeAreaBar(edge: .top, spacing: 0) { title().background { tint } }.scrollEdgeEffectStyle(.soft, for: .top)
+            } else {
+                safeAreaInset(edge: .top, spacing: 0) { title().background { tint } }
+            }
+        } else if #available(iOS 26.0, *) {
             // Mép nhoè của hệ thống khá nhẹ: nội dung cuộn lên vẫn lộ mờ mờ phía trên tiêu đề. Phủ thêm màu nền đặc ở trên cùng,
             // nhạt dần xuống ngang chân tiêu đề (như đầu trang màn Nhóm chung), phần nhoè của hệ thống lo đoạn chuyển tiếp
             safeAreaBar(edge: .top, spacing: 0) {

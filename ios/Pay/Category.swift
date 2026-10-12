@@ -8,7 +8,11 @@ struct Category: Identifiable, Hashable {
     let rawName: String
     /// Tên để hiện: danh mục có sẵn ra tiếng Anh khi chọn English; tên người dùng tự đặt giữ nguyên (L trả lại chữ lạ)
     var name: String { L(rawName) }
-    let color: Color
+    /// Màu đã chọn của danh mục (kể cả khi đang ở chế độ Tối giản)
+    let baseColor: Color
+    /// Màu để vẽ: chế độ Tối giản thì danh mục không màu (ô trắng / xám than như thẻ), biểu tượng vẫn giữ màu
+    var color: Color { Appearance.minimalOn ? Self.plain : baseColor }
+    static let plain = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
     /// Dùng hình vẽ phẳng trong Assets ("cat-<k>"); đổi sang emoji khác thì không
     var art = false
     let kw: [String]
@@ -17,12 +21,12 @@ struct Category: Identifiable, Hashable {
     /// Màu nền tối (xanh lá đậm, than): chữ trên ô dùng màu trắng
     var onDark = false
     /// Màu chữ trên nền màu của danh mục
-    var ink: Color { onDark ? .white : Color(hex: 0x111114) }
+    var ink: Color { Appearance.minimalOn ? .primary : onDark ? .white : Color(hex: 0x111114) }
 
     var id: String { k }
 
     init(k: String, icon: String, name: String, color: Color, art: Bool = false, kw: [String], customChart: Color? = nil, onDark: Bool = false) {
-        self.k = k; self.icon = icon; self.rawName = name; self.color = color
+        self.k = k; self.icon = icon; self.rawName = name; self.baseColor = color
         self.art = art; self.kw = kw; self.customChart = customChart; self.onDark = onDark
     }
 
@@ -53,6 +57,7 @@ struct Category: Identifiable, Hashable {
     /// Màu đậm dùng cho biểu đồ (màu pastel ở trên quá nhạt để phân biệt). Cùng tông với màu pastel,
     /// cố định theo danh mục; đã kiểm tra phân biệt được cả khi mù màu, ở chế độ sáng lẫn tối.
     var chart: Color {
+        if Appearance.minimalOn { return Color(light: 0x1C1C1E, dark: 0xE5E5EA) }
         if let customChart { return customChart }
         return switch k {
         case "an": Color(light: 0xE8692A, dark: 0xF07B3F)

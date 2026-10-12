@@ -45,7 +45,7 @@ struct CustomCat: Codable, Hashable {
         if let base = Category.builtin.first(where: { $0.k == k }) {
             // Danh mục có sẵn đã chỉnh: giữ từ khoá gốc, thêm tên mới làm từ khoá
             let kw = base.kw + [Store.noteKey(name)].filter { !$0.isEmpty && !base.kw.contains($0) }
-            var c = Category(k: k, icon: icon, name: name, color: tone < 0 ? base.color : CategoryTone.bg(tone),
+            var c = Category(k: k, icon: icon, name: name, color: tone < 0 ? base.baseColor : CategoryTone.bg(tone),
                              art: base.art && icon == base.icon, kw: kw, customChart: tone < 0 ? nil : CategoryTone.chart(tone))
             c.onDark = tone < 0 ? base.onDark : CategoryTone.dark(tone)
             return c

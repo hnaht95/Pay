@@ -24,6 +24,12 @@ extension English {
         // Ngôn ngữ
         "Ngôn ngữ": "Language",
         "Ngôn ngữ app": "App language",
+        "Giao diện": "Appearance",
+        "Theo máy": "System",
+        "Sáng": "Light",
+        "Tối": "Dark",
+        "Tối giản": "Minimal",
+        "Tối giản: danh mục không màu, chỉ biểu tượng giữ màu; sáng hay tối theo máy.": "Minimal: categories without colour, only icons keep theirs; light or dark follows the system.",
         "Đổi ngôn ngữ của app và widget.": "Changes the language of the app and widgets.",
 
         // Truy cập nhanh

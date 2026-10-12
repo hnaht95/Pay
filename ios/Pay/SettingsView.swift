@@ -20,6 +20,11 @@ struct SettingsView: View {
     /// Sửa / thêm danh mục tự tạo (nil k = thêm mới)
     /// Ngôn ngữ đang chọn trong Cài đặt
     @State private var lang = Lang.current
+    @AppStorage(Appearance.key) private var appearanceRaw = Appearance.system.rawValue
+    private var appearance: Appearance {
+        get { Appearance(rawValue: appearanceRaw) ?? .system }
+        nonmutating set { appearanceRaw = newValue.rawValue }
+    }
     @State private var remindOn = DailyReminder.isOn
     @State private var remindAt = Calendar.current.date(byAdding: .minute, value: DailyReminder.minute,
                                                         to: Calendar.current.startOfDay(for: Date()))!
@@ -39,6 +44,7 @@ struct SettingsView: View {
                 cloudSection
                 bankSection
                 myQRSection
+                appearanceSection
                 languageSection
 
                 Section {
@@ -366,6 +372,21 @@ struct SettingsView: View {
     }
 
     // MARK: Ngôn ngữ
+
+    private var appearanceSection: some View {
+        Section {
+            Picker(selection: Binding(get: { appearance }, set: { appearance = $0; Appearance.apply() })) {
+                ForEach(Appearance.allCases, id: \.self) { Text($0.title).tag($0) }
+            } label: {
+                row(L("Giao diện"))
+            }
+            .pickerStyle(.navigationLink)
+        } header: {
+            Text(L("Giao diện"))
+        } footer: {
+            Text(L("Tối giản: danh mục không màu, chỉ biểu tượng giữ màu; sáng hay tối theo máy."))
+        }
+    }
 
     private var languageSection: some View {
         Section {
@@ -740,7 +761,7 @@ struct CategoryEditor: View {
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     /// Đang sửa danh mục có sẵn (Ăn uống, Cafe…): không xoá được, có "Về mặc định"
     private var builtin: Category? { editing.flatMap { e in Category.builtin.first { $0.k == e.k } } }
-    private var previewColor: Color { fTone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
+    private var previewColor: Color { fTone < 0 ? (builtin?.baseColor ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)

@@ -14,6 +14,7 @@ struct PayApp: App {
     var body: some Scene {
         WindowGroup {
             HomeView()
+                .appTone()
                 .id(lang)
                 .environment(\.locale, Lang.locale)
                 .onReceive(NotificationCenter.default.publisher(for: Lang.changed)) { _ in
@@ -25,6 +26,7 @@ struct PayApp: App {
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app
                 .onOpenURL { url in if let k = QuickKind(url: url) { quick.pending = k } }
                 .task {
+                    Appearance.apply()
                     #if DEBUG
                     FilmTouches.install()
                     await FilmExport.runIfAsked(store: store, quick: quick)

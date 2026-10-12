@@ -933,8 +933,32 @@ struct StatsView: View {
                 }
             }
             .padding(.horizontal, 4)
-            ForEach(rows) { e in ExpenseRow(e: e, showDay: true, repeats: Store.shared.rule(for: e) != nil) }
+            // Không ô biểu tượng, chữ mảnh nhỏ: một thẻ, mỗi khoản một dòng (tên, ngày giờ · số tiền), kẻ mảnh giữa các dòng
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, e in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(e.n?.isEmpty == false ? e.n!.capFirst : Category.get(e.c).name).font(.system(size: 15)).lineLimit(1)
+                            Text(bigWhen(e)).font(.system(size: 12)).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Text(fmt(e.a)).font(.system(size: 15, weight: .medium)).monospacedDigit()
+                    }
+                    .padding(.vertical, 11)
+                    .overlay(alignment: .bottom) {
+                        if i < rows.count - 1 { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
+                    }
+                }
+            }
+            .padding(.horizontal, 18).padding(.vertical, 4)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
         }
+    }
+
+    /// "5/10 · 09:00"
+    private func bigWhen(_ e: Expense) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        return "\(cal.component(.day, from: e.date))/\(cal.component(.month, from: e.date)) · \(f.string(from: e.date))"
     }
 
     // MARK: Phụ

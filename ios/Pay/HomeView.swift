@@ -584,9 +584,20 @@ private struct HorizontalPan: UIGestureRecognizerRepresentable {
 /// mép màn đều ~18pt (đo trên máy ảo iOS 18 và 27)
 private struct ExpenseSwipe: ViewModifier {
     let delete: () -> Void
+    /// Tâm hàng lúc đứng yên (xa bên phải nhất từng thấy) và đã rung cho lần vuốt này chưa
+    @State private var restX: CGFloat?
+    @State private var buzzed = false
 
     func body(content: Content) -> some View {
         content
+            // Rung nhẹ khi vuốt đủ xa để lộ nút xoá (thao tác vuốt của hệ thống không báo lúc nút hiện ra): đo tâm hàng — màn
+            // phía sau thu nhỏ khi mở tấm (iOS cũ) không làm tâm lệch, chỉ vuốt mới lệch
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midX } action: { x in
+                if restX == nil || x > restX! { restX = x }
+                let shift = (restX ?? x) - x
+                if shift > 44, !buzzed { buzzed = true; Haptic.tap(.light) }
+                if shift < 8 { buzzed = false }
+            }
             .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 8))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)

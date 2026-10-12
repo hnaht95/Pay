@@ -67,7 +67,10 @@ enum BankLauncher {
             var url = "https://dl.vietqr.io/pay?app=\(app.id)&ba=\(enc(acct))@\(code)"
             if let amount, amount > 0 { url += "&am=\(amount)" }
             if !qr.purpose.isEmpty { url += "&tn=\(enc(qr.purpose))" }
-            if !qr.name.isEmpty { url += "&bn=\(enc(qr.name))" }
+            // dl.vietqr.io chỉ nhận tên người nhận gồm chữ không dấu, số và dấu cách: có dấu hay ký tự như - . & là báo
+            // "invalid accountName" (đã thử 10/2026), cả lần chuyển hỏng. Bỏ dấu, bỏ ký tự lạ; không còn gì thì không gửi tên
+            let bn = Self.plainName(qr.name)
+            if !bn.isEmpty { url += "&bn=\(enc(bn))" }
             url += "&url=\(enc(returnURL))"
             if let deep = await signedDeeplink(url), let u = URL(string: deep), await UIApplication.shared.open(u) { return }
             if let u = URL(string: url) { await UIApplication.shared.open(u) }   // dự phòng: để Safari xử lý
@@ -88,6 +91,14 @@ enum BankLauncher {
         guard let start = line.firstIndex(of: "'") else { return nil }
         let link = String(line[line.index(after: start)..<line.index(before: line.endIndex)])
         return link.contains("://") ? link : nil
+    }
+
+    /// "Nguyễn Văn Á - CN.1" → "NGUYEN VAN A CN 1"
+    static func plainName(_ s: String) -> String {
+        let folded = s.replacingOccurrences(of: "đ", with: "d").replacingOccurrences(of: "Đ", with: "D")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi")).uppercased()
+        let kept = String(folded.unicodeScalars.map { CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789").contains($0) ? Character($0) : " " })
+        return kept.split(separator: " ").joined(separator: " ")
     }
 
     private static func enc(_ s: String) -> String {

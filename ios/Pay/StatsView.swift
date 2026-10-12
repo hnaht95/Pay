@@ -84,6 +84,7 @@ struct StatsView: View {
             // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur); dải ngày nhoè theo từng viên
             hero(items, prev).navEdgeBlur()
             grid(items, prev).navEdgeBlur()
+            if film == nil { monthlyCard.navEdgeBlur() }
             if !items.isEmpty {
                 categoryCard(items).navEdgeBlur()
                 recentCard(items).navEdgeBlur()
@@ -857,6 +858,24 @@ struct StatsView: View {
 
     // MARK: Theo danh mục
 
+    /// 6 tháng tới tháng đang xem, mỗi tháng một cột chồng: 3 danh mục chi nhiều nhất của 6 tháng ấy (màu danh mục) và phần còn
+    /// lại (gạch chéo). Tháng đang xem đậm, các tháng khác nhạt; tháng bị khoá (bản miễn phí) để trống
+    private var monthlyCard: some View {
+        let months = (0..<6).reversed().map { cal.date(byAdding: .month, value: -$0, to: cal.dateInterval(of: .month, for: month)!.start)! }
+        let open = months.filter { !locked($0) }
+        let all = open.flatMap { spending(in: cal.dateInterval(of: .month, for: $0)!) }
+        let byCat = Dictionary(grouping: all, by: { Category.get($0.c).k }).mapValues(sum)
+        let top = Category.all.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }.prefix(3).map { $0 }
+        let cols: [MonthStack.Column] = months.map { m in
+            let items = locked(m) ? [] : spending(in: cal.dateInterval(of: .month, for: m)!)
+            let parts = top.map { c in sum(items.filter { Category.get($0.c).k == c.k }) }
+            let label = Lang.isEnglish ? shortMonth(m) : "T\(cal.component(.month, from: m))"
+            return .init(date: m, label: label, parts: parts, rest: sum(items) - parts.reduce(0, +),
+                         current: cal.isDate(m, equalTo: month, toGranularity: .month), locked: locked(m))
+        }
+        return MonthStack(title: L("6 tháng gần đây"), top: top, columns: cols)
+    }
+
     private func categoryCard(_ items: [Expense]) -> some View {
         let total = max(sum(items), 1)
         // Nhóm theo danh mục đang có: khoản của danh mục đã xoá (hoặc chưa đồng bộ về máy này) tính vào "Khác",
@@ -867,7 +886,7 @@ struct StatsView: View {
         // thanh tỉ lệ mảnh ở dưới tên)
         return VStack(alignment: .leading, spacing: 10) {
             Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
-            CategoryRings(top: ranked.prefix(3).map { ($0, Double(byCat[$0.k]!) / Double(total)) })
+            CategoryBreakdown(total: sum(items), top: ranked.prefix(3).map { ($0, byCat[$0.k]!) })
             ForEach(ranked) { c in
                 let v = byCat[c.k]!
                 HStack(spacing: 14) {
@@ -1074,55 +1093,140 @@ struct SevenColumns: ViewModifier {
     }
 }
 
-/// Vòng tròn đồng tâm của 3 danh mục chi nhiều nhất: mỗi vòng một danh mục (ngoài cùng là lớn nhất), cung dài theo phần trăm
-/// tổng chi, tô màu danh mục, biểu tượng ở đầu cung; bên phải là chú thích tên + %. Đổi kỳ thì cung chạy dài / ngắn theo
-struct CategoryRings: View {
-    let top: [(Category, Double)]
-    private static let thick: CGFloat = 20, gap: CGFloat = 6, side: CGFloat = 170
+/// Số tiền gọn cho trục biểu đồ: 4,3tr · 850k (tiếng Anh: 4.3M · 850K)
+func compactMoney(_ v: Int) -> String {
+    let en = Lang.isEnglish
+    if v >= 1_000_000 {
+        let x = Double(v) / 1_000_000
+        let s = x >= 10 ? String(format: "%.0f", x) : String(format: "%.1f", x)
+        return (en ? s : s.replacingOccurrences(of: ".", with: ",")).replacingOccurrences(of: en ? ".0" : ",0", with: "") + (en ? "M" : "tr")
+    }
+    if v >= 1000 { return "\(v / 1000)" + (en ? "K" : "k") }
+    return "\(v)"
+}
+
+/// Nền gạch chéo cho phần "còn lại" (không thuộc danh mục nào được tô màu)
+struct HatchFill: View {
+    var body: some View {
+        Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color.primary.opacity(0.05)))
+            var p = Path()
+            var x: CGFloat = -size.height
+            while x < size.width { p.move(to: CGPoint(x: x, y: size.height)); p.addLine(to: CGPoint(x: x + size.height, y: 0)); x += 6 }
+            ctx.stroke(p, with: .color(Color.primary.opacity(0.14)), lineWidth: 1.5)
+        }
+    }
+}
+
+/// Tổng chi + một thanh chia đoạn theo 3 danh mục lớn nhất (phần còn lại gạch chéo), dưới là chú thích tên ···· %
+struct CategoryBreakdown: View {
+    let total: Int
+    let top: [(Category, Int)]
 
     var body: some View {
-        HStack(spacing: 20) {
-            ZStack {
-                ForEach(Array(top.enumerated()), id: \.element.0.k) { i, item in
-                    ring(item.0, item.1, radius: Self.side / 2 - Self.thick / 2 - CGFloat(i) * (Self.thick + Self.gap))
+        let rest = max(0, total - top.map(\.1).reduce(0, +))
+        let pct: (Int) -> String = { "\(Int((Double($0) / Double(max(total, 1)) * 100).rounded()))%" }
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(L("Tổng chi")).font(.system(size: 15)).foregroundStyle(.secondary)
+                Spacer()
+                Text(fmt(total)).font(.system(size: 17, weight: .bold))
+            }
+            GeometryReader { g in
+                let parts = top.map { (AnyView(Rectangle().fill($0.0.chart)), $0.1) } + (rest > 0 ? [(AnyView(HatchFill()), rest)] : [])
+                let gaps = CGFloat(max(0, parts.count - 1)) * 3
+                HStack(spacing: 3) {
+                    ForEach(Array(parts.enumerated()), id: \.offset) { _, p in
+                        p.0.frame(width: max(4, (g.size.width - gaps) * CGFloat(p.1) / CGFloat(max(total, 1))))
+                    }
+                }
+                .clipShape(Capsule())
+            }
+            .frame(height: 16)
+            .animation(.snappy(duration: 0.4), value: top.map(\.1))
+            VStack(spacing: 12) {
+                ForEach(top, id: \.0.k) { c, v in row(AnyView(RoundedRectangle(cornerRadius: 3).fill(c.chart)), c.name, pct(v)) }
+                if rest > 0 { row(AnyView(HatchFill().clipShape(RoundedRectangle(cornerRadius: 3))), L("Khác"), pct(rest)) }
+            }
+        }
+        .padding(18)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
+    }
+
+    private func row(_ swatch: AnyView, _ name: String, _ pct: String) -> some View {
+        HStack(spacing: 10) {
+            swatch.frame(width: 14, height: 14)
+            Text(name).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1).layoutPriority(1)
+            Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1)
+            Text(pct).font(.system(size: 15, weight: .semibold))
+        }
+    }
+}
+
+/// Biểu đồ cột chồng theo tháng (xem monthlyCard)
+struct MonthStack: View {
+    struct Column: Identifiable {
+        let date: Date, label: String, parts: [Int], rest: Int, current: Bool, locked: Bool
+        var id: Date { date }
+        var total: Int { parts.reduce(0, +) + rest }
+    }
+    let title: String
+    let top: [Category]
+    let columns: [Column]
+    private static let height: CGFloat = 170
+
+    var body: some View {
+        let peak = max(columns.map(\.total).max() ?? 0, 1)
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title).font(.system(size: 17, weight: .semibold))
+            HStack(spacing: 14) {
+                ForEach(top, id: \.k) { c in
+                    HStack(spacing: 6) {
+                        RoundedRectangle(cornerRadius: 3).fill(c.chart).frame(width: 12, height: 12)
+                        Text(c.name).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                HStack(spacing: 6) {
+                    HatchFill().clipShape(RoundedRectangle(cornerRadius: 3)).frame(width: 12, height: 12)
+                    Text(L("Khác")).font(.system(size: 13)).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: Self.side, height: Self.side)
-            .animation(.snappy(duration: 0.5), value: top.map(\.1))
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(top, id: \.0.k) { c, f in
-                    HStack(spacing: 8) {
-                        Circle().fill(c.chart).frame(width: 10, height: 10)
-                        Text(c.name).font(.system(size: 15, weight: .medium)).lineLimit(1)
-                        Spacer(minLength: 4)
-                        Text("\(Int((f * 100).rounded()))%").font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+            HStack(alignment: .bottom, spacing: 10) {
+                ForEach(columns) { col in
+                    VStack(spacing: 8) {
+                        Text(col.total > 0 ? compactMoney(col.total) : " ").font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(col.current ? .primary : .secondary).lineLimit(1).minimumScaleFactor(0.7)
+                        stack(col, peak: peak)
+                            .frame(height: Self.height * CGFloat(col.total) / CGFloat(peak), alignment: .bottom)
+                            .frame(height: Self.height, alignment: .bottom)
+                            .opacity(col.current ? 1 : 0.45)
+                        Text(col.label).font(.system(size: 12, weight: col.current ? .semibold : .regular))
+                            .foregroundStyle(col.current ? .primary : .secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .animation(.snappy(duration: 0.4), value: columns.map(\.total))
+        }
+        .padding(18)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
+    }
+
+    @ViewBuilder private func stack(_ col: Column, peak: Int) -> some View {
+        if col.locked {
+            Image(systemName: "lock.fill").font(.system(size: 12)).foregroundStyle(.tertiary).frame(maxHeight: .infinity, alignment: .bottom)
+        } else {
+            GeometryReader { g in
+                let segs: [(AnyView, Int)] = (col.rest > 0 ? [(AnyView(HatchFill()), col.rest)] : [])
+                    + zip(top, col.parts).reversed().filter { $0.1 > 0 }.map { (AnyView(Rectangle().fill($0.0.chart)), $0.1) }
+                let gaps = CGFloat(max(0, segs.count - 1)) * 3
+                VStack(spacing: 3) {
+                    ForEach(Array(segs.enumerated()), id: \.offset) { _, s in
+                        s.0.frame(height: max(3, (g.size.height - gaps) * CGFloat(s.1) / CGFloat(max(col.total, 1))))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                 }
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
-    }
-
-    private func ring(_ c: Category, _ f: Double, radius r: CGFloat) -> some View {
-        // Cung tối thiểu đủ chứa biểu tượng ở đầu
-        let frac = max(f, 0.04)
-        return ZStack {
-            Circle().stroke(Color.primary.opacity(0.07), lineWidth: Self.thick)
-                .frame(width: r * 2, height: r * 2)
-            Circle().trim(from: 0, to: frac)
-                .stroke(c.chart, style: StrokeStyle(lineWidth: Self.thick, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .frame(width: r * 2, height: r * 2)
-            // Biểu tượng danh mục trong chấm trắng ở đầu cung (lùi lại một chút cho nằm trong cung bo tròn)
-            let back = Angle.degrees(-90 + 360 * frac - 360 * Double(Self.thick / 2) / Double(2 * .pi * r)).radians
-            CategoryIcon(c: c, size: 12)
-                .frame(width: Self.thick - 4, height: Self.thick - 4)
-                .background(.white, in: Circle())
-                .offset(x: r * CGFloat(cos(back)), y: r * CGFloat(sin(back)))
-        }
-        .accessibilityElement()
-        .accessibilityLabel("\(c.name) \(Int((f * 100).rounded()))%")
     }
 }

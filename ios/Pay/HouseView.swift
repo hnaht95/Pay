@@ -699,7 +699,7 @@ struct HouseView: View {
 
                 if !house.settles.isEmpty {
                     Text(L("Lịch sử trả tiền")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
-                    ForEach(house.settles.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { settleRow($0) }
+                    SwipeCards(items: house.settles.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { settleRow($0) }
                 }
             }
         }
@@ -734,15 +734,14 @@ struct HouseView: View {
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        VStack(spacing: 10) {
-            ForEach(house.spends.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { spendRow($0) }
-        }
+        SwipeCards(items: house.spends.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { spendRow($0) }
     }
 
     private func spendRow(_ e: HouseSpend) -> some View {
         let c = Category.get(e.cat)
         let payer = house.memberName(e.payer)
-        return HStack(spacing: 14) {
+        return TapHold(tap: { editingSpend = e }, hold: { spendMenu(e) }) {
+        HStack(spacing: 14) {
             CategoryBadge(c: c, side: 52, radius: 16, iconSize: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.system(size: 17, weight: .semibold)).lineLimit(1)
@@ -761,10 +760,13 @@ struct HouseView: View {
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .onTapGesture { editingSpend = e }   // chạm để xem / sửa ai trả, chia cho ai
-        .cardSwipe { softDelete(e.id) }
-        .onHold {
-            let c = Category.get(e.cat)
+        }
+        // Vuốt xoá có sẵn của iOS, giống hệt Gần đây ở trang chủ (cùng nút tròn đỏ, rung, hàng trượt ra mép màn)
+        .expenseSwipe(delete: { softDelete(e.id) })
+    }
+
+    private func spendMenu(_ e: HouseSpend) {
+        let c = Category.get(e.cat)
             menu = AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
                                title: "\(e.note.isEmpty ? c.name : e.note.capFirst) · \(fmt(e.amount))",
                                subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
@@ -772,7 +774,6 @@ struct HouseView: View {
                                        AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
                                    softDelete(e.id)
                                }])
-        }
     }
 
     /// Xoá có Hoàn tác: ẩn ngay, hiện "Đã xoá · Hoàn tác" như khoản chi của mình; hết thanh mà không hoàn tác mới xoá thật
@@ -796,7 +797,9 @@ struct HouseView: View {
         case "no": ("xmark", Palette.danger, L("Chưa nhận được"))
         default: ("checkmark", Palette.goodInk, L("Đã xác nhận"))
         }
-        return HStack(spacing: 14) {
+        return TapHold(tap: { if s.to == house.me && s.status == "wait" { confirming = s } },
+                       hold: { settleMenu(s, icon: icon, tint: tint, note: note, from: from, to: to) }) {
+        HStack(spacing: 14) {
             // Biểu tượng tròn đặc cùng một khung (clock / checkmark / xmark .circle.fill) để to nhỏ đều nhau
             Image(systemName: icon + ".circle.fill").font(.system(size: 24)).foregroundStyle(tint)
                 .frame(width: 52, height: 52)
@@ -813,17 +816,18 @@ struct HouseView: View {
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
         // Người khác báo đã chuyển cho mình, đang chờ: chạm để xác nhận đã nhận hay chưa
-        .onTapGesture { if s.to == house.me && s.status == "wait" { confirming = s } }
-        .cardSwipe { softDelete(s.id) }
-        .onHold {
+        .expenseSwipe(delete: { softDelete(s.id) })
+    }
+
+    private func settleMenu(_ s: HouseSettle, icon: String, tint: Color, note: String, from: String, to: String) {
             menu = AppMenuSpec(icon: AnyView(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(tint)
                                 .frame(width: 56, height: 56).background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                                title: L("%@ chuyển %@", from, to) + " · \(fmt(s.amount))", subtitle: "\(note) · \(day(s.date))",
                                items: [AppMenuItem(icon: "trash.fill", title: L("Xoá lần trả này"), subtitle: L("Số nợ sẽ tính lại như chưa trả"), danger: true) {
                                    softDelete(s.id)
                                }])
-        }
     }
 
     /// Lần trả cần mình làm gì: xác nhận đã nhận, chờ người kia xác nhận, hoặc bị báo chưa nhận được.
@@ -1782,5 +1786,24 @@ extension View {
                 }
             }
         }
+    }
+}
+
+/// Danh sách thẻ vuốt xoá như Gần đây ở trang chủ: List (để có vuốt có sẵn của iOS), không tự cuộn, cao vừa đủ số hàng;
+/// tràn ra mép trái / phải như ở trang chủ (expenseSwipe tự lùi hàng vào lại)
+struct SwipeCards<Item: Identifiable, Row: View>: View {
+    let items: [Item]
+    /// Thẻ cao 76 (ô biểu tượng 52 + lề 12 trên dưới) + khe 10
+    var rowHeight: CGFloat = 86
+    @ViewBuilder let row: (Item) -> Row
+
+    var body: some View {
+        List { ForEach(items) { row($0) } }
+            .listStyle(.plain)
+            .scrollDisabled(true)
+            .scrollContentBackground(.hidden)
+            .scrollClipDisabled()
+            .frame(height: CGFloat(items.count) * rowHeight)
+            .padding(.leading, -16).padding(.trailing, -8)
     }
 }

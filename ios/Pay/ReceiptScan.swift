@@ -21,6 +21,9 @@ struct ReceiptCamera: View {
     @State private var adjusting: CamAdjust?
     @State private var showFilters = false
     @State private var countdown = 0
+    @State private var dialShown = false
+    @State private var dragStartZoom: CGFloat?
+    @State private var dialHide: DispatchWorkItem?
 
     private var filter: CamFilter { CamFilter(rawValue: filterRaw) ?? .none }
     private var aspect: CamRatio { CamRatio(rawValue: ratio) ?? .r34 }
@@ -60,6 +63,23 @@ struct ReceiptCamera: View {
             }
             .accessibilityLabel(L("Đóng"))
             Spacer()
+            Button { toggle(.warmth) } label: {
+                Image(systemName: "thermometer.medium").font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(adjusting == .warmth || cam.warmth != 0 ? Color(hex: 0x61BE6E) : .white)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(L("Nhiệt độ màu"))
+            Button { toggle(.exposure) } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "sun.max").font(.system(size: 19, weight: .medium))
+                    if cam.exposure != 0 {
+                        Text(String(format: "%+.1f", cam.exposure)).font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    }
+                }
+                .foregroundStyle(adjusting == .exposure || cam.exposure != 0 ? Color(hex: 0x61BE6E) : .white)
+                .frame(minWidth: 44, minHeight: 44)
+            }
+            .accessibilityLabel(L("Độ sáng"))
             Button { grid.toggle(); Haptic.select() } label: {
                 Image(systemName: grid ? "squareshape.split.3x3" : "square").font(.system(size: 20, weight: .medium)).frame(width: 44, height: 44)
             }
@@ -88,14 +108,17 @@ struct ReceiptCamera: View {
                 Text("\(countdown)").font(.system(size: 96, weight: .bold, design: .rounded)).foregroundStyle(.white)
                     .contentTransition(.numericText()).shadow(radius: 8)
             }
+            // Vòng tiêu cự (đang vuốt trái / phải ở chỗ số tiêu cự): nửa vòng tròn chia vạch như Camera của iOS
+            if dialShown {
+                ZoomDial(zoom: cam.zoom, min: cam.minZoom, max: cam.maxZoom)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
             VStack(spacing: 10) {
-                Text(L("Đặt hoá đơn vào khung rồi bấm chụp"))
-                    .font(.system(size: 13, weight: .medium)).foregroundStyle(.white)
-                    .padding(.horizontal, 12).padding(.vertical, 6).background(Color(hex: 0x2C2C2E).opacity(0.7), in: Capsule())
-                    .padding(.top, 14)
                 Spacer()
-                if let a = adjusting { slider(a).transition(.opacity) }
-                pills.padding(.bottom, 14)
+                if let a = adjusting, !dialShown { slider(a).transition(.opacity) }
+                zoomControl.padding(.bottom, 10)
             }
         }
         .aspectRatio(aspect.value, contentMode: .fit)
@@ -103,33 +126,45 @@ struct ReceiptCamera: View {
         .clipShape(shape)
         .animation(.snappy(duration: 0.25), value: ratio)
         .animation(.snappy(duration: 0.2), value: adjusting)
+        .animation(.easeOut(duration: 0.2), value: dialShown)
     }
 
-    /// Nhiệt độ màu · thu phóng · độ sáng, nổi trên đáy khung xem
-    private var pills: some View {
-        HStack(spacing: 10) {
-            Button { toggle(.warmth) } label: {
-                Image(systemName: "thermometer.medium").font(.system(size: 18, weight: .medium))
-                    .frame(width: 48, height: 48).background(pillBg(adjusting == .warmth), in: Circle())
-            }
-            .accessibilityLabel(L("Nhiệt độ màu"))
-            Button { cam.nextZoom(); Haptic.select() } label: {
-                Text(cam.zoomLabel).font(.system(size: 15, weight: .semibold)).monospacedDigit()
-                    .frame(width: 48, height: 48).background(pillBg(false), in: Circle())
-            }
-            .accessibilityLabel(L("Thu phóng"))
-            Button { toggle(.exposure) } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "sun.max").font(.system(size: 17, weight: .medium))
-                    Text(String(format: "%+.1f", cam.exposure).replacingOccurrences(of: "+0.0", with: "0"))
-                        .font(.system(size: 15, weight: .semibold)).monospacedDigit()
+    /// Chỉ số tiêu cự, chữ đơn cách, không nền. Chạm: đổi nấc (1x · 0.5x · 2x); vuốt trái / phải: thu phóng liền, hiện vòng tiêu cự
+    private var zoomControl: some View {
+        Text(zoomText(cam.zoom))
+            .font(.system(size: dialShown ? 17 : 15, weight: .semibold, design: .monospaced))
+            .foregroundStyle(dialShown ? Color(hex: 0xFFD43B) : .white)
+            .shadow(color: .black.opacity(0.5), radius: 3)
+            .opacity(dialShown ? 0 : 1)   // đang hiện vòng tiêu cự: số đã nằm trên vòng
+            .frame(width: 140, height: 52)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { v in
+                    if dragStartZoom == nil { dragStartZoom = cam.zoom }
+                    guard abs(v.translation.width) > 6 || dialShown else { return }
+                    if !dialShown { dialShown = true; Haptic.select() }
+                    dialHide?.cancel()
+                    // Kéo sang phải: vạch chạy sang phải, nấc nhỏ hơn về giữa (như Camera của iOS); ~110 pt mỗi lần gấp đôi
+                    let z = (dragStartZoom ?? 1) * pow(2, -v.translation.width / 110)
+                    let old = cam.zoom
+                    cam.setZoom(z)
+                    if ZoomDial.majors.contains(where: { (old - $0) * (cam.zoom - $0) < 0 }) { Haptic.select() }
                 }
-                .padding(.horizontal, 14).frame(height: 48).background(pillBg(adjusting == .exposure), in: Capsule())
-            }
-            .accessibilityLabel(L("Độ sáng"))
-        }
-        .foregroundStyle(.white)
-        .buttonStyle(Pressable())
+                .onEnded { v in
+                    if !dialShown { cam.nextZoom(); Haptic.select() }
+                    dragStartZoom = nil
+                    let job = DispatchWorkItem { dialShown = false }
+                    dialHide = job
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9, execute: job)
+                })
+            .accessibilityLabel(L("Thu phóng"))
+            .accessibilityAddTraits(.isButton)
+    }
+
+    private func zoomText(_ z: CGFloat) -> String {
+        let r = (z * 10).rounded() / 10
+        let s = r == r.rounded() ? String(Int(r)) : String(format: "%.1f", r)
+        return (s.hasPrefix("0.") ? String(s.dropFirst()) : s) + "x"
     }
 
     private func pillBg(_ on: Bool) -> Color { on ? Color(hex: 0x61BE6E).opacity(0.9) : Color(hex: 0x2C2C2E).opacity(0.8) }
@@ -392,7 +427,10 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     @Published var warmth: Float = 0
     @Published var exposure: Float = 0
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
-    @Published private(set) var zoomLabel = "1x"
+    /// Tiêu cự đang dùng, tính theo camera chính = 1x
+    @Published private(set) var zoom: CGFloat = 1
+    @Published private(set) var minZoom: CGFloat = 1
+    @Published private(set) var maxZoom: CGFloat = 10
     private var zoomSteps: [CGFloat] = [1, 2]
     private var zoomIndex = 0
     /// Hệ số thu phóng của máy ứng với "1x" (camera ảo có góc siêu rộng: 1x là camera chính, nằm ở mốc chuyển thứ nhất)
@@ -451,21 +489,23 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         let wide = d.deviceType == .builtInTripleCamera || d.deviceType == .builtInDualWideCamera
         zoomBase = wide ? CGFloat(d.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue ?? 2) : 1
         zoomSteps = d.position == .front ? [1] : wide ? [1, 0.5, 2] : [1, 2]
+        minZoom = d.minAvailableVideoZoomFactor / zoomBase
+        maxZoom = max(minZoom, min(d.maxAvailableVideoZoomFactor / zoomBase, 15))
         zoomIndex = 0
-        applyZoom()
+        setZoom(1)
     }
 
     func nextZoom() {
         guard zoomSteps.count > 1 else { return }
         zoomIndex = (zoomIndex + 1) % zoomSteps.count
-        applyZoom()
+        setZoom(zoomSteps[zoomIndex])
     }
 
-    private func applyZoom() {
-        let z = zoomSteps[zoomIndex]
-        zoomLabel = z == 0.5 ? ".5x" : "\(Int(z))x"
+    /// Tiêu cự liền (vuốt vòng tiêu cự), kẹp trong khoảng máy làm được
+    func setZoom(_ z: CGFloat) {
+        zoom = min(max(z, minZoom), maxZoom)
         guard let d = device, (try? d.lockForConfiguration()) != nil else { return }
-        d.videoZoomFactor = min(max(z * zoomBase, d.minAvailableVideoZoomFactor), min(d.maxAvailableVideoZoomFactor, 10))
+        d.videoZoomFactor = min(max(zoom * zoomBase, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
         d.unlockForConfiguration()
     }
 
@@ -561,5 +601,61 @@ private struct CameraPreview: UIViewRepresentable {
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         override var layer: AVCaptureVideoPreviewLayer { super.layer as! AVCaptureVideoPreviewLayer }
+    }
+}
+
+/// Vòng tiêu cự: nửa vòng tròn tối ở đáy khung, vạch chia theo thang log (mỗi lần gấp đôi một khoảng bằng nhau), số ở các nấc
+/// chính, nấc đang chọn ở đỉnh vòng màu vàng kèm tiêu cự tương đương (mm)
+struct ZoomDial: View {
+    let zoom: CGFloat, min: CGFloat, max: CGFloat
+    static let majors: [CGFloat] = [0.5, 1, 2, 3, 5, 10, 15]
+    /// Góc cho mỗi lần gấp đôi tiêu cự
+    private static let perDouble = 34.0
+
+    var body: some View {
+        Canvas { ctx, size in
+            let r = size.width * 0.78
+            let c = CGPoint(x: size.width / 2, y: size.height + r - 150)
+            // Nền nửa vòng
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - r - 30, y: c.y - r - 30, width: (r + 30) * 2, height: (r + 30) * 2)),
+                     with: .color(.black.opacity(0.45)))
+            func angle(_ v: CGFloat) -> Double { (log2(Double(v)) - log2(Double(zoom))) * Self.perDouble }
+            func point(_ deg: Double, _ rad: CGFloat) -> CGPoint {
+                let a = (deg - 90) * .pi / 180
+                return CGPoint(x: c.x + rad * CGFloat(cos(a)), y: c.y + rad * CGFloat(sin(a)))
+            }
+            // Vạch nhỏ
+            var v = min
+            while v <= max + 0.001 {
+                let deg = angle(v)
+                if abs(deg) < 80 {
+                    let major = Self.majors.contains { abs($0 - v) < 0.01 }
+                    var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - (major ? 20 : 11)))
+                    ctx.stroke(p, with: .color(.white.opacity(major ? 0.95 : 0.5)), lineWidth: major ? 2 : 1)
+                }
+                v += v < 1 ? 0.05 : v < 3 ? 0.1 : v < 10 ? 0.5 : 1
+                v = (v * 100).rounded() / 100
+            }
+            // Số ở nấc chính (trừ chỗ đang chọn, chỗ đó vẽ số vàng)
+            for m in Self.majors where m >= min - 0.01 && m <= max + 0.01 {
+                let deg = angle(m)
+                guard abs(deg) < 75, abs(deg) > 9 else { continue }
+                let s = m < 1 ? "0,5" : "\(Int(m))"
+                ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white),
+                         at: point(deg, r - 38))
+            }
+            // Nấc đang chọn: tam giác vàng ở đỉnh, số và mm
+            var tri = Path()
+            tri.move(to: CGPoint(x: c.x - 5, y: c.y - r - 4)); tri.addLine(to: CGPoint(x: c.x + 5, y: c.y - r - 4))
+            tri.addLine(to: CGPoint(x: c.x, y: c.y - r + 6)); tri.closeSubpath()
+            ctx.fill(tri, with: .color(Color(hex: 0xFFD43B)))
+            let z = (zoom * 10).rounded() / 10
+            let label = (z == z.rounded() ? "\(Int(z))" : String(format: "%.1f", z)).replacingOccurrences(of: ".", with: ",") + "×"
+            ctx.draw(Text(label).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(Color(hex: 0xFFD43B)),
+                     at: CGPoint(x: c.x, y: c.y - r + 40))
+            ctx.draw(Text("\(Int((24 * zoom).rounded())) MM").font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color(hex: 0xFFD43B)),
+                     at: CGPoint(x: c.x, y: c.y - r + 64))
+        }
     }
 }

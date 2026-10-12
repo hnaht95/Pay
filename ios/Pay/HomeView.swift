@@ -738,7 +738,7 @@ struct ExpenseRow: View {
                 }
             HStack(spacing: 6) {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 15))
+                Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 15, weight: .medium))
                     .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                 if repeats {
                     Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)

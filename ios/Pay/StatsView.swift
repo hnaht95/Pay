@@ -49,8 +49,6 @@ struct StatsView: View {
     static let chip = Color(light: 0xF2F2F2, dark: 0x3A3A3C)
     /// Khung Tổng chi kiểu bảng màu retro: nền pistachio, chữ xanh lá đậm, viên % / biểu tượng nền xanh chữ kem
     /// (giữ nguyên ở chế độ tối: nền sáng nổi trên trang tối vẫn đọc rõ)
-    /// Khối mức chi trong viên ngày / tháng: xanh lá của app, nhạt
-    static let spentGreen = Color(hex: 0x61BE6E)
     static let heroBg = Color(hex: 0xC9D9A4)
     static let heroInk = Color(hex: 0x1F6B47)
     static let heroPill = Color(hex: 0xE8F0D2)
@@ -292,7 +290,7 @@ struct StatsView: View {
                         Group {
                             let h = max(18, g.size.height * r)   // thấp nhất 18: thấp hơn thì chỉ còn vệt mỏng cong theo đáy viên
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
-                                .fill(on ? Self.inkText.opacity(spent > 0 ? 0.22 : 0.08) : Self.spentGreen.opacity(spent > 0 ? 0.3 : 0.12))
+                                .fill(on ? Self.inkText.opacity(spent > 0 ? 0.22 : 0.08) : Color.primary.opacity(spent > 0 ? 0.04 + 0.2 * r : 0.035))   // chi càng nhiều (khối càng cao) càng đậm
                                 .frame(height: h)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
                                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -344,7 +342,7 @@ struct StatsView: View {
                             // (tự bo theo chiều cao của lớp xanh thì lớp thấp thành viên thuốc, lệch góc)
                             let h = max(18, g.size.height * r)   // thấp nhất 18: thấp hơn thì chỉ còn vệt mỏng cong theo đáy viên
                             UnevenRoundedRectangle(topLeadingRadius: min(8, h / 2), topTrailingRadius: min(8, h / 2), style: .continuous)
-                                .fill(on ? Self.inkText.opacity(spent > 0 ? 0.22 : 0.08) : Self.spentGreen.opacity(spent > 0 ? 0.3 : 0.12))
+                                .fill(on ? Self.inkText.opacity(spent > 0 ? 0.22 : 0.08) : Color.primary.opacity(spent > 0 ? 0.04 + 0.2 * r : 0.035))   // chi càng nhiều (khối càng cao) càng đậm
                                 .frame(height: h)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
                                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))

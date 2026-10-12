@@ -1211,6 +1211,8 @@ struct HouseSpendEditor: View {
     @State private var failed = false
     /// Bàn phím số của app đang hiện (ẩn khi gõ ghi chú, chạm số tiền thì hiện lại)
     @State private var padShown = true
+    /// Nền tấm bàn phím số và hàng nút: màu nền app, lệch nhẹ so với nền bảng
+    private static let padBack = Palette.bg
     /// Nhịp hiện / ẩn bàn phím số: trượt từ dưới lên, lò xo có nảy nhẹ ở cuối
     private static let padAnim: Animation = .spring(response: 0.42, dampingFraction: 0.66)
     @FocusState private var noteFocused: Bool
@@ -1326,8 +1328,7 @@ struct HouseSpendEditor: View {
             .scrollDismissesKeyboard(.interactively)
             // Gõ ghi chú thì bàn phím chữ của iOS lên, bàn phím số của app nhường chỗ
             .onChange(of: noteFocused) { _, f in if f { withAnimation(Self.padAnim) { padShown = false } } }
-            // Bàn phím số và hàng nút nổi trên vùng cuộn: nội dung cuộn chui xuống dưới, mép trên của tấm này làm mờ (blur) dần
-            // nội dung đang trôi qua, từ đó trở xuống là nền đục
+            // Bàn phím số và hàng nút nổi trên vùng cuộn: nội dung cuộn chui xuống dưới tấm nền đục này
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
 
@@ -1352,19 +1353,16 @@ struct HouseSpendEditor: View {
                         .animation(.easeInOut(duration: 0.25), value: valid && !saving)
                 }
                 // Nền đục sau hàng nút (tràn hai bên và xuống đáy): phím số trượt lên / xuống luồn phía sau, không lộ qua nút Lưu đang mờ
-                .background(Palette.surface.padding(.horizontal, -18).padding(.top, -6).padding(.bottom, -80))
+                .background(Self.padBack.padding(.horizontal, -18).padding(.top, -6).padding(.bottom, -80))
                 .padding(.bottom, -18)
                 .zIndex(1)
                 }
-                .padding(.top, PanelEdge.gap)   // khoảng trống phía trên phím: nội dung cuộn chui vào đây và bị nhoè dần
+                .padding(.top, 12)
+                // Nền đục, khác màu nền bảng một chút và bo hai góc trên, để tấm phím tách khỏi nội dung cuộn phía sau (không làm mờ)
                 .background {
-                    VStack(spacing: 0) {
-                        PanelEdge(tall: padShown)
-                        Palette.surface
-                    }
-                    .padding(.top, -PanelEdge.rise)   // dải mờ vươn lên trên tấm, phủ lên phần nội dung đang cuộn
-                    .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
-                    .ignoresSafeArea(edges: .bottom)
+                    UnevenRoundedRectangle(topLeadingRadius: 26, topTrailingRadius: 26, style: .continuous).fill(Self.padBack)
+                        .padding(.horizontal, -18)   // nền tràn ra sát hai mép bảng, nút và phím vẫn thẳng lề nội dung
+                        .ignoresSafeArea(edges: .bottom)
                 }
             }
         }
@@ -1519,24 +1517,3 @@ private struct PinnedHeader<H: View>: ViewModifier {
     }
 }
 
-/// Phần trên của tấm bàn phím số: nội dung cuộn chui xuống dưới bị nhoè (lớp kính mờ), đục dần đều xuống tới hàng 7 8 9.
-/// Tự làm bằng lớp kính mờ chứ không nhờ mép cuộn mềm của hệ thống: hiệu ứng ấy mỗi bản iOS một khác (iOS 27 trên máy thật
-/// không nhoè, nội dung hiện rõ nét sau các phím).
-private struct PanelEdge: View {
-    static let gap: CGFloat = 22      // đệm trên của tấm: vùng nhoè nhô lên trên hàng phím đầu một chút
-    static let rise: CGFloat = 0
-    static let height: CGFloat = rise + gap + 155   // tới hàng 7 8 9 thì đục hẳn
-    var tall = true   // bàn phím số đang hiện: dải kéo xuống tới hàng 7 8 9; đang ẩn: chỉ một dải ngắn trên hàng nút
-    var body: some View {
-        Rectangle().fill(.ultraThinMaterial)
-            // Mép trên của lớp kính tan dần để không thấy vạch ranh giới
-            .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.22), .init(color: .black, location: 1)],
-                                 startPoint: .top, endPoint: .bottom))
-            // Phủ thêm màu nền, đậm dần: ngay hàng phím đầu đã đủ đục để số đọc rõ trên các ô tối màu nằm phía sau
-            .overlay(LinearGradient(stops: [.init(color: Palette.surface.opacity(0), location: 0), .init(color: Palette.surface.opacity(0.5), location: 0.3),
-                                            .init(color: Palette.surface.opacity(0.85), location: 0.65), .init(color: Palette.surface, location: 1)],
-                                    startPoint: .top, endPoint: .bottom))
-            .frame(height: tall ? Self.height : Self.gap + 6)
-            .allowsHitTesting(false)
-    }
-}

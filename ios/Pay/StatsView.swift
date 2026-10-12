@@ -890,9 +890,14 @@ struct StatsView: View {
                 let v = byCat[c.k]!
                 HStack(spacing: 14) {
                     CategoryBadge(c: c, side: 56, radius: ExpenseRow.radius - ExpenseRow.inset)
+                        // Chấm màu của đoạn trên thanh, ở góc trên phải ô biểu tượng như chấm "có ảnh hoá đơn" của Gần đây
+                        .overlay(alignment: .topTrailing) {
+                            Circle().fill(Palette.card).frame(width: 14, height: 14)
+                                .overlay(Circle().fill(c.chart).frame(width: 9, height: 9))
+                                .offset(x: 3, y: -3)
+                        }
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            Circle().fill(c.chart).frame(width: 10, height: 10)
                             Text(c.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                             Text("\(Int((Double(v) / Double(total) * 100).rounded()))%")
                                 .font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)

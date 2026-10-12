@@ -867,6 +867,7 @@ struct StatsView: View {
         // thanh tỉ lệ mảnh ở dưới tên)
         return VStack(alignment: .leading, spacing: 10) {
             Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            CategoryRings(top: ranked.prefix(3).map { ($0, Double(byCat[$0.k]!) / Double(total)) })
             ForEach(ranked) { c in
                 let v = byCat[c.k]!
                 HStack(spacing: 14) {
@@ -1070,5 +1071,58 @@ struct SevenColumns: ViewModifier {
             }
             .padding(.vertical, -30)
         }
+    }
+}
+
+/// Vòng tròn đồng tâm của 3 danh mục chi nhiều nhất: mỗi vòng một danh mục (ngoài cùng là lớn nhất), cung dài theo phần trăm
+/// tổng chi, tô màu danh mục, biểu tượng ở đầu cung; bên phải là chú thích tên + %. Đổi kỳ thì cung chạy dài / ngắn theo
+struct CategoryRings: View {
+    let top: [(Category, Double)]
+    private static let thick: CGFloat = 20, gap: CGFloat = 6, side: CGFloat = 170
+
+    var body: some View {
+        HStack(spacing: 20) {
+            ZStack {
+                ForEach(Array(top.enumerated()), id: \.element.0.k) { i, item in
+                    ring(item.0, item.1, radius: Self.side / 2 - Self.thick / 2 - CGFloat(i) * (Self.thick + Self.gap))
+                }
+            }
+            .frame(width: Self.side, height: Self.side)
+            .animation(.snappy(duration: 0.5), value: top.map(\.1))
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(top, id: \.0.k) { c, f in
+                    HStack(spacing: 8) {
+                        Circle().fill(c.chart).frame(width: 10, height: 10)
+                        Text(c.name).font(.system(size: 15, weight: .medium)).lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text("\(Int((f * 100).rounded()))%").font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
+    }
+
+    private func ring(_ c: Category, _ f: Double, radius r: CGFloat) -> some View {
+        // Cung tối thiểu đủ chứa biểu tượng ở đầu
+        let frac = max(f, 0.04)
+        return ZStack {
+            Circle().stroke(Color.primary.opacity(0.07), lineWidth: Self.thick)
+                .frame(width: r * 2, height: r * 2)
+            Circle().trim(from: 0, to: frac)
+                .stroke(c.chart, style: StrokeStyle(lineWidth: Self.thick, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .frame(width: r * 2, height: r * 2)
+            // Biểu tượng danh mục trong chấm trắng ở đầu cung (lùi lại một chút cho nằm trong cung bo tròn)
+            let back = Angle.degrees(-90 + 360 * frac - 360 * Double(Self.thick / 2) / Double(2 * .pi * r)).radians
+            CategoryIcon(c: c, size: 12)
+                .frame(width: Self.thick - 4, height: Self.thick - 4)
+                .background(.white, in: Circle())
+                .offset(x: r * CGFloat(cos(back)), y: r * CGFloat(sin(back)))
+        }
+        .accessibilityElement()
+        .accessibilityLabel("\(c.name) \(Int((f * 100).rounded()))%")
     }
 }

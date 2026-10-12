@@ -42,6 +42,8 @@ struct HouseView: View {
     @State private var addingMember = false
     @State private var confirmLeave = false
     @State private var paying: HouseTransfer?
+    /// Đang chọn app ngân hàng để trả lần này (chưa chọn app bao giờ, hoặc muốn đổi app): chọn xong là mở app đó luôn
+    @State private var bankFor: HouseTransfer?
     @State private var inviteError: String?
     /// Thêm người từ màn "Bạn là ai": thêm xong nhận luôn là mình
     @State private var claimAfterAdd = false
@@ -104,6 +106,14 @@ struct HouseView: View {
             Button(L("Huỷ"), role: .cancel) {}
         } message: { _ in Text(L("Kiểm tra tài khoản rồi xác nhận.")) }
         .sheet(item: $editingSpend) { HouseSpendEditor(editing: $0).environmentObject(store).sheetGrabber() }
+        .sheet(isPresented: Binding(get: { bankFor != nil }, set: { if !$0 { bankFor = nil } })) {
+            BankChooser { id in
+                store.appId = id
+                let t = bankFor
+                bankFor = nil
+                if let t { Task { await house.payNow(t, app: store.bankApp) } }
+            }
+        }
         .alert(L("Thêm người vào nhóm"), isPresented: $addingMember) {
             TextField(L("Tên"), text: $newMember)
             Button(L("Huỷ"), role: .cancel) { newMember = ""; claimAfterAdd = false }
@@ -599,7 +609,9 @@ struct HouseView: View {
             }
             Spacer(minLength: 4)
             Button {
-                if canPay { Task { await house.payNow(t, app: store.bankApp) } } else { paying = t }
+                // Người nhận có tài khoản: mở bảng chọn cách trả (qua app ngân hàng, đổi app, hoặc báo đã chuyển rồi) chứ không
+                // mở thẳng app ngân hàng: người vừa chuyển xong ở ngoài mới vào bấm thì không bị mở app ngân hàng lần nữa
+                if canPay { menu = payMenu(t, name) } else { paying = t }
             } label: {
                 // Có tài khoản: Trả ngay (mở app ngân hàng). Không có: báo đã trả bằng cách khác. Người nhận: xác nhận đã nhận
                 Text(canPay ? L("Trả ngay") : outgoing ? L("Báo đã trả") : L("Đã nhận"))
@@ -613,15 +625,27 @@ struct HouseView: View {
         }
         .padding(10).padding(.trailing, 2)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .onHold {
-            guard outgoing else { return }
-            menu = AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: name, size: 56)), title: L("Bạn trả %@", name) + " · \(fmt(t.amount))",
-                               subtitle: house.members.first { $0.id == t.to }?.hasBank == true ? L("Đã có tài khoản nhận tiền") : L("Chưa có tài khoản nhận tiền"),
-                               items: [
-                AppMenuItem(icon: "creditcard.fill", title: L("Trả qua app ngân hàng")) { Task { await house.payNow(t, app: store.bankApp) } },
-                AppMenuItem(icon: "checkmark", title: L("Đã chuyển bằng cách khác"), subtitle: L("Tiền mặt, ví điện tử…")) { paying = t },
-            ].filter { $0.icon != "creditcard.fill" || house.members.first { $0.id == t.to }?.hasBank == true })
+        .onHold { if outgoing { menu = payMenu(t, name) } }
+    }
+
+    /// Đã từng chọn app ngân hàng chưa (chưa chọn thì app mặc định trong máy là ACB, không được tự mở nó)
+    private var bankChosen: Bool { UserDefaults.standard.string(forKey: "bankApp") != nil }
+
+    /// Bảng chọn cách trả một người: qua app ngân hàng đã chọn (chưa chọn thì chọn trước), đổi app, hoặc báo đã chuyển rồi
+    private func payMenu(_ t: HouseTransfer, _ name: String) -> AppMenuSpec {
+        let hasBank = house.members.first { $0.id == t.to }?.hasBank == true
+        var items: [AppMenuItem] = []
+        if hasBank {
+            if bankChosen {
+                items.append(AppMenuItem(icon: "creditcard.fill", title: L("Trả qua %@", store.bankApp.name)) { Task { await house.payNow(t, app: store.bankApp) } })
+                items.append(AppMenuItem(icon: "arrow.left.arrow.right", title: L("Trả qua app ngân hàng khác")) { bankFor = t })
+            } else {
+                items.append(AppMenuItem(icon: "creditcard.fill", title: L("Chọn app ngân hàng để trả")) { bankFor = t })
+            }
         }
+        items.append(AppMenuItem(icon: "checkmark", title: L("Tôi đã chuyển rồi"), subtitle: L("Chuyển khoản, tiền mặt, ví…")) { paying = t })
+        return AppMenuSpec(icon: AnyView(HouseAvatar(id: t.to, name: name, size: 56)), title: L("Bạn trả %@", name) + " · \(fmt(t.amount))",
+                           subtitle: hasBank ? L("Đã có tài khoản nhận tiền") : L("Chưa có tài khoản nhận tiền"), items: items)
     }
 
     /// Mục "Cả nhóm" (luôn hiện). Số dư từng người bằng chữ, các lần trả giữa người khác, lịch sử trả tiền.
@@ -929,8 +953,9 @@ struct HouseView: View {
                         Task {
                             await house.delete(s.id)
                             let t = HouseTransfer(from: s.from, to: s.to, amount: s.amount)
-                            if house.members.first(where: { $0.id == s.to })?.hasBank == true { await house.payNow(t, app: store.bankApp) }
-                            else { paying = t }
+                            if house.members.first(where: { $0.id == s.to })?.hasBank != true { paying = t }
+                            else if bankChosen { await house.payNow(t, app: store.bankApp) }
+                            else { bankFor = t }
                         }
                     }
                 }

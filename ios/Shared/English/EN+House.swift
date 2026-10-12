@@ -2,6 +2,11 @@ import Foundation
 
 extension English {
     static let house: [String: String] = [
+        "Trả qua %@": "Pay with %@",
+        "Trả qua app ngân hàng khác": "Pay with another bank app",
+        "Chọn app ngân hàng để trả": "Choose a bank app to pay",
+        "Tôi đã chuyển rồi": "I already sent it",
+        "Chuyển khoản, tiền mặt, ví…": "Bank transfer, cash, wallet…",
         "Nhóm chung có cập nhật mới": "There is an update in your shared group",
         "%@ ứng. Phần bạn %@.": "%@ paid. Your share is %@.",
         "%@ ứng. Bạn không chịu khoản này.": "%@ paid. You are not part of this one.",

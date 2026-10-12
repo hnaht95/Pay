@@ -1309,6 +1309,9 @@ struct HouseSpendEditor: View {
                 }
                 .padding(.bottom, 20)
                 .padding(.horizontal, 18)
+                // Chạm vào chỗ trống ngoài bàn phím số: bàn phím ẩn đi (chạm ô số tiền để hiện lại)
+                .contentShape(Rectangle())
+                .onTapGesture { if padShown { withAnimation(.snappy(duration: 0.25)) { padShown = false } } }
             }
             // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
             .padding(.horizontal, -18)
@@ -1328,13 +1331,6 @@ struct HouseSpendEditor: View {
 
                 if padShown {
                     VStack(spacing: 0) {
-                        // Nút ẩn bàn phím số
-                        Button { withAnimation(.snappy(duration: 0.25)) { padShown = false } } label: {
-                            Image(systemName: "chevron.compact.down").font(.system(size: 26, weight: .semibold)).foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity).frame(height: 26).contentShape(Rectangle())
-                        }
-                        .buttonStyle(Pressable())
-                        .accessibilityLabel(L("Ẩn bàn phím số"))
                         NumberPad(digits: $amountText) { noteFocused = false }
                             .frame(height: 248)
                     }
@@ -1520,9 +1516,9 @@ private struct PinnedHeader<H: View>: ViewModifier {
 /// iOS 26: nhoè bằng mép cuộn mềm của hệ thống (cùng hiệu ứng với thanh nút ở trang chủ), dải này chỉ để trống phần trên
 /// cho thấy lớp nhoè và ngả sang nền đục ở cuối. iOS cũ: tự làm bằng lớp kính mờ.
 private struct PanelEdge: View {
-    static let gap: CGFloat = 12      // đệm trên của tấm: vùng nhoè chỉ nhô lên trên nút mũi tên một chút (hệ thống nhoè nội dung cuộn nằm dưới tấm)
+    static let gap: CGFloat = 22      // đệm trên của tấm: vùng nhoè chỉ nhô lên trên hàng phím đầu một chút (hệ thống nhoè nội dung cuộn nằm dưới tấm)
     static let rise: CGFloat = 0
-    static let height: CGFloat = rise + gap + 26 + 155   // trong suốt qua hàng nút mũi tên (26pt) và hai hàng phím đầu, tới hàng 7 8 9 mới đục hẳn
+    static let height: CGFloat = rise + gap + 155   // trong suốt qua hai hàng phím đầu, tới hàng 7 8 9 mới đục hẳn
     var body: some View {
         Group {
             if #available(iOS 26.0, *) {

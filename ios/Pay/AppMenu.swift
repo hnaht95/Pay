@@ -121,11 +121,14 @@ struct TapHold<Content: View>: View {
     /// Lần nhấn này đã thành nhấn giữ: lúc nhả tay không tính là chạm nữa, dù giữ bao lâu
     /// (trước đây chỉ bỏ qua lần nhả trong 0,8 giây, giữ lâu hơn rồi nhả là chạy cả hai việc)
     @State private var held = false
+    @Environment(\.swipeGuard) private var swipeGuard
 
     var body: some View {
         // Dùng Button (không phải onTapGesture) để vuốt xoá trong danh sách vẫn chạy
         Button {
             if held { held = false; return }
+            // Vừa vuốt ngang để xoá (Button trong List vẫn tính là chạm khi nhả tay): không mở màn sửa
+            if let g = swipeGuard, Date().timeIntervalSince(g.last) < 0.4 { return }
             tap?()
         } label: { content.contentShape(Rectangle()) }
         // Ngón tay vừa đặt xuống là một lần nhấn mới: xoá cờ cũ, phòng lần trước giữ rồi kéo ra ngoài mới nhả (Button không
@@ -139,6 +142,17 @@ struct TapHold<Content: View>: View {
                 hold()
             })
         .accessibilityAction(named: Text(L("Tuỳ chọn")), hold)
+    }
+}
+
+/// Lần cuối thẻ bị kéo ngang (vuốt xoá tự vẽ), để TapHold bên trong bỏ qua lần "chạm" khi nhả tay sau khi vuốt
+final class SwipeGuard { var last = Date.distantPast }
+
+private struct SwipeGuardKey: EnvironmentKey { static let defaultValue: SwipeGuard? = nil }
+extension EnvironmentValues {
+    var swipeGuard: SwipeGuard? {
+        get { self[SwipeGuardKey.self] }
+        set { self[SwipeGuardKey.self] = newValue }
     }
 }
 

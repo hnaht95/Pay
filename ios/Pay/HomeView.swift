@@ -525,32 +525,18 @@ extension View {
     func expenseSwipe(delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete)) }
 }
 
-/// Bấm Xoá: hàng trượt sang trái và mờ đi (nút đỏ mờ theo khi thao tác vuốt đóng lại), xong mới xoá để các hàng dưới
-/// trượt lên. Không dùng nút xoá kiểu destructive / vuốt hết cỡ của iOS: nó kéo nút đỏ dài hết hàng rồi cắt lẫn vào hàng dưới.
+/// Hàng khoản chi trong List vuốt sang trái tự vẽ (như cardSwipe), không dùng swipeActions của iOS: thao tác của hệ thống cắt
+/// thẳng hàng ở mép trái ô (bo góc mất, hàng như bị xẻ) và nút xoá mỗi bản iOS một kiểu (iOS 18 ô vuông đỏ, iOS 26+ tròn).
+/// Tự vẽ thì hàng trượt nguyên vẹn ra ngoài mép màn, nút thùng rác tròn đỏ giống nhau ở mọi bản
 private struct ExpenseSwipe: ViewModifier {
     let delete: () -> Void
-    @State private var gone = false
 
     func body(content: Content) -> some View {
         content
-            .offset(x: gone ? -420 : 0)
-            .opacity(gone ? 0 : 1)
+            .modifier(CardSwipe(radius: ExpenseRow.radius, label: L("Xoá"), delete: delete))
             .listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                // Chỉ biểu tượng, không chữ; tên vẫn có cho VoiceOver
-                Button {
-                    Haptic.tap(.medium)   // xoá: rung rõ một nhịp
-                    withAnimation(.easeIn(duration: 0.22)) { gone = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { delete() }
-                    // Xoá xong (hàng đã rời danh sách) thì trả trạng thái về như cũ: bấm Hoàn tác, khoản quay lại đúng mã cũ và
-                    // List dựng lại ô với trạng thái còn giữ — để "đã trượt đi" thì chỗ đó trắng trơn
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { gone = false }
-                } label: { Image(systemName: "trash.fill") }
-                .tint(.red)
-                .accessibilityLabel(L("Xoá"))
-            }
     }
 }
 
@@ -563,10 +549,16 @@ private struct CardSwipe: ViewModifier {
     @State private var x: CGFloat = 0
     @State private var start: CGFloat = 0
     @State private var gone = false
+    @State private var guardTap = SwipeGuard()
+    @State private var axis: Bool?
     private let button: CGFloat = 76
 
     func body(content: Content) -> some View {
         content
+            .environment(\.swipeGuard, guardTap)
+            // Đang mở: chạm vào thẻ thì đóng lại (không mở màn sửa). Phủ lên thẻ trước khi dịch để lớp này trượt theo thẻ,
+            // không che nút thùng rác vừa lộ ra
+            .overlay { if x < 0 && !gone { Color.white.opacity(0.001).onTapGesture { withAnimation(.snappy(duration: 0.25)) { x = 0; start = 0 } } } }
             .offset(x: gone ? -500 : x)
             .opacity(gone ? 0 : 1)
             .background(alignment: .trailing) {
@@ -587,21 +579,27 @@ private struct CardSwipe: ViewModifier {
                 .accessibilityLabel(label)
             }
             .simultaneousGesture(
-                DragGesture(minimumDistance: 14)
+                DragGesture(minimumDistance: 10)
                     .onChanged { v in
-                        guard abs(v.translation.width) > abs(v.translation.height) else { return }
-                        let t = start + v.translation.width
+                        // Chốt hướng ngay lần đầu nhận cử chỉ: kéo ngang thì theo tay đến hết, giữa chừng tay lệch dọc cũng không
+                        // khựng lại (trước xét lại mỗi khung hình, lệch dọc một chút là hàng đứng im rồi giật)
+                        if axis == nil { axis = abs(v.translation.width) > abs(v.translation.height) }
+                        guard axis == true else { return }
+                        guardTap.last = Date()
+                        // Trừ đoạn ngưỡng bắt đầu kéo để hàng không giật một cục 10 pt lúc vừa nhận cử chỉ
+                        let w = v.translation.width
+                        let t = start + (w < 0 ? min(0, w + 10) : max(0, w - 10))
                         x = t > 0 ? 0 : (t < -button ? -button + (t + button) * 0.3 : t)
                     }
                     .onEnded { v in
-                        guard abs(v.translation.width) > abs(v.translation.height) || x != start else { return }
-                        let open = x < -button / 2 || v.predictedEndTranslation.width < -button
-                        withAnimation(.snappy(duration: 0.25)) { x = open ? -button : 0 }
-                        start = x
+                        defer { axis = nil }
+                        guard axis == true else { return }
+                        guardTap.last = Date()
+                        let open = x < -button / 2 || (v.predictedEndTranslation.width < -button && x < start)
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { x = open ? -button : 0 }
+                        start = open ? -button : 0
                     }
             )
-            // Đang mở: chạm vào thẻ thì đóng lại (không mở màn sửa)
-            .overlay { if x < 0 && !gone { Color.white.opacity(0.001).onTapGesture { withAnimation(.snappy(duration: 0.25)) { x = 0; start = 0 } } } }
     }
 }
 
@@ -619,11 +617,6 @@ struct ExpenseRow: View {
     /// Danh mục của khoản, lấy sẵn lúc dựng hàng chứ không đọc trong body: Category.custom / edited là biến static, SwiftUI
     /// không theo dõi, nên phải là một đầu vào thì sửa / xoá danh mục xong hàng mới vẽ lại
     private let c: Category
-    /// Vị trí ngang bình thường của hàng và hàng đang bị vuốt sang trái (xem ô biểu tượng bên dưới)
-    @State private var restX: CGFloat?
-    @State private var swiped = false
-    @Environment(\.film) private var rowFilm
-    @Environment(\.stillPreview) private var stillPreview
 
     init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false) {
         self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats
@@ -645,11 +638,6 @@ struct ExpenseRow: View {
                             .accessibilityLabel(L("Có ảnh hoá đơn"))
                     }
                 }
-                // Vuốt để xoá: danh sách cắt hàng ở mép trái, ô biểu tượng trượt gần hết ra ngoài nhưng còn lộ một vệt nền màu.
-                // Hàng lệch khỏi chỗ cũ thì ô biểu tượng mờ đi
-                // (Dựng tĩnh cho phim / màn mua Pro: hàng nằm trong băng chuyền trượt ngang, không tính là đang vuốt)
-                .opacity(swiped && rowFilm == nil && !stillPreview ? 0 : 1)
-                .animation(.easeOut(duration: 0.15), value: swiped)
             HStack(spacing: 6) {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
                 Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
@@ -677,14 +665,6 @@ struct ExpenseRow: View {
         .padding(.leading, Self.inset).padding(.trailing, 16).padding(.vertical, 12)
         .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
-        // Đo tâm hàng, không đo mép trái: iOS cũ hơn 26 mở một tấm lên thì màn phía sau thu nhỏ quanh tâm màn, mép trái hàng
-        // dịch sang phải (đo trên máy ảo iOS 18: 16 → 30); đóng tấm về chỗ cũ bị tính là đang vuốt và ô biểu tượng ẩn mất.
-        // Tâm hàng (hàng rộng hết màn) không đổi khi thu nhỏ, chỉ lệch khi vuốt
-        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midX } action: { x in
-            // Chỗ đứng yên là chỗ xa bên phải nhất từng thấy (lúc mới hiện có thể đang trượt vào)
-            if restX == nil || x > restX! { restX = x }
-            swiped = x < (restX ?? x) - 12
-        }
     }
 
     /// Ngày (nếu cần) và giờ của khoản chi

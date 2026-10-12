@@ -234,20 +234,31 @@ struct VoiceEntryView: View {
             // để các ô danh mục màu sát thẻ chìm xuống — chỉ tối đều thì chúng lộ sắc nét quanh hai góc trên của thẻ, nhìn như thẻ
             // cắt vào ô (rõ nhất ở giao diện tối). Vùng đậm theo thẻ khi thẻ đổi chiều cao (nghe xong thu gọn)
             ZStack {
-                Color.black.opacity(0.3)
-                // Vùng sát thẻ mờ nhoè dần (như mép mờ dưới thanh tiêu đề), mọi bản iOS
-                Rectangle().fill(.ultraThinMaterial)
-                    .mask {
-                        GeometryReader { g in
-                            let top = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY
-                            VStack(spacing: 0) {
-                                Color.clear.frame(height: max(0, top - 110))
-                                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 100)
-                                Color.black
-                            }
+                Color.black.opacity(0.18)
+                // Như mép mềm dưới đồng hồ ở trang chủ: nhoè tăng dần, không thành một dải kính. Ba lớp kính mờ chồng lên nhau, mỗi
+                // lớp bắt đầu thấp hơn lớp trước (vùng trên thẻ mờ ít, sát thẻ mờ nhiều), cộng một lớp màu nền nhạt dần lên trên
+                GeometryReader { g in
+                    let top = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY
+                    ZStack {
+                        ForEach(0..<3) { i in
+                            Rectangle().fill(.ultraThinMaterial)
+                                .mask {
+                                    VStack(spacing: 0) {
+                                        Color.clear.frame(height: max(0, top - 220 + CGFloat(i) * 70))
+                                        LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 150)
+                                        Color.black
+                                    }
+                                }
                         }
-                        .animation(Self.settle, value: cardRect)
+                        VStack(spacing: 0) {
+                            Color.clear.frame(height: max(0, top - 200))
+                            LinearGradient(colors: [Palette.bg.opacity(0), Palette.bg.opacity(0.55)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 200)
+                            Palette.bg.opacity(0.55)
+                        }
                     }
+                    .animation(Self.settle, value: cardRect)
+                }
             }
             .opacity(shown ? 1 : 0)
             .ignoresSafeArea()

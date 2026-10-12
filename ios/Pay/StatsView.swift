@@ -1115,9 +1115,9 @@ struct CategoryBreakdown: View {
                         p.0.frame(width: max(4, (g.size.width - gaps) * CGFloat(p.1) / CGFloat(max(total, 1))))
                     }
                 }
-                .clipShape(Capsule())
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
-            .frame(height: 16)
+            .frame(height: 28)
             .animation(.snappy(duration: 0.4), value: top.map(\.1))
         }
     }

@@ -677,7 +677,10 @@ struct ExpenseRow: View {
         .padding(.leading, Self.inset).padding(.trailing, 16).padding(.vertical, 12)
         .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
-        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { x in
+        // Đo tâm hàng, không đo mép trái: iOS cũ hơn 26 mở một tấm lên thì màn phía sau thu nhỏ quanh tâm màn, mép trái hàng
+        // dịch sang phải (đo trên máy ảo iOS 18: 16 → 30); đóng tấm về chỗ cũ bị tính là đang vuốt và ô biểu tượng ẩn mất.
+        // Tâm hàng (hàng rộng hết màn) không đổi khi thu nhỏ, chỉ lệch khi vuốt
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midX } action: { x in
             // Chỗ đứng yên là chỗ xa bên phải nhất từng thấy (lúc mới hiện có thể đang trượt vào)
             if restX == nil || x > restX! { restX = x }
             swiped = x < (restX ?? x) - 12

@@ -68,17 +68,37 @@ extension View {
     }
 
     /// iOS cũ hơn 26: nhoè dần khi trôi lên dưới thanh tiêu đề (edge: chân thanh, toạ độ toàn màn), như mép trên trang chủ:
-    /// hết nhoè khi giữa hàng còn dưới chân thanh 14 pt, nhoè hết mức (7) khi lên tới mép trên tấm (thanh tiêu đề trong tấm cao
-    /// 56). Nhoè cả hàng một mức theo vị trí (blur thường), không dùng shader từng điểm ảnh: shader không vẽ được nút gạt, chọn
-    /// giờ, ô nhập… của hệ thống (hiện ô vàng gạch chéo)
+    /// nhoè hết mức (7) ở mép trên tấm (thanh tiêu đề trong tấm cao 56), hết nhoè 14 pt dưới chân thanh. Xem EdgeBlurRow
     @ViewBuilder func titleEdgeBlur(_ edge: CGFloat) -> some View {
-        if #available(iOS 26.0, *) { self } else {
-            visualEffect { content, g in
-                let y = g.frame(in: .global).midY
-                var t = edge > 0 ? min(1, max(0, (edge + 14 - y) / 70)) : 0
-                t = t * t * (3 - 2 * t)
-                return content.blur(radius: 7 * t)
+        if #available(iOS 26.0, *) { self } else { EdgeBlurRow(edge: edge) { self } }
+    }
+}
+
+/// Hàng thấp: nhoè cả hàng một mức theo vị trí giữa hàng (blur thường) — shader từng điểm ảnh không vẽ được nút gạt, chọn
+/// giờ, ô nhập… của hệ thống (hiện ô vàng gạch chéo). Hàng cao (vd bảng màu của Sửa danh mục, chỉ có nút tự vẽ): nhoè cả hàng
+/// thì phần còn ở giữa màn cũng mờ theo, nên nhoè theo từng điểm ảnh (shader topEdgeBlur) như trang chủ
+private struct EdgeBlurRow<Content: View>: View {
+    let edge: CGFloat
+    @ViewBuilder let content: Content
+    @State private var tall = false
+
+    var body: some View {
+        Group {
+            if tall {
+                content.visualEffect { c, g in
+                    let y = g.frame(in: .global).minY
+                    return c.layerEffect(ShaderLibrary.topEdgeBlur(.float(edge - 56 - y), .float(70), .float(7)),
+                                         maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: edge > 0 && y < edge + 14)
+                }
+            } else {
+                content.visualEffect { c, g in
+                    let y = g.frame(in: .global).midY
+                    var t = edge > 0 ? min(1, max(0, (edge + 14 - y) / 70)) : 0
+                    t = t * t * (3 - 2 * t)
+                    return c.blur(radius: 7 * t)
+                }
             }
         }
+        .onGeometryChange(for: Bool.self) { $0.size.height > 120 } action: { tall = $0 }
     }
 }

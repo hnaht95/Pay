@@ -707,6 +707,8 @@ struct BigButton: View {
     /// Việc làm khi vuốt lên từ nút (nếu có)
     /// Giữ chỗ nhưng không vẽ gì, kể cả nền kính (opacity không ẩn được nền kính của iOS 26)
     var ghost = false
+    /// Màu nền riêng (chữ trắng), vd nút Huỷ cam đậm; nil: nền theo primary
+    var tint: Color? = nil
     var swipeUp: ((CGRect) -> Void)? = nil
     /// Khung của nút trên màn hình, để thẻ nói để ghi biến hình từ đúng chỗ này ra
     @State private var frame: CGRect = .zero
@@ -763,17 +765,17 @@ struct BigButton: View {
         if ghost {
             Self.face(title: title, icon: icon, primary: primary).hidden()
         } else {
-            Self.face(title: title, icon: icon, primary: primary)
+            Self.face(title: title, icon: icon, primary: primary, ink: tint == nil ? nil : .white)
                 .contentShape(Capsule())
                 // Nút phụ có icon (Nhập ở màn hình chính): trắng đặc ở giao diện sáng, đen ở giao diện tối — không xám đục
-                .glassCapsule(tint: primary ? Palette.cta : icon.isEmpty ? nil : Color(light: 0xFFFFFF, dark: 0x1C1C1F))
+                .glassCapsule(tint: tint ?? (primary ? Palette.cta : icon.isEmpty ? nil : Color(light: 0xFFFFFF, dark: 0x1C1C1F)))
         }
     }
 
     /// Mặt nút (vòng biểu tượng + chữ), chưa có nền. Vòng icon cách đều mép nút ở trên, dưới và bên trái (cùng tâm với
     /// đầu nút bo tròn). Nút phụ ôm vừa chữ; nút chính lấy phần còn lại, chữ nằm giữa khoảng trống sau icon.
     /// Thẻ nói để ghi cũng vẽ mặt này lên khối biến hình, để nút và thẻ là một khối liền.
-    static func face(title: String, icon: String, primary: Bool) -> some View {
+    static func face(title: String, icon: String, primary: Bool, ink: Color? = nil) -> some View {
         // icon rỗng: nút chỉ có chữ ở giữa, cao bằng nút có icon (vd Xoá / Sửa ở màn sửa khoản chi). Không đặt một khung trống
         // vào hàng: khung rộng 0 vẫn ăn một khoảng cách 10 pt, đẩy chữ lệch sang phải 5 pt so với giữa nút
         HStack(spacing: icon.isEmpty ? 0 : 10) {
@@ -795,8 +797,11 @@ struct BigButton: View {
         .padding(BigButton.inset)
         .padding(.trailing, icon.isEmpty ? 0 : 14)
         .frame(maxWidth: primary || icon.isEmpty ? .infinity : nil)
-        .foregroundStyle(primary ? Palette.ctaInk : .primary)
+        .foregroundStyle(ink ?? (primary ? Palette.ctaInk : .primary))
     }
+
+    /// Nền nút Huỷ: cam đậm, chữ trắng
+    static let cancelTint = Color(hex: 0xC2410C)
 }
 
 extension View {

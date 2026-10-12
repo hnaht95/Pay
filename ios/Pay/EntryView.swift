@@ -335,7 +335,7 @@ struct EntryView: View {
             case .new, .raw, .receipt:
                 // Huỷ và Lưu cùng một hàng, cùng kiểu hai nút Nhập / Quét QR ở màn hình chính
                 HStack(spacing: 12) {
-                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     BigButton(title: L("Lưu"), icon: "", primary: true) {
                         guard amount > 0 else { return }
                         learn(); store.add(amount: amount, note: trimmed, cat: finalCat)
@@ -370,7 +370,7 @@ struct EntryView: View {
                 // Huỷ và Sửa / Lưu thay đổi cùng một hàng. Xoá khoản: vuốt trái ở danh sách hoặc nhấn giữ
                 GlassGroup {
                     HStack(spacing: 12) {
-                        BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                        BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                         if editing {
                             BigButton(title: L("Lưu"), icon: "", primary: true) {
                                 guard amount > 0 else { return }
@@ -638,7 +638,7 @@ struct DateSheet: View {
             .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             // Huỷ / Lưu ở đáy, to bằng hai nút Nhập / Quét QR của màn hình chính. Huỷ trả ngày giờ về như lúc mở
             HStack(spacing: 12) {
-                BigButton(title: L("Huỷ"), icon: "", primary: false) { when = original ?? when; dismiss() }
+                BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { when = original ?? when; dismiss() }
                 BigButton(title: L("Lưu"), icon: "", primary: true) { dismiss() }
             }
             .padding(.top, 10)

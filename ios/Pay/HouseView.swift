@@ -1085,7 +1085,7 @@ struct HouseGroupEditor: View {
             .softTopEdge()
             .bottomBar {
                 HStack(spacing: 12) {
-                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     BigButton(title: L("Lưu"), icon: "", primary: true) {
                         guard !saving else { return }
                         let n = name.trimmingCharacters(in: .whitespaces)
@@ -1199,7 +1199,7 @@ struct HouseMemberEditor: View {
             .softTopEdge()
             .bottomBar {
                 HStack(spacing: 12) {
-                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     BigButton(title: L("Lưu"), icon: "", primary: true) {
                         guard !saving else { return }
                         let n = name.trimmingCharacters(in: .whitespaces)
@@ -1435,7 +1435,7 @@ struct HouseSpendEditor: View {
 
                 // Huỷ và Lưu cùng một hàng sát đáy, như màn nhập khoản chi (vùng an toàn dưới 34 điểm, lùi xuống 18)
                 HStack(spacing: 12) {
-                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     // Đang lưu: nút mờ và không nhận bấm (bấm lần nữa sẽ thành hai khoản giống nhau)
                     BigButton(title: L("Lưu"), icon: "", primary: true) { if valid && !saving { save() } }
                         .overlay { if saving { ProgressView().tint(Palette.ctaInk) } }

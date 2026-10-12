@@ -980,7 +980,7 @@ struct CategoryEditor: View {
             // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày; phía sau mờ dần như thanh tiêu đề
             .bottomBar {
                 HStack(spacing: 12) {
-                    BigButton(title: L("Huỷ"), icon: "", primary: false) { dismiss() }
+                    BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     if trimmed.isEmpty || duplicate {
                         // Chưa lưu được: nút xám đặc (không làm mờ cả nút: mờ thì thấy xuyên nội dung cuộn phía sau)
                         Text(L("Lưu")).font(.system(size: 21, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.35))

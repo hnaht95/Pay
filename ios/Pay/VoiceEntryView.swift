@@ -294,6 +294,10 @@ struct VoiceEntryView: View {
             } else if shown {
                 // Nâng lên khỏi đáy để thẻ không dính vào góc bo màn hình và các ô phía sau
                 card
+                    // Đo khung thẻ cả khi mở từ nút Tác vụ / lối tắt: vùng nhoè phía trên co giãn theo thẻ (nghe xong thu gọn)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { r in
+                        if cardRect == .zero { cardRect = r } else { withAnimation(Self.settle) { cardRect = r } }
+                    }
                     .padding(.horizontal, 16).padding(.bottom, 16)
                     // Chỉ trượt, không mờ dần: thẻ mờ nửa chừng đè lên các ô phía sau trông như bóng ma
                     .transition(.move(edge: .bottom))

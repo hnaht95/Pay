@@ -1497,9 +1497,9 @@ struct HouseSpendEditor: View {
     /// Một người trong phần chia tiền: dòng trọn bề ngang. Chạm dòng: chọn / bỏ. Chạm ô số tiền: gõ số riêng của người đó
     private func shareRow(_ m: HouseMember) -> some View {
         let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
-        return HStack(spacing: 12) {
+        return HStack(spacing: 10) {
             HouseAvatar(id: m.id, name: m.name, size: 36)
-            Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+            Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1).padding(.leading, 2)
             Spacer(minLength: 8)
             if on {
                 // Ô số tiền: số riêng in đậm, số chia đều nhạt hơn; đang gõ thì viền xanh và có vạch nhấp nháy
@@ -1521,18 +1521,22 @@ struct HouseSpendEditor: View {
                             }
                         }
                     }
-                    // Không tô nền, chỉ viền mảnh (như ô số tiền lớn phía trên); đang gõ thì viền xanh
-                    .padding(.horizontal, 14).frame(minWidth: 84, minHeight: 38, alignment: .trailing)
-                    .contentShape(Capsule())
-                    .overlay { Capsule().strokeBorder(typing ? Palette.goodInk : Color.primary.opacity(0.14), lineWidth: typing ? 2 : 1) }
+                    // Không nền, không viền: chỉ con số, sát dấu tích; đang gõ thì số đậm kèm vạch nhấp nháy xanh
+                    .padding(.leading, 16).frame(minWidth: 70, minHeight: 44, alignment: .trailing)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(Pressable())
                 .accessibilityLabel(L("Số tiền riêng của %@", m.name))
             }
-            Image(systemName: on ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 24)).foregroundStyle(on ? Color.primary : Color.primary.opacity(0.2))
+            // Dấu tích tự vẽ cho đều nét: vòng tròn đặc 24pt, dấu tích đậm ở giữa; chưa chọn thì chỉ còn vòng viền
+            ZStack {
+                Circle().fill(on ? Palette.cta : .clear)
+                Circle().strokeBorder(Color.primary.opacity(on ? 0 : 0.22), lineWidth: 1.5)
+                if on { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)).foregroundStyle(Palette.ctaInk) }
+            }
+            .frame(width: 24, height: 24)
         }
-        .padding(.leading, 8).padding(.trailing, 12).frame(height: 54)
+        .padding(.leading, 8).padding(.trailing, 14).frame(height: 54)
         // Nền xám trung tính rất nhạt, cùng màu ô ghi chú (nền xám xanh của thẻ nhìn nặng); người không chọn thì mờ đi
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .opacity(on ? 1 : 0.55)

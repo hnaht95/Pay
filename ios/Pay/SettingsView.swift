@@ -993,8 +993,11 @@ struct CategoryEditor: View {
                     Text(L("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS."))
                 }
 
-                Section(L("Màu")) {
-                    colorRows
+                // Tối giản: danh mục không màu, không cho đổi màu (màu đã chọn vẫn giữ, tắt Tối giản là hiện lại)
+                if !Appearance.minimalOn {
+                    Section(L("Màu")) {
+                        colorRows
+                    }
                 }
 
             }

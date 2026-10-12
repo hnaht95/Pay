@@ -893,7 +893,7 @@ struct StatsView: View {
                         // Chấm màu của đoạn trên thanh, ở góc trên phải ô biểu tượng như chấm "có ảnh hoá đơn" của Gần đây
                         .overlay(alignment: .topTrailing) {
                             Circle().fill(Palette.card).frame(width: 14, height: 14)
-                                .overlay(Circle().fill(c.color).frame(width: 9, height: 9))
+                                .overlay(Circle().fill(CategoryBreakdown.tone(c, rank: ranked.firstIndex(of: c) ?? 0)).frame(width: 9, height: 9))
                                 .offset(x: 3, y: -3)
                         }
                     VStack(alignment: .leading, spacing: 8) {
@@ -1133,12 +1133,17 @@ struct CategoryBreakdown: View {
     let total: Int
     let top: [(Category, Int)]
 
+    /// Màu đoạn / chấm: màu danh mục; Tối giản (danh mục không màu) thì các nấc đen xám theo thứ hạng, lớn nhất đậm nhất
+    static func tone(_ c: Category, rank: Int) -> Color {
+        Appearance.minimalOn ? Color.primary.opacity(max(0.15, 0.85 - Double(rank) * 0.17)) : c.color
+    }
+
     var body: some View {
         let rest = max(0, total - top.map(\.1).reduce(0, +))
         VStack(alignment: .leading, spacing: 0) {
             GeometryReader { g in
                 // Màu danh mục đã chọn (như ô danh mục ở trang chủ), không phải màu đậm của biểu đồ
-                let parts = top.map { (AnyView(Rectangle().fill($0.0.color)), $0.1) } + (rest > 0 ? [(AnyView(HatchFill()), rest)] : [])
+                let parts = top.enumerated().map { i, t in (AnyView(Rectangle().fill(Self.tone(t.0, rank: i))), t.1) } + (rest > 0 ? [(AnyView(HatchFill()), rest)] : [])
                 let gaps = CGFloat(max(0, parts.count - 1)) * 3
                 HStack(spacing: 3) {
                     // Mỗi đoạn tự bo góc (không chỉ hai đầu thanh)

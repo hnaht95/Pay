@@ -76,6 +76,7 @@ extension English {
         "Thêm danh mục": "Add category",
         "Nhập khoản %@": "Add %@ expense",
         "Đổi biểu tượng, màu, tên": "Change icon, color, name",
+        "Đổi biểu tượng, tên": "Change icon, name",
         "Về mặc định": "Reset to default",
         "Xoá danh mục": "Delete category",
         "Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.":

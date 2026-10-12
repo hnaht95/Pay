@@ -1521,9 +1521,10 @@ struct HouseSpendEditor: View {
                             }
                         }
                     }
+                    // Không tô nền, chỉ viền mảnh (như ô số tiền lớn phía trên); đang gõ thì viền xanh
                     .padding(.horizontal, 14).frame(minWidth: 84, minHeight: 38, alignment: .trailing)
-                    .background(Palette.surface, in: Capsule())
-                    .overlay { Capsule().strokeBorder(typing ? Palette.goodInk : Color.primary.opacity(0.12), lineWidth: typing ? 2 : 1) }
+                    .contentShape(Capsule())
+                    .overlay { Capsule().strokeBorder(typing ? Palette.goodInk : Color.primary.opacity(0.14), lineWidth: typing ? 2 : 1) }
                 }
                 .buttonStyle(Pressable())
                 .accessibilityLabel(L("Số tiền riêng của %@", m.name))
@@ -1532,7 +1533,9 @@ struct HouseSpendEditor: View {
                 .font(.system(size: 24)).foregroundStyle(on ? Color.primary : Color.primary.opacity(0.2))
         }
         .padding(.leading, 8).padding(.trailing, 12).frame(height: 54)
-        .background(on ? Palette.card : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        // Nền xám trung tính rất nhạt, cùng màu ô ghi chú (nền xám xanh của thẻ nhìn nặng); người không chọn thì mờ đi
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .opacity(on ? 1 : 0.55)
         .contentShape(Rectangle())
         .onTapGesture {
             if on { shares.remove(m.id); ownText[m.id] = nil; if typing { target = nil } }

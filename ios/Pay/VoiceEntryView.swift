@@ -237,14 +237,14 @@ struct VoiceEntryView: View {
                 // Chỉ tối nhẹ; phần nhoè trên thẻ do trang chủ tự làm nhoè nội dung (VoiceBlur), trong như mép dưới đồng hồ —
                 // lớp kính mờ của iOS luôn phủ thêm màu sữa, nhìn đục
                 // Từ mép trên thẻ trở xuống phủ đặc màu nền: phần trang chủ nằm sau thẻ (đã nhoè hết mức) không loang ra quanh
-                // hai bên và góc dưới thẻ
+                // hai bên và góc dưới thẻ. Mở từ nút: mép phủ đi theo khối đang phóng to (cùng nhịp morph), không nhảy sẵn lên
                 GeometryReader { g in
-                    let top = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY
+                    let card = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY
+                    let top = from.map { $0.minY + (card - $0.minY) * morph } ?? card
                     VStack(spacing: 0) {
                         Color.clear.frame(height: max(0, top + 24))
                         Palette.bg
                     }
-                    .animation(Self.settle, value: cardRect)
                 }
                 Color.black.opacity(0.22)
                 // Sát thẻ tối thêm dần (ô danh mục màu quanh góc thẻ chìm xuống, không loé thành quầng)
@@ -293,7 +293,9 @@ struct VoiceEntryView: View {
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { r in
                             // Thẻ đổi cỡ (nghe xong thu gọn…): khối làm nền co giãn theo, cùng nhịp với thẻ
                             if cardRect == .zero { cardRect = r } else { withAnimation(Self.settle) { cardRect = r } }
-                            VoiceBlur.shared.top = r.minY
+                            // Mở từ nút: mép nhoè đi lên theo khối đang phóng to, không nhảy sẵn tới chỗ thẻ
+                            if VoiceBlur.shared.top == nil { VoiceBlur.shared.glide(from: from.minY, to: r.minY) }
+                            else { VoiceBlur.shared.top = r.minY }
                         }
                         .padding(.horizontal, 16).padding(.bottom, 16)
                         // Chỉ mờ dần, không scaleEffect: scaleEffect gom cả thẻ thành một khối có toạ độ riêng, làm lúc nghe xong
@@ -686,7 +688,7 @@ struct VoiceEntryView: View {
     /// Để hệ thống tự kéo cả màn hình xuống thì nền tối tắt phụt và bóng đổ của thẻ bị vệt.
     private func leave() {
         guard shown else { return }
-        withAnimation(.easeIn(duration: 0.25)) { VoiceBlur.shared.top = nil }
+        VoiceBlur.shared.clear()
         if from != nil {
             // Thu về nút: nội dung mờ đi trước, rồi khối co lại thành nút
             blob = true
@@ -810,6 +812,24 @@ private struct PulseDot: View {
 final class VoiceBlur: ObservableObject {
     static let shared = VoiceBlur()
     @Published var top: CGFloat?
+    private var job: Task<Void, Never>?
+
+    /// Đi dần từ a tới b trong ~0,35 giây (đường cong như lò xo của khối biến hình): shader không tự nội suy giá trị
+    func glide(from a: CGFloat, to b: CGFloat) {
+        job?.cancel()
+        top = a
+        job = Task { @MainActor in
+            let n = 21
+            for i in 1...n {
+                try? await Task.sleep(for: .milliseconds(17))
+                if Task.isCancelled { return }
+                let t = Double(i) / Double(n), e = 1 - pow(1 - t, 3)
+                top = a + (b - a) * CGFloat(e)
+            }
+        }
+    }
+
+    func clear() { job?.cancel(); top = nil }
 }
 
 extension View {

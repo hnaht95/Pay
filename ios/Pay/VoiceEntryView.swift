@@ -236,6 +236,16 @@ struct VoiceEntryView: View {
             ZStack {
                 // Chỉ tối nhẹ; phần nhoè trên thẻ do trang chủ tự làm nhoè nội dung (VoiceBlur), trong như mép dưới đồng hồ —
                 // lớp kính mờ của iOS luôn phủ thêm màu sữa, nhìn đục
+                // Từ mép trên thẻ trở xuống phủ đặc màu nền: phần trang chủ nằm sau thẻ (đã nhoè hết mức) không loang ra quanh
+                // hai bên và góc dưới thẻ
+                GeometryReader { g in
+                    let top = cardRect == .zero ? g.size.height * 0.55 : cardRect.minY
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: max(0, top + 24))
+                        Palette.bg
+                    }
+                    .animation(Self.settle, value: cardRect)
+                }
                 Color.black.opacity(0.22)
                 // Sát thẻ tối thêm dần (ô danh mục màu quanh góc thẻ chìm xuống, không loé thành quầng)
                 GeometryReader { g in

@@ -563,11 +563,11 @@ private struct HorizontalPan: UIGestureRecognizerRepresentable {
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        /// Chỉ nhận khi hướng kéo lúc bắt đầu là ngang
+        /// Chỉ nhận khi hướng kéo lúc bắt đầu rõ là ngang (ngang gấp đôi dọc), kéo chéo thì để trang cuộn
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
             guard let p = g as? UIPanGestureRecognizer else { return false }
             let v = p.velocity(in: p.view)
-            return abs(v.x) > abs(v.y) * 1.2
+            return abs(v.x) > abs(v.y) * 2
         }
     }
 }
@@ -630,7 +630,9 @@ private struct CardSwipe: ViewModifier {
                 x = t > 0 ? 0 : (t < -button ? -button + (t + button) * 0.3 : t)
             }, ended: { w, v in
                 guardTap.last = Date()
-                let open = x < -button / 2 || (v < -300 && x < start)
+                // Như vuốt của hệ thống: theo hướng tay lúc thả. Đang kéo ngược lại (sang phải) thì đóng, đang kéo sang trái thì mở;
+                // gần như đứng yên mới xét vị trí (quá 60% nút thì mở). Trước: lướt nhẹ đã mở, kéo ngược tay lại vẫn mở
+                let open = v > 150 ? false : (v < -250 ? x < -12 : x < -button * 0.6)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { x = open ? -button : 0 }
                 start = open ? -button : 0
             })

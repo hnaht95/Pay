@@ -378,7 +378,7 @@ struct HomeView: View {
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { Category.get($0.c).k == c.k }
         var items = [
-            AppMenuItem(icon: "pencil.tip.crop.circle", title: Appearance.minimalOn ? L("Đổi biểu tượng, tên") : L("Đổi biểu tượng, màu, tên"), plain: true, tint: Color(hex: 0xF07B3F)) { editingCat = CatEdit.of(c.k, store: store) },
+            AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true, tint: Color(hex: 0xF07B3F)) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
                 ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, false) } }
                 : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, true) } },
@@ -738,22 +738,22 @@ struct ExpenseRow: View {
                 }
             HStack(spacing: 6) {
                 // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 17, weight: .semibold))
+                Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 15))
                     .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                 if repeats {
-                    Image(systemName: "repeat").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
+                    Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                         .accessibilityLabel(L("Hằng tháng"))
                 }
             }
             Spacer(minLength: 8)
             // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
             VStack(alignment: .trailing, spacing: 3) {
-                Text(fmt(e.a)).font(.system(size: 18, weight: .bold)).lineLimit(1)
+                Text(fmt(e.a)).font(.system(size: 15, weight: .medium)).monospacedDigit().lineLimit(1)
                 HStack(spacing: 9) {
                     let parts = when
                     ForEach(Array(parts.enumerated()), id: \.offset) { i, p in
                         if i > 0 { Rectangle().fill(Color.primary.opacity(0.18)).frame(width: 1, height: 13) }
-                        Text(p).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                        Text(p).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
             }

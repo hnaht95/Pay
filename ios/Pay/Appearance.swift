@@ -1,14 +1,9 @@
 import SwiftUI
 
-/// Giao diện chọn trong Cài đặt: theo máy, luôn sáng, luôn tối. Tối giản là công tắc riêng (danh mục không màu, biểu tượng
-/// vẫn màu), đi được với cả sáng lẫn tối
+/// Giao diện chọn trong Cài đặt: theo máy, luôn sáng, luôn tối
 enum Appearance: String, CaseIterable {
     case system, light, dark
     static let key = "appearance"
-    static let minimalKey = "appearanceMinimal"
-
-    static var minimalOn: Bool { UserDefaults.standard.bool(forKey: minimalKey) }
-
     static var current: Appearance { Appearance(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .system }
 
     var title: String {
@@ -26,14 +21,4 @@ enum Appearance: String, CaseIterable {
             for w in scene.windows { w.overrideUserInterfaceStyle = style }
         }
     }
-}
-
-extension View {
-    /// Gốc app: bật / tắt Tối giản thì dựng lại toàn bộ (màu danh mục đọc thẳng cài đặt, không qua trạng thái SwiftUI)
-    func appTone() -> some View { modifier(AppTone()) }
-}
-
-private struct AppTone: ViewModifier {
-    @AppStorage(Appearance.minimalKey) private var minimal = false
-    func body(content: Content) -> some View { content.id(minimal) }
 }

@@ -28,9 +28,7 @@ extension English {
         "Theo máy": "System",
         "Sáng": "Light",
         "Tối": "Dark",
-        "Tối giản": "Minimal",
         "Chế độ": "Mode",
-        "Tối giản: danh mục không màu, chỉ biểu tượng giữ màu. Dùng được với cả Sáng và Tối.": "Minimal: categories without colour, only icons keep theirs. Works with both Light and Dark.",
         "Đổi ngôn ngữ của app và widget.": "Changes the language of the app and widgets.",
 
         // Truy cập nhanh

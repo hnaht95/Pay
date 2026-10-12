@@ -1133,8 +1133,8 @@ struct CategoryBreakdown: View {
     let total: Int
     let top: [(Category, Int)]
 
-    /// Màu đoạn / chấm: luôn là màu đã chọn của danh mục, kể cả ở Tối giản (ô danh mục không màu nhưng biểu đồ vẫn cần màu)
-    static func tone(_ c: Category, rank: Int) -> Color { c.baseColor }
+    /// Màu đoạn / chấm: màu đã chọn của danh mục
+    static func tone(_ c: Category, rank: Int) -> Color { c.color }
 
     var body: some View {
         let rest = max(0, total - top.map(\.1).reduce(0, +))

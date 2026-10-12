@@ -110,8 +110,7 @@ struct CategoryBadge: View {
             }
         }
         .frame(width: side, height: side)
-        // Tối giản: không nền trắng, biểu tượng nằm thẳng trên ô / thẻ (ảnh riêng của danh mục vẫn cắt theo khung)
-        .background(Appearance.minimalOn ? Color.clear : .white)
+        .background(.white)
         .clipShape(shape)
         .overlay { if ring { shape.strokeBorder(c.color, lineWidth: 2.5) } }
         .overlay { if edge { shape.strokeBorder(Color.black.opacity(0.08), lineWidth: 1) } }

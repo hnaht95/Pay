@@ -14,7 +14,6 @@ struct PayApp: App {
     var body: some Scene {
         WindowGroup {
             HomeView()
-                .appTone()
                 .id(lang)
                 .environment(\.locale, Lang.locale)
                 .onReceive(NotificationCenter.default.publisher(for: Lang.changed)) { _ in

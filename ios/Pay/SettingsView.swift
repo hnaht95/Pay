@@ -21,7 +21,6 @@ struct SettingsView: View {
     /// Ngôn ngữ đang chọn trong Cài đặt
     @State private var lang = Lang.current
     @AppStorage(Appearance.key) private var appearanceRaw = Appearance.system.rawValue
-    @AppStorage(Appearance.minimalKey) private var minimal = false
     private var appearance: Appearance {
         get { Appearance(rawValue: appearanceRaw) ?? .system }
         nonmutating set { appearanceRaw = newValue.rawValue }
@@ -382,11 +381,8 @@ struct SettingsView: View {
                 row(L("Chế độ"))
             }
             .pickerStyle(.navigationLink)
-            Toggle(isOn: $minimal) { row(L("Tối giản")) }
         } header: {
             Text(L("Giao diện"))
-        } footer: {
-            Text(L("Tối giản: danh mục không màu, chỉ biểu tượng giữ màu. Dùng được với cả Sáng và Tối."))
         }
     }
 
@@ -763,7 +759,7 @@ struct CategoryEditor: View {
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     /// Đang sửa danh mục có sẵn (Ăn uống, Cafe…): không xoá được, có "Về mặc định"
     private var builtin: Category? { editing.flatMap { e in Category.builtin.first { $0.k == e.k } } }
-    private var previewColor: Color { fTone < 0 ? (builtin?.baseColor ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
+    private var previewColor: Color { fTone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)
@@ -993,11 +989,8 @@ struct CategoryEditor: View {
                     Text(L("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS."))
                 }
 
-                // Tối giản: danh mục không màu, không cho đổi màu (màu đã chọn vẫn giữ, tắt Tối giản là hiện lại)
-                if !Appearance.minimalOn {
-                    Section(L("Màu")) {
-                        colorRows
-                    }
+                Section(L("Màu")) {
+                    colorRows
                 }
 
             }

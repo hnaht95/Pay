@@ -525,6 +525,53 @@ extension View {
     func expenseSwipe(delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete)) }
 }
 
+/// Kéo ngang theo tay (translation, và khi thả: translation + vận tốc ngang). iOS 18+: cử chỉ kéo của UIKit chỉ bắt đầu khi
+/// kéo ngang; kéo dọc thì nó không nhận nên trang vẫn cuộn được dù đặt ngón tay lên thẻ (DragGesture của SwiftUI, kể cả
+/// simultaneousGesture, giữ luôn ngón tay trên iOS 18+: đặt tay lên hàng rồi kéo dọc thì trang không cuộn)
+extension View {
+    @ViewBuilder func horizontalSwipe(changed: @escaping (CGFloat) -> Void, ended: @escaping (CGFloat, CGFloat) -> Void) -> some View {
+        if #available(iOS 18.0, *) {
+            gesture(HorizontalPan(changed: changed, ended: ended))
+        } else {
+            simultaneousGesture(DragGesture(minimumDistance: 12)
+                .onChanged { v in if abs(v.translation.width) > abs(v.translation.height) { changed(v.translation.width) } }
+                .onEnded { v in ended(v.translation.width, v.velocity.width) })
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+private struct HorizontalPan: UIGestureRecognizerRepresentable {
+    let changed: (CGFloat) -> Void
+    let ended: (CGFloat, CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let g = UIPanGestureRecognizer()
+        g.delegate = context.coordinator
+        return g
+    }
+
+    func handleUIGestureRecognizerAction(_ g: UIPanGestureRecognizer, context: Context) {
+        let w = g.translation(in: g.view).x
+        switch g.state {
+        case .changed: changed(w)
+        case .ended, .cancelled, .failed: ended(w, g.velocity(in: g.view).x)
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        /// Chỉ nhận khi hướng kéo lúc bắt đầu là ngang
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let p = g as? UIPanGestureRecognizer else { return false }
+            let v = p.velocity(in: p.view)
+            return abs(v.x) > abs(v.y) * 1.2
+        }
+    }
+}
+
 /// Hàng khoản chi trong List vuốt sang trái tự vẽ (như cardSwipe), không dùng swipeActions của iOS: thao tác của hệ thống cắt
 /// thẳng hàng ở mép trái ô (bo góc mất, hàng như bị xẻ) và nút xoá mỗi bản iOS một kiểu (iOS 18 ô vuông đỏ, iOS 26+ tròn).
 /// Tự vẽ thì hàng trượt nguyên vẹn ra ngoài mép màn, nút thùng rác tròn đỏ giống nhau ở mọi bản
@@ -550,7 +597,6 @@ private struct CardSwipe: ViewModifier {
     @State private var start: CGFloat = 0
     @State private var gone = false
     @State private var guardTap = SwipeGuard()
-    @State private var axis: Bool?
     private let button: CGFloat = 76
 
     func body(content: Content) -> some View {
@@ -578,28 +624,16 @@ private struct CardSwipe: ViewModifier {
                 .opacity(gone ? 0 : min(1, -x / button))
                 .accessibilityLabel(label)
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 10)
-                    .onChanged { v in
-                        // Chốt hướng ngay lần đầu nhận cử chỉ: kéo ngang thì theo tay đến hết, giữa chừng tay lệch dọc cũng không
-                        // khựng lại (trước xét lại mỗi khung hình, lệch dọc một chút là hàng đứng im rồi giật)
-                        if axis == nil { axis = abs(v.translation.width) > abs(v.translation.height) }
-                        guard axis == true else { return }
-                        guardTap.last = Date()
-                        // Trừ đoạn ngưỡng bắt đầu kéo để hàng không giật một cục 10 pt lúc vừa nhận cử chỉ
-                        let w = v.translation.width
-                        let t = start + (w < 0 ? min(0, w + 10) : max(0, w - 10))
-                        x = t > 0 ? 0 : (t < -button ? -button + (t + button) * 0.3 : t)
-                    }
-                    .onEnded { v in
-                        defer { axis = nil }
-                        guard axis == true else { return }
-                        guardTap.last = Date()
-                        let open = x < -button / 2 || (v.predictedEndTranslation.width < -button && x < start)
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { x = open ? -button : 0 }
-                        start = open ? -button : 0
-                    }
-            )
+            .horizontalSwipe(changed: { w in
+                guardTap.last = Date()
+                let t = start + w
+                x = t > 0 ? 0 : (t < -button ? -button + (t + button) * 0.3 : t)
+            }, ended: { w, v in
+                guardTap.last = Date()
+                let open = x < -button / 2 || (v < -300 && x < start)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) { x = open ? -button : 0 }
+                start = open ? -button : 0
+            })
     }
 }
 

@@ -949,11 +949,10 @@ extension View {
     /// theo từng điểm ảnh, càng sát mép trên càng nhoè (shader topEdgeBlur), như iOS 27. Áp cho từng khối nội dung, không áp
     /// lên vùng cuộn / List được (hiệu ứng lớp không vẽ được phần của UIKit)
     @ViewBuilder func topScrollBlur() -> some View {
-        // iOS 26: không gắn hiệu ứng lớp. Trên iOS 26.2, chỉ cần trang chủ có một khối gắn hiệu ứng này là các lớp phủ tự vẽ của
-        // trang (bảng nhấn giữ danh mục / thẻ Hôm nay đã chi, thẻ nói để ghi khi vuốt lên từ nút Quét QR) được gán mà không bao
-        // giờ hiện; các màn mở dạng tấm (sheet) thì vẫn lên. iOS 18 và iOS 27 không bị. Mép trên trên iOS 26 vì thế chỉ còn dải
-        // màu nền nhạt dần dưới thanh trạng thái (statusBarEdge), không nhoè theo từng điểm ảnh
-        if #available(iOS 26.0, *) { self }
+        // iOS 26: cùng shader nhưng gắn qua TopBlur26 (không visualEffect: trên iOS 26.2 visualEffect trong trang chủ làm các lớp
+        // phủ tự vẽ — bảng nhấn giữ, thẻ Nói để ghi — không hiện)
+        if SystemEdge.homeTop { self }
+        else if #available(iOS 26.0, *) { modifier(TopBlur26()) }
         else { topScrollBlurOld().dockBlur() }
     }
 
@@ -992,7 +991,8 @@ extension View {
                     // iOS 26 trở lên không có lớp nhoè từng khối của app (topScrollBlur chỉ chạy trên iOS cũ hơn 26), nên chỉ phủ
                     // nhẹ màu nền thì chữ cuộn lên vẫn đè rõ lên đồng hồ. Ở đó dùng kính mờ làm nhoè nội dung, cộng màu nền đậm
                     // hơn: đặc ở mép trên, nhạt dần qua chân thanh trạng thái
-                    let strong: Bool = { if #available(iOS 26.0, *) { true } else { false } }()
+                    // iOS 26 giờ cũng có lớp nhoè từng khối (TopBlur26) như iOS 18: chỉ cần dải màu nhẹ, không kính mờ
+                    let strong = false
                     ZStack {
                         if strong { Rectangle().fill(.ultraThinMaterial) }
                         // iOS 26: kính mờ làm nhoè, màu nền chỉ phủ vừa (đặc quá thì thành vệt đen che cả đầu trang khi cuộn)
@@ -1329,4 +1329,20 @@ enum SystemEdge {
         let major = Int(sdk.drop { !$0.isNumber }.prefix { $0.isNumber }) ?? 0
         return major >= 27
     }()
+}
+
+/// iOS 26: nhoè từng điểm ảnh khi khối trôi lên dưới đồng hồ (như topScrollBlurOld) nhưng không dùng visualEffect — trên iOS
+/// 26.2 có visualEffect trong trang chủ là các lớp phủ tự vẽ (bảng nhấn giữ, thẻ Nói để ghi) không hiện. Đo vị trí khối bằng
+/// onGeometryChange rồi gắn layerEffect thường
+@available(iOS 26.0, *)
+private struct TopBlur26: ViewModifier {
+    @State private var y: CGFloat = 1000
+    private static let safeTop = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 59
+
+    func body(content: Content) -> some View {
+        content
+            .layerEffect(ShaderLibrary.topEdgeBlur(.float(-y), .float(Self.safeTop + 14), .float(7)),
+                         maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < Self.safeTop + 14)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { y = $0 }
+    }
 }

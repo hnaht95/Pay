@@ -50,7 +50,7 @@ Mỗi lần sửa giao diện: build, cài và **kiểm tra trên cả 3 máy �
 
 ## 4. Mép mờ khi cuộn
 
-- **Trang chủ, dưới đồng hồ:** iOS 27 (SDK 27) dùng mép mềm của hệ thống; bản khác app tự làm nhoè từng khối + dải màu nền nhạt.
+- **Trang chủ, dưới đồng hồ:** iOS 27 (SDK 27) dùng mép mềm của hệ thống; iOS 18 và 26 app tự làm nhoè từng khối theo điểm ảnh (shader `topEdgeBlur`) + dải màu nền nhạt. iOS 26 gắn shader qua `TopBlur26` (không dùng `visualEffect`: trên iOS 26.2 nó làm các lớp phủ của trang chủ không hiện). Không dùng hiệu ứng riêng (private) của Apple.
 - **Các màn có tiêu đề:** iOS 18 nhoè từng hàng dưới thanh tiêu đề (`navEdgeBlur`, `BlurForm`); iOS 26+ để hệ thống lo.
 - **Không dùng lớp kính mờ của iOS đè lên nội dung**: nó luôn phủ màu sữa, nhìn đục.
 - **Sau hai nút ở đáy (Nhập / Quét QR, Huỷ / Lưu):** dải màu nền nhẹ, cao ~120 pt, chỉ ló lên quá mép trên nút một chút. Không dùng dải đặc cao.

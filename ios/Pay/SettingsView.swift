@@ -1007,7 +1007,7 @@ struct CategoryEditor: View {
 
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-            .screenTitle(editing == nil ? (income ? L("Danh mục tiền vào mới") : L("Danh mục mới")) : L("Sửa danh mục"))
+            .screenTitle(editing == nil ? (income ? L("Danh mục thu mới") : L("Danh mục mới")) : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày; phía sau mờ dần như thanh tiêu đề
             .bottomBar {

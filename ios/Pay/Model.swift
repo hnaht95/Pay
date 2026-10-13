@@ -453,7 +453,7 @@ final class Store: ObservableObject {
         let q = { (s: String) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         var rows = [[L("Ngày"), L("Giờ"), L("Loại"), L("Số tiền"), L("Danh mục"), L("Ghi chú")].map(q).joined(separator: ",")]
         for e in all.sorted(by: { $0.t < $1.t }) {
-            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isIncome ? L("Vào") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
+            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isIncome ? L("Thu") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
         }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).csv")
         guard (try? ("\u{FEFF}" + rows.joined(separator: "\n")).write(to: url, atomically: true, encoding: .utf8)) != nil else { return nil }

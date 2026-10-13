@@ -269,7 +269,7 @@ struct HomeView: View {
             let income = store.monthIncome(now)
             if income > 0 {
                 HStack(spacing: 4) {
-                    Text(L("Tiền vào %@", fmt(income))).font(.system(size: 15, weight: .semibold))
+                    Text(L("Đã thu %@", fmt(income))).font(.system(size: 15, weight: .semibold))
                     Spacer()
                     Text(income >= month ? L("Dư %@", fmt(income - month)) : L("Hụt %@", fmt(month - income)))
                         .font(.system(size: 15)).foregroundStyle(income >= month ? Color.secondary : Palette.danger)

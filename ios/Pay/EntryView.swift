@@ -239,7 +239,7 @@ struct EntryView: View {
                         editing = true
                     }
                 } label: {
-                    Text(inc ? L("Vào") : L("Chi")).font(.system(size: 15, weight: .semibold))
+                    Text(inc ? L("Thu") : L("Chi")).font(.system(size: 15, weight: .semibold))
                         .frame(width: 52, height: 30)
                         .foregroundStyle(on ? (inc ? Color.white : Palette.ctaInk) : Color.secondary)
                         .background { if on { Capsule().fill(inc ? Palette.goodInk : Palette.cta) } }
@@ -265,10 +265,10 @@ struct EntryView: View {
     private var title: String {
         switch mode {
         case .new(let c) where c != nil && Category.isIncome(c) == income: return "\(Category.get(c).icon) \(Category.get(c).name)"
-        case .new, .receipt: return income ? L("Lưu tiền vào") : L("Lưu khoản chi")
+        case .new, .receipt: return income ? L("Lưu khoản thu") : L("Lưu khoản chi")
         case .scan(let q): return L("Trả cho %@", q.name.isEmpty ? L("TK %@", q.acct ?? "") : q.name)
         case .raw: return L("Mã QR không phải VietQR")
-        case .edit, .editNow: return income ? L("Sửa tiền vào") : L("Sửa khoản chi")
+        case .edit, .editNow: return income ? L("Sửa khoản thu") : L("Sửa khoản chi")
         }
     }
 

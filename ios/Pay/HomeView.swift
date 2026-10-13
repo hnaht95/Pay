@@ -267,27 +267,19 @@ struct HomeView: View {
                 Spacer()
                 if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
             }
-            if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
-            // Số dư hiện có (thu trừ chi từ lần đặt số dư); chưa đặt thì mời nhập. Chạm để đặt / điều chỉnh
-            if film == nil {
-                Button { balanceOpen = true } label: {
-                    HStack(spacing: 6) {
-                        if let b = store.balance {
-                            Text(L("Hiện có")).font(.system(size: 15)).foregroundStyle(.secondary)
-                            Spacer()
-                            Text(fmt(b)).font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(b < 0 ? Palette.danger : Color.primary)
-                        } else {
-                            Text(L("Nhập số dư hiện có")).font(.system(size: 15)).foregroundStyle(.secondary)
-                            Spacer()
-                        }
-                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
-                    }
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .padding(.top, 12)
-                    .contentShape(Rectangle())
+            let bs = store.budgetStatus(now)
+            if let bs {
+                BudgetBar(s: bs, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
+                    .padding(.top, 16)
+            }
+            // Hai cột cùng kiểu (nhãn nhỏ trên, số dưới): trái là ngân sách còn / vượt, phải là số dư hiện có (chạm để đặt / chỉnh)
+            if bs != nil || film == nil {
+                HStack(alignment: .top, spacing: 12) {
+                    if let bs { budgetColumn(bs, now) }
+                    Spacer(minLength: 0)
+                    if film == nil { balanceColumn }
                 }
-                .buttonStyle(Pressable())
+                .padding(.top, bs == nil ? 14 : 10)
             }
         }
         .padding(22)
@@ -297,20 +289,39 @@ struct HomeView: View {
         .environment(\.colorScheme, HeroColor.scheme(heroTone))
     }
 
-    /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
-    private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            BudgetBar(s: b, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
+    /// Cột ngân sách dưới thanh: "Còn · 201.000/ngày" rồi số còn lại; vượt thì đỏ, kèm mức ngân sách
+    private func budgetColumn(_ b: BudgetStatus, _ now: Date) -> some View {
+        let over = b.remaining < 0
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(over ? L("Vượt · ngân sách %@", fmt(b.budget)) : L("Còn · %@/ngày", fmt(b.perDay(at: now))))
+                .font(.system(size: 13)).foregroundStyle(.secondary)
             HStack(spacing: 4) {
-                // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
-                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
-                Text(b.remaining >= 0 ? L("Còn %@", fmt(b.remaining)) : L("Vượt %@", fmt(-b.remaining))).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
-                Spacer()
-                Text(b.level == .over ? L("Ngân sách %@", fmt(b.budget)) : L("%@/ngày", fmt(b.perDay(at: now))))
-                    .font(.system(size: 15)).foregroundStyle(.secondary)
+                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)) }
+                Text(fmt(abs(b.remaining))).font(.system(size: 17, weight: .semibold))
+            }
+            .foregroundStyle(b.level == .over ? Palette.danger : .primary)
+        }
+        .lineLimit(1).minimumScaleFactor(0.8)
+    }
+
+    /// Cột số dư hiện có, căn phải: chưa đặt thì mời nhập
+    private var balanceColumn: some View {
+        Button { balanceOpen = true } label: {
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(L("Hiện có")).font(.system(size: 13)).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    if let b = store.balance {
+                        Text(fmt(b)).font(.system(size: 17, weight: .semibold)).foregroundStyle(b < 0 ? Palette.danger : Color.primary)
+                    } else {
+                        Text(L("Nhập số dư")).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(.tertiary)
+                }
             }
             .lineLimit(1).minimumScaleFactor(0.8)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(Pressable())
     }
 
     private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {

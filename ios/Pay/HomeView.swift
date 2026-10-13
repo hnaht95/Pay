@@ -302,11 +302,7 @@ struct HomeView: View {
             hideBalance = Task { try? await Task.sleep(for: .seconds(8)); if !Task.isCancelled { withAnimation(.snappy(duration: 0.2)) { balanceShown = false } } }
         } label: {
             VStack(alignment: .trailing, spacing: 3) {
-                HStack(spacing: 4) {
-                    if b != nil { Image(systemName: balanceShown ? "eye" : "eye.slash").font(.system(size: 11, weight: .medium)) }
-                    Text(L("Số dư")).font(.system(size: 13))
-                }
-                .foregroundStyle(.secondary)
+                Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
                 if let b {
                     Text(balanceShown ? fmt(b) : "••••••").font(.system(size: size, weight: .semibold))
                         .foregroundStyle(balanceShown && b < 0 ? Palette.danger : Color.primary)

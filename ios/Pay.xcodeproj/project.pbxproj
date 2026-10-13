@@ -57,6 +57,7 @@
 		BCCC32A2A03A84C57664153D /* BankData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670B9C247A53BD43509CC680 /* BankData.swift */; };
 		BD251F01C960CEB0E2EFB927 /* TriangleShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C224F3A230B5343B816E02 /* TriangleShape.swift */; };
 		C1653DBE55CA4305CDD29DA0 /* Reminder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD67DA0004B7BA5772A2896 /* Reminder.swift */; };
+		CA12B6219E053A2C0908FE92 /* CSVImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC5A8D6640EBCCCD018C005A /* CSVImport.swift */; };
 		CBB82CF703984D3FA1307E1A /* ImageCropper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2570B6E3237FC8FCF77F722D /* ImageCropper.swift */; };
 		CCEEE7211F4375499021839E /* Balance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E258E562F241E72263B48A3F /* Balance.swift */; };
 		D9BF7176763144227AE77268 /* EN+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E4AB183C62C00335ACF57F /* EN+Settings.swift */; };
@@ -159,6 +160,7 @@
 		F59BF8988A9A167970ABB449 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pay.entitlements; sourceTree = "<group>"; };
 		FBD0448711F3EB7D353E6768 /* EN+Home.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EN+Home.swift"; sourceTree = "<group>"; };
+		FC5A8D6640EBCCCD018C005A /* CSVImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVImport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -175,6 +177,7 @@
 				12AB5AFA5A99EE9F7A62F93F /* Category.swift */,
 				848F29DB06BED68649F05399 /* CategoryPhotos.swift */,
 				F58FCDD317DCE4C3F8181526 /* Cloud.swift */,
+				FC5A8D6640EBCCCD018C005A /* CSVImport.swift */,
 				B3888997D0235A05A5125AAC /* EdgeBlur.metal */,
 				9C5F00314D0B8638AAA8CF56 /* EntryView.swift */,
 				F59BF8988A9A167970ABB449 /* Film.swift */,
@@ -325,7 +328,7 @@
 					2CA39577F5A44AC9D635F905 = {
 						DevelopmentTeam = U5DGWB7A5X;
 						ProvisioningStyle = Automatic;
-						SystemCapabilities = "[\"com.apple.iCloud\": [\"enabled\": 1], \"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
 					};
 				};
 			};
@@ -380,6 +383,7 @@
 				BCCC32A2A03A84C57664153D /* BankData.swift in Sources */,
 				F52A29E47055AFBD0BFA0E98 /* BlurForm.swift in Sources */,
 				A545C30BDF4D6CF5519EA278 /* Budget.swift in Sources */,
+				CA12B6219E053A2C0908FE92 /* CSVImport.swift in Sources */,
 				414AAD28F01726AB65D67F0F /* CalendarShape.swift in Sources */,
 				E14979FF90B5058C781A6727 /* Category.swift in Sources */,
 				51B6AC24AF9AB74C60CE27F8 /* CategoryPhotos.swift in Sources */,

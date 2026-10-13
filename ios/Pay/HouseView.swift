@@ -1436,7 +1436,8 @@ struct HouseSpendEditor: View {
                     // Giữa như tiêu đề các màn khác
                     Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold)).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 26).padding(.bottom, 14)
+                        // Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới vạch (như Lịch sử chi tiêu)
+                        .padding(.top, 20).padding(.bottom, 20)
                     Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1)
                 }
             }

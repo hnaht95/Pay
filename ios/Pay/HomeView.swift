@@ -1019,11 +1019,20 @@ extension View {
         if home {
             // Các tấm có thanh tiêu đề (Thống kê, Cài đặt, Thông báo, sửa nhóm / thành viên / danh mục, chọn ngân hàng…): như Lịch sử
             // chi tiêu — thanh tiêu đề nền đặc màu trang, một vạch mảnh ngay dưới thanh, nội dung cuộn lên cắt gọn ở vạch. Không nhoè
-            hardTopEdge().toolbarBackground(fade ?? Palette.bg, for: .navigationBar)
+            // Vạch ghim ngay dưới thanh tiêu đề (một thanh mỏng ở mép trên vùng cuộn, nền đặc), lùi 16 hai bên như vạch dưới ô tìm
+            // của Lịch sử. iOS 26+: thanh tiêu đề trong tấm đặt chữ lệch xuống (đo trên máy ảo: tâm chữ cách mép trên tấm 29,
+            // cách chân thanh 24), nên đệm thêm 5 pt trên vạch cho khoảng trên và dưới tiêu đề bằng nhau
+            let color = fade ?? Palette.bg
+            let extra: CGFloat = { if #available(iOS 26.0, *) { 5 } else { 0 } }()
+            hardTopEdge().toolbarBackground(color, for: .navigationBar)
                 .toolbarBackground(.visible, for: .navigationBar)
-                // Vạch nằm ở mép trên vùng cuộn, tức ngay chân thanh tiêu đề; lùi 16 hai bên như vạch dưới ô tìm của Lịch sử
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16).allowsHitTesting(false)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(spacing: 0) {
+                        color.frame(height: extra)
+                        Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
+                    }
+                    .background(color)
+                    .allowsHitTesting(false)
                 }
         } else if #available(iOS 26.0, *) {
             scrollEdgeEffectStyle(.soft, for: .top)

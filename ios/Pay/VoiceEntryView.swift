@@ -207,6 +207,9 @@ struct VoiceEntryView: View {
     @State private var blob = true
     @State private var cardRect: CGRect = .zero
     /// Bấm "Quét QR": đóng thẻ này và mở camera quét mã.
+    /// Thẻ này thay ngay cho một thẻ nói đang hiện (bấm nút Tác vụ khi thẻ cũ còn mở): hiện luôn tại chỗ, không trượt lên —
+    /// trượt thì trông như thẻ đóng lại rồi mở ra lần nữa
+    var instant = false
     var onScan: () -> Void
     /// Bấm "Sửa" sau khi ghi: đóng thẻ này và mở khoản vừa ghi để sửa.
     var onEdit: (Expense) -> Void = { _ in }
@@ -290,7 +293,11 @@ struct VoiceEntryView: View {
         .animation(.spring(response: 0.38, dampingFraction: 0.86), value: shown)
         .presentationBackground(.clear)
         .task {
-            shown = true
+            if instant {
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { shown = true }
+            } else { shown = true }
             mic.onFinish = { said in handle(said) }
             if from != nil {
                 // Chờ một nhịp cho thẻ được đo xong khung rồi mới biến hình tới đúng khung đó
@@ -510,7 +517,7 @@ struct VoiceEntryView: View {
 
     private var hint: String {
         if undone { return L("Bấm Nói lại để nói khoản khác.") }
-        if notUnderstood { return mic.text.isEmpty ? L("Không nghe thấy gì.") : L("Đã nghe: \"%@\"", mic.text) }
+        if notUnderstood { return mic.text.isEmpty ? L("Vui lòng nói số tiền để ghi, ví dụ: \"ba lăm nghìn cà phê\"") : L("Đã nghe: \"%@\"", mic.text) }
         if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : heard }
         if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
         return ""
@@ -689,14 +696,25 @@ private struct Waveform: View {
     /// Dựng phim: độ to và thời điểm lấy từ phim
     var film: FilmFrame? = nil
     @State private var smooth = Smoother()
+    /// Lúc dải sóng hiện ra (thẻ vừa mở, hoặc bấm Nói lại)
+    @State private var born = Date()
 
     var body: some View {
         if let film, let v = film.voice { dots(level: v.level, time: film.time) }
         else {
             TimelineView(.animation) { t in
-                dots(level: smooth.step(to: meter.value, at: t.date), time: t.date.timeIntervalSinceReferenceDate)
+                dots(level: max(smooth.step(to: meter.value, at: t.date), Self.hello(t.date.timeIntervalSince(born))),
+                     time: t.date.timeIntervalSinceReferenceDate)
             }
         }
+    }
+
+    /// Sóng nháy nhẹ một lần khi vừa hiện ra, để biết là app đang nghe (micro còn đang bật, chưa có tiếng thì sóng nằm im):
+    /// đợi thẻ lên xong (0,35 giây) rồi dâng lên khoảng nửa chiều cao và hạ xuống trong 0,7 giây
+    private static func hello(_ elapsed: TimeInterval) -> CGFloat {
+        let x = (elapsed - 0.35) / 0.7
+        guard x > 0, x < 1 else { return 0 }
+        return 0.5 * CGFloat(sin(.pi * x))
     }
 
     private static let barWidth: CGFloat = 2

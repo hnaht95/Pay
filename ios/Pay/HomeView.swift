@@ -36,6 +36,8 @@ struct HomeView: View {
     /// Lượt mở thẻ nói qua fullScreenCover, mỗi lần mở là một lượt mới (xem listen()). Thẻ chỉ tự đóng được khi còn
     /// đúng lượt của nó: lệnh đóng còn treo của thẻ cũ (tự đóng 5 giây sau "Đã ghi") không đóng nhầm thẻ vừa mở lại
     @State private var voiceRound = 0
+    /// Lượt thẻ nói hiện tại được dựng đè lên thẻ cũ còn đang hiện (xem run): thẻ mới hiện tại chỗ, không trượt lên
+    @State private var voiceRenewed = false
     /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: khung của nút, thẻ biến hình từ đó ra thay vì trượt lên từ đáy
     @State private var voiceFrom: CGRect?
     @State private var scanned: String?
@@ -161,7 +163,7 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $listening, onDismiss: {}) {
             // Thẻ đóng qua onClose kèm số lượt (xem voiceRound), không dùng dismiss của chính nó
             let round = voiceRound
-            VoiceEntryView(onClose: { if round == voiceRound { listening = false } }, onScan: {
+            VoiceEntryView(onClose: { if round == voiceRound { listening = false } }, instant: voiceRenewed, onScan: {
                 Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
             }, onEdit: { e in
                 Task { try? await Task.sleep(for: .milliseconds(450)); entry = .editNow(e) }
@@ -210,8 +212,12 @@ struct HomeView: View {
 
     /// Mở thẻ nói qua fullScreenCover; mỗi lần mở là một lượt mới (xem voiceRound).
     private func listen() {
+        voiceRenewed = listening
         voiceRound += 1
-        listening = true
+        // Không dùng hiệu ứng trượt cả màn của fullScreenCover: thẻ tự trượt lên rồi, cộng thêm màn trượt nữa thì thẻ lên chậm
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) { listening = true }
     }
 
     // MARK: Các phần

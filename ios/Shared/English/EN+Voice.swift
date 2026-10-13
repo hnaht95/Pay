@@ -13,7 +13,7 @@ extension English {
         "Đóng": "Close",
         "Hay là": "Or",
         "Bấm Nói lại để nói khoản khác.": "Tap Try Again to log something else.",
-        "Không nghe thấy gì.": "Didn't hear anything.",
+        "Vui lòng nói số tiền để ghi, ví dụ: \"ba lăm nghìn cà phê\"": "Please say an amount to log, e.g. \"35k coffee\"",
         "Đã nghe: \"%@\"": "Heard: \"%@\"",
         "Nói ví dụ: \"ba lăm nghìn cà phê\"": "Say e.g. \"35k coffee\"",
         "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.": "Go to Settings › Pay and turn on Microphone and Speech Recognition.",

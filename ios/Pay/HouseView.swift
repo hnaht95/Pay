@@ -1203,11 +1203,9 @@ struct HouseMemberEditor: View {
                 .cardless()
                 Section(L("Tên")) { TextField(L("Tên"), text: $name) }
                 Section {
-                    Picker(L("Ngân hàng"), selection: $bin) {
-                        Text(L("Chưa chọn")).tag("")
-                        ForEach(Self.banks, id: \.key) { Text($0.value).tag($0.key) }
-                    }
-                    .pickerStyle(.navigationLink)   // danh sách dài: mở trang riêng để cuộn
+                    // Danh sách dài: mở trang riêng để cuộn
+                    PickLink(title: L("Ngân hàng"), selection: $bin,
+                             sections: [(nil, [("", L("Chưa chọn"))] + Self.banks.map { ($0.key, $0.value) })]) { Text(L("Ngân hàng")) }
                     TextField(L("Số tài khoản"), text: $acct).keyboardType(.numberPad)
                 } header: {
                     Text(L("Tài khoản nhận tiền"))

@@ -1015,27 +1015,14 @@ extension View {
     }
 
     /// home: iOS cũ hơn 26 làm như mép trên trang chủ — chỉ phủ nhẹ màu nền, phần nhoè do từng khối tự làm (navEdgeBlur)
-    @ViewBuilder func softTopEdge(fade: Color? = nil, home: Bool = false) -> some View {
+    /// back: trang được đẩy vào trong một tấm (có nút quay lại ở thanh tiêu đề)
+    @ViewBuilder func softTopEdge(fade: Color? = nil, home: Bool = false, back: Bool = false) -> some View {
         if home {
             // Các tấm có thanh tiêu đề (Thống kê, Cài đặt, Thông báo, sửa nhóm / thành viên / danh mục, chọn ngân hàng…): như Lịch sử
-            // chi tiêu — thanh tiêu đề nền đặc màu trang, một vạch mảnh ngay dưới thanh, nội dung cuộn lên cắt gọn ở vạch. Không nhoè
-            // Vạch ghim ngay dưới thanh tiêu đề (một thanh mỏng ở mép trên vùng cuộn, nền đặc), lùi 16 hai bên như vạch dưới ô tìm
-            // của Lịch sử. iOS 26+: thanh tiêu đề trong tấm đặt chữ lệch xuống (đo trên máy ảo: tâm chữ cách mép trên tấm 29,
-            // cách chân thanh 24), nên đệm thêm 5 pt trên vạch cho khoảng trên và dưới tiêu đề bằng nhau
-            let color = fade ?? Palette.bg
-            let extra: CGFloat = { if #available(iOS 26.0, *) { 5 } else { 0 } }()
-            // Nền thanh tiêu đề do app tự tô, đúng màu nền trang: tắt nền thanh của hệ thống và lớp mép cuộn của iOS 26+ (hai lớp
-            // ấy pha thêm sắc sáng, thanh tiêu đề trông lệch màu với phần bên dưới), rồi cho nền của thanh vạch tràn lên tận mép
-            // trên tấm, phủ sau tiêu đề; nội dung cuộn lên chui dưới lớp này và cắt gọn ở vạch
-            noTopEdgeEffect().toolbarBackground(.hidden, for: .navigationBar)
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(spacing: 0) {
-                        color.frame(height: extra)
-                        Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
-                    }
-                    .background { color.ignoresSafeArea(edges: .top) }
-                    .allowsHitTesting(false)
-                }
+            // chi tiêu — thanh tiêu đề do app tự vẽ (xem screenTitle), nền đặc đúng màu trang, một vạch mảnh bên dưới, nội dung cuộn
+            // lên cắt gọn ở vạch, không nhoè. Tự vẽ để mọi bản iOS giống hệt nhau (thanh của hệ thống mỗi bản cao thấp, đậm nhạt
+            // một khác). Ở đây chỉ tắt hiệu ứng mép cuộn của iOS 26+ và báo màu nền cho screenTitle
+            noTopEdgeEffect().preference(key: TitleBarKey.self, value: TitleBarStyle(color: fade ?? Palette.bg, back: back))
         } else if #available(iOS 26.0, *) {
             scrollEdgeEffectStyle(.soft, for: .top)
                 .overlay(alignment: .top) {
@@ -1114,10 +1101,133 @@ extension View {
     }
 
     /// Tiêu đề màn hình: cỡ 21 đậm, bằng "Sửa / Lưu khoản chi" (tiêu đề mặc định của iOS nhỏ quá)
-    func screenTitle(_ title: String) -> some View {
-        navigationTitle(title).toolbar {
-            ToolbarItem(placement: .principal) { Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1) }
+    func screenTitle(_ title: String) -> some View { modifier(ScreenTitle(title: title)) }
+}
+
+/// Kiểu thanh tiêu đề tự vẽ của một tấm: màu nền (màu trang) và có nút quay lại hay không. softTopEdge(home: true) báo lên
+struct TitleBarStyle: Equatable {
+    var color: Color
+    var back = false
+}
+
+struct TitleBarKey: PreferenceKey {
+    static let defaultValue: TitleBarStyle? = nil
+    static func reduce(value: inout TitleBarStyle?, nextValue: () -> TitleBarStyle?) { value = value ?? nextValue() }
+}
+
+/// Tiêu đề màn. Tấm có softTopEdge(home: true): ẩn thanh tiêu đề của hệ thống, tự vẽ thanh ghim trên vùng cuộn — chữ 21 đậm ở
+/// giữa, cách mép trên tấm 20 và cách vạch 20, vạch mảnh lùi 16 hai bên, nền đặc màu trang tràn lên mép trên tấm — nên iOS 18,
+/// 26, 27 ra cùng một hình. Màn khác: tiêu đề nằm trong thanh của hệ thống như trước
+private struct ScreenTitle: ViewModifier {
+    let title: String
+    @State private var bar: TitleBarStyle?
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(TitleBarKey.self) { bar = $0 }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if let bar {
+                    VStack(spacing: 0) {
+                        ZStack {
+                            Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
+                                .padding(.horizontal, bar.back ? 60 : 20)
+                            if bar.back {
+                                HStack {
+                                    Button { dismiss() } label: {
+                                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
+                                            .frame(width: 40, height: 40)
+                                            .background(Color.primary.opacity(0.06), in: Circle())
+                                            .contentShape(Circle())
+                                    }
+                                    .buttonStyle(Pressable()).foregroundStyle(.primary)
+                                    .accessibilityLabel(L("Quay lại"))
+                                    Spacer()
+                                }
+                                .padding(.leading, 12)
+                            }
+                        }
+                        // Cao cố định theo dòng chữ: nút quay lại (40) tràn ra trên dưới chứ không làm thanh cao thêm, nên trang có nút
+                        // và trang không có nút cao bằng nhau
+                        .frame(maxWidth: .infinity).frame(height: 26)
+                        .padding(.top, 20).padding(.bottom, 20)
+                        Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
+                    }
+                    .background { bar.color.ignoresSafeArea(edges: .top) }
+                }
+            }
+            .navigationTitle(title)
+            .toolbar {
+                ToolbarItem(placement: .principal) { Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1) }
+            }
+            .toolbar(bar == nil ? .automatic : .hidden, for: .navigationBar)
+    }
+}
+
+/// Thanh tiêu đề của hệ thống bị ẩn ở các trang đẩy vào (có nút quay lại tự vẽ): giữ cử chỉ vuốt từ mép trái để quay lại,
+/// vốn bị tắt theo khi ẩn thanh
+extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
+    override open func viewDidLoad() {
+        super.viewDidLoad()
+        interactivePopGestureRecognizer?.delegate = self
+    }
+
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool { viewControllers.count > 1 }
+}
+
+/// Một dòng chọn trong Form: mở trang danh sách riêng (thay ô chọn kiểu trang của iOS, để trang ấy cũng có thanh tiêu đề của
+/// app). Chọn xong tự quay lại
+struct PickLink<T: Hashable, Label: View>: View {
+    let title: String
+    @Binding var selection: T
+    /// Các nhóm lựa chọn: tên nhóm (nil = không có), rồi (giá trị, tên hiện)
+    let sections: [(header: String?, items: [(T, String)])]
+    @ViewBuilder var label: Label
+
+    var body: some View {
+        NavigationLink {
+            PickPage(title: title, selection: $selection, sections: sections)
+        } label: {
+            LabeledContent {
+                Text(sections.flatMap(\.items).first { $0.0 == selection }?.1 ?? "").foregroundStyle(.secondary).lineLimit(1)
+            } label: { label }
         }
+    }
+}
+
+private struct PickPage<T: Hashable>: View {
+    let title: String
+    @Binding var selection: T
+    let sections: [(header: String?, items: [(T, String)])]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Form {
+            ForEach(sections.indices, id: \.self) { i in
+                Section {
+                    ForEach(sections[i].items.indices, id: \.self) { j in
+                        let item = sections[i].items[j]
+                        Button {
+                            Haptic.select()
+                            selection = item.0
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(item.1).foregroundStyle(Color.primary)
+                                Spacer(minLength: 8)
+                                if item.0 == selection { Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary) }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                    }
+                } header: {
+                    if let h = sections[i].header { Text(h) }
+                }
+            }
+        }
+        .textCase(nil)
+        .softTopEdge(fade: Color(.systemGroupedBackground), home: true, back: true)
+        .screenTitle(title)
     }
 }
 

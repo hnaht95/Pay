@@ -288,17 +288,10 @@ struct SettingsView: View {
 
     private var bankSection: some View {
         Section {
-            Picker(selection: $store.appId) {
-                Section(L("Mở sẵn người nhận + số tiền")) {
-                    ForEach(BankData.apps.filter(\.fill)) { Text($0.name).tag($0.id) }
-                }
-                Section(L("Chỉ mở app (quét lại QR)")) {
-                    ForEach(BankData.apps.filter { !$0.fill }) { Text($0.name).tag($0.id) }
-                }
-            } label: {
-                row(L("App ngân hàng"))
-            }
-            .pickerStyle(.navigationLink)
+            PickLink(title: L("App ngân hàng"), selection: $store.appId, sections: [
+                (L("Mở sẵn người nhận + số tiền"), BankData.apps.filter(\.fill).map { ($0.id, $0.name) }),
+                (L("Chỉ mở app (quét lại QR)"), BankData.apps.filter { !$0.fill }.map { ($0.id, $0.name) }),
+            ]) { row(L("App ngân hàng")) }
         } header: {
             Text(L("Thanh toán"))
         } footer: {
@@ -337,13 +330,8 @@ struct SettingsView: View {
 
     private var myQRSection: some View {
         Section {
-            Picker(selection: $myQR.bin) {
-                Text(L("Chưa chọn")).tag("")
-                ForEach(Self.banks, id: \.key) { Text($0.value).tag($0.key) }
-            } label: {
-                row(L("Ngân hàng"))
-            }
-            .pickerStyle(.navigationLink)
+            PickLink(title: L("Ngân hàng"), selection: $myQR.bin,
+                     sections: [(nil, [("", L("Chưa chọn"))] + Self.banks.map { ($0.key, $0.value) })]) { row(L("Ngân hàng")) }
             TextField(L("Số tài khoản"), text: $myQR.acct)
                 .keyboardType(.asciiCapable).textInputAutocapitalization(.characters).autocorrectionDisabled()
             TextField(L("Tên chủ tài khoản (không bắt buộc)"), text: $myQR.name)
@@ -377,12 +365,8 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
-            Picker(selection: Binding(get: { appearance }, set: { appearance = $0; Appearance.apply() })) {
-                ForEach(Appearance.allCases, id: \.self) { Text($0.title).tag($0) }
-            } label: {
-                row(L("Chế độ"))
-            }
-            .pickerStyle(.navigationLink)
+            PickLink(title: L("Chế độ"), selection: Binding(get: { appearance }, set: { appearance = $0; Appearance.apply() }),
+                     sections: [(nil, Appearance.allCases.map { ($0, $0.title) })]) { row(L("Chế độ")) }
         } header: {
             Text(L("Giao diện"))
         }
@@ -390,12 +374,8 @@ struct SettingsView: View {
 
     private var languageSection: some View {
         Section {
-            Picker(selection: Binding(get: { lang }, set: { lang = $0; Lang.set($0) })) {
-                ForEach(Lang.allCases, id: \.self) { Text($0.title).tag($0) }
-            } label: {
-                row(L("Ngôn ngữ app"))
-            }
-            .pickerStyle(.navigationLink)
+            PickLink(title: L("Ngôn ngữ app"), selection: Binding(get: { lang }, set: { lang = $0; Lang.set($0) }),
+                     sections: [(nil, Lang.allCases.map { ($0, $0.title) })]) { row(L("Ngôn ngữ app")) }
         } header: {
             Text(L("Ngôn ngữ"))
         } footer: {
@@ -1222,7 +1202,7 @@ struct QuickAccessHelp: View {
             }
         }
         .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-        .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+        .softTopEdge(fade: Color(.systemGroupedBackground), home: true, back: true)
         .screenTitle(L("Truy cập nhanh"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1276,7 +1256,7 @@ struct ApplePayHelp: View {
                 Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }
         }
-        .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+        .softTopEdge(fade: Color(.systemGroupedBackground), home: true, back: true)
         .screenTitle(L("Tự ghi khi trả Apple Pay"))
         .navigationBarTitleDisplayMode(.inline)
     }

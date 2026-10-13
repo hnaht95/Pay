@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Quay lại": "Back",
         "Bản thử: mở khoá Pro": "Test build: unlock Pro",
         "Lưu & mở Bank": "Save & open bank",
         "Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận.": "After scanning, Pay opens the transfer screen in your bank app with the recipient and amount filled in. You just confirm.",

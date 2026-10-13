@@ -14,7 +14,7 @@ private let systemEdgeShot = false
 #endif
 
 extension View {
-    /// Tắt hiệu ứng mép cuộn của hệ thống (iOS 26+) ở các cạnh cho trước; app tự vẽ mép mờ bằng EdgeFade
+    /// Tắt hiệu ứng mép cuộn của hệ thống (iOS 26+) ở các cạnh cho trước; app tự vẽ mép mờ (ClearBlur, EdgeFade)
     @ViewBuilder func noSystemEdge(_ edges: VerticalEdge.Set = .all) -> some View {
         if systemEdgeShot { self }
         else if #available(iOS 26.0, *) {
@@ -49,10 +49,13 @@ struct EdgeFade: View {
 /// nội dung đi vào được nhoè dần chứ không bị loang màu. Dùng bộ lọc variableBlur của Core Animation gắn vào lớp nhoè của
 /// UIVisualEffectView; không dựng được bộ lọc (bản iOS đổi bên trong) thì không vẽ gì
 struct ClearBlur: UIViewRepresentable {
+    /// Mép nhoè hết mức: .top (dưới đồng hồ) hay .bottom (sau dải nút đáy)
+    var edge: VerticalEdge = .top
     var radius: CGFloat = 12
 
     func makeUIView(context: Context) -> UIVisualEffectView {
         let v = BlurView(effect: UIBlurEffect(style: .regular))
+        v.edge = edge
         v.radius = radius
         v.isUserInteractionEnabled = false
         return v
@@ -60,6 +63,7 @@ struct ClearBlur: UIViewRepresentable {
     func updateUIView(_ v: UIVisualEffectView, context: Context) {}
 
     private final class BlurView: UIVisualEffectView {
+        var edge: VerticalEdge = .top
         var radius: CGFloat = 12
 
         override func layoutSubviews() {
@@ -79,29 +83,32 @@ struct ClearBlur: UIViewRepresentable {
             guard let backdrop = subviews.first(where: { String(describing: type(of: $0)).contains("Backdrop") }) else { return }
             // Các lớp con khác chỉ tô màu phủ lên (làm dải mờ đục như sữa)
             for s in subviews where s !== backdrop { s.alpha = 0 }
-            guard let f = Self.filter(radius: radius) else { isHidden = true; return }
+            guard let f = Self.filter(radius: radius, mask: edge == .top ? Self.topMask : Self.bottomMask) else { isHidden = true; return }
             backdrop.layer.filters = [f]
             // Lớp nhoè mặc định dựng ở độ phân giải thấp: chỗ gần hết nhoè sẽ lộ ô vuông và vết cắt. Dựng đúng độ phân giải màn
             if let scale = window?.screen.scale { backdrop.layer.setValue(scale, forKey: "scale") }
         }
 
-        /// Ảnh mặt nạ: đặc ở trên, trong suốt ở dưới (độ đặc = mức nhoè), co giãn theo khung lớp
-        private static let mask: CGImage? = {
+        /// Ảnh mặt nạ (độ đặc = mức nhoè), co giãn theo khung lớp. stops: (vị trí tính từ mép nhoè, độ đặc)
+        private static func mask(_ stops: [(CGFloat, CGFloat)], from edge: VerticalEdge) -> CGImage? {
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1
             format.opaque = false
             let size = CGSize(width: 64, height: 128)
             return UIGraphicsImageRenderer(size: size, format: format).image { c in
-                // Giảm theo đường cong êm (không thẳng): nhoè đậm ở phần trên, tan dần về cuối
-                let stops: [(CGFloat, CGFloat)] = [(0, 1), (0.25, 0.7), (0.5, 0.3), (0.75, 0.06), (0.85, 0)]
                 let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                                    colors: stops.map { UIColor.black.withAlphaComponent($0.1).cgColor } as CFArray,
                                    locations: stops.map(\.0))!
-                c.cgContext.drawLinearGradient(g, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+                let top = CGPoint.zero, bottom = CGPoint(x: 0, y: size.height)
+                c.cgContext.drawLinearGradient(g, start: edge == .top ? top : bottom, end: edge == .top ? bottom : top, options: [])
             }.cgImage
-        }()
+        }
+        /// Dưới đồng hồ: giảm theo đường cong êm, nhoè đậm ở phần trên, hết trước mép dưới lớp
+        private static let topMask = mask([(0, 1), (0.25, 0.7), (0.5, 0.3), (0.75, 0.06), (0.85, 0)], from: .top)
+        /// Sau dải nút đáy: nhoè hết mức suốt phần sau hai nút, tan dần ở đoạn phía trên nút
+        private static let bottomMask = mask([(0, 1), (0.55, 1), (0.72, 0.55), (0.88, 0.15), (1, 0)], from: .bottom)
 
-        private static func filter(radius: CGFloat) -> NSObject? {
+        private static func filter(radius: CGFloat, mask: CGImage?) -> NSObject? {
             guard let cls = NSClassFromString(["CA", "Filter"].joined()) as? NSObject.Type else { return nil }
             let sel = NSSelectorFromString(["filter", "WithType:"].joined())
             guard cls.responds(to: sel), let f = cls.perform(sel, with: "variableBlur")?.takeUnretainedValue() as? NSObject,
@@ -135,7 +142,7 @@ extension View {
 
     /// Gắn dải nút nổi ở đáy màn (trang chủ, Nhóm chung): phủ lên nội dung, phía sau là dải mờ cao 150 từ mép dưới màn. Nội dung
     /// cuộn phải chừa 120 điểm ở cuối. Dải nút tự lùi xuống (padding âm) cho sát vạch Home.
-    /// fallbackBlur: lớp mờ dùng khi dựng phim (FilmFade); ngoài phim dùng EdgeFade.
+    /// fallbackBlur: lớp mờ dùng khi dựng phim (FilmFade); ngoài phim dùng ClearBlur.
     /// above: lớp nằm trên lớp mờ, dưới hai nút, sát mép trên dải nút (vd thanh "Đã xoá · Hoàn tác"): trồi lên từ sau dải nút,
     /// ẩn thì chui xuống lại sau đó, không bao giờ đè lên nút
     func withDock<D: View, B: View, A: View>(dock: D, fallbackBlur: B, film: Bool = false,
@@ -147,11 +154,13 @@ extension View {
                     fallbackBlur
                     attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom)
                 } else {
-                    // Đặc tới ngang mép trên hai nút (~92 điểm từ đáy màn), tan dần ở đoạn phía trên
-                    EdgeFade(edge: .bottom, solid: 0.6)
+                    // Như mép trên trang chủ: chỉ nhoè, không phủ màu. Nhoè hết mức sau hai nút (~92 điểm từ đáy màn), tan dần ở
+                    // đoạn phía trên
+                    ClearBlur(edge: .bottom, radius: 10)
                         .frame(height: 150)
                         .frame(maxHeight: .infinity, alignment: .bottom)
                         .ignoresSafeArea()
+                        .allowsHitTesting(false)
                     attached
                 }
             }

@@ -193,7 +193,7 @@ struct HouseView: View {
         }
     }
 
-    /// Lớp mờ sau nút khi dựng phim: dải màu đặc (xem FilmFade). Ngoài phim withDock tự vẽ EdgeFade
+    /// Lớp mờ sau nút khi dựng phim: dải màu đặc (xem FilmFade). Ngoài phim withDock tự vẽ lớp nhoè (ClearBlur)
     private var bottomFade: some View {
         FilmFade(color: Palette.bg, stops: [(0, 1), (0.3, 1), (0.6, 0.6), (1, 0)], height: 170)
             .frame(maxHeight: .infinity, alignment: .bottom)

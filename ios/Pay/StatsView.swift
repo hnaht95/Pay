@@ -944,8 +944,8 @@ struct StatsView: View {
                     let change = closing - opening
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
-                        // Chênh lệch so với đầu kỳ đứng cạnh số dư, mũi tên lên / xuống
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        // Chênh lệch so với đầu kỳ đứng cạnh số dư, mũi tên lên / xuống; căn giữa theo chiều cao số dư
+                        HStack(alignment: .center, spacing: 10) {
                             Text(fmt(closing)).font(.system(size: 26, weight: .bold))
                                 .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
                             if change != 0 {

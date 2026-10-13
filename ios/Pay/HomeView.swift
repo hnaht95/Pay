@@ -746,13 +746,19 @@ struct ExpenseRow: View {
                             .accessibilityLabel(L("Có ảnh hoá đơn"))
                     }
                 }
-            HStack(spacing: 6) {
-                // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 15, weight: .medium))
-                    .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
-                if repeats {
-                    Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                        .accessibilityLabel(L("Hằng tháng"))
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
+                    Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 15, weight: .medium))
+                        .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
+                    if repeats {
+                        Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                            .accessibilityLabel(L("Hằng tháng"))
+                    }
+                }
+                // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục)
+                if e.n?.isEmpty == false {
+                    Text(c.name).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 8)

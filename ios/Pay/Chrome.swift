@@ -45,8 +45,9 @@ struct EdgeFade: View {
     }
 }
 
-/// Lớp nhoè thuần: kính mờ của UIKit nhưng chỉ giữ bộ lọc nhoè (gaussianBlur) — bỏ các bộ lọc làm nhạt / tăng sáng màu và
-/// các lớp tô màu phủ lên, vốn làm dải mờ trông đục như sữa. Mép cuộn mặc định của iOS 27 cũng chỉ nhoè, không phủ màu
+/// Lớp nhoè tăng dần như mép cuộn mặc định của iOS 27: nhoè hết mức ở mép trên, giảm dần về 0 ở mép dưới, không phủ màu —
+/// nội dung đi vào được nhoè dần chứ không bị loang màu. Dùng bộ lọc variableBlur của Core Animation gắn vào lớp nhoè của
+/// UIVisualEffectView; không dựng được bộ lọc (bản iOS đổi bên trong) thì không vẽ gì
 struct ClearBlur: UIViewRepresentable {
     var radius: CGFloat = 12
 
@@ -63,23 +64,58 @@ struct ClearBlur: UIViewRepresentable {
 
         override func layoutSubviews() {
             super.layoutSubviews()
-            for s in subviews {
-                if String(describing: type(of: s)).contains("Backdrop") {
-                    // Lớp nhoè (_UIVisualEffectBackdropView): chỉ giữ gaussianBlur, đặt lại độ nhoè
-                    s.layer.filters = s.layer.filters?.filter { (($0 as AnyObject).value(forKey: "name") as? String) == "gaussianBlur" }
-                    (s.layer.filters?.first as? NSObject)?.setValue(radius, forKey: "inputRadius")
-                } else { s.alpha = 0 }   // lớp tô màu phủ lên
-            }
+            apply()
+        }
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            apply()
         }
         override func traitCollectionDidChange(_ previous: UITraitCollection?) {
             super.traitCollectionDidChange(previous)
-            setNeedsLayout()
+            apply()
+        }
+
+        private func apply() {
+            guard let backdrop = subviews.first(where: { String(describing: type(of: $0)).contains("Backdrop") }) else { return }
+            // Các lớp con khác chỉ tô màu phủ lên (làm dải mờ đục như sữa)
+            for s in subviews where s !== backdrop { s.alpha = 0 }
+            guard let f = Self.filter(radius: radius) else { isHidden = true; return }
+            backdrop.layer.filters = [f]
+            // Lớp nhoè mặc định dựng ở độ phân giải thấp: chỗ gần hết nhoè sẽ lộ ô vuông và vết cắt. Dựng đúng độ phân giải màn
+            if let scale = window?.screen.scale { backdrop.layer.setValue(scale, forKey: "scale") }
+        }
+
+        /// Ảnh mặt nạ: đặc ở trên, trong suốt ở dưới (độ đặc = mức nhoè), co giãn theo khung lớp
+        private static let mask: CGImage? = {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1
+            format.opaque = false
+            let size = CGSize(width: 64, height: 128)
+            return UIGraphicsImageRenderer(size: size, format: format).image { c in
+                // Giảm theo đường cong êm (không thẳng): nhoè đậm ở phần trên, tan dần về cuối
+                let stops: [(CGFloat, CGFloat)] = [(0, 1), (0.25, 0.7), (0.5, 0.3), (0.75, 0.06), (0.85, 0)]
+                let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                   colors: stops.map { UIColor.black.withAlphaComponent($0.1).cgColor } as CFArray,
+                                   locations: stops.map(\.0))!
+                c.cgContext.drawLinearGradient(g, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+            }.cgImage
+        }()
+
+        private static func filter(radius: CGFloat) -> NSObject? {
+            guard let cls = NSClassFromString(["CA", "Filter"].joined()) as? NSObject.Type else { return nil }
+            let sel = NSSelectorFromString(["filter", "WithType:"].joined())
+            guard cls.responds(to: sel), let f = cls.perform(sel, with: "variableBlur")?.takeUnretainedValue() as? NSObject,
+                  let mask else { return nil }
+            f.setValue(radius, forKey: "inputRadius")
+            f.setValue(mask, forKey: "inputMaskImage")
+            f.setValue(true, forKey: "inputNormalizeEdges")
+            return f
         }
     }
 }
 
 extension View {
-    /// Mép trên trang chủ (không có thanh tiêu đề): lớp nhoè phủ vùng thanh trạng thái (đồng hồ, pin), ló xuống dưới 10 điểm,
+    /// Mép trên trang chủ (không có thanh tiêu đề): lớp nhoè phủ vùng thanh trạng thái (đồng hồ, pin), hết trước chân thanh trạng thái,
     /// để nội dung cuộn lên không đè rõ vào đồng hồ
     @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
         if on && !systemEdgeShot {
@@ -87,11 +123,8 @@ extension View {
                 GeometryReader { g in
                     // Như mép cuộn mặc định của iOS 27: chỉ nhoè (gần như không phủ màu), nhoè hết mức ở mép trên, nhạt dần tới
                     // chân thanh trạng thái; nội dung vẫn thấy lờ mờ sau đồng hồ
-                    let bar = g.safeAreaInsets.top, tail: CGFloat = 10, end = bar / (bar + tail)
-                    ClearBlur(radius: 12)
-                        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: end * 0.45),
-                                                     .init(color: .black.opacity(0.5), location: end * 0.8), .init(color: .clear, location: 1)],
-                                             startPoint: .top, endPoint: .bottom))
+                    let bar = g.safeAreaInsets.top, tail: CGFloat = 0
+                    ClearBlur(radius: 9)
                     .frame(height: bar + tail)
                     .offset(y: -bar)
                     .allowsHitTesting(false)

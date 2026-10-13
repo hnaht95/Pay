@@ -268,18 +268,6 @@ struct HomeView: View {
                 if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
             }
             if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
-            // Tháng có tiền vào: tổng tiền vào và còn dư (tiền vào trừ tiền chi của tháng). Không ảnh hưởng ngân sách
-            let income = store.monthIncome(now)
-            if income > 0 {
-                HStack(spacing: 4) {
-                    Text(L("Đã thu %@", fmt(income))).font(.system(size: 15, weight: .semibold))
-                    Spacer()
-                    Text(income >= month ? L("Dư %@", fmt(income - month)) : L("Hụt %@", fmt(month - income)))
-                        .font(.system(size: 15)).foregroundStyle(income >= month ? Color.secondary : Palette.danger)
-                }
-                .lineLimit(1).minimumScaleFactor(0.8)
-                .padding(.top, 12)
-            }
             // Số dư hiện có (thu trừ chi từ lần đặt số dư); chưa đặt thì mời nhập. Chạm để đặt / điều chỉnh
             if film == nil {
                 Button { balanceOpen = true } label: {

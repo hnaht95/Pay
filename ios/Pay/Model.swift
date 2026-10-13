@@ -462,12 +462,6 @@ final class Store: ObservableObject {
         show(L("Số dư: %@", fmt(target))) { [weak self] in self?.remove(id: e.id, toast: false) }
     }
 
-    /// Tổng tiền vào trong tháng chứa `day`
-    func monthIncome(_ day: Date) -> Int {
-        let cal = Calendar.current
-        return incomes.filter { cal.isDate($0.date, equalTo: day, toGranularity: .month) }.reduce(0) { $0 + $1.a }
-    }
-
     // MARK: Sao lưu
 
     func exportJSON() -> URL? {

@@ -808,7 +808,32 @@ struct CategoryEditor: View {
                     .padding(.vertical, 4)
     }
 
-    private var colorRows: some View { palettes }
+    /// Giống bảng Màu thẻ của "Hôm nay đã chi": lưới chấm tròn các màu có sẵn, dưới là Tự chọn màu (bảng màu của iOS)
+    private var colorRows: some View {
+        VStack(spacing: 14) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 6), spacing: 12) {
+                ForEach(CategoryTone.all.indices, id: \.self) { i in
+                    Button { if tone != i { Haptic.select() }; tone = i } label: {
+                        Circle().fill(CategoryTone.bg(i))
+                            .overlay(Circle().strokeBorder(Color.primary.opacity(0.1), lineWidth: 1))
+                            .padding(fTone == i ? 4.5 : 0)
+                            .frame(width: 40, height: 40)
+                            .overlay { if fTone == i { Circle().strokeBorder(Color.primary.opacity(0.8), lineWidth: 2.5) } }
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            ColorPicker(selection: Binding(get: { CategoryTone.bg(fTone) }, set: { c in
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                UIColor(c).getRed(&r, green: &g, blue: &b, alpha: &a)
+                let byte = { (v: CGFloat) in UInt32(max(0, min(255, (v * 255).rounded()))) }
+                tone = CategoryTone.custom(byte(r) << 16 | byte(g) << 8 | byte(b))
+            }), supportsOpacity: false) {
+                Text(L("Tự chọn màu")).font(.system(size: 17))
+            }
+        }
+        .padding(.vertical, 8)
+    }
 
     /// Bảng màu gợi ý — cùng cách bày thẻ bảng màu của app Shot (ColourSetCard): thẻ vuông 4 dải cao 41 / 26 / 18 / 15 %,
     /// bo 10, lưới 2 cột cách 16 (không ghi tên bảng). Chạm một dải để dùng màu ấy (lưu như màu tự chọn), dải đang dùng có dấu tích

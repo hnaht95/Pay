@@ -52,7 +52,7 @@ struct HeroColorSheet: View {
             .screenTitle(L("Màu thẻ"))
             .navigationBarTitleDisplayMode(.inline)
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.height(570), .large])   // vừa đủ hết bảng màu và Tự chọn màu (nửa màn bị cắt)
         .sheetGrabber()
     }
 

@@ -199,6 +199,8 @@ struct VoiceEntryView: View {
     /// Thẻ đang nằm ngay trên màn hình chính (không qua fullScreenCover, để không dính hiệu ứng trượt lên của iOS):
     /// đóng thì gọi cái này thay cho dismiss
     var onClose: (() -> Void)? = nil
+    /// Thẻ bắt đầu đóng (đang thu về nút), trước onClose gần nửa giây: màn phía sau cho hiện lại những gì thẻ đang che
+    var onLeave: (() -> Void)? = nil
     /// Mức biến hình: 0 = còn là nút, 1 = đã thành thẻ
     @State private var morph: CGFloat = 0
     /// Nội dung thẻ đã hiện chưa (hiện sau khi khối đã lớn gần xong, ẩn trước khi khối thu về)
@@ -658,6 +660,7 @@ struct VoiceEntryView: View {
     /// Để hệ thống tự kéo cả màn hình xuống thì nền tối tắt phụt và bóng đổ của thẻ bị vệt.
     private func leave() {
         guard shown else { return }
+        onLeave?()
         if from != nil {
             // Thu về nút: nội dung mờ đi trước, rồi khối co lại thành nút
             blob = true

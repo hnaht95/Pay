@@ -943,7 +943,9 @@ struct StatsView: View {
                 if let opening, let closing {
                     let change = closing - opening
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
+                        // Dòng trên là đầu kỳ (thay chữ "Hiện tại"); số lớn là số dư hiện tại / cuối kỳ
+                        Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@" : "Lúc đặt số dư %@", fmt(opening)))
+                            .font(.system(size: 13)).foregroundStyle(.secondary)
                         // Chênh lệch so với đầu kỳ đứng cạnh số dư, mũi tên lên / xuống; căn giữa theo chiều cao số dư
                         HStack(alignment: .center, spacing: 10) {
                             Text(fmt(closing)).font(.system(size: 26, weight: .bold))
@@ -956,8 +958,6 @@ struct StatsView: View {
                                 .foregroundStyle(change > 0 ? Palette.goodInk : Palette.danger)
                             }
                         }
-                        Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@" : "Lúc đặt số dư %@", fmt(opening)))
-                            .font(.system(size: 15)).foregroundStyle(.secondary)
                     }
                     .lineLimit(1).minimumScaleFactor(0.7)
                 } else if start == nil {

@@ -89,10 +89,10 @@ struct StatsView: View {
             if film != nil { monthTabs } else { periodHeader }
             // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur); dải ngày nhoè theo từng viên
             hero(items, prev).navEdgeBlur()
-            // Số dư đầu kỳ → cuối kỳ, thu / chi của kỳ, rồi từng khoản thu (như báo cáo của Money Lover)
-            if film == nil {
-                balanceCard(store.incomes.filter { $0.date >= span.start && $0.date < span.end }, spent: sum(items)).navEdgeBlur()
-            }
+            // Số dư đầu kỳ → cuối kỳ và thu / chi của kỳ (như báo cáo của Money Lover), rồi từng khoản thu
+            let incomes = store.incomes.filter { $0.date >= span.start && $0.date < span.end }
+            if film == nil { balanceCard(spent: sum(items), got: sum(incomes)).navEdgeBlur() }
+            if !incomes.isEmpty { incomeCard(incomes).navEdgeBlur() }
             grid(items, prev).navEdgeBlur()
             if !items.isEmpty {
                 categoryCard(items).navEdgeBlur()
@@ -927,12 +927,9 @@ struct StatsView: View {
 
     // MARK: Số dư, thu chi
 
-    /// Số dư đầu kỳ → cuối kỳ (kỳ đang chạy: hiện tại) và chênh lệch; thu, chi, thu − chi của kỳ; rồi từng khoản thu mới nhất trước
-    /// (chạm để xem / sửa, quá 5 khoản thì Xem tất cả). Chưa đặt số dư thì mời nhập; kỳ nằm trước lúc đặt số dư thì không có số dư
-    private func balanceCard(_ incomes: [Expense], spent: Int) -> some View {
-        let got = sum(incomes)
-        let sorted = incomes.sorted { $0.t > $1.t }
-        let rows = showAllIncome ? sorted : Array(sorted.prefix(5))
+    /// Số dư hiện tại / cuối kỳ (số lớn), dưới là đầu kỳ và chênh lệch; rồi hai cột Thu / Chi của kỳ.
+    /// Chưa đặt số dư thì mời nhập; kỳ nằm trước lúc đặt số dư thì chỉ có Thu / Chi
+    private func balanceCard(spent: Int, got: Int) -> some View {
         let start = store.balanceStart
         let s = span.start.timeIntervalSince1970 * 1000
         let e = min(span.end.timeIntervalSince1970 * 1000, Date().timeIntervalSince1970 * 1000 + 1)
@@ -940,8 +937,63 @@ struct StatsView: View {
         let opening = start.flatMap { st in s > st ? store.balance(before: s) : (e > st ? store.balance(before: st + 1) : nil) }
         let closing = store.balance(before: e)
         return VStack(alignment: .leading, spacing: 10) {
+            Text(L("Số dư")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            VStack(alignment: .leading, spacing: 16) {
+                if let opening, let closing {
+                    let change = closing - opening
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
+                        Text(fmt(closing)).font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
+                        (Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@ · " : "Lúc đặt %@ · ", fmt(opening))).foregroundStyle(.secondary)
+                         + Text((change >= 0 ? "+" : "−") + fmt(abs(change))).foregroundStyle(change >= 0 ? Palette.goodInk : Palette.danger))
+                            .font(.system(size: 13))
+                    }
+                } else if start == nil {
+                    Button { balanceOpen = true } label: {
+                        HStack {
+                            Text(L("Nhập số dư hiện có")).font(.system(size: 15, weight: .medium))
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(Pressable()).foregroundStyle(.primary)
+                } else {
+                    Text(L("Chưa đặt số dư trong kỳ này")).font(.system(size: 15)).foregroundStyle(.secondary)
+                }
+                Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5)
+                // Hai cột cùng kiểu: nhãn nhỏ trên, số dưới
+                HStack(alignment: .top) {
+                    flowColumn(L("Thu"), "+" + fmt(got), Palette.goodInk, alignment: .leading)
+                    Spacer(minLength: 12)
+                    flowColumn(L("Chi"), "−" + fmt(spent), Palette.danger, alignment: .trailing)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
+        }
+    }
+
+    private func flowColumn(_ title: String, _ value: String, _ color: Color, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 4) {
+            Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(value).font(.system(size: 17, weight: .semibold)).monospacedDigit().foregroundStyle(color)
+        }
+        .lineLimit(1).minimumScaleFactor(0.7)
+    }
+
+    // MARK: Khoản thu
+
+    /// Từng khoản thu của kỳ, mới nhất trước, cùng kiểu thẻ "Khoản lớn nhất" (tên, danh mục · ngày giờ, số tiền).
+    /// Chạm một khoản để xem / sửa; quá 5 khoản thì Xem tất cả
+    private func incomeCard(_ incomes: [Expense]) -> some View {
+        let sorted = incomes.sorted { $0.t > $1.t }
+        let rows = showAllIncome ? sorted : Array(sorted.prefix(5))
+        return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Số dư")).font(.system(size: 17, weight: .semibold))
+                Text(L("Khoản thu")).font(.system(size: 17, weight: .semibold))
                 Spacer()
                 if sorted.count > 5 {
                     Button { withAnimation(.snappy) { showAllIncome.toggle() } } label: {
@@ -951,80 +1003,31 @@ struct StatsView: View {
                 }
             }
             .padding(.horizontal, 4)
-            VStack(alignment: .leading, spacing: 0) {
-                if let opening, let closing {
-                    let change = closing - opening
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(start.map { s > $0 } == true ? L("Đầu kỳ") : L("Lúc đặt số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
-                            Text(fmt(opening)).font(.system(size: 17, weight: .semibold))
-                        }
-                        Spacer(minLength: 8)
-                        Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary).padding(.top, 22)
-                        Spacer(minLength: 8)
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
-                            Text(fmt(closing)).font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
-                            Text((change >= 0 ? "+" : "−") + fmt(abs(change))).font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(change >= 0 ? Palette.goodInk : Palette.danger)
-                        }
-                    }
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    .padding(.vertical, 14)
-                } else if start == nil {
-                    Button { balanceOpen = true } label: {
-                        HStack {
-                            Text(L("Nhập số dư hiện có")).font(.system(size: 15, weight: .medium))
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
-                        }
-                        .padding(.vertical, 14)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(Pressable()).foregroundStyle(.primary)
-                } else {
-                    Text(L("Chưa đặt số dư trong kỳ này")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 14)
-                }
-                flowRow(L("Thu"), "+" + fmt(got), Palette.goodInk)
-                flowRow(L("Chi"), "−" + fmt(spent), Palette.danger)
-                flowRow(L("Thu − chi"), (got >= spent ? "+" : "−") + fmt(abs(got - spent)), got >= spent ? Color.primary : Palette.danger)
-                ForEach(rows) { e in
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, e in
                     let c = Category.get(e.c)
                     Button { editing = .edit(e) } label: {
-                        HStack(spacing: 12) {
-                            CategoryBadge(c: c, side: 40, radius: 12, iconSize: 24)
+                        HStack(alignment: .center, spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(e.n?.isEmpty == false ? e.n!.capFirst : c.name).font(.rowTitle).lineLimit(1)
-                                Text(e.n?.isEmpty == false ? "\(c.name) · \(bigWhen(e))" : bigWhen(e))
-                                    .font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                                Text("\(c.name) · \(bigWhen(e))").font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                             }
                             Spacer(minLength: 8)
-                            Text("+" + fmt(e.a)).font(.rowAmount).monospacedDigit().foregroundStyle(Palette.goodInk).lineLimit(1)
+                            Text("+" + fmt(e.a)).font(.rowAmount).monospacedDigit().foregroundStyle(Palette.goodInk)
                         }
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 11)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(Pressable())
                     .foregroundStyle(.primary)
-                    .overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
+                    .overlay(alignment: .bottom) {
+                        if i < rows.count - 1 { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
+                    }
                 }
             }
             .padding(.horizontal, 18).padding(.vertical, 4)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
         }
-    }
-
-    /// Một dòng thu / chi của thẻ Số dư: tên trái, số phải, kẻ mảnh phía trên
-    private func flowRow(_ title: String, _ value: String, _ color: Color) -> some View {
-        HStack {
-            Text(title).font(.system(size: 15)).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(color)
-        }
-        .lineLimit(1)
-        .padding(.vertical, 10)
-        .overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
     }
 
     // MARK: Khoản lớn nhất

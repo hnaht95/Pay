@@ -35,12 +35,14 @@ struct BudgetBar: View {
     let s: BudgetStatus
     var height: CGFloat = 8
     var track: Color = Color.primary.opacity(0.1)
+    /// Màu riêng khi chưa vượt / sắp vượt (người dùng chọn); sắp vượt / vượt vẫn cam / đỏ để cảnh báo
+    var fill: Color? = nil
 
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
                 Capsule().fill(track)
-                Capsule().fill(s.color).frame(width: max(height, g.size.width * min(s.ratio, 1)))
+                Capsule().fill(s.level == .ok ? (fill ?? s.color) : s.color).frame(width: max(height, g.size.width * min(s.ratio, 1)))
             }
         }
         .frame(height: height)

@@ -78,6 +78,8 @@ extension English {
         "Đổi biểu tượng, màu, tên": "Change icon, color, name",
         "Đổi màu thẻ": "Change card color",
         "Màu thẻ": "Card color",
+        "Nền thẻ": "Card",
+        "Thanh ngân sách": "Budget bar",
         "Mặc định": "Default",
         "Về mặc định": "Reset to default",
         "Xoá danh mục": "Delete category",

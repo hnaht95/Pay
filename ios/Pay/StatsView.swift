@@ -924,10 +924,10 @@ struct StatsView: View {
 
     // MARK: Khoản thu
 
-    /// Tổng thu của kỳ, dư (thu trừ chi) hoặc hụt, rồi từng khoản thu mới nhất trước (tên, danh mục, ngày giờ, số tiền).
+    /// Dư (thu trừ chi) hoặc hụt của kỳ, rồi từng khoản thu mới nhất trước (tên, danh mục, ngày giờ, số tiền).
     /// Chạm một khoản để xem / sửa; quá 5 khoản thì Xem tất cả mở rộng tại chỗ như "Khoản lớn nhất"
     private func incomeCard(_ incomes: [Expense], spent: Int) -> some View {
-        let total = sum(incomes), left = total - spent
+        let left = sum(incomes) - spent
         let sorted = incomes.sorted { $0.t > $1.t }
         let rows = showAllIncome ? sorted : Array(sorted.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
@@ -943,19 +943,12 @@ struct StatsView: View {
             }
             .padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 0) {
+                // Một dòng: dư / hụt so với chi của kỳ (tổng thu không nhắc lại, đã có ở từng khoản bên dưới)
                 HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(sorted.count == 1 ? L("Đã thu · 1 khoản") : L("Đã thu · %d khoản", sorted.count))
-                            .font(.system(size: 14)).foregroundStyle(.secondary)
-                        Text("+" + fmt(total)).font(.system(size: 24, weight: .bold)).foregroundStyle(Palette.goodInk)
-                            .minimumScaleFactor(0.5).lineLimit(1)
-                    }
+                    Text(left >= 0 ? L("Dư so với chi") : L("Hụt so với chi")).font(.system(size: 15)).foregroundStyle(.secondary)
                     Spacer(minLength: 8)
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text(left >= 0 ? L("Dư") : L("Hụt")).font(.system(size: 14)).foregroundStyle(.secondary)
-                        Text(fmt(abs(left))).font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(left >= 0 ? Color.primary : Palette.danger).lineLimit(1)
-                    }
+                    Text(fmt(abs(left))).font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(left >= 0 ? Color.primary : Palette.danger).lineLimit(1)
                 }
                 .padding(.vertical, 14)
                 ForEach(rows) { e in

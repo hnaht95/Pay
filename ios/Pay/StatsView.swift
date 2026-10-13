@@ -952,7 +952,7 @@ struct StatsView: View {
                                 .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
                             if change != 0 {
                                 HStack(spacing: 3) {
-                                    Image(systemName: change > 0 ? "arrow.up" : "arrow.down").font(.system(size: 13, weight: .bold))
+                                    AmountArrow(up: change > 0)
                                     Text(fmt(abs(change))).font(.system(size: 15, weight: .semibold))
                                 }
                                 .foregroundStyle(change > 0 ? Palette.goodInk : Palette.danger)
@@ -991,7 +991,7 @@ struct StatsView: View {
         VStack(alignment: alignment, spacing: 4) {
             Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
             HStack(spacing: 3) {
-                Image(systemName: arrow).font(.system(size: 13, weight: .bold))
+                AmountArrow(up: arrow == "arrow.up")
                 Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit()
             }
             .foregroundStyle(color)
@@ -1028,7 +1028,11 @@ struct StatsView: View {
                                 Text("\(c.name) · \(bigWhen(e))").font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                             }
                             Spacer(minLength: 8)
-                            Text("+" + fmt(e.a)).font(.rowAmount).monospacedDigit().foregroundStyle(Palette.goodInk)
+                            HStack(spacing: 3) {
+                                AmountArrow(up: true)
+                                Text(fmt(e.a)).font(.rowAmount).monospacedDigit()
+                            }
+                            .foregroundStyle(Palette.goodInk)
                         }
                         .padding(.vertical, 11)
                         .contentShape(Rectangle())

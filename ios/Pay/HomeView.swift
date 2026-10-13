@@ -797,10 +797,13 @@ struct ExpenseRow: View {
             Spacer(minLength: 8)
             // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
             VStack(alignment: .trailing, spacing: 3) {
-                // Khoản chi: chữ đỏ. Khoản thu: dấu cộng, chữ xanh lá. Điều chỉnh số dư: dấu + / −, chữ xám
-                Text(e.isAdjust ? (e.signed >= 0 ? "+" : "−") + fmt(e.a) : e.isIncome ? "+" + fmt(e.a) : fmt(e.a))
-                    .font(.rowAmount).monospacedDigit().lineLimit(1)
-                    .foregroundStyle(e.isIncome ? AnyShapeStyle(Palette.goodInk) : e.isAdjust ? AnyShapeStyle(.secondary) : AnyShapeStyle(Palette.danger))
+                // Khoản chi: chữ đỏ. Khoản thu: mũi tên lên, chữ xanh lá. Điều chỉnh số dư: mũi tên lên / xuống, chữ xám
+                HStack(spacing: 3) {
+                    if e.isIncome || e.isAdjust { AmountArrow(up: e.signed >= 0) }
+                    Text(fmt(e.a)).font(.rowAmount).monospacedDigit()
+                }
+                .lineLimit(1)
+                .foregroundStyle(e.isIncome ? AnyShapeStyle(Palette.goodInk) : e.isAdjust ? AnyShapeStyle(.secondary) : AnyShapeStyle(Palette.danger))
                 HStack(spacing: 9) {
                     let parts = when
                     ForEach(Array(parts.enumerated()), id: \.offset) { i, p in

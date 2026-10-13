@@ -432,9 +432,12 @@ struct VoiceEntryView: View {
                         // Phim: giữ cùng cách xếp chữ số như lúc đang chuyển, để chuyển xong con số không nhảy chỗ
                         digits(now, dim: live == nil, elapsed: 10, leaving: false)
                     } else {
-                        // Khoản thu: dấu cộng, chữ xanh như ở danh sách
+                        // Khoản thu: mũi tên lên, chữ xanh như ở danh sách
                         let inc = live.map { Category.isIncome($0.cat) } ?? false
-                        number(inc ? "+" + now : now, dim: live == nil, income: inc)
+                        HStack(spacing: 4) {
+                            if inc && live != nil { AmountArrow(up: true, size: 46).foregroundStyle(Palette.goodInk) }
+                            number(now, dim: live == nil, income: inc)
+                        }
                     }
                 }
             }

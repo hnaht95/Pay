@@ -219,6 +219,16 @@ enum CategoryTone {
     }
 }
 
+/// Mũi tên trước số tiền thay cho dấu + / −: lên là tiền vào (số dư tăng), xuống là tiền ra. Nhỏ hơn chữ số (~0,72 cỡ chữ)
+struct AmountArrow: View {
+    let up: Bool
+    var size: CGFloat = 15
+
+    var body: some View {
+        Image(systemName: up ? "arrow.up" : "arrow.down").font(.system(size: (size * 0.72).rounded(), weight: .bold))
+    }
+}
+
 /// Bỏ dấu tiếng Việt, chữ thường: "Phở Bò" -> "pho bo"
 func strip(_ s: String) -> String {
     s.lowercased().replacingOccurrences(of: "đ", with: "d").folding(options: .diacriticInsensitive, locale: Locale(identifier: "vi_VN"))

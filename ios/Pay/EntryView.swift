@@ -54,7 +54,8 @@ struct EntryView: View {
             .frame(minHeight: 34)
             .padding(.top, 18)
             HStack(spacing: 4) {
-                Text(amount > 0 ? (income ? "+" : "") + fmt(amount) : "0")
+                if income && amount > 0 { AmountArrow(up: true, size: 40).foregroundStyle(Palette.goodInk) }
+                Text(amount > 0 ? fmt(amount) : "0")
                     .font(.system(size: 40, weight: .bold)).kerning(-1)
                     .foregroundStyle(amount > 0 ? (income ? AnyShapeStyle(Palette.goodInk) : AnyShapeStyle(.primary)) : AnyShapeStyle(.tertiary))
                     .lineLimit(1).minimumScaleFactor(0.5)

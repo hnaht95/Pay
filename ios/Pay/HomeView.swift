@@ -947,7 +947,13 @@ extension View {
     /// theo từng điểm ảnh, càng sát mép trên càng nhoè (shader topEdgeBlur), như iOS 27. Áp cho từng khối nội dung, không áp
     /// lên vùng cuộn / List được (hiệu ứng lớp không vẽ được phần của UIKit)
     @ViewBuilder func topScrollBlur() -> some View {
-        if #available(iOS 27.0, *) { self } else { topScrollBlurOld().dockBlur() }
+        // iOS 26: không gắn hiệu ứng lớp. Trên iOS 26.2, chỉ cần trang chủ có một khối gắn hiệu ứng này là các lớp phủ tự vẽ của
+        // trang (bảng nhấn giữ danh mục / thẻ Hôm nay đã chi, thẻ nói để ghi khi vuốt lên từ nút Quét QR) được gán mà không bao
+        // giờ hiện; các màn mở dạng tấm (sheet) thì vẫn lên. iOS 18 và iOS 27 không bị. Mép trên trên iOS 26 vì thế chỉ còn dải
+        // màu nền nhạt dần dưới thanh trạng thái (statusBarEdge), không nhoè theo từng điểm ảnh
+        if #available(iOS 27.0, *) { self }
+        else if #available(iOS 26.0, *) { self }
+        else { topScrollBlurOld().dockBlur() }
     }
 
     /// iOS cũ hơn 26: nội dung trôi xuống sau hai nút ở đáy nhoè dần như mép cuộn mềm của iOS 26+ (hệ thống không làm)

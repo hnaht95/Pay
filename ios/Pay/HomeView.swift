@@ -38,8 +38,6 @@ struct HomeView: View {
     @State private var voiceRound = 0
     /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: khung của nút, thẻ biến hình từ đó ra thay vì trượt lên từ đáy
     @State private var voiceFrom: CGRect?
-    /// Thẻ nói để ghi đang mở đè lên nút Nhập (tắt ngay khi thẻ bắt đầu đóng, không đợi thẻ thu về xong)
-    @State private var voiceCovers = false
     @State private var scanned: String?
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
     /// mở lại sáng hôm sau vẫn hiện số của hôm qua
@@ -152,7 +150,7 @@ struct HomeView: View {
         // (fullScreenCover của iOS luôn trượt cả lớp từ đáy lên, làm hỏng hiệu ứng biến hình.)
         .overlay {
             if let voiceFrom {
-                VoiceEntryView(from: voiceFrom, face: AnyView(BigButton.face(title: L("Quét QR"), icon: "qrcode", primary: true)), onClose: { self.voiceFrom = nil }, onLeave: { voiceCovers = false }, onScan: {
+                VoiceEntryView(from: voiceFrom, face: AnyView(BigButton.face(title: L("Quét QR"), icon: "qrcode", primary: true)), onClose: { self.voiceFrom = nil }, onScan: {
                     Task { try? await Task.sleep(for: .milliseconds(450)); scanning = true }
                 }, onEdit: { e in
                     Task { try? await Task.sleep(for: .milliseconds(450)); entry = .editNow(e) }
@@ -466,12 +464,6 @@ struct HomeView: View {
                 // Chạm: nhập tay. Vuốt lên: chụp hoá đơn rồi mở màn nhập với ảnh hoá đơn đính kèm
                 BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in if Pro.shared.allow(.photos) { receiptScan = true } }) { entry = .new(cat: nil) }
                     .filmPressed(film?.pressed["dock-add"] ?? 0)
-                    // Thẻ nói để ghi mở ra đè lên nút này nhưng không che hết: góc thẻ bo rộng hơn góc nút, nên mép nút ló ra ở góc
-                    // dưới thẻ, nhìn như góc thẻ bị lõm. Thẻ đang mở thì ẩn nút; thẻ vừa bắt đầu đóng là nút hiện lại ngay, cùng lúc
-                    // thẻ thu về nút Quét QR (đợi thẻ đóng xong mới hiện thì nút Nhập ra sau, trông như bị trễ)
-                    .opacity(voiceCovers ? 0 : 1)
-                    .animation(.easeOut(duration: 0.15), value: voiceCovers)
-                    .onChange(of: voiceFrom) { _, v in voiceCovers = v != nil }
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in

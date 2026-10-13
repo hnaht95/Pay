@@ -50,9 +50,9 @@ struct Category: Identifiable, Hashable {
 
     /// Danh mục tiền vào có sẵn. Mã bắt đầu bằng "in-": khoản nào mang mã này là tiền vào (không tính vào chi tiêu, ngân sách)
     static let incomeBuiltin: [Category] = [
-        Category(k: "in-luong", icon: "💼", name: "Lương", color: Color(hex: 0xC9F2D4), kw: ["luong", "tien luong", "nhan luong", "salary", "payroll", "wage", "wages"]),
-        Category(k: "in-thuong", icon: "🎁", name: "Thưởng", color: Color(hex: 0xFFE7A8), kw: ["tien thuong", "thuong tet", "nhan thuong", "li xi", "lixi", "bonus"]),
-        Category(k: "in-nhan", icon: "💸", name: "Được chuyển", color: Color(hex: 0xC8E6FF), kw: ["duoc chuyen", "nhan tien", "nhan chuyen khoan", "chuyen den", "tien ve", "hoan tien", "refund", "cashback", "received"]),
+        Category(k: "in-luong", icon: "💼", name: "Lương", color: Color(hex: 0xC9F2D4), kw: ["luong", "tien luong", "nhan luong", "salary", "payroll", "wage", "wages", "paycheck"]),
+        Category(k: "in-thuong", icon: "🎁", name: "Thưởng", color: Color(hex: 0xFFE7A8), kw: ["tien thuong", "thuong tet", "nhan thuong", "li xi", "lixi", "bonus", "award", "awards", "gift", "gifts"]),
+        Category(k: "in-nhan", icon: "💸", name: "Được chuyển", color: Color(hex: 0xC8E6FF), kw: ["duoc chuyen", "nhan tien", "nhan chuyen khoan", "chuyen den", "tien ve", "hoan tien", "refund", "cashback", "received", "collect interest", "interest"]),
         Category(k: "in-khac", icon: "💰", name: "Khác", color: Color(hex: 0xE4E4E8), kw: ["tien vao", "thu nhap", "income"]),
     ]
 

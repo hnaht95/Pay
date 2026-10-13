@@ -2,6 +2,19 @@ import Foundation
 
 extension English {
     static let settings: [String: String] = [
+        "Nhập từ CSV (app khác, Excel)": "Import CSV (other apps, Excel)",
+        "Nhập từ CSV": "Import CSV",
+        "Không tìm thấy cột ngày và số tiền trong file": "No date and amount columns found in the file",
+        "Không đọc được file CSV": "Couldn't read the CSV file",
+        "%ld khoản chi · %ld khoản thu": "%ld expenses · %ld income",
+        "%ld khoản đã có, bỏ qua": "%ld already in Pay, skipped",
+        "%ld dòng không đọc được": "%ld rows couldn't be read",
+        "và %ld khoản khác": "and %ld more",
+        "Không có gì để nhập": "Nothing to import",
+        "Nhập %ld khoản": "Import %ld items",
+        "Từ %1$@ đến %2$@": "From %1$@ to %2$@",
+        "Đã nhập %ld khoản": "Imported %ld items",
+        "File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè. Nhập CSV: file của Pay, Money Lover, Wallet, YNAB hoặc bảng Excel có cột ngày và số tiền; khoản đã có thì bỏ qua.": "Backups from the web version can be restored here too. Restoring only adds what's missing, nothing is overwritten. CSV import: files from Pay, Money Lover, Wallet, YNAB or any spreadsheet with date and amount columns; items already in Pay are skipped.",
         "Mã QR nhận tiền": "Receive-money QR",
         "Tên chủ tài khoản (không bắt buộc)": "Account holder name (optional)",
         "Thêm widget \"Mã QR nhận tiền\" ra màn hình chính: người khác quét là chuyển khoản cho bạn, không phải mở app ngân hàng.": "Add the \"Receive-money QR\" widget to your Home Screen: others scan it to send you money, without you opening your bank app.",
@@ -17,7 +30,6 @@ extension English {
         "Tự chọn": "Custom",
         "Lưu": "Save",
         "Phiên bản": "Version",
-        "Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR.": "Pay — minimal expense tracking: type 35k coffee or scan a VietQR code.",
         "Tháng %@: %@ · %@ khoản": "%@: %@ · %@ expenses",
         "Tổng cộng %@ khoản đã ghi": "%@ expenses logged in total",
 
@@ -112,7 +124,6 @@ extension English {
         "Sao lưu ra file": "Back up to file",
         "Khôi phục từ file sao lưu": "Restore from backup",
         "Xuất CSV cho Excel": "Export CSV for Excel",
-        "File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè.": "Backups from the web version can be restored here too. Restoring only adds missing expenses and never overwrites.",
 
         // Hướng dẫn truy cập nhanh
         "Widget màn hình chính": "Home Screen widget",

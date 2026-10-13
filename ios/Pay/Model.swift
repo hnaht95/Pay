@@ -520,6 +520,21 @@ final class Store: ObservableObject {
         show(L("Đã khôi phục %ld khoản", add.count))
     }
 
+    /// Nhập các khoản đọc từ file CSV (đã bỏ khoản trùng); Hoàn tác xoá hết số vừa nhập
+    func importItems(_ add: [Expense]) {
+        guard !add.isEmpty else { return }
+        all += add
+        persist()
+        let ids = Set(add.map(\.id))
+        show(L("Đã nhập %ld khoản", add.count)) { [weak self] in
+            guard let self else { return }
+            let t = self.now
+            for id in ids { self.deleted[id] = t }
+            self.all.removeAll { ids.contains($0.id) }
+            self.persist()
+        }
+    }
+
     // MARK: Tự học danh mục
 
     /// Ghi chú chuẩn hoá để so khớp: "Phúc Long  (Q1)" -> "phuc long q1"

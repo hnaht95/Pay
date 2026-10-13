@@ -9,6 +9,9 @@ struct SettingsView: View {
     /// Tài khoản nhận tiền của mình, cho widget mã QR
     @State private var myQR = MyQR.load()
     @State private var importing = false
+    /// Đang chọn file CSV (nhập từ app khác / Excel) thay vì file sao lưu
+    @State private var importingCSV = false
+    @State private var csvResult: CSVImport.Result?
     @State private var confirmErase = false
     @State private var syncing = false
     @State private var jsonURL: URL?
@@ -62,8 +65,6 @@ struct SettingsView: View {
                     LabeledContent { Text(version).foregroundStyle(.secondary) } label: {
                         row(L("Phiên bản"))
                     }
-                } footer: {
-                    Text(L("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR."))
                 }
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
@@ -75,8 +76,17 @@ struct SettingsView: View {
         .sheetGrabber()
         // File sao lưu có cả khoản định kỳ và danh mục đã học: đổi gì cũng làm lại
         .task(id: [store.all.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-            if case .success(let url) = result { store.importBackup(from: url) }
+        // Một bảng chọn file cho cả hai việc (hai fileImporter trên cùng màn thì chỉ cái sau chạy)
+        .fileImporter(isPresented: Binding(get: { importing || importingCSV }, set: { if !$0 { importing = false; importingCSV = false } }),
+                      allowedContentTypes: importingCSV ? [.commaSeparatedText, .tabSeparatedText, .plainText] : [.json]) { result in
+            guard case .success(let url) = result else { return }
+            // Theo đuôi file (cờ đang chọn CSV đã bị tắt lúc bảng chọn file đóng, trước khi tới đây)
+            if url.pathExtension.lowercased() == "json" { store.importBackup(from: url); return }
+            switch CSVImport.read(url, store: store) {
+            case .success(let r): csvResult = r
+            case .failure(.noColumns): store.showError(L("Không tìm thấy cột ngày và số tiền trong file"))
+            case .failure: store.showError(L("Không đọc được file CSV"))
+            }
         }
         .confirmationDialog(L("Xoá tất cả khoản chi?"), isPresented: $confirmErase, titleVisibility: .visible) {
             Button(L("Xoá tất cả"), role: .destructive) { store.eraseAll() }
@@ -84,6 +94,7 @@ struct SettingsView: View {
             Text((store.cloudOn ? L("Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá.") : L("Không hoàn tác được."))
                  + (store.rules.values.contains(where: \.on) ? " " + L("Khoản định kỳ cũng dừng tự ghi.") : "") + " " + L("Nên sao lưu trước."))
         }
+        .sheet(item: $csvResult) { CSVImportSheet(result: $0).environmentObject(store).sheetGrabber() }
         .alert(L("Ngân sách tháng"), isPresented: $typingBudget) {
             TextField(L("Ví dụ 8.000.000"), text: $budgetText).keyboardType(.numberPad)
             Button(L("Huỷ"), role: .cancel) {}
@@ -391,6 +402,7 @@ struct SettingsView: View {
                 ShareLink(item: jsonURL) { row(L("Sao lưu ra file")) }
             }
             Button { importing = true } label: { row(L("Khôi phục từ file sao lưu")) }
+            Button { importingCSV = true } label: { row(L("Nhập từ CSV (app khác, Excel)")) }
             if pro.active, let csvURL {
                 ShareLink(item: csvURL) { row(L("Xuất CSV cho Excel")) }
             } else if !pro.active {
@@ -403,7 +415,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Dữ liệu"))
         } footer: {
-            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè."))
+            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè. Nhập CSV: file của Pay, Money Lover, Wallet, YNAB hoặc bảng Excel có cột ngày và số tiền; khoản đã có thì bỏ qua."))
         }
     }
 

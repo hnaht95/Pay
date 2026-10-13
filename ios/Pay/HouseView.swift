@@ -1330,7 +1330,7 @@ struct HouseSpendEditor: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 16)
+                    Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 22)
                     // Số tiền nhập bằng bàn phím số của app (bên dưới), chạm vào đây để hiện lại bàn phím
                     // Cùng kiểu ô số tiền của màn nhập khoản chi: khung viền mảnh, vạch nhấp nháy sau số khi đang nhập
                     HStack(spacing: 4) {

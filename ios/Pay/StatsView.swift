@@ -89,7 +89,8 @@ struct StatsView: View {
                 recentCard(items).navEdgeBlur()
             }
         }
-        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 32)
+        // Khoảng dưới vạch tiêu đề (tới dòng tháng) bằng khoảng trên vạch (tới chữ tiêu đề)
+        .padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 32)
     }
 
     // MARK: Đầu trang: khoảng ngày + Hôm nay, chọn Tuần / Tháng / Năm, rồi thanh chọn ngày / tháng / năm

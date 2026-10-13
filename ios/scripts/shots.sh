@@ -49,6 +49,8 @@ for v in ${(k)UDID}; do
   xcrun simctl bootstatus $u >/dev/null
   xcrun simctl status_bar $u override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 2>/dev/null || true
   xcrun simctl install $u $APP
+  # Lần mở đầu sau khi cài chậm hơn hẳn: mở trước một lần cho ấm, không thì ảnh đầu tiên chỉ có màn trắng
+  xcrun simctl launch --terminate-running-process $u $BUNDLE -filmSeed YES >/dev/null; sleep 8
   for mode in light dark; do
     xcrun simctl ui $u appearance $mode
     for s in $SCENES; do

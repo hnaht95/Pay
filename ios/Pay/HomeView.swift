@@ -46,6 +46,8 @@ struct HomeView: View {
     @State private var editingCat: CatEdit?
     /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
     @State private var menu: AppMenuSpec?
+    @AppStorage(HeroColor.key) private var heroTone = -1
+    @State private var pickingHero = false
     /// Danh mục đang mở danh sách khoản chi (chạm vào ô danh mục)
     @State private var listing: Category?
     @Environment(\.scenePhase) private var scenePhase
@@ -60,8 +62,14 @@ struct HomeView: View {
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
                     header(now).topScrollBlur()
-                    Button { showStats = true } label: { hero(now) }
-                        .buttonStyle(Pressable())
+                    // Chạm: mở Thống kê; nhấn giữ: đổi màu thẻ
+                    TapHold(tap: { showStats = true }, hold: {
+                        menu = AppMenuSpec(icon: AnyView(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(HeroColor.bg(heroTone))
+                                                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
+                                                            .frame(width: 56, height: 56)),
+                                           title: L("Hôm nay đã chi"), subtitle: nil,
+                                           items: [AppMenuItem(icon: "paintpalette", title: L("Đổi màu thẻ")) { pickingHero = true }])
+                    }) { hero(now) }
                         .topScrollBlur()
                         .padding(.top, 14)
 
@@ -89,6 +97,7 @@ struct HomeView: View {
             .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil) { ToastView() }
         }
         .appMenu($menu)
+        .sheet(isPresented: $pickingHero) { HeroColorSheet() }
         .overlay {
             // Phim: bảng nhấn giữ theo trạng thái phim đưa vào
             if let m = film?.menu, m.shown > 0 {
@@ -248,7 +257,7 @@ struct HomeView: View {
                 Text(L("%@: %@", monthLabel(now), fmt(month)))
                     .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Palette.pill, in: Capsule())
+                    .background(heroTone < 0 ? Palette.pill : Color.primary.opacity(0.1), in: Capsule())
                     .lineLimit(1)
                 Spacer()
                 if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
@@ -257,14 +266,15 @@ struct HomeView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .environment(\.colorScheme, .light)   // thẻ luôn nền trắng chữ đen, kể cả chế độ tối (nổi trên nền đen)
+        .background(HeroColor.bg(heroTone), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        // Mặc định thẻ nền trắng chữ đen, kể cả chế độ tối (nổi trên nền đen); màu tối tự chọn thì chữ trắng
+        .environment(\.colorScheme, HeroColor.scheme(heroTone))
     }
 
     /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
     private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            BudgetBar(s: b, height: 6, track: Palette.pill)
+            BudgetBar(s: b, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12))
             HStack(spacing: 4) {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
                 if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }

@@ -31,6 +31,7 @@
 		5C9CBDAF09D70C62F35EA027 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5F00314D0B8638AAA8CF56 /* EntryView.swift */; };
 		5E2C8802AC6CD5F0A8907DB2 /* EN+Home.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD0448711F3EB7D353E6768 /* EN+Home.swift */; };
 		63065AA64E66692C60A684B6 /* EN+Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6F8D423DB7710149F52728 /* EN+Voice.swift */; };
+		6DB6A4946E77C263C72868A7 /* HeroColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E7155DA78A610069452EC1C /* HeroColor.swift */; };
 		725657DE14F9E53250763B3F /* FilmExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA8EF45CE66A02F640C00AD /* FilmExport.swift */; };
 		73F53BA6CBD915C6F7D5D7BA /* Lang.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B3666354A2198F18B94A57 /* Lang.swift */; };
 		79B85BA7716448436AB6F746 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED087675452679C35387B98C /* Model.swift */; };
@@ -121,6 +122,7 @@
 		609388C25572F0E507533210 /* Highlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Highlight.swift; sourceTree = "<group>"; };
 		670B9C247A53BD43509CC680 /* BankData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankData.swift; sourceTree = "<group>"; };
 		6710F63C94C742F268FE2D19 /* VietQR.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VietQR.swift; sourceTree = "<group>"; };
+		6E7155DA78A610069452EC1C /* HeroColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroColor.swift; sourceTree = "<group>"; };
 		7AA8EF45CE66A02F640C00AD /* FilmExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmExport.swift; sourceTree = "<group>"; };
 		7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceEntryView.swift; sourceTree = "<group>"; };
 		848F29DB06BED68649F05399 /* CategoryPhotos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryPhotos.swift; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 				7AA8EF45CE66A02F640C00AD /* FilmExport.swift */,
 				12194354B3B9408BEBA73165 /* FilmTouches.swift */,
 				2AC4452634BACD32EE6204C2 /* FilmWidgetScene.swift */,
+				6E7155DA78A610069452EC1C /* HeroColor.swift */,
 				609388C25572F0E507533210 /* Highlight.swift */,
 				5CA7538B886B5157A6125740 /* HistoryView.swift */,
 				51EF92CAF2B8D1285DD35EE0 /* HomeView.swift */,
@@ -385,6 +388,7 @@
 				725657DE14F9E53250763B3F /* FilmExport.swift in Sources */,
 				0CE7EF883F7F15652EBDAD0A /* FilmTouches.swift in Sources */,
 				0F2D8471B53F47051E302D93 /* FilmWidgetScene.swift in Sources */,
+				6DB6A4946E77C263C72868A7 /* HeroColor.swift in Sources */,
 				4D2AC3C30D76AC35350E54A4 /* Highlight.swift in Sources */,
 				DE8ACBD25F257AE1FDA5E3F2 /* HistoryView.swift in Sources */,
 				B7BB8FBA27616CC043B35EEC /* HomeView.swift in Sources */,

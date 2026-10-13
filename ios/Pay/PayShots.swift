@@ -43,13 +43,13 @@ final class LatestPhoto: NSObject, ObservableObject, PHPhotoLibraryChangeObserve
     }
 }
 
-/// Ô ảnh ở màn chụp: ảnh mới nhất trong app Ảnh, khung dọc bo góc (chưa có quyền / chưa có ảnh thì biểu tượng ảnh)
+/// Ô ảnh ở màn chụp: ảnh mới nhất trong app Ảnh, khung dọc hẹp bo tròn hai đầu (chưa có quyền / chưa có ảnh thì biểu tượng ảnh)
 struct LatestPhotoTile: View {
     @StateObject private var latest = LatestPhoto()
-    static let size = CGSize(width: 46, height: 62)
+    static let size = CGSize(width: 38, height: 62)
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let shape = Capsule()
         ZStack {
             if let img = latest.image { Image(uiImage: img).resizable().scaledToFill() }
             else { Image(systemName: "photo").font(.system(size: 20)).foregroundStyle(.white) }

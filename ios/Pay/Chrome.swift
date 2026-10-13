@@ -105,8 +105,8 @@ struct ClearBlur: UIViewRepresentable {
         }
         /// Dưới đồng hồ: giảm theo đường cong êm, nhoè đậm ở phần trên, hết trước mép dưới lớp
         private static let topMask = mask([(0, 1), (0.25, 0.7), (0.5, 0.3), (0.75, 0.06), (0.85, 0)], from: .top)
-        /// Sau dải nút đáy: nhoè hết mức suốt phần sau hai nút, tan dần ở đoạn phía trên nút
-        private static let bottomMask = mask([(0, 1), (0.55, 1), (0.72, 0.55), (0.88, 0.15), (1, 0)], from: .bottom)
+        /// Sau dải nút đáy: nhoè hết mức ở mép dưới màn, giảm dần, hết ở ngang giữa hai nút
+        private static let bottomMask = mask([(0, 1), (0.3, 0.75), (0.6, 0.35), (0.85, 0.08), (1, 0)], from: .bottom)
 
         private static func filter(radius: CGFloat, mask: CGImage?) -> NSObject? {
             guard let cls = NSClassFromString(["CA", "Filter"].joined()) as? NSObject.Type else { return nil }
@@ -140,7 +140,7 @@ extension View {
         } else { self }
     }
 
-    /// Gắn dải nút nổi ở đáy màn (trang chủ, Nhóm chung): phủ lên nội dung, phía sau là dải mờ cao 150 từ mép dưới màn. Nội dung
+    /// Gắn dải nút nổi ở đáy màn (trang chủ, Nhóm chung): phủ lên nội dung, phía sau là lớp nhoè từ mép dưới màn tới ngang giữa nút. Nội dung
     /// cuộn phải chừa 120 điểm ở cuối. Dải nút tự lùi xuống (padding âm) cho sát vạch Home.
     /// fallbackBlur: lớp mờ dùng khi dựng phim (FilmFade); ngoài phim dùng ClearBlur.
     /// above: lớp nằm trên lớp mờ, dưới hai nút, sát mép trên dải nút (vd thanh "Đã xoá · Hoàn tác"): trồi lên từ sau dải nút,
@@ -154,10 +154,10 @@ extension View {
                     fallbackBlur
                     attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom)
                 } else {
-                    // Như mép trên trang chủ: chỉ nhoè, không phủ màu. Nhoè hết mức sau hai nút (~92 điểm từ đáy màn), tan dần ở
-                    // đoạn phía trên
+                    // Như mép trên trang chủ: chỉ nhoè, không phủ màu. Chỉ nhoè từ mép dưới màn lên tới ngang giữa hai nút (nút cao
+                    // từ ~16 tới ~92 điểm tính từ đáy màn); nửa trên nút và phần phía trên để nguyên, không thì nhoè nhiều quá
                     ClearBlur(edge: .bottom, radius: 10)
-                        .frame(height: 150)
+                        .frame(height: 56)
                         .frame(maxHeight: .infinity, alignment: .bottom)
                         .ignoresSafeArea()
                         .allowsHitTesting(false)

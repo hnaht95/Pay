@@ -995,11 +995,12 @@ extension View {
                     let strong: Bool = { if #available(iOS 26.0, *) { true } else { false } }()
                     ZStack {
                         if strong { Rectangle().fill(.ultraThinMaterial) }
-                        LinearGradient(stops: [.init(color: color.opacity(strong ? 1 : 0.6), location: 0),
-                                               .init(color: color.opacity(strong ? 0.8 : 0.3), location: end),
+                        // iOS 26: kính mờ làm nhoè, màu nền chỉ phủ vừa (đặc quá thì thành vệt đen che cả đầu trang khi cuộn)
+                        LinearGradient(stops: [.init(color: color.opacity(0.6), location: 0),
+                                               .init(color: color.opacity(strong ? 0.35 : 0.3), location: end),
                                                .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     }
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(strong ? 1 : 0.9), location: end * (strong ? 1 : 0.8)),
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(strong ? 0.85 : 0.9), location: end * 0.8),
                                                  .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                     .frame(height: bar + tail)
                     .offset(y: -bar)

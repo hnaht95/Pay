@@ -14,6 +14,10 @@ struct ReceiptCamera: View {
     @State private var photo: PhotosPickerItem?
     @State private var finished = false
     @State private var flash = false
+    /// Ảnh vừa chụp / vừa chọn từ thư viện, đang chờ căn lại (dời, phóng to) trước khi dùng
+    @State private var review: CropItem?
+    /// Ảnh đang căn là ảnh vừa chụp (căn xong mới lưu vào ảnh Pay đã chụp / Ảnh của máy); ảnh chọn từ thư viện thì không lưu lại
+    @State private var reviewIsShot = false
     @AppStorage("cam.grid") private var grid = true
     @AppStorage("cam.ratio") private var ratio = CamRatio.r34.rawValue
     @AppStorage("cam.timer") private var timer = 0
@@ -46,14 +50,36 @@ struct ReceiptCamera: View {
         }
         .overlay { Color.white.opacity(flash ? 0.7 : 0).ignoresSafeArea().allowsHitTesting(false) }
         .preferredColorScheme(.dark)
-        .sheet(isPresented: $showShots) { PayShotsSheet { img in finish(img) } }
+        // Chọn ảnh có sẵn (ảnh Pay đã chụp hoặc thư viện máy) cũng qua bước căn lại; chờ bảng chọn đóng hẳn rồi mới mở
+        .sheet(isPresented: $showShots) {
+            PayShotsSheet { img in
+                reviewIsShot = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { review = CropItem(image: img) }
+            }
+        }
         .onAppear { cam.filter = filter; cam.start() }
         .onDisappear { cam.stop() }
         .onChange(of: filterRaw) { _, _ in cam.filter = filter }
         .task(id: photo) {
             guard let item = photo, let data = try? await item.loadTransferable(type: Data.self), !Task.isCancelled,
                   let img = UIImage(data: data) else { return }
-            finish(img)
+            reviewIsShot = false
+            review = CropItem(image: img)
+        }
+        // Chụp xong (hoặc chọn ảnh xong): căn lại trước khi dùng. Khung giữ đúng tỉ lệ của ảnh, kéo để dời, chụm để phóng to
+        // vào phần cần lấy. Chụp lại / Huỷ: quay về màn chụp
+        .fullScreenCover(item: $review) { c in
+            ImageCropper(image: c.image, aspect: c.image.size.width / max(1, c.image.size.height), maxPixel: 2400,
+                         cancelTitle: reviewIsShot ? L("Chụp lại") : nil) { img in
+                review = nil
+                photo = nil
+                guard let img else { return }
+                if reviewIsShot {
+                    PayShots.save(img)
+                    if UserDefaults.standard.object(forKey: CamFilter.saveKey) as? Bool ?? true { CamFilter.saveToPhotos(img) }
+                }
+                finish(img)
+            }
         }
     }
 
@@ -313,9 +339,9 @@ struct ReceiptCamera: View {
         cam.capture { img in
             guard let img else { finish(nil); return }
             let out = CamFilter.develop(img, ratio: r, filter: f)
-            PayShots.save(out)
-            if UserDefaults.standard.object(forKey: CamFilter.saveKey) as? Bool ?? true { CamFilter.saveToPhotos(out) }
-            finish(out)
+            // Chưa dùng ngay: mở bước căn lại, căn xong mới lưu và trả ảnh (xem fullScreenCover ở trên)
+            reviewIsShot = true
+            review = CropItem(image: out)
         }
     }
 

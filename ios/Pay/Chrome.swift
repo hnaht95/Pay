@@ -6,10 +6,18 @@ import SwiftUI
 // dùng các hàm này: mỗi bản iOS (và mỗi SDK lúc dựng) vẽ nó một khác — iOS 26 nhẹ, iOS 27 đậm, bản dựng bằng SDK 26 chạy trên
 // iOS 27 thì không có — nên trước đây giao diện lệch nhau giữa các máy. Các nhánh #available chỉ còn trong tệp này.
 
+#if DEBUG
+/// Ảnh so sánh (scripts/shots.sh): -shotSystemEdge YES để mép cuộn của hệ thống, không tự vẽ mép trên — để xem mặc định của iOS
+private let systemEdgeShot = UserDefaults.standard.bool(forKey: "shotSystemEdge")
+#else
+private let systemEdgeShot = false
+#endif
+
 extension View {
     /// Tắt hiệu ứng mép cuộn của hệ thống (iOS 26+) ở các cạnh cho trước; app tự vẽ mép mờ bằng EdgeFade
     @ViewBuilder func noSystemEdge(_ edges: VerticalEdge.Set = .all) -> some View {
-        if #available(iOS 26.0, *) {
+        if systemEdgeShot { self }
+        else if #available(iOS 26.0, *) {
             scrollEdgeEffectHidden(true, for: edges.contains(.top) && edges.contains(.bottom) ? .all : edges.contains(.top) ? .top : .bottom)
         } else { self }
     }
@@ -38,16 +46,24 @@ struct EdgeFade: View {
 }
 
 extension View {
-    /// Mép trên trang chủ / Nhóm chung (không có thanh tiêu đề): dải mờ phủ vùng thanh trạng thái (đồng hồ, pin), ló xuống
-    /// dưới 26 điểm, để nội dung cuộn lên không đè thẳng vào đồng hồ
+    /// Mép trên trang chủ (không có thanh tiêu đề): lớp nhoè phủ vùng thanh trạng thái (đồng hồ, pin), ló xuống dưới 14 điểm,
+    /// để nội dung cuộn lên không đè rõ vào đồng hồ
     @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
-        if on {
+        if on && !systemEdgeShot {
             noSystemEdge(.top).overlay(alignment: .top) {
                 GeometryReader { g in
-                    let bar = g.safeAreaInsets.top, tail: CGFloat = 26
-                    EdgeFade(edge: .top, color: color, solid: bar / (bar + tail))
-                        .frame(height: bar + tail)
-                        .offset(y: -bar)
+                    // Như mép cuộn mặc định của iOS 27: chỉ nhoè (gần như không phủ màu), nhoè hết mức ở mép trên, nhạt dần tới
+                    // chân thanh trạng thái; nội dung vẫn thấy lờ mờ sau đồng hồ
+                    let bar = g.safeAreaInsets.top, tail: CGFloat = 14, end = bar / (bar + tail)
+                    ZStack {
+                        Rectangle().fill(.ultraThinMaterial)
+                        LinearGradient(colors: [color.opacity(0.35), color.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    }
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.85), location: end * 0.6),
+                                                 .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                    .frame(height: bar + tail)
+                    .offset(y: -bar)
+                    .allowsHitTesting(false)
                 }
             }
         } else { self }

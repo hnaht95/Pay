@@ -823,7 +823,9 @@ struct BigButton: View {
             // Tự xử lý bằng một cử chỉ, mỗi lần nhấn chỉ ra đúng một việc: kéo lên quá 30pt là vuốt lên (làm ngay,
             // nhả tay không làm gì nữa), nhả tại chỗ là chạm, kéo đi hướng khác rồi nhả là bỏ.
             label
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+                // Chỉ ghi khung lúc không nhấn: khung toàn màn tính cả hiệu ứng thu nhỏ khi nhấn (0,94) — đo lúc đang nhấn thì khối
+                // biến hình thu về nhỏ hơn nút thật, lúc nút hiện lại trông như nút nhảy to ra (thấy rõ trên iOS 18)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { if !down { frame = $0 } }
                 .scaleEffect(down ? 0.94 : 1).opacity(down ? 0.72 : 1)
                 .animation(down ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35), value: down)
                 .gesture(DragGesture(minimumDistance: 0)

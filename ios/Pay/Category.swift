@@ -105,7 +105,7 @@ struct CategoryIcon: View {
         } else if c.art, UIImage(named: "cat-\(c.k)") != nil {
             Image("cat-\(c.k)").resizable().scaledToFit().frame(width: size, height: size)
         } else {
-            Text(c.icon).font(.app(size: size * 0.85))
+            Text(c.icon).font(.system(size: size * 0.85))
         }
     }
 }

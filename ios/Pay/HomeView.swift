@@ -67,7 +67,7 @@ struct HomeView: View {
                     TapHold(tap: { showStats = true }, hold: {
                         // Đầu bảng như bảng nhấn giữ danh mục: ô bo góc màu thẻ, biểu tượng ở giữa
                         menu = AppMenuSpec(icon: AnyView(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(HeroColor.bg(heroTone))
-                                                            .overlay(Text("💸").font(.app(size: 30)))
+                                                            .overlay(Text("💸").font(.system(size: 30)))
                                                             .frame(width: 56, height: 56)),
                                            title: L("Hôm nay đã chi"), subtitle: nil,
                                            items: [AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi màu thẻ"), plain: true) { pickingHero = true }])
@@ -81,7 +81,7 @@ struct HomeView: View {
                     sectionTitle(L("Gần đây")) {
                         Button { showHistory = true } label: {
                             // To hơn nhãn "Tháng 10" ở mục Danh mục một chút: đây là nút bấm
-                            Text(L("Xem tất cả")).font(.app(size: 17, weight: .medium))
+                            Text(L("Xem tất cả")).font(.system(size: 17, weight: .medium))
                                 .padding(.horizontal, 3).padding(.vertical, 3)
                         }
                         .buttonStyle(Pressable()).foregroundStyle(.primary)
@@ -248,21 +248,21 @@ struct HomeView: View {
                 Spacer()
                 Text(dayLabel(now))
             }
-            .font(.app(size: 16)).foregroundStyle(.secondary)
+            .font(.system(size: 16)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(fmt(store.total(on: now)))
-                    .font(.app(size: 46, weight: .bold)).kerning(-1.5)
+                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
                     .minimumScaleFactor(0.5).lineLimit(1)
             }
             .padding(.top, 8).padding(.bottom, 14)
             HStack {
                 Text(L("%@: %@", monthLabel(now), fmt(month)))
-                    .font(.app(size: 16, weight: .semibold)).foregroundStyle(.primary)
+                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(heroTone < 0 ? Palette.pill : Color.primary.opacity(0.1), in: Capsule())
                     .lineLimit(1)
                 Spacer()
-                if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.app(size: 15)).foregroundStyle(.secondary) }
+                if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
             }
             if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
         }
@@ -279,11 +279,11 @@ struct HomeView: View {
             BudgetBar(s: b, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
             HStack(spacing: 4) {
                 // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
-                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.app(size: 13)).foregroundStyle(Palette.danger) }
-                Text(b.remaining >= 0 ? L("Còn %@", fmt(b.remaining)) : L("Vượt %@", fmt(-b.remaining))).font(.app(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
+                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
+                Text(b.remaining >= 0 ? L("Còn %@", fmt(b.remaining)) : L("Vượt %@", fmt(-b.remaining))).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
                 Spacer()
                 Text(b.level == .over ? L("Ngân sách %@", fmt(b.budget)) : L("%@/ngày", fmt(b.perDay(at: now))))
-                    .font(.app(size: 15)).foregroundStyle(.secondary)
+                    .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             .lineLimit(1).minimumScaleFactor(0.8)
         }
@@ -291,10 +291,10 @@ struct HomeView: View {
 
     private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {
         HStack {
-            Text(title).font(.app(size: 21, weight: .bold))
+            Text(title).font(.system(size: 21, weight: .bold))
             Spacer()
             trailing()
-                .font(.app(size: 15)).foregroundStyle(.secondary)
+                .font(.system(size: 15)).foregroundStyle(.secondary)
                 .padding(.horizontal, 14).padding(.vertical, 7)
                 .background(Palette.pill, in: Capsule())
         }
@@ -332,7 +332,7 @@ struct HomeView: View {
                             // Dấu + ở góc: nhập khoản mới cho danh mục này
                             .overlay(alignment: .topTrailing) {
                                 Button { entry = .new(cat: c.k) } label: {
-                                    Image(systemName: "plus").font(.app(size: 16, weight: .bold))
+                                    Image(systemName: "plus").font(.system(size: 16, weight: .bold))
                                         .frame(width: 30, height: 30)
                                         // Cùng màu tên và số tiền của ô: màu chữ của ô mờ 70% (nền tối thì trắng)
                                         .foregroundStyle(c.ink.opacity(0.7))
@@ -355,8 +355,8 @@ struct HomeView: View {
     private var addTile: some View {
         Button { if Category.custom.count < Pro.freeCategories || Pro.shared.allow(.categories) { addingCat = true } } label: {
             HStack(spacing: 8) {
-                Image(systemName: "plus").font(.app(size: 16, weight: .bold))
-                Text(L("Thêm danh mục")).font(.app(size: 17, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                Image(systemName: "plus").font(.system(size: 16, weight: .bold))
+                Text(L("Thêm danh mục")).font(.system(size: 17, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
             }
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 12)
@@ -377,8 +377,8 @@ struct HomeView: View {
             CategoryBadge(c: c, side: 52, radius: 12)
             Spacer(minLength: 14)
             // Tên mờ 70% (pha màu nền); số tiền giữ đậm rõ cho dễ đọc
-            Text(c.name).font(.app(size: 16, weight: .medium)).opacity(0.7)
-            Text(fmt(total)).font(.app(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
+            Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
         }
         .foregroundStyle(c.ink)
         .padding(16)
@@ -411,7 +411,7 @@ struct HomeView: View {
         if list.isEmpty {
             // Chữ có **đậm** (Markdown): đưa qua LocalizedStringKey để Text vẽ đậm
             Text(LocalizedStringKey(L("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")))
-                .font(.app(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else if film != nil {
@@ -676,7 +676,7 @@ private struct CardSwipe: ViewModifier {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { gone = false; x = 0; start = 0 }
                 } label: {
                     // Giống nút xoá của List trên iOS 26+: thùng rác trắng trong vòng tròn đỏ, giữa theo chiều cao thẻ
-                    Image(systemName: "trash.fill").font(.app(size: 18, weight: .semibold)).foregroundStyle(.white)
+                    Image(systemName: "trash.fill").font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
                         .frame(width: 50, height: 50)
                         .background(Color.red, in: Circle())
                         .frame(width: button)
@@ -758,7 +758,7 @@ struct ExpenseRow: View {
                     Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.rowTitle)
                         .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                     if repeats {
-                        Image(systemName: "repeat").font(.app(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                        Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                             .accessibilityLabel(L("Hằng tháng"))
                     }
                 }
@@ -887,12 +887,12 @@ struct BigButton: View {
             if icon.isEmpty {
                 Color.clear.frame(width: 0, height: 56)
             } else {
-                Image(systemName: icon).font(.app(size: 24, weight: .semibold))
+                Image(systemName: icon).font(.system(size: 24, weight: .semibold))
                     .frame(width: 56, height: 56)
                     .background(primary ? Palette.ctaInk.opacity(0.14) : Color.primary.opacity(0.08), in: Circle())   // theo màu chữ của nút: chế độ tối nút trắng thì vòng xám, không bị mất
             }
             if primary || icon.isEmpty { Spacer(minLength: 0) }
-            Text(title).font(.app(size: 21, weight: .semibold)).lineLimit(1)
+            Text(title).font(.system(size: 21, weight: .semibold)).lineLimit(1)
                 // Chữ được ưu tiên chỗ trước hai khoảng trống hai bên: không thì khi bật Chữ đậm (Trợ năng)
                 // chữ rộng ra mà vẫn bị cắt thành "Quét…" dù nút còn trống
                 .layoutPriority(1)
@@ -1144,12 +1144,12 @@ private struct ScreenTitle: ViewModifier {
                 if let bar {
                     VStack(spacing: 0) {
                         ZStack {
-                            Text(title).font(.app(size: 21, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
+                            Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
                                 .padding(.horizontal, bar.back ? 60 : 20)
                             if bar.back {
                                 HStack {
                                     Button { dismiss() } label: {
-                                        Image(systemName: "chevron.left").font(.app(size: 17, weight: .semibold))
+                                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
                                             .frame(width: 40, height: 40)
                                             .background(Color.primary.opacity(0.06), in: Circle())
                                             .contentShape(Circle())
@@ -1172,7 +1172,7 @@ private struct ScreenTitle: ViewModifier {
             }
             .navigationTitle(title)
             .toolbar {
-                ToolbarItem(placement: .principal) { Text(title).font(.app(size: 21, weight: .bold)).lineLimit(1) }
+                ToolbarItem(placement: .principal) { Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1) }
             }
             .toolbar(bar == nil ? .automatic : .hidden, for: .navigationBar)
     }
@@ -1218,7 +1218,7 @@ private struct PickPage<T: Hashable>: View {
                             HStack {
                                 Text(item.1).foregroundStyle(Color.primary)
                                 Spacer(minLength: 8)
-                                if item.0 == selection { Image(systemName: "checkmark").font(.app(size: 15, weight: .semibold)).foregroundStyle(Color.primary) }
+                                if item.0 == selection { Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary) }
                             }
                             .contentShape(Rectangle())
                         }
@@ -1266,16 +1266,16 @@ struct ToastView: View {
         if let t = store.toast {
             HStack(spacing: 14) {
                 // Báo lỗi (vd lưu khoản chung thất bại) thì không vẽ dấu tích thành công
-                Image(systemName: t.error ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").font(.app(size: 18))
+                Image(systemName: t.error ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").font(.system(size: 18))
                 // Câu dài (vd "Sẽ tự ghi ngày 28 hằng tháng, lần tới 28/11", câu báo lỗi) xuống dòng thứ hai thay vì bị cắt "…"
-                Text(t.message).font(.app(size: 17, weight: .medium))
+                Text(t.message).font(.system(size: 17, weight: .medium))
                     .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     // Hoàn tác có hiệu ứng: hàng vừa xoá trượt / hiện lại vào chỗ cũ, các hàng dưới dịch xuống nhường chỗ
                     Button { Haptic.tap(); withAnimation(.snappy(duration: 0.35)) { undo(); store.toast = nil } } label: {
                         Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
-                            .font(.app(size: 16, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài
                             .padding(.horizontal, 18).frame(height: 48)
                             .background(Palette.ctaInk.opacity(0.14), in: Capsule())
@@ -1318,9 +1318,9 @@ enum Haptic {
 /// Cỡ chữ chung của mọi hàng danh sách trong app (Gần đây, Lịch sử, Thống kê, Nhóm chung): tên hàng, dòng phụ, số tiền.
 /// Lấy theo hàng khoản chi (ExpenseRow); hàng ở màn nào cũng dùng bộ này để cỡ chữ không lệch nhau giữa các màn
 extension Font {
-    static let rowTitle = Font.app(size: 15, weight: .medium)
-    static let rowSub = Font.app(size: 12)
-    static let rowAmount = Font.app(size: 15, weight: .medium)
+    static let rowTitle = Font.system(size: 15, weight: .medium)
+    static let rowSub = Font.system(size: 12)
+    static let rowAmount = Font.system(size: 15, weight: .medium)
 }
 
 /// Mép trên trang chủ (dưới đồng hồ, pin): iOS 27 tự nhoè nội dung cuộn lên, nhưng chỉ với app được dựng bằng SDK iOS 27 trở

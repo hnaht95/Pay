@@ -36,11 +36,11 @@ struct ScannerView: View {
 
             VStack {
                 Text(L("Đưa mã QR của quán vào khung"))
-                    .font(.app(size: 18, weight: .medium)).foregroundStyle(.white)
+                    .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
                     .padding(.top, 20)
                 if let error {
                     Spacer()
-                    Text(error).font(.app(size: 17)).foregroundStyle(.white).multilineTextAlignment(.center).padding(24)
+                    Text(error).font(.system(size: 17)).foregroundStyle(.white).multilineTextAlignment(.center).padding(24)
                 }
                 Spacer()
                 HStack(spacing: 12) {
@@ -65,7 +65,7 @@ struct ScannerView: View {
     }
 
     private func pill(_ s: String) -> some View {
-        Text(s).font(.app(size: 18, weight: .semibold)).foregroundStyle(.white)
+        Text(s).font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 68)
             .background(.white.opacity(0.18), in: Capsule())
     }

@@ -946,7 +946,6 @@ final class HouseSceneDelegate: NSObject, UIWindowSceneDelegate {
 
 final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        AppFont.applyAppearance()
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         // Nút ngay trên thông báo: xác nhận mà không cần mở app

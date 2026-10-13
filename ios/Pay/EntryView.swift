@@ -44,10 +44,10 @@ struct EntryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             head
-            Text(L("Số tiền")).font(.app(size: 15)).foregroundStyle(.secondary).padding(.top, 26)
+            Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 26)
             HStack(spacing: 4) {
                 Text(amount > 0 ? fmt(amount) : "0")
-                    .font(.app(size: 40, weight: .bold)).kerning(-1)
+                    .font(.system(size: 40, weight: .bold)).kerning(-1)
                     .foregroundStyle(amount > 0 ? .primary : .tertiary)
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
@@ -68,8 +68,8 @@ struct EntryView: View {
                     // Ngày giờ của khoản, cùng hàng với số tiền: chạm để đổi (mở bảng lịch tự vẽ)
                     Button { noteFocused = false; withAnimation(.snappy) { editing = true }; pickingDate = true } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "calendar").font(.app(size: 13, weight: .semibold))
-                            Text(stamp(when)).font(.app(size: 15, weight: .medium)).lineLimit(1)
+                            Image(systemName: "calendar").font(.system(size: 13, weight: .semibold))
+                            Text(stamp(when)).font(.system(size: 15, weight: .medium)).lineLimit(1)
                         }
                         .padding(.horizontal, 12).frame(height: 36)
                         .foregroundStyle(.primary)
@@ -94,13 +94,13 @@ struct EntryView: View {
             if film != nil {
                 // Phim: ô nhập chữ của iOS không vẽ ra được, thay bằng chữ cùng kiểu
                 Text(shownNote.isEmpty ? L("Ghi chú (không bắt buộc)") : shownNote)
-                    .font(.app(size: 18)).foregroundStyle(shownNote.isEmpty ? .tertiary : .primary).lineLimit(1)
+                    .font(.system(size: 18)).foregroundStyle(shownNote.isEmpty ? .tertiary : .primary).lineLimit(1)
                     .padding(.horizontal, 18)
                     .frame(maxWidth: .infinity, minHeight: Self.noteH, alignment: .leading)
                     .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             } else {
             TextField(L("Ghi chú (không bắt buộc)"), text: $note)
-                .font(.app(size: 18))
+                .font(.system(size: 18))
                 .focused($noteFocused)
                 .submitLabel(.done)
                 .padding(.horizontal, 18)
@@ -176,11 +176,11 @@ struct EntryView: View {
         VStack(spacing: 2) {
             // Tiêu đề ở giữa. Màn mở dạng tấm (không phủ kín màn hình): đóng bằng vuốt xuống như các tấm khác,
             // không có mũi tên quay lại hay vuốt từ mép trái
-            Text(title).font(.app(size: 21, weight: .bold)).lineLimit(1)
+            Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
                 .padding(.horizontal, 52)
                 .frame(maxWidth: .infinity, minHeight: 46)
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
-            if let sub, !isEdit { Text(sub).font(.app(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
+            if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
         }
         .padding(.top, 8)
     }
@@ -199,7 +199,7 @@ struct EntryView: View {
                         if let photo {
                             Image(uiImage: photo).resizable().scaledToFill()
                         } else {
-                            Image(systemName: "camera.aperture").font(.app(size: 22, weight: .medium)).foregroundStyle(.secondary)
+                            Image(systemName: "camera.aperture").font(.system(size: 22, weight: .medium)).foregroundStyle(.secondary)
                         }
                     }
                     .frame(width: Self.noteH, height: Self.noteH)   // ô vuông, hợp với icon chụp
@@ -261,7 +261,7 @@ struct EntryView: View {
                             // Đang chọn: nền màu danh mục (như ô ở màn hình chính); chưa chọn: nền xám rất nhạt
                             HStack(spacing: 8) {
                                 CategoryBadge(c: c, side: 36, radius: 10, iconSize: 22)
-                                Text(c.name).font(.app(size: 17, weight: on ? .semibold : .medium))
+                                Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
                             }
                             .padding(.leading, 6).padding(.trailing, 16).padding(.vertical, 6)
                             .foregroundStyle(on ? c.ink : Color.primary)
@@ -273,7 +273,7 @@ struct EntryView: View {
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
                     Button { if Category.custom.count < Pro.freeCategories || Pro.shared.allow(.categories) { addingCat = true } } label: {
                         Label(L("Mới"), systemImage: "plus")
-                            .font(.app(size: 17, weight: .medium))
+                            .font(.system(size: 17, weight: .medium))
                             .padding(.horizontal, 16).frame(height: 48)
                             .foregroundStyle(Color.primary)
                             .background(Color.primary.opacity(0.05), in: Capsule())
@@ -304,7 +304,7 @@ struct EntryView: View {
                 let on = shownCat == c.k
                 HStack(spacing: 8) {
                     CategoryBadge(c: c, side: 36, radius: 10, iconSize: 22)
-                    Text(c.name).font(.app(size: 17, weight: on ? .semibold : .medium))
+                    Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
                 }
                 .padding(.leading, 6).padding(.trailing, 16).padding(.vertical, 6)
                 .foregroundStyle(on ? c.ink : Color.primary)
@@ -350,7 +350,7 @@ struct EntryView: View {
                 // Hai nút cùng một hàng, cùng cao: Lưu (chỉ ghi) bên trái, Lưu & mở app ngân hàng bên phải (rộng hơn)
                 HStack(spacing: 12) {
                     Button { saveScan(q); dismiss() } label: {
-                        Text(L("Lưu")).font(.app(size: 21, weight: .semibold))
+                        Text(L("Lưu")).font(.system(size: 21, weight: .semibold))
                             .frame(maxWidth: .infinity, minHeight: 56 + BigButton.inset * 2)
                             .foregroundStyle(.primary)
                             .background(Palette.pill, in: Capsule())
@@ -395,7 +395,7 @@ struct EntryView: View {
     private func primary(_ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
             // Cao và cỡ chữ bằng nút Xoá / Sửa (BigButton)
-            Text(label).font(.app(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(label).font(.system(size: 21, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
                 .padding(.horizontal, 16)   // tên ngân hàng dài (VietinBank iPay) không chạm mép nút
                 .frame(maxWidth: .infinity, minHeight: 56 + BigButton.inset * 2)
                 .foregroundStyle(Palette.ctaInk)
@@ -409,7 +409,7 @@ struct EntryView: View {
 
     private func secondary(_ label: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(label).font(.app(size: 17, weight: .semibold))
+            Text(label).font(.system(size: 17, weight: .semibold))
                 .frame(maxWidth: .infinity, minHeight: 54)
                 .foregroundStyle(.primary)
                 .background(Palette.pill, in: Capsule())
@@ -483,8 +483,8 @@ struct NumberPad: View {
                     ForEach(row, id: \.self) { k in
                         Button { press(k) } label: {
                             Group {
-                                if k == "del" { Image(systemName: "delete.left").font(.app(size: 26)) }
-                                else { Text(k).font(.app(size: k == "000" ? 26 : 32, weight: .medium)) }
+                                if k == "del" { Image(systemName: "delete.left").font(.system(size: 26)) }
+                                else { Text(k).font(.system(size: k == "000" ? 26 : 32, weight: .medium)) }
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .contentShape(Rectangle())
@@ -560,13 +560,13 @@ struct DateSheet: View {
             // nút "Hôm nay" luôn dựng sẵn, chỉ co bề ngang về 0 rồi mờ đi khi đang ở tháng này (bật ra thì nở từ 0, hai mũi tên
             // trượt theo); hai tam giác lên / xuống (lịch xếp tuần theo chiều dọc, lùi tháng là đi lên)
             HStack(spacing: 0) {
-                Text(title).font(.app(size: 17, weight: .medium))
+                Text(title).font(.system(size: 17, weight: .medium))
                     .contentTransition(.numericText())
                     .foregroundStyle(Color.primary.opacity(0.55))
                 Spacer(minLength: 8)
                 let showsToday = !isThisWeek
                 Button { jumpToToday() } label: {
-                    Text(L("Hôm nay")).font(.app(size: 15.75, weight: .medium))
+                    Text(L("Hôm nay")).font(.system(size: 15.75, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.6))
                         .fixedSize()
                         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { todayW = ceil($0) + 24 }
@@ -612,7 +612,7 @@ struct DateSheet: View {
                 // Đồng hồ báo thức (Tabler alarm-minus, bản đặc) trước nhãn
                 HStack(spacing: 8) {
                     Image("icon-alarm").renderingMode(.template).resizable().frame(width: 22, height: 22)
-                    Text(L("Thời gian chi")).font(.app(size: 17, weight: .medium))
+                    Text(L("Thời gian chi")).font(.system(size: 17, weight: .medium))
                 }
                 .foregroundStyle(Color.primary.opacity(0.6))
                 Spacer(minLength: 8)
@@ -620,7 +620,7 @@ struct DateSheet: View {
                     PeekWheel(count: 24, value: Binding(get: { cal.component(.hour, from: when) }, set: { setTime(hour: $0) }),
                               pitch: 30, font: 20)
                         .frame(width: 40)
-                    Text(":").font(.app(size: 20, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
+                    Text(":").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.primary.opacity(0.45))
                     PeekWheel(count: 12, step: 5, value: Binding(get: { cal.component(.minute, from: when) }, set: { setTime(minute: $0) }),
                               pitch: 30, font: 20)
                         .frame(width: 40)
@@ -697,11 +697,11 @@ struct DateSheet: View {
         return Button { pick(d) } label: {
             VStack(spacing: 6) {
                 Text(names[(cal.component(.weekday, from: d) + 5) % 7])
-                    .font(.app(size: 11, weight: on ? .bold : .medium))
+                    .font(.system(size: 11, weight: on ? .bold : .medium))
                     .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                 VStack(spacing: 0) {
                     Text("\(cal.component(.day, from: d))")
-                        .font(.app(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                         .foregroundStyle(on ? Self.pillInkText : today ? Self.todayTint : Color.primary.opacity(0.8))
                         .frame(height: 24)
                         .padding(.top, 8)
@@ -742,7 +742,7 @@ struct DateSheet: View {
             forward = Date() > first
             withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { when = Date(); month = Date() }
         } label: {
-            Text(L("Bây giờ")).font(.app(size: 16, weight: .semibold))
+            Text(L("Bây giờ")).font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .foregroundStyle(Color.primary.opacity(isNow ? 0.35 : 0.85))
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
@@ -807,7 +807,7 @@ struct DateSheet: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
                         ForEach(names.indices, id: \.self) { i in
-                            Text(names[i]).font(.app(size: P.symbolFont * k, weight: .medium))
+                            Text(names[i]).font(.system(size: P.symbolFont * k, weight: .medium))
                                 .foregroundStyle(Color.primary.opacity(i == todayCol && isThisMonth ? 0.6 : 0.35))
                                 .frame(maxWidth: .infinity)
                         }
@@ -834,7 +834,7 @@ struct DateSheet: View {
         let on = cal.isDate(date, inSameDayAs: when), today = cal.isDateInToday(date), future = date > Date()
         return Button { pick(date) } label: {
             Text("\(cal.component(.day, from: date))")
-                .font(.app(size: P.font * k, weight: on || today ? .semibold : .medium, design: .rounded)).monospacedDigit()
+                .font(.system(size: P.font * k, weight: on || today ? .semibold : .medium, design: .rounded)).monospacedDigit()
                 .foregroundStyle(on ? Palette.ctaInk : Color.primary.opacity(today ? 1 : 0.85))
                 .frame(maxWidth: .infinity)
                 .frame(height: P.pillH * k)
@@ -924,7 +924,7 @@ private struct FlatWheel: View {
                         ForEach(0..<count, id: \.self) { n in
                             let on = n == (pos ?? value)
                             Text(String(format: "%02d", n))
-                                .font(.app(size: font, weight: .semibold).monospacedDigit())
+                                .font(.system(size: font, weight: .semibold).monospacedDigit())
                                 .foregroundStyle(on ? Color.primary : Color.secondary)
                                 .frame(maxWidth: .infinity, minHeight: row, maxHeight: row)
                                 .contentShape(Rectangle())
@@ -1045,7 +1045,7 @@ private struct PeekWheel: View {
                 let d = CGFloat(i) - pos
                 // Ghi rõ kiểu số (CGFloat cho hình, Double cho độ mờ): để trình biên dịch tự đoán thì Xcode 26.3 báo mơ hồ
                 let a: CGFloat = min(abs(d), 1)
-                let face: Font = Font.app(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit()
+                let face: Font = Font.system(size: font, weight: abs(d) < 0.5 ? .semibold : .medium).monospacedDigit()
                 let scale: CGFloat = (17 - 5 * a) / 17
                 let fade: Double = 1 - 0.4 * Double(a)
                 Text(String(format: "%02d", wrap(i) * step))
@@ -1122,7 +1122,7 @@ private struct PhotoViewer: View {
 
     private func pill(_ t: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(t).font(.app(size: 17, weight: .semibold)).foregroundStyle(.white)
+            Text(t).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
                 .frame(maxWidth: .infinity, minHeight: 56)
                 .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
@@ -1162,8 +1162,8 @@ struct BankChooser: View {
     /// Tên nhóm và lời giải thích ngay dưới, nằm trên danh sách ngân hàng của nhóm
     private func header(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.app(size: 15, weight: .semibold)).foregroundStyle(Color.primary)
-            Text(detail).font(.app(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
+            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary)
+            Text(detail).font(.system(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
         }
         .textCase(nil)
         .padding(.bottom, 4)

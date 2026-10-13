@@ -111,7 +111,7 @@ struct SettingsView: View {
                     Text(L("Tháng %@: %@ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
                     Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
                 }
-                .font(.app(size: 15)).foregroundStyle(.secondary)
+                .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -152,7 +152,7 @@ struct SettingsView: View {
                     if s.level == .over { Image(systemName: "exclamationmark.triangle.fill") }
                     Text(L("%@ · đã dùng %@%%", s.label, String(Int((s.ratio * 100).rounded()))))
                 }
-                .font(.app(size: 15, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(s.level == .over ? Palette.danger : .primary)
             }
             Text(v > 0 ? L("Kéo hoặc chạm vào thanh để chỉnh, giữ lâu để nhập số chính xác. Kéo hết sang trái là bỏ ngân sách.")
@@ -168,7 +168,7 @@ struct SettingsView: View {
             if list.isEmpty {
                 // "Lặp hằng tháng" tô dạ quang xanh lá bằng nét bút của Shot
                 HighlightedText(text: L("Nhấn giữ một khoản chi như tiền nhà, điện, internet rồi chọn **Lặp hằng tháng**, app sẽ tự ghi mỗi tháng."))
-                    .font(.app(size: 15)).foregroundStyle(.secondary)
+                    .font(.system(size: 15)).foregroundStyle(.secondary)
             }
             ForEach(list) { r in
                 let c = Category.get(r.c)
@@ -176,7 +176,7 @@ struct SettingsView: View {
                     CategoryBadge(c: c, side: 34, radius: 10, iconSize: 20, edge: true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.n?.isEmpty == false ? r.n!.capFirst : c.name).lineLimit(1)
-                        Text(L("Ngày %@ hằng tháng", String(r.day))).font(.app(size: 14)).foregroundStyle(.secondary)
+                        Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 14)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
                     Text("\(fmt(r.a))").fontWeight(.semibold).lineLimit(1)
@@ -208,10 +208,10 @@ struct SettingsView: View {
                 Button { ProPaywall.present() } label: {
                     HStack(spacing: 10) {
                         // "Nâng cấp" + chữ "Pro" viết tay xanh như màn mua Pro
-                        Text(L("Nâng cấp")).font(.app(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
+                        Text(L("Nâng cấp")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
                         ProBadge(height: 28)
                         Spacer()
-                        Image(systemName: "chevron.right").font(.app(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
+                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
                     }
                 }
                 Button(L("Khôi phục giao dịch")) { Task { await pro.restore() } }.foregroundStyle(Color.primary)
@@ -534,7 +534,7 @@ struct BudgetSlider: View {
                         .animation(.easeOut(duration: 0.14), value: grab != nil)
                 }
             Text(L("Mỗi tháng"))
-                .font(.app(size: 17, weight: .medium))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(Self.ink.opacity(0.78))
                 .fixedSize()
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { labelWidth = $0 }
@@ -571,7 +571,7 @@ struct BudgetSlider: View {
 
     private func valueLabel(size: CGFloat) -> some View {
         Text(shown > 0 ? Self.compact(shown) : L("Chưa đặt"))
-            .font(.app(size: size, weight: .medium, design: .rounded))
+            .font(.system(size: size, weight: .medium, design: .rounded))
             .monospacedDigit()
             .fixedSize()
     }
@@ -758,13 +758,13 @@ struct CategoryEditor: View {
                         Group {
                             if let photo { Image(uiImage: photo).resizable().scaledToFill() }
                             // Danh mục có sẵn chưa đổi biểu tượng: hiện đúng hình vẽ phẳng như ở màn hình chính
-                            else if let b = builtin, fIcon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(fIcon).font(.app(size: 28)) }
+                            else if let b = builtin, fIcon == b.icon { CategoryIcon(c: b, size: 32) } else { Text(fIcon).font(.system(size: 28)) }
                         }
                             // Ô vuông nền trắng như ô danh mục ở màn hình chính
                             .frame(width: 56, height: 56).background(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         Text(shownName.isEmpty ? L("Tên danh mục") : shownName)
-                            .font(.app(size: 20, weight: .semibold)).lineLimit(1)
+                            .font(.system(size: 20, weight: .semibold)).lineLimit(1)
                             .opacity(shownName.isEmpty ? 0.4 : 1)
                         Spacer(minLength: 0)
                     }
@@ -777,7 +777,7 @@ struct CategoryEditor: View {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                         ForEach(Self.emojis, id: \.self) { e in
                             Button { if icon != e { Haptic.select() }; icon = e } label: {
-                                Text(e).font(.app(size: 26))
+                                Text(e).font(.system(size: 26))
                                     .frame(maxWidth: .infinity, minHeight: 46)
                                     .background(fIcon == e ? previewColor : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
@@ -809,7 +809,7 @@ struct CategoryEditor: View {
                 let byte = { (v: CGFloat) in UInt32(max(0, min(255, (v * 255).rounded()))) }
                 tone = CategoryTone.custom(byte(r) << 16 | byte(g) << 8 | byte(b))
             }), supportsOpacity: false) {
-                Text(L("Tự chọn màu")).font(.app(size: 17))
+                Text(L("Tự chọn màu")).font(.system(size: 17))
             }
         }
         .padding(.vertical, 8)
@@ -883,7 +883,7 @@ struct CategoryEditor: View {
     /// Phim: bản tự vẽ trông như Form (Form của hệ thống không vẽ ra PDF được): cùng các phần, cùng thứ tự
     private func filmBody(_ film: FilmFrame) -> some View {
         func head(_ t: String) -> some View {
-            Text(t).font(.app(size: 17, weight: .semibold)).foregroundStyle(.secondary).padding(.leading, 20).padding(.top, 26).padding(.bottom, 10)
+            Text(t).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary).padding(.leading, 20).padding(.top, 26).padding(.bottom, 10)
         }
         func box<V: View>(@ViewBuilder _ v: () -> V) -> some View {
             VStack(alignment: .leading, spacing: 0) { v() }
@@ -897,22 +897,22 @@ struct CategoryEditor: View {
                 VStack(alignment: .leading, spacing: 0) {
                     previewCard.padding(.top, 10)
                     head(L("Tên"))
-                    box { Text(shownName).font(.app(size: 17)).frame(height: 44) }
+                    box { Text(shownName).font(.system(size: 17)).frame(height: 44) }
                     head(L("Biểu tượng"))
                     box {
                         HStack(spacing: 12) {
-                            Image(systemName: "face.smiling").font(.app(size: 18, weight: .semibold))
+                            Image(systemName: "face.smiling").font(.system(size: 18, weight: .semibold))
                                 .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
-                            Text(L("Tất cả biểu tượng")).font(.app(size: 17))
+                            Text(L("Tất cả biểu tượng")).font(.system(size: 17))
                         }
                         .frame(height: 52)
                         Divider().padding(.leading, 46)
                         emojiGrid.padding(.vertical, 6)
                     }
                     Text(L("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS."))
-                        .font(.app(size: 13)).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 8)
+                        .font(.system(size: 13)).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 8)
                     head(L("Màu"))
-                    box { VStack(spacing: 10) { colorRows }.font(.app(size: 17)).padding(.vertical, 8) }
+                    box { VStack(spacing: 10) { colorRows }.font(.system(size: 17)).padding(.vertical, 8) }
                 }
                 .padding(.horizontal, 16).padding(.bottom, 60)
             }
@@ -945,7 +945,7 @@ struct CategoryEditor: View {
                     // Ảnh danh mục là tính năng Pro: chưa mua thì lớp chạm phủ lên mở màn mua Pro
                     PhotosPicker(selection: $photoItem, matching: .images) {
                         HStack(spacing: 12) {
-                            Image(systemName: "photo").font(.app(size: 17, weight: .semibold))
+                            Image(systemName: "photo").font(.system(size: 17, weight: .semibold))
                                 .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
                             Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")).foregroundStyle(.primary)
                             if !Pro.shared.active { ProBadge() }
@@ -982,11 +982,11 @@ struct CategoryEditor: View {
                     // Mở bàn phím Emoji của iOS: chọn được mọi biểu tượng, có cả ô tìm kiếm
                     Button { pickingEmoji = true } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "face.smiling").font(.app(size: 18, weight: .semibold))
+                            Image(systemName: "face.smiling").font(.system(size: 18, weight: .semibold))
                                 .frame(width: 34, height: 34).background(Palette.pill, in: Circle())
                             Text(L("Tất cả biểu tượng")).foregroundStyle(.primary)
                             Spacer()
-                            if !Self.emojis.contains(icon) { Text(icon).font(.app(size: 24)) }
+                            if !Self.emojis.contains(icon) { Text(icon).font(.system(size: 24)) }
                         }
                     }
                     .tint(.primary)
@@ -1014,7 +1014,7 @@ struct CategoryEditor: View {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     if trimmed.isEmpty || duplicate {
                         // Chưa lưu được: nút xám đặc (không làm mờ cả nút: mờ thì thấy xuyên nội dung cuộn phía sau)
-                        Text(L("Lưu")).font(.app(size: 21, weight: .semibold)).foregroundStyle(Palette.ctaInk.opacity(0.85))
+                        Text(L("Lưu")).font(.system(size: 21, weight: .semibold)).foregroundStyle(Palette.ctaInk.opacity(0.85))
                             .frame(maxWidth: .infinity).frame(height: 56 + BigButton.inset * 2)
                             // Chưa lưu được: cùng kiểu nút Lưu mờ ở màn nhập (nút đen mờ 55%), đậm hơn xám nhạt cũ
                             .background(Capsule().fill(Palette.cta.opacity(0.55)))
@@ -1212,7 +1212,7 @@ struct QuickAccessHelp: View {
     private func step(_ n: Int, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("\(n)")
-                .font(.app(size: 13, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .frame(width: 22, height: 22)
                 .background(Color.primary.opacity(0.08), in: Circle())
             Text(L(text))
@@ -1265,9 +1265,9 @@ struct ApplePayHelp: View {
 
     private func step(_ n: Int, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("\(n)").font(.app(size: 15, weight: .bold, design: .rounded))
+            Text("\(n)").font(.system(size: 15, weight: .bold, design: .rounded))
                 .frame(width: 24, height: 24).background(Palette.pill, in: Circle())
-            Text(text).font(.app(size: 16))
+            Text(text).font(.system(size: 16))
         }
         .padding(.vertical, 4)
     }

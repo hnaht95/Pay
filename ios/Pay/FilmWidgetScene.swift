@@ -131,7 +131,7 @@ extension FilmExport {
                             }
                             .frame(width: p(798), height: p(374))
                             .overlay(alignment: .topLeading) { minus(editing).offset(x: -8, y: -8) }
-                            Text("Pay").font(.app(size: 12.5, weight: .medium)).foregroundStyle(.white)
+                            Text("Pay").font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white)
                         }
                         .rotationEffect(.degrees(Double(editing) * 0.5 * sin(t * 27 + 1)))
                         .scaleEffect(0.6 + 0.4 * pop).opacity(Double(min(1, pop * 2)))
@@ -331,7 +331,7 @@ private struct FilmCamera: View {
             Color.white.opacity(0.3 * Double(flash))
             VStack {
                 Text(L("Đưa mã QR của quán vào khung"))
-                    .font(.app(size: 18, weight: .medium)).foregroundStyle(.white)
+                    .font(.system(size: 18, weight: .medium)).foregroundStyle(.white)
                     .padding(.top, 20 + FilmScreen<EmptyView>.insets.top)
                 Spacer()
                 HStack(spacing: 12) { pill(L("Chọn ảnh QR")); pill(L("Đóng")) }
@@ -409,12 +409,12 @@ private struct FilmCamera: View {
     private var standee: some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
-                Text(shop).font(.app(size: 19, weight: .heavy)).foregroundStyle(Color(hex: 0xB0302A))
-                Text(Lang.isEnglish ? "Scan to pay" : "Quét mã để thanh toán").font(.app(size: 13, weight: .semibold))
+                Text(shop).font(.system(size: 19, weight: .heavy)).foregroundStyle(Color(hex: 0xB0302A))
+                Text(Lang.isEnglish ? "Scan to pay" : "Quét mã để thanh toán").font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color(hex: 0x3A3A3C))
                 if let img = Self.code { Image(uiImage: img).interpolation(.none).resizable().frame(width: Self.qrSide, height: Self.qrSide) }
-                Text("COM TAM BA NAM").font(.app(size: 13, weight: .bold)).foregroundStyle(Color(hex: 0x1D1D1F))
-                Text("0071 000 123 456").font(.app(size: 12, weight: .medium)).foregroundStyle(Color(hex: 0x6E6E73))
+                Text("COM TAM BA NAM").font(.system(size: 13, weight: .bold)).foregroundStyle(Color(hex: 0x1D1D1F))
+                Text("0071 000 123 456").font(.system(size: 12, weight: .medium)).foregroundStyle(Color(hex: 0x6E6E73))
             }
             .padding(.horizontal, 18).padding(.vertical, 16)
             .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -457,7 +457,7 @@ private struct FilmCamera: View {
     }
 
     private func pill(_ s: String) -> some View {
-        Text(s).font(.app(size: 18, weight: .semibold)).foregroundStyle(.white)
+        Text(s).font(.system(size: 18, weight: .semibold)).foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 68)
             .background(.white.opacity(0.18), in: Capsule())
     }
@@ -483,7 +483,7 @@ private struct FilmBankChooser: View {
     var body: some View {
         let fill = BankData.apps.filter(\.fill), rest = BankData.apps.filter { !$0.fill }
         VStack(alignment: .leading, spacing: 0) {
-            Text(L("Bạn dùng app ngân hàng nào?")).font(.app(size: 17, weight: .semibold))
+            Text(L("Bạn dùng app ngân hàng nào?")).font(.system(size: 17, weight: .semibold))
                 .frame(maxWidth: .infinity).frame(height: 56)
             VStack(alignment: .leading, spacing: 8) {
                 header(L("Mở sẵn người nhận + số tiền"),
@@ -502,8 +502,8 @@ private struct FilmBankChooser: View {
 
     private func header(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.app(size: 15, weight: .semibold))
-            Text(detail).font(.app(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
+            Text(title).font(.system(size: 15, weight: .semibold))
+            Text(detail).font(.system(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 4)
     }
@@ -511,7 +511,7 @@ private struct FilmBankChooser: View {
     private func group(_ apps: [BankApp], first: Bool) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(apps.enumerated()), id: \.offset) { i, a in
-                Text(a.name).font(.app(size: 17)).frame(maxWidth: .infinity, alignment: .leading)
+                Text(a.name).font(.system(size: 17)).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16).frame(height: 46)
                     .background(first && i == 0 ? Color.primary.opacity(0.08 * Double(pressed)) : .clear)
                 if i < apps.count - 1 { Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 0.5).padding(.leading, 16) }
@@ -539,12 +539,12 @@ private struct FilmBankApp: View {
             Color(hex: 0x14365C)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 10) {
-                    Image(systemName: "building.columns.fill").font(.app(size: 20))
-                    Text(en ? "Your bank app" : "App ngân hàng của bạn").font(.app(size: 17, weight: .semibold))
+                    Image(systemName: "building.columns.fill").font(.system(size: 20))
+                    Text(en ? "Your bank app" : "App ngân hàng của bạn").font(.system(size: 17, weight: .semibold))
                 }
                 .foregroundStyle(.white.opacity(0.9))
                 .padding(.top, FilmScreen<EmptyView>.insets.top + 14)
-                Text(en ? "Transfer" : "Chuyển tiền").font(.app(size: 30, weight: .bold)).foregroundStyle(.white).padding(.top, 18)
+                Text(en ? "Transfer" : "Chuyển tiền").font(.system(size: 30, weight: .bold)).foregroundStyle(.white).padding(.top, 18)
                 VStack(alignment: .leading, spacing: 16) {
                     field(en ? "To" : "Người nhận", name)
                     field(en ? "Account" : "Số tài khoản", "\(acct) · \(bank)")
@@ -558,9 +558,9 @@ private struct FilmBankApp: View {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x7BE495))
                     Text(en ? "Filled in by Pay" : "Pay đã điền sẵn").foregroundStyle(.white.opacity(0.85))
                 }
-                .font(.app(size: 15, weight: .medium)).padding(.top, 14)
+                .font(.system(size: 15, weight: .medium)).padding(.top, 14)
                 Spacer()
-                Text(en ? "Confirm" : "Xác nhận").font(.app(size: 21, weight: .semibold)).foregroundStyle(Color(hex: 0x14365C))
+                Text(en ? "Confirm" : "Xác nhận").font(.system(size: 21, weight: .semibold)).foregroundStyle(Color(hex: 0x14365C))
                     .frame(maxWidth: .infinity, minHeight: 64)
                     .background(.white, in: Capsule())
                     .filmPressed(pressed)
@@ -570,9 +570,9 @@ private struct FilmBankApp: View {
             if paid > 0 {
                 Color(hex: 0x14365C).opacity(0.94 * Double(paid))
                 VStack(spacing: 14) {
-                    Image(systemName: "checkmark.circle.fill").font(.app(size: 76)).foregroundStyle(Color(hex: 0x7BE495))
-                    Text(en ? "Sent" : "Đã chuyển").font(.app(size: 28, weight: .bold)).foregroundStyle(.white)
-                    Text(fmt(amount)).font(.app(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 76)).foregroundStyle(Color(hex: 0x7BE495))
+                    Text(en ? "Sent" : "Đã chuyển").font(.system(size: 28, weight: .bold)).foregroundStyle(.white)
+                    Text(fmt(amount)).font(.system(size: 22, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
                 }
                 .scaleEffect(0.85 + 0.15 * paid).opacity(Double(paid))
             }
@@ -582,8 +582,8 @@ private struct FilmBankApp: View {
 
     private func field(_ label: String, _ value: String, big: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.app(size: 14)).foregroundStyle(Color(hex: 0x6E6E73))
-            Text(value).font(.app(size: big ? 28 : 18, weight: big ? .bold : .semibold)).foregroundStyle(Color(hex: 0x1D1D1F)).lineLimit(1)
+            Text(label).font(.system(size: 14)).foregroundStyle(Color(hex: 0x6E6E73))
+            Text(value).font(.system(size: big ? 28 : 18, weight: big ? .bold : .semibold)).foregroundStyle(Color(hex: 0x1D1D1F)).lineLimit(1)
         }
     }
 }

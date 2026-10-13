@@ -242,7 +242,7 @@ struct VoiceEntryView: View {
                     let to = cardRect == .zero ? from : cardRect
                     let r = CGRect(x: from.minX + (to.minX - from.minX) * morph, y: from.minY + (to.minY - from.minY) * morph,
                                    width: from.width + (to.width - from.width) * morph, height: from.height + (to.height - from.height) * morph)
-                    let shape = RoundedRectangle(cornerRadius: from.height / 2 + (Self.corner - from.height / 2) * morph, style: .continuous)
+                    let shape = RoundedRectangle(cornerRadius: from.height / 2 + (Self.corner - from.height / 2) * morph, style: .circular)
                     // Đổi màu nhanh ở đầu (xong khi khối mới lớn được 40%): đổi đều suốt quãng thì khối cứ xám lửng lơ, trông như khựng.
                     // Lớp đen mờ dần đi đúng bằng lớp nền hiện lên: để lớp đen đặc nằm dưới thì mép bo (khử răng cưa, nửa trong suốt)
                     // của lớp nền để lộ một viền tối mảnh quanh góc thẻ
@@ -351,7 +351,7 @@ struct VoiceEntryView: View {
         // Đang biến hình từ nút (bare): thẻ không vẽ nền, viền, bóng của riêng nó — khối biến hình chính là nền. Vẽ cả hai thì
         // lúc mở và lúc thu về thấy hai cửa sổ chồng nhau (nền thẻ mờ dần ở cỡ đầy đủ, khối thì đang lớn / đang co).
         // Không đổ bóng: khối biến hình không có bóng, nên lúc khối nhường chỗ cho thẻ thì bóng bật ra tức thì, trông như thẻ khựng
-        .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: Self.corner, style: .continuous))
+        .background(Palette.surface.opacity(bare ? 0 : 1), in: RoundedRectangle(cornerRadius: Self.corner, style: .circular))
 
         // Nghe xong thẻ thu gọn: đặt animation ngoài cùng để nền và nội dung cùng chuyển động. (Đặt trước nền thì nền đổi cỡ
         // tức thì trong khi tiêu đề còn đang hạ xuống, lòi ra ngoài thẻ. Cũng không dùng geometryGroup: nó làm các nút cũ rơi
@@ -363,9 +363,10 @@ struct VoiceEntryView: View {
     /// Mờ dần chậm thì chữ cũ và mới chồng lên nhau, sóng âm còn nằm lại trong lúc phần trên đã hạ xuống đè lên nó.
     private static let swap: AnyTransition = .opacity.animation(.easeOut(duration: 0.09))
     /// Nút Quét QR phình thành thẻ: nảy nhẹ, dừng hẳn trong ~0,6 giây (trước khi bật micro, xem chỗ dùng)
-    /// Bo góc thẻ. Thẻ mở ra nằm đè lên nút Nhập ở đáy trang chủ (cùng cách mép 16 điểm; nút cao 78, bo 39): góc thẻ phải bo
-    /// hẹp hơn góc nút thì mới che kín nút — bo 42 thì mép nút ló ra thành một vệt cong ở góc dưới thẻ
-    private static let corner: CGFloat = 34
+    /// Bo góc thẻ: đúng bằng góc nút Nhập ở đáy trang chủ (nút cao 78 nên bo 39, cung tròn như Capsule). Thẻ mở ra nằm đè lên
+    /// nút ấy, cùng cách mép 16 điểm, nên mép thẻ trùng khít mép trái và góc dưới của nút — bo rộng hơn (42) thì mép nút ló ra
+    /// thành một vệt cong ở góc dưới thẻ, nhìn như góc thẻ bị lõm
+    private static let corner: CGFloat = 39
     private static let pop: Animation = .spring(duration: 0.42, bounce: 0.2)
     /// Nghe xong thẻ thu gọn; bấm Nói lại thẻ giãn ra
     private static let settle: Animation = .snappy(duration: 0.35 * pace)

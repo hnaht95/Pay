@@ -64,7 +64,7 @@ struct HistoryView: View {
             .background(Palette.surface)
             // Tiêu đề và ô tìm tự vẽ, ghim trên vùng cuộn (thay thanh tiêu đề của hệ thống, cao thấp khác nhau theo bản iOS);
             // nội dung cuộn lên cắt gọn ở vạch dưới ô tìm. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)
-            .softTitleBar(plain: true) {
+            .softTitleBar {
                 VStack(spacing: 0) {
                     Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
                         .frame(maxWidth: .infinity)

@@ -67,7 +67,7 @@ struct StatsView: View {
         NavigationStack {
             ScrollView { content(items, prev) }
             .coordinateSpace(name: "navScroll")
-            .softTopEdge(fade: Self.page, home: true)
+            .softTopEdge(fade: Self.page)
             .background(Self.page.ignoresSafeArea())
             .screenTitle(L("Thống kê"))
 
@@ -81,12 +81,11 @@ struct StatsView: View {
     private func content(_ items: [Expense], _ prev: [Expense]) -> some View {
         VStack(spacing: 20) {
             if film != nil { monthTabs } else { periodHeader }
-            // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur); dải ngày nhoè theo từng viên
-            hero(items, prev).navEdgeBlur()
-            grid(items, prev).navEdgeBlur()
+            hero(items, prev)
+            grid(items, prev)
             if !items.isEmpty {
-                categoryCard(items).navEdgeBlur()
-                recentCard(items).navEdgeBlur()
+                categoryCard(items)
+                recentCard(items)
             }
         }
         // Khoảng dưới vạch tiêu đề (tới dòng tháng) bằng khoảng trên vạch (tới chữ tiêu đề)
@@ -129,7 +128,6 @@ struct StatsView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Text(byMonth ? monthYear(month) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
-                    .navEdgeBlur()
                     .contentTransition(.numericText())
                     .animation(.snappy, value: monthYear(shown))
                 Spacer()
@@ -150,7 +148,7 @@ struct StatsView: View {
             if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 14).navEdgeBlur().id(d) }
+                    ForEach(days, id: \.self) { d in dayPill(d, spent: byDay[d] ?? 0, top: top).softScrollEdge(zone: 14).id(d) }
                 }
                 .scrollTargetLayout()
             }
@@ -226,7 +224,7 @@ struct StatsView: View {
         return ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 6) {
-                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 14).navEdgeBlur().id(m) }
+                    ForEach(Array(months.enumerated()), id: \.element) { i, m in monthPill(m, spent: totals[i], top: top).softScrollEdge(zone: 14).id(m) }
                 }
                 .scrollTargetLayout()
             }

@@ -67,7 +67,7 @@ struct SettingsView: View {
                 }
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+            .softTopEdge(fade: Color(.systemGroupedBackground))
             .screenTitle(L("Cài đặt"))
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -1024,7 +1024,7 @@ struct CategoryEditor: View {
                 .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }
             // Mép trên vùng cuộn mờ dần (không cắt ngang dưới tiêu đề)
-            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+            .softTopEdge(fade: Color(.systemGroupedBackground))
             // Bàn phím hiện lên thì Huỷ / Lưu nằm yên ở đáy, bị bàn phím che (không bị đẩy lên đè lên ô Ảnh)
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .fullScreenCover(item: $cropping) { c in
@@ -1202,7 +1202,7 @@ struct QuickAccessHelp: View {
             }
         }
         .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-        .softTopEdge(fade: Color(.systemGroupedBackground), home: true, back: true)
+        .softTopEdge(fade: Color(.systemGroupedBackground), back: true)
         .screenTitle(L("Truy cập nhanh"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1256,7 +1256,7 @@ struct ApplePayHelp: View {
                 Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }
         }
-        .softTopEdge(fade: Color(.systemGroupedBackground), home: true, back: true)
+        .softTopEdge(fade: Color(.systemGroupedBackground), back: true)
         .screenTitle(L("Tự ghi khi trả Apple Pay"))
         .navigationBarTitleDisplayMode(.inline)
     }

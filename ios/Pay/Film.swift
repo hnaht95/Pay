@@ -114,6 +114,10 @@ struct FilmScroll<Content: View>: View {
             }
         } else {
             ScrollView(axes, showsIndicators: axes == .vertical) { content }
+                #if DEBUG
+                // Ảnh so sánh (scripts/shots.sh): -shotScroll 0.5 mở sẵn vùng cuộn dọc ở giữa, 1 ở cuối
+                .defaultScrollAnchor(axes == .vertical ? UserDefaults.standard.object(forKey: "shotScroll").map { UnitPoint(x: 0.5, y: CGFloat(($0 as? NSNumber)?.doubleValue ?? Double("\($0)") ?? 0)) } : nil)
+                #endif
         }
     }
 }

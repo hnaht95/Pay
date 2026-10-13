@@ -62,7 +62,7 @@ struct HomeView: View {
 
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
-                    header(now).topScrollBlur()
+                    header(now)
                     // Chạm: mở Thống kê; nhấn giữ: đổi màu thẻ
                     TapHold(tap: { showStats = true }, hold: {
                         // Đầu bảng như bảng nhấn giữ danh mục: ô bo góc màu thẻ, biểu tượng ở giữa
@@ -72,11 +72,10 @@ struct HomeView: View {
                                            title: L("Hôm nay đã chi"), subtitle: nil,
                                            items: [AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi màu thẻ"), plain: true) { pickingHero = true }])
                     }) { hero(now) }
-                        .topScrollBlur()
                         .padding(.top, 14)
 
-                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }.topScrollBlur()
-                    tiles(now).topScrollBlur()
+                    sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }
+                    tiles(now)
 
                     sectionTitle(L("Gần đây")) {
                         Button { showHistory = true } label: {
@@ -86,11 +85,10 @@ struct HomeView: View {
                         }
                         .buttonStyle(Pressable()).foregroundStyle(.primary)
                     }
-                    .topScrollBlur()
                     recent
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, Self.nativeEdge && film == nil ? 16 : 120)
+                .padding(.bottom, 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
             .statusBarEdge(on: film == nil)
@@ -132,6 +130,19 @@ struct HomeView: View {
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store).sheetCorners() }
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store).sheetCorners() }
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
+        #if DEBUG
+        // Ảnh so sánh giữa các bản iOS (scripts/shots.sh): -shotOpen stats|settings|history|house|entry mở sẵn một màn
+        .task {
+            switch UserDefaults.standard.string(forKey: "shotOpen") {
+            case "stats": showStats = true
+            case "settings": showSettings = true
+            case "history": showHistory = true
+            case "house": showHouse = true
+            case "entry": entry = .new(cat: nil)
+            default: break
+            }
+        }
+        #endif
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store).sheetGrabber() }
         // Vuốt lên từ nút Quét QR: thẻ nói để ghi là một lớp ngay trên màn hình chính, biến hình từ nút ra.
@@ -420,9 +431,6 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
-                    // Không gắn topScrollBlur cho hàng trong List: trên iOS cũ hơn 27 mỗi hàng thành lớp hiệu ứng riêng (shader nhoè
-                    // mép trên và mép đáy), vuốt xoá thì hàng dịch mỗi khung hình nên SwiftUI tính và vẽ lại lớp đó liên tục, vuốt bị
-                    // giật. Hàng trôi lên dưới thanh trạng thái / xuống sau hai nút chỉ còn lớp màu nền mờ dần (không nhoè)
                     TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
@@ -440,37 +448,12 @@ struct HomeView: View {
         }
     }
 
-    /// iOS 26: chừa chỗ cho thanh nút bằng safeAreaBar (không cần đệm 120pt ở cuối nội dung).
-    static var nativeEdge: Bool { if #available(iOS 26.0, *) { true } else { false } }
-
-    /// Lớp mờ dưới đáy (mọi phiên bản iOS): mờ đậm sát cạnh dưới, nhạt dần lên trên, để nút nổi dễ nhìn khi nội dung cuộn qua.
-    @ViewBuilder private var bottomBlur: some View {
-        if film != nil {
-            // Phim: cùng các mốc ấy, bằng dải màu đặc (xem FilmFade)
-            FilmFade(color: Palette.bg, stops: [(0, 1), (0.28, 1), (0.45, 0.85), (0.62, 0.55), (0.8, 0.25), (1, 0)], height: 170)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-        } else {
-            bottomGradient
-        }
-    }
-
-    private var bottomGradient: some View {
-        // Chỉ chuyển dần sang màu nền, không dùng lớp kính mờ: kính mờ cộng lớp màu nền phủ lên trông đục như sữa.
-        // Nhiều mốc theo đường cong êm để không thấy vạch ranh giới.
-        LinearGradient(stops: [
-            // Gọn và trong như mép mềm của iOS 26+: chỉ phủ nhẹ màu nền tới quá mép trên hai nút một chút, phần nhoè do
-            // từng khối nội dung tự làm (dockBlur). Trước: dải đặc cao 170 trông đục, rộng
-            .init(color: Palette.bg.opacity(0.9), location: 0),
-            .init(color: Palette.bg.opacity(0.7), location: 0.35),
-            .init(color: Palette.bg.opacity(0.3), location: 0.7),
-            .init(color: Palette.bg.opacity(0), location: 1),
-        ], startPoint: .bottom, endPoint: .top)
-        .frame(height: 120)
-        .frame(maxHeight: .infinity, alignment: .bottom)
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+    /// Lớp mờ sau hai nút khi dựng phim: dải màu đặc (xem FilmFade). Ngoài phim withDock tự vẽ EdgeFade
+    private var bottomBlur: some View {
+        FilmFade(color: Palette.bg, stops: [(0, 1), (0.28, 1), (0.45, 0.85), (0.62, 0.55), (0.8, 0.25), (1, 0)], height: 170)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 
     /// Hai nút nổi trên nội dung, nền kính (Liquid Glass trên iOS 26).
@@ -903,28 +886,6 @@ struct BigButton: View {
     static let cancelTint = Color(hex: 0xC2410C)
 }
 
-extension View {
-    /// Gắn thanh nút ở đáy. iOS 26: safeAreaBar + mép cuộn mờ dần của hệ thống. iOS cũ: tự phủ lớp mờ.
-    /// above: lớp nằm trên lớp mờ, dưới hai nút, sát mép trên dải nút (vd thanh "Đã xoá · Hoàn tác"). iOS 26: là lớp phủ riêng
-    /// của màn hình (safeAreaBar đẩy đáy vùng an toàn lên tới mép trên dải nút), không gắn vào dải nút: gắn vào dải thì lớp mờ
-    /// cạnh cuộn của hệ thống tính theo cả nó, thanh biến mất là lớp mờ đổi theo
-    @ViewBuilder func withDock<D: View, B: View, A: View>(dock: D, fallbackBlur: B, film: Bool = false,
-                                                          @ViewBuilder above: () -> A = { EmptyView() }) -> some View {
-        let attached = dock.background(alignment: .top) { above().alignmentGuide(.top) { $0[.bottom] + 8 } }
-        if film {
-            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached.padding(.bottom, FilmScreen<EmptyView>.insets.bottom) } }
-        } else if #available(iOS 26.0, *) {
-            // Chỉ dùng mép mờ của hệ thống, cùng kiểu thanh tiêu đề (không phủ thêm lớp chuyển màu tự làm)
-            // Thanh "Đã xoá · Hoàn tác" xếp ngay trên dải nút, trong cùng thanh đáy. Không làm lớp phủ: phủ lên nội dung thì nó
-            // nằm sau dải nút (không thấy), phủ ra ngoài khung dải nút thì thấy nhưng không bấm được (chạm lọt xuống hàng bên dưới)
-            safeAreaBar(edge: .bottom) { VStack(spacing: 8) { above(); dock } }
-                .scrollEdgeEffectStyle(.soft, for: .bottom)
-        } else {
-            overlay(alignment: .bottom) { ZStack(alignment: .bottom) { fallbackBlur; attached } }
-        }
-    }
-}
-
 /// Trước đây gom nút kính của iOS 26; giờ nút vẽ phẳng nên chỉ trả lại nội dung.
 struct GlassGroup<Content: View>: View {
     @ViewBuilder let content: Content
@@ -935,239 +896,6 @@ extension View {
     /// Nền phẳng hình viên thuốc (kiểu Peek): nút chính màu đặc, nút phụ xám nhạt; không kính, không viền, không bóng.
     func glassCapsule(tint: Color?) -> some View {
         background { Capsule().fill(tint ?? Palette.pill) }
-    }
-}
-
-extension View {
-    /// Mép trên vùng cuộn mờ dần dưới thanh tiêu đề (kiểu mềm của iOS 26), như màn nhóm chung — không phải vạch cắt ngang
-    /// Màn không có thanh tiêu đề (trang chủ). iOS 27 tự nhoè nội dung dưới thanh trạng thái; iOS cũ hơn thì không (đã thấy trên
-    /// iOS 18 máy thật và máy ảo 26.2): chữ cuộn lên đè thẳng vào đồng hồ và pin. Ở các bản cũ đó tự phủ một dải lên vùng thanh
-    /// trạng thái: lớp kính mờ làm nhoè nội dung, cộng màu nền đặc ở trên cùng nhạt dần xuống dưới
-    /// iOS cũ hơn 27 (trang chủ không có mép cuộn mềm của hệ thống): phần nội dung trôi lên dưới thanh trạng thái nhoè dần
-    /// theo từng điểm ảnh, càng sát mép trên càng nhoè (shader topEdgeBlur), như iOS 27. Áp cho từng khối nội dung, không áp
-    /// lên vùng cuộn / List được (hiệu ứng lớp không vẽ được phần của UIKit)
-    @ViewBuilder func topScrollBlur() -> some View {
-        // iOS 26: không gắn hiệu ứng lớp. Trên iOS 26.2, chỉ cần trang chủ có một khối gắn hiệu ứng này là các lớp phủ tự vẽ của
-        // trang (bảng nhấn giữ danh mục / thẻ Hôm nay đã chi, thẻ nói để ghi khi vuốt lên từ nút Quét QR) được gán mà không bao
-        // giờ hiện; các màn mở dạng tấm (sheet) thì vẫn lên. iOS 18 và iOS 27 không bị. Mép trên trên iOS 26 vì thế chỉ còn dải
-        // màu nền nhạt dần dưới thanh trạng thái (statusBarEdge), không nhoè theo từng điểm ảnh
-        if #available(iOS 26.0, *) { self }
-        else { topScrollBlurOld().dockBlur() }
-    }
-
-    /// iOS cũ hơn 26: nội dung trôi xuống sau hai nút ở đáy nhoè dần như mép cuộn mềm của iOS 26+ (hệ thống không làm)
-    @ViewBuilder func dockBlur() -> some View {
-        if #available(iOS 26.0, *) { self } else {
-            let screenH = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.height ?? 852
-            // Nhoè hết mức ngang giữa hai nút, nhạt dần trong 60 pt phía trên
-            let edge = screenH - 60
-            visualEffect { content, g in
-                let f = g.frame(in: .global)
-                return content.layerEffect(ShaderLibrary.bottomEdgeBlur(.float(edge - f.minY), .float(60), .float(6)),
-                                           maxSampleOffset: CGSize(width: 10, height: 10), isEnabled: f.maxY > edge - 60)
-            }
-        }
-    }
-
-    private func topScrollBlurOld() -> some View {
-        let safeTop = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 59
-        return visualEffect { content, g in
-            let y = g.frame(in: .global).minY
-            return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(-y), .float(safeTop + 14), .float(7)),
-                                       maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < safeTop + 14)
-        }
-    }
-
-    /// Như topScrollBlur nhưng theo chân thanh tiêu đề tự vẽ (edge: toạ độ toàn màn), cho iOS cũ hơn 26 (không có mép cuộn mềm)
-    @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
-        if SystemEdge.homeTop { self }
-        else if on {
-            overlay(alignment: .top) {
-                GeometryReader { g in
-                    // Giống mép cuộn mềm của iOS 27: kính mờ (nội dung trôi lên vẫn thấy nhoè nhoè), chỉ phủ nhẹ màu nền,
-                    // tan dần qua chân thanh trạng thái thay vì một dải gần như đặc
-                    let bar = g.safeAreaInsets.top, tail: CGFloat = 26, end = bar / (bar + tail)
-                    // iOS 26 trở lên không có lớp nhoè từng khối của app (topScrollBlur chỉ chạy trên iOS cũ hơn 26), nên chỉ phủ
-                    // nhẹ màu nền thì chữ cuộn lên vẫn đè rõ lên đồng hồ. Ở đó dùng kính mờ làm nhoè nội dung, cộng màu nền đậm
-                    // hơn: đặc ở mép trên, nhạt dần qua chân thanh trạng thái
-                    let strong: Bool = { if #available(iOS 26.0, *) { true } else { false } }()
-                    ZStack {
-                        if strong { Rectangle().fill(.ultraThinMaterial) }
-                        LinearGradient(stops: [.init(color: color.opacity(strong ? 1 : 0.6), location: 0),
-                                               .init(color: color.opacity(strong ? 0.8 : 0.3), location: end),
-                                               .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                    }
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(strong ? 1 : 0.9), location: end * (strong ? 1 : 0.8)),
-                                                 .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-                    .frame(height: bar + tail)
-                    .offset(y: -bar)
-                }
-                .allowsHitTesting(false)
-            }
-        } else { self }
-    }
-
-    /// fade: màu nền của màn. Mép nhoè của hệ thống khá nhẹ, nội dung sáng màu (các ô lịch trắng của Thống kê) vẫn lộ rõ quanh
-    /// tiêu đề; có màu này thì phủ thêm nền đặc sau thanh tiêu đề, nhạt dần xuống dưới (như đầu trang Nhóm chung, Khoản chung)
-    /// iOS cũ hơn 26, như mép trên trang chủ (dưới đồng hồ): khối nội dung trôi lên dưới thanh tiêu đề nhoè dần theo từng điểm
-    /// ảnh (shader topEdgeBlur), càng sát mép trên càng nhoè. Vùng cuộn phải có coordinateSpace(name: "navScroll") và gắn
-    /// softTopEdge(home: true). Đo trên máy ảo iOS 18: thanh tiêu đề trong tấm cao 56
-    /// Các tấm có thanh tiêu đề (Thống kê, Cài đặt, Thông báo…) không còn nhoè nội dung dưới thanh tiêu đề: nội dung cắt gọn ở
-    /// vạch dưới thanh (xem softTopEdge(home:)). Giữ hàm để các chỗ gọi không phải đổi
-    func navEdgeBlur() -> some View { self }
-
-    /// iOS 26+: tắt hẳn hiệu ứng mép cuộn ở mép trên (không nhoè, không lớp nền của hệ thống sau thanh tiêu đề)
-    @ViewBuilder func noTopEdgeEffect() -> some View {
-        if #available(iOS 26.0, *) { scrollEdgeEffectHidden(true, for: .top) } else { self }
-    }
-
-    /// home: iOS cũ hơn 26 làm như mép trên trang chủ — chỉ phủ nhẹ màu nền, phần nhoè do từng khối tự làm (navEdgeBlur)
-    /// back: trang được đẩy vào trong một tấm (có nút quay lại ở thanh tiêu đề)
-    @ViewBuilder func softTopEdge(fade: Color? = nil, home: Bool = false, back: Bool = false) -> some View {
-        if home {
-            // Các tấm có thanh tiêu đề (Thống kê, Cài đặt, Thông báo, sửa nhóm / thành viên / danh mục, chọn ngân hàng…): như Lịch sử
-            // chi tiêu — thanh tiêu đề do app tự vẽ (xem screenTitle), nền đặc đúng màu trang, một vạch mảnh bên dưới, nội dung cuộn
-            // lên cắt gọn ở vạch, không nhoè. Tự vẽ để mọi bản iOS giống hệt nhau (thanh của hệ thống mỗi bản cao thấp, đậm nhạt
-            // một khác). Ở đây chỉ tắt hiệu ứng mép cuộn của iOS 26+ và báo màu nền cho screenTitle
-            noTopEdgeEffect().preference(key: TitleBarKey.self, value: TitleBarStyle(color: fade ?? Palette.bg, back: back))
-        } else if #available(iOS 26.0, *) {
-            scrollEdgeEffectStyle(.soft, for: .top)
-                .overlay(alignment: .top) {
-                    // home: màu fade chỉ dùng cho dải màu nhẹ của iOS cũ; iOS 26+ để nguyên mép mềm của hệ thống (trong như trang chủ)
-                    if let fade, !home {
-                        // Đo chiều cao thanh tiêu đề (vùng an toàn phía trên của vùng cuộn) để phủ đúng từ mép trên bảng xuống
-                        // quá chân thanh tiêu đề 22pt: đặc sau tiêu đề, nhạt dần ở đoạn ló xuống
-                        GeometryReader { g in
-                            let bar = g.safeAreaInsets.top, tail: CGFloat = 22
-                            LinearGradient(stops: [.init(color: fade, location: 0), .init(color: fade, location: bar / (bar + tail)),
-                                                   .init(color: fade.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                                .frame(height: bar + tail)
-                                .offset(y: -bar)
-                        }
-                        .allowsHitTesting(false)
-                    }
-                }
-        } else {
-            // iOS cũ hơn 26 không có mép cuộn mềm: thanh tiêu đề của hệ thống hiện một dải nền đục, cắt ngang khi nội dung cuộn
-            // lên. Bỏ dải đó, tự phủ kính mờ sau thanh tiêu đề, phần ló xuống dưới tan dần, cộng một lớp màu nền nhẹ: giống mép
-            // mềm của iOS 26+ (thanh tiêu đề vẽ trên lớp này nên chữ tiêu đề vẫn rõ)
-            toolbarBackground(.hidden, for: .navigationBar)
-                .overlay(alignment: .top) {
-                    if home {
-                        // Cùng dải màu của statusBarEdge (trang chủ)
-                        GeometryReader { g in
-                            let bar = g.safeAreaInsets.top, tail: CGFloat = 26, color = fade ?? Palette.bg
-                            LinearGradient(stops: [.init(color: color.opacity(0.6), location: 0), .init(color: color.opacity(0.3), location: bar / (bar + tail)),
-                                                   .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                            .frame(height: bar + tail)
-                            .offset(y: -bar)
-                        }
-                        .allowsHitTesting(false)
-                    } else {
-                    GeometryReader { g in
-                        let bar = g.safeAreaInsets.top, tail: CGFloat = 24, end = bar / (bar + tail)
-                        let color = fade ?? Palette.bg
-                        ZStack {
-                            Rectangle().fill(.ultraThinMaterial)
-                                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: end * 0.85),
-                                                             .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-                            LinearGradient(stops: [.init(color: color.opacity(0.75), location: 0), .init(color: color.opacity(0.5), location: end),
-                                                   .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                        }
-                        .frame(height: bar + tail)
-                        .offset(y: -bar)
-                    }
-                    .allowsHitTesting(false)
-                    }
-                }
-        }
-    }
-
-    /// Thanh nút ở đáy, phía sau mờ dần đúng kiểu thanh tiêu đề (mép cuộn mềm của iOS 26)
-    @ViewBuilder func bottomBar<B: View>(@ViewBuilder _ bar: () -> B) -> some View {
-        if #available(iOS 26.0, *) {
-            // Bàn phím hiện lên thì hai nút nằm yên ở đáy, bị bàn phím che (không bị đẩy lên đè vào nội dung)
-            safeAreaBar(edge: .bottom, spacing: 0, content: bar).scrollEdgeEffectStyle(.soft, for: .bottom)
-                .ignoresSafeArea(.keyboard, edges: .bottom)
-        } else {
-            // iOS cũ: gọn và trong như mép mềm của iOS 26+ (cùng dải màu sau hai nút ở trang chủ): chỉ phủ nhẹ màu nền tới quá
-            // mép trên hai nút một chút. Trước: dải đặc cao 220 làm nội dung phía trên hai nút trắng đục
-            safeAreaInset(edge: .bottom, spacing: 0) {
-                bar().background(alignment: .bottom) {
-                    let bg = Color(.systemGroupedBackground)
-                    LinearGradient(stops: [
-                        .init(color: bg.opacity(0.9), location: 0), .init(color: bg.opacity(0.7), location: 0.35),
-                        .init(color: bg.opacity(0.3), location: 0.7), .init(color: bg.opacity(0), location: 1),
-                    ], startPoint: .bottom, endPoint: .top)
-                    .frame(height: 120).offset(y: 34)
-                    .allowsHitTesting(false)
-                }
-            }
-            .ignoresSafeArea(.keyboard, edges: .bottom)
-        }
-    }
-
-    /// Tiêu đề màn hình: cỡ 21 đậm, bằng "Sửa / Lưu khoản chi" (tiêu đề mặc định của iOS nhỏ quá)
-    func screenTitle(_ title: String) -> some View { modifier(ScreenTitle(title: title)) }
-}
-
-/// Kiểu thanh tiêu đề tự vẽ của một tấm: màu nền (màu trang) và có nút quay lại hay không. softTopEdge(home: true) báo lên
-struct TitleBarStyle: Equatable {
-    var color: Color
-    var back = false
-}
-
-struct TitleBarKey: PreferenceKey {
-    static let defaultValue: TitleBarStyle? = nil
-    static func reduce(value: inout TitleBarStyle?, nextValue: () -> TitleBarStyle?) { value = value ?? nextValue() }
-}
-
-/// Tiêu đề màn. Tấm có softTopEdge(home: true): ẩn thanh tiêu đề của hệ thống, tự vẽ thanh ghim trên vùng cuộn — chữ 21 đậm ở
-/// giữa, cách mép trên tấm 20 và cách vạch 20, vạch mảnh lùi 16 hai bên, nền đặc màu trang tràn lên mép trên tấm — nên iOS 18,
-/// 26, 27 ra cùng một hình. Màn khác: tiêu đề nằm trong thanh của hệ thống như trước
-private struct ScreenTitle: ViewModifier {
-    let title: String
-    @State private var bar: TitleBarStyle?
-    @Environment(\.dismiss) private var dismiss
-
-    func body(content: Content) -> some View {
-        content
-            .onPreferenceChange(TitleBarKey.self) { bar = $0 }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if let bar {
-                    VStack(spacing: 0) {
-                        ZStack {
-                            Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
-                                .padding(.horizontal, bar.back ? 60 : 20)
-                            if bar.back {
-                                HStack {
-                                    Button { dismiss() } label: {
-                                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
-                                            .frame(width: 40, height: 40)
-                                            .background(Color.primary.opacity(0.06), in: Circle())
-                                            .contentShape(Circle())
-                                    }
-                                    .buttonStyle(Pressable()).foregroundStyle(.primary)
-                                    .accessibilityLabel(L("Quay lại"))
-                                    Spacer()
-                                }
-                                .padding(.leading, 12)
-                            }
-                        }
-                        // Cao cố định theo dòng chữ: nút quay lại (40) tràn ra trên dưới chứ không làm thanh cao thêm, nên trang có nút
-                        // và trang không có nút cao bằng nhau
-                        .frame(maxWidth: .infinity).frame(height: 26)
-                        .padding(.top, 20).padding(.bottom, 20)
-                        Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
-                    }
-                    .background { bar.color.ignoresSafeArea(edges: .top) }
-                }
-            }
-            .navigationTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .principal) { Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1) }
-            }
-            .toolbar(bar == nil ? .automatic : .hidden, for: .navigationBar)
     }
 }
 
@@ -1222,7 +950,7 @@ private struct PickPage<T: Hashable>: View {
             }
         }
         .textCase(nil)
-        .softTopEdge(fade: Color(.systemGroupedBackground), home: true, back: true)
+        .softTopEdge(fade: Color(.systemGroupedBackground), back: true)
         .screenTitle(title)
     }
 }
@@ -1316,14 +1044,3 @@ extension Font {
     static let rowAmount = Font.system(size: 15, weight: .medium)
 }
 
-/// Mép trên trang chủ (dưới đồng hồ, pin): iOS 27 tự nhoè nội dung cuộn lên, nhưng chỉ với app được dựng bằng SDK iOS 27 trở
-/// lên. Bản dựng bằng Xcode cũ hơn (SDK 26) chạy trên iOS 27 không được hệ thống nhoè giúp, nên app vẫn phải tự phủ dải mờ như
-/// trên iOS cũ. Xem SDK lúc dựng trong Info.plist (DTSDKName, vd "iphoneos26.2")
-enum SystemEdge {
-    static let homeTop: Bool = {
-        guard #available(iOS 27.0, *) else { return false }
-        let sdk = Bundle.main.object(forInfoDictionaryKey: "DTSDKName") as? String ?? ""
-        let major = Int(sdk.drop { !$0.isNumber }.prefix { $0.isNumber }) ?? 0
-        return major >= 27
-    }()
-}

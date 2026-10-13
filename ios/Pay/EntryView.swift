@@ -1153,7 +1153,7 @@ struct BankChooser: View {
                     Text(L("Đổi lại bất cứ lúc nào trong Cài đặt › Thanh toán."))
                 }
             }
-            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+            .softTopEdge(fade: Color(.systemGroupedBackground))
             .screenTitle(L("Bạn dùng app ngân hàng nào?"))
             .navigationBarTitleDisplayMode(.inline)
         }

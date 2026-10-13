@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Form của các màn cài đặt / chỉnh sửa. iOS 26+ và iOS 17: Form như thường (iOS 26+ có mép cuộn mềm của hệ thống).
+/// Form của các màn cài đặt / chỉnh sửa. iOS 26+ và iOS 17: Form như thường .
 /// iOS 18–25: vẫn là Form (giữ chevron, chọn hàng, Picker, Toggle… của hệ thống) nhưng nền từng ô tự vẽ thay cho nền ô của
 /// UIKit, để nội dung lẫn nền ô trôi lên dưới thanh tiêu đề nhoè dần theo từng điểm ảnh như mép trên trang chủ (nền ô của
-/// UIKit không làm nhoè được: chữ nhoè còn khung ô vẫn sắc). Đi kèm softTopEdge(home: true).
+/// UIKit không làm nhoè được: chữ nhoè còn khung ô vẫn sắc).
 struct BlurForm<Content: View>: View {
     @ViewBuilder var content: Content
     /// Chân thanh tiêu đề, toạ độ toàn màn (đỉnh vùng an toàn của Form)

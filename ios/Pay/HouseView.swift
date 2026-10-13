@@ -71,14 +71,13 @@ struct HouseView: View {
             Palette.bg.ignoresSafeArea()
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
-                    if !Self.nativeTop { header.hidden() }   // iOS cũ: giữ chỗ cho đầu trang phủ bên trên
+                    header.hidden()   // giữ chỗ cho đầu trang phủ bên trên
                     content
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 120)
             }
-            // Đầu trang (‹, chuông, ⋯) cố định. iOS 26: thanh của hệ thống, nội dung cuộn lên nhoè dưới nó (cạnh cuộn mềm như
-            // Ghi chú, Cài đặt). iOS cũ: phủ dải màu nền mờ dần
+            // Đầu trang (‹, chuông, ⋯) cố định, phủ dải màu nền mờ dần
             .modifier(PinnedHeader(header: header.padding(.horizontal, 16), film: film != nil))
             // Không có kéo-để-tải-lại: nó giành mất cử chỉ vuốt xuống để ẩn bảng. Sổ tự tải khi mở, khi app quay lại và khi có thông báo
             .withDock(dock: dock, fallbackBlur: bottomFade, film: film != nil)
@@ -179,9 +178,6 @@ struct HouseView: View {
         }
     }
 
-    /// iOS 26: đầu trang là thanh của hệ thống (safeAreaBar), không cần chừa chỗ trong nội dung
-    static var nativeTop: Bool { if #available(iOS 26.0, *) { true } else { false } }
-
     /// Nút "Thêm khoản chung" nổi ở đáy (chỉ khi đã vào nhóm)
     private var inGroup: Bool { house.phase == .ready && house.current != nil && !creating }
 
@@ -193,26 +189,14 @@ struct HouseView: View {
             .padding(.horizontal, 16)
             // Sát vạch Home hơn (cách mép dưới 16 điểm, bằng lề hai bên): để nguyên vùng an toàn 34 điểm + 8 thì
             // dưới hai nút trống một khoảng lớn
-            .padding(.bottom, HomeView.nativeEdge ? -18 : 8)
+            .padding(.bottom, -18)
         }
     }
 
-    /// Nền dưới nút chuyển dần sang màu nền, giống màn hình chính
+    /// Lớp mờ sau nút khi dựng phim: dải màu đặc (xem FilmFade). Ngoài phim withDock tự vẽ EdgeFade
     private var bottomFade: some View {
-        Color.clear
-            .overlay(alignment: .bottom) {
-                if film != nil {
-                    // Phim: cùng các mốc ấy, bằng dải màu đặc (xem FilmFade)
-                    FilmFade(color: Palette.bg, stops: [(0, 1), (0.3, 1), (0.6, 0.6), (1, 0)], height: 170)
-                } else {
-                    // iOS cũ hơn 26: gọn và trong như mép mềm của iOS 26+, cùng dải màu sau hai nút ở trang chủ (trước: dải đặc
-                    // cao 170 trông đục)
-                    LinearGradient(stops: [.init(color: Palette.bg.opacity(0.9), location: 0), .init(color: Palette.bg.opacity(0.7), location: 0.35),
-                                           .init(color: Palette.bg.opacity(0.3), location: 0.7), .init(color: Palette.bg.opacity(0), location: 1)],
-                                   startPoint: .bottom, endPoint: .top)
-                        .frame(height: 120)
-                }
-            }
+        FilmFade(color: Palette.bg, stops: [(0, 1), (0.3, 1), (0.6, 0.6), (1, 0)], height: 170)
+            .frame(maxHeight: .infinity, alignment: .bottom)
             .ignoresSafeArea()
             .allowsHitTesting(false)
     }
@@ -861,14 +845,12 @@ struct HouseView: View {
                             .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                         }
                         .buttonStyle(Pressable())
-                        .navEdgeBlur()
                     }
-                    // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur)
                     if !pending.isEmpty {
-                        Text(L("Cần xác nhận")).font(.system(size: 21, weight: .bold)).padding(.top, 8).navEdgeBlur()
-                        ForEach(pending) { pendingCard($0).navEdgeBlur() }
+                        Text(L("Cần xác nhận")).font(.system(size: 21, weight: .bold)).padding(.top, 8)
+                        ForEach(pending) { pendingCard($0) }
                     }
-                    Text(L("Gần đây")).font(.system(size: 21, weight: .bold)).padding(.top, 16).navEdgeBlur()
+                    Text(L("Gần đây")).font(.system(size: 21, weight: .bold)).padding(.top, 16)
                     let recent = activity
                     if recent.isEmpty {
                         Text(L("Chưa có gì mới.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.vertical, 20)
@@ -883,7 +865,6 @@ struct HouseView: View {
                             Spacer(minLength: 0)
                         }
                         .padding(.vertical, 6)
-                        .navEdgeBlur()
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)   // trải hết bề ngang, không co thành cột giữa
@@ -891,7 +872,7 @@ struct HouseView: View {
             }
             .coordinateSpace(name: "navScroll")
             .background(Palette.bg.ignoresSafeArea())
-            .softTopEdge(fade: Palette.bg, home: true)
+            .softTopEdge(fade: Palette.bg)
             .screenTitle(L("Thông báo"))
             .navigationBarTitleDisplayMode(.inline)
             .task {
@@ -1095,7 +1076,7 @@ struct HouseGroupEditor: View {
             .screenTitle(L("Sửa nhóm"))
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
-            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+            .softTopEdge(fade: Color(.systemGroupedBackground))
             .bottomBar {
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
@@ -1217,7 +1198,7 @@ struct HouseMemberEditor: View {
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
-            .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
+            .softTopEdge(fade: Color(.systemGroupedBackground))
             .bottomBar {
                 HStack(spacing: 12) {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
@@ -1429,7 +1410,7 @@ struct HouseSpendEditor: View {
             .padding(.horizontal, -18)
             // Tiêu đề ghim ở mép trên vùng cuộn, nền đặc, có vạch mảnh bên dưới; nội dung cuộn lên cắt gọn ở vạch (như Lịch sử
             // chi tiêu, Thống kê, Cài đặt), không nhoè
-            .softTitleBar(plain: true) {
+            .softTitleBar {
                 VStack(spacing: 0) {
                     // Giữa như tiêu đề các màn khác
                     Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold)).lineLimit(1)
@@ -1732,80 +1713,26 @@ struct ChipFlow: Layout {
     }
 }
 
-/// Đầu trang cố định của màn Nhóm chung; iOS 26 dùng cạnh cuộn nhoè của hệ thống.
+/// Đầu trang cố định của màn Nhóm chung: phủ lên vùng cuộn, nền màu trang đặc ở trên, tan dần xuống dưới các nút
+/// (mọi bản iOS cùng một kiểu, không dùng mép cuộn của hệ thống)
 private struct PinnedHeader<H: View>: ViewModifier {
     let header: H
     let film: Bool
 
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *), !film {
-            // Cạnh nhoè của hệ thống quá nhẹ: nội dung vẫn lộ ở khoảng trên các nút rồi bị cắt ở mép bảng. Phủ thêm màu nền đặc
-            // ở trên cùng, nhạt dần xuống ngang các nút (như dải nút dưới đáy màn hình chính)
-            content
-                .safeAreaBar(edge: .top) {
-                    header.background(alignment: .bottom) {
-                        LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.45),
-                                               .init(color: Palette.bg.opacity(0.7), location: 0.7), .init(color: Palette.bg.opacity(0), location: 1)],
-                                       startPoint: .top, endPoint: .bottom)
-                            .padding(.bottom, -24).padding(.top, -40)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            content.overlay(alignment: .top) {
-                header.background(alignment: .top) {
-                    LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.55),
-                                           .init(color: Palette.bg.opacity(0), location: 1)],
-                                   startPoint: .top, endPoint: .bottom)
-                        .padding(.bottom, -28)
-                        .allowsHitTesting(false)
-                }
-            }
-        }
-    }
-}
-
-
-extension View {
-    /// Ghim tiêu đề ở mép trên vùng cuộn. iOS 26: safeAreaBar + mép cuộn mềm của hệ thống (nội dung chui xuống dưới bị nhoè).
-    /// iOS cũ: tiêu đề trên nền đặc, bên dưới có một dải tan dần vào nền
-    /// plain: nền đặc suốt thanh, nội dung cắt gọn ở chân thanh (thanh tự vẽ vạch ngăn nếu cần)
-    @ViewBuilder func softTitleBar<T: View>(plain: Bool = false, @ViewBuilder _ title: () -> T) -> some View {
-        if plain {
-            // Nền đặc suốt thanh, nội dung cuộn lên cắt gọn ở chân thanh (không nhoè)
-            let bg = Palette.surface.padding(.horizontal, -18).allowsHitTesting(false)
-            if #available(iOS 26.0, *) {
-                safeAreaBar(edge: .top, spacing: 0) { title().background { bg } }.scrollEdgeEffectStyle(.hard, for: .top)
-            } else {
-                safeAreaInset(edge: .top, spacing: 0) { title().background { bg } }
-            }
-        } else if #available(iOS 26.0, *) {
-            // Mép nhoè của hệ thống khá nhẹ: nội dung cuộn lên vẫn lộ mờ mờ phía trên tiêu đề. Phủ thêm màu nền đặc ở trên cùng,
-            // nhạt dần xuống ngang chân tiêu đề (như đầu trang màn Nhóm chung), phần nhoè của hệ thống lo đoạn chuyển tiếp
-            safeAreaBar(edge: .top, spacing: 0) {
-                title().background {
-                    LinearGradient(stops: [.init(color: Palette.surface, location: 0), .init(color: Palette.surface, location: 0.5),
-                                           .init(color: Palette.surface.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                        .padding(.horizontal, -18)
-                        .allowsHitTesting(false)
-                }
-            }
-            .scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            safeAreaInset(edge: .top, spacing: 0) {
-                title().background(alignment: .top) {
-                    VStack(spacing: 0) {
-                        Palette.surface
-                        LinearGradient(colors: [Palette.surface, Palette.surface.opacity(0)], startPoint: .top, endPoint: .bottom).frame(height: 18)
-                    }
-                    .padding(.horizontal, -18).padding(.bottom, -18)
+        content.noSystemEdge(.top).overlay(alignment: .top) {
+            header.background(alignment: .top) {
+                LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.55),
+                                       .init(color: Palette.bg.opacity(0), location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+                    .padding(.bottom, -28)
                     .allowsHitTesting(false)
-                }
             }
         }
     }
 }
+
+
 
 /// Danh sách thẻ vuốt xoá như Gần đây ở trang chủ: List (để có vuốt có sẵn của iOS), không tự cuộn, cao vừa đủ số hàng;
 /// tràn ra mép trái / phải như ở trang chủ (expenseSwipe tự lùi hàng vào lại)

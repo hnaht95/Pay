@@ -45,8 +45,41 @@ struct EdgeFade: View {
     }
 }
 
+/// Lớp nhoè thuần: kính mờ của UIKit nhưng chỉ giữ bộ lọc nhoè (gaussianBlur) — bỏ các bộ lọc làm nhạt / tăng sáng màu và
+/// các lớp tô màu phủ lên, vốn làm dải mờ trông đục như sữa. Mép cuộn mặc định của iOS 27 cũng chỉ nhoè, không phủ màu
+struct ClearBlur: UIViewRepresentable {
+    var radius: CGFloat = 12
+
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let v = BlurView(effect: UIBlurEffect(style: .regular))
+        v.radius = radius
+        v.isUserInteractionEnabled = false
+        return v
+    }
+    func updateUIView(_ v: UIVisualEffectView, context: Context) {}
+
+    private final class BlurView: UIVisualEffectView {
+        var radius: CGFloat = 12
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            for s in subviews {
+                if String(describing: type(of: s)).contains("Backdrop") {
+                    // Lớp nhoè (_UIVisualEffectBackdropView): chỉ giữ gaussianBlur, đặt lại độ nhoè
+                    s.layer.filters = s.layer.filters?.filter { (($0 as AnyObject).value(forKey: "name") as? String) == "gaussianBlur" }
+                    (s.layer.filters?.first as? NSObject)?.setValue(radius, forKey: "inputRadius")
+                } else { s.alpha = 0 }   // lớp tô màu phủ lên
+            }
+        }
+        override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+            super.traitCollectionDidChange(previous)
+            setNeedsLayout()
+        }
+    }
+}
+
 extension View {
-    /// Mép trên trang chủ (không có thanh tiêu đề): lớp nhoè phủ vùng thanh trạng thái (đồng hồ, pin), ló xuống dưới 14 điểm,
+    /// Mép trên trang chủ (không có thanh tiêu đề): lớp nhoè phủ vùng thanh trạng thái (đồng hồ, pin), ló xuống dưới 10 điểm,
     /// để nội dung cuộn lên không đè rõ vào đồng hồ
     @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
         if on && !systemEdgeShot {
@@ -54,13 +87,11 @@ extension View {
                 GeometryReader { g in
                     // Như mép cuộn mặc định của iOS 27: chỉ nhoè (gần như không phủ màu), nhoè hết mức ở mép trên, nhạt dần tới
                     // chân thanh trạng thái; nội dung vẫn thấy lờ mờ sau đồng hồ
-                    let bar = g.safeAreaInsets.top, tail: CGFloat = 14, end = bar / (bar + tail)
-                    ZStack {
-                        Rectangle().fill(.ultraThinMaterial)
-                        LinearGradient(colors: [color.opacity(0.35), color.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    }
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.85), location: end * 0.6),
-                                                 .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                    let bar = g.safeAreaInsets.top, tail: CGFloat = 10, end = bar / (bar + tail)
+                    ClearBlur(radius: 12)
+                        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: end * 0.45),
+                                                     .init(color: .black.opacity(0.5), location: end * 0.8), .init(color: .clear, location: 1)],
+                                             startPoint: .top, endPoint: .bottom))
                     .frame(height: bar + tail)
                     .offset(y: -bar)
                     .allowsHitTesting(false)

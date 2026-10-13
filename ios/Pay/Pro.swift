@@ -210,7 +210,7 @@ struct ProPaywall: View {
                         .frame(width: 64 * HandPayPro.aspect, height: 64)
                         .accessibilityElement().accessibilityLabel("Pay Pro")
                         Text(L("Ghi chép luôn miễn phí. Pro dành cho khi bạn dùng Pay lâu dài."))
-                            .font(.system(size: 16)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .font(.app(size: 16)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     .padding(.top, 30).padding(.horizontal, 24)
 
@@ -219,8 +219,8 @@ struct ProPaywall: View {
                     VStack(spacing: 10) {
                         ForEach(ordered) { f in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(f.title).font(.system(size: 18, weight: .semibold))
-                                Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary)
+                                Text(f.title).font(.app(size: 18, weight: .semibold))
+                                Text(f.detail).font(.app(size: 15)).foregroundStyle(.secondary)
                                     .lineLimit(1).minimumScaleFactor(0.85)
                             }
                             // Khung nào cũng cao bằng nhau, chữ nằm giữa theo chiều dọc, lề trái phải bằng nhau
@@ -248,7 +248,7 @@ struct ProPaywall: View {
                         Link(L("Điều khoản"), destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                         Link(L("Quyền riêng tư"), destination: URL(string: "https://peakapp.vn/pay/privacy.html")!)
                     }
-                    .font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+                    .font(.app(size: 13, weight: .medium)).foregroundStyle(.secondary)
                     .padding(.top, 6)
                 }
                 .padding(.bottom, 16)
@@ -265,7 +265,7 @@ struct ProPaywall: View {
                         ProgressView().tint(.white)
                     } else {
                         Text(pro.active ? L("Đã mở Pro, cảm ơn bạn!") : chosen.map { L("Mua %@", $0.displayPrice) } ?? L("Mua"))
-                            .font(.system(size: 21, weight: .semibold))
+                            .font(.app(size: 21, weight: .semibold))
                     }
                 }
                 .foregroundStyle(.white)
@@ -286,14 +286,14 @@ struct ProPaywall: View {
         return Button { if !on { Haptic.select() }; pick = p.id } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(title).font(.system(size: 16, weight: .semibold))
+                    Text(title).font(.app(size: 16, weight: .semibold))
                     Spacer()
-                    Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.system(size: 20))
+                    Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.app(size: 20))
                         .foregroundStyle(on ? Color(hex: 0x61BE6E) : Color.primary.opacity(0.25))
                 }
                 Text(p.id == Pro.yearlyID ? L("%@/năm", p.displayPrice) : p.displayPrice)
-                    .font(.system(size: 22, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
-                Text(note).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)
+                    .font(.app(size: 22, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
+                Text(note).font(.app(size: 12)).foregroundStyle(.secondary).lineLimit(2)
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -83,6 +83,11 @@
 	<string>Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Pay chuyển giọng nói thành chữ để ghi khoản chi.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>SpaceMono-Regular.ttf</string>
+		<string>SpaceMono-Bold.ttf</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

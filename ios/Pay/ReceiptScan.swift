@@ -88,21 +88,21 @@ struct ReceiptCamera: View {
     private var topBar: some View {
         HStack {
             Button { finish(nil) } label: {
-                Image(systemName: "arrow.left").font(.system(size: 22, weight: .medium)).frame(width: 44, height: 44)
+                Image(systemName: "arrow.left").font(.app(size: 22, weight: .medium)).frame(width: 44, height: 44)
             }
             .accessibilityLabel(L("Đóng"))
             Spacer()
             Button { toggle(.warmth) } label: {
-                Image(systemName: "thermometer.medium").font(.system(size: 20, weight: .medium))
+                Image(systemName: "thermometer.medium").font(.app(size: 20, weight: .medium))
                     .foregroundStyle(adjusting == .warmth || cam.warmth != 0 ? Color(hex: 0x61BE6E) : .white)
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel(L("Nhiệt độ màu"))
             Button { toggle(.exposure) } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "sun.max").font(.system(size: 19, weight: .medium))
+                    Image(systemName: "sun.max").font(.app(size: 19, weight: .medium))
                     if cam.exposure != 0 {
-                        Text(String(format: "%+.1f", cam.exposure)).font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        Text(String(format: "%+.1f", cam.exposure)).font(.app(size: 13, weight: .semibold, design: .monospaced))
                     }
                 }
                 .foregroundStyle(adjusting == .exposure || cam.exposure != 0 ? Color(hex: 0x61BE6E) : .white)
@@ -110,7 +110,7 @@ struct ReceiptCamera: View {
             }
             .accessibilityLabel(L("Độ sáng"))
             Button { grid.toggle(); Haptic.select() } label: {
-                Image(systemName: grid ? "squareshape.split.3x3" : "square").font(.system(size: 20, weight: .medium)).frame(width: 44, height: 44)
+                Image(systemName: grid ? "squareshape.split.3x3" : "square").font(.app(size: 20, weight: .medium)).frame(width: 44, height: 44)
             }
             .accessibilityLabel(L("Lưới"))
         }
@@ -131,16 +131,16 @@ struct ReceiptCamera: View {
             }
             if grid { GridLines().stroke(.white.opacity(0.45), lineWidth: 1).allowsHitTesting(false) }
             if let e = cam.error {
-                Text(e).font(.system(size: 16, weight: .medium)).foregroundStyle(.white).multilineTextAlignment(.center).padding(28)
+                Text(e).font(.app(size: 16, weight: .medium)).foregroundStyle(.white).multilineTextAlignment(.center).padding(28)
             }
             if countdown > 0 {
-                Text("\(countdown)").font(.system(size: 96, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                Text("\(countdown)").font(.app(size: 96, weight: .bold, design: .rounded)).foregroundStyle(.white)
                     .contentTransition(.numericText()).shadow(radius: 8)
             }
             // Thước tiêu cự (đang vuốt trái / phải ở chỗ số tiêu cự), cùng kiểu thước hẹn giờ của Peek
             if dialShown {
                 VStack(spacing: 6) {
-                    Text(zoomText(cam.zoom)).font(.system(size: 17, weight: .semibold, design: .monospaced))
+                    Text(zoomText(cam.zoom)).font(.app(size: 17, weight: .semibold, design: .monospaced))
                         .foregroundStyle(ZoomRuler.amber)
                     ZoomRuler(zoom: cam.zoom, min: cam.minZoom, max: cam.maxZoom)
                 }
@@ -167,7 +167,7 @@ struct ReceiptCamera: View {
     /// Chỉ số tiêu cự, chữ đơn cách, không nền. Chạm: đổi nấc (1x · 0.5x · 2x); vuốt trái / phải: thu phóng liền, hiện vòng tiêu cự
     private var zoomControl: some View {
         Text(zoomText(cam.zoom))
-            .font(.system(size: dialShown ? 17 : 15, weight: .semibold, design: .monospaced))
+            .font(.app(size: dialShown ? 17 : 15, weight: .semibold, design: .monospaced))
             .foregroundStyle(dialShown ? Color(hex: 0xFFD43B) : .white)
             .shadow(color: .black.opacity(0.5), radius: 3)
             .opacity(dialShown ? 0 : 1)   // đang hiện vòng tiêu cự: số đã nằm trên vòng
@@ -211,14 +211,14 @@ struct ReceiptCamera: View {
 
     private func slider(_ a: CamAdjust) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: a == .warmth ? "snowflake" : "sun.min").font(.system(size: 14))
+            Image(systemName: a == .warmth ? "snowflake" : "sun.min").font(.app(size: 14))
             Slider(value: a == .warmth ? Binding(get: { Double(cam.warmth) }, set: { cam.setWarmth(Float($0)) })
                                        : Binding(get: { Double(cam.exposure) }, set: { cam.setExposure(Float($0)) }),
                    in: a == .warmth ? -1...1 : -2...2)
                 .tint(Color(hex: 0x61BE6E))
-            Image(systemName: a == .warmth ? "flame" : "sun.max.fill").font(.system(size: 14))
+            Image(systemName: a == .warmth ? "flame" : "sun.max.fill").font(.app(size: 14))
             Button { a == .warmth ? cam.setWarmth(0) : cam.setExposure(0); Haptic.select() } label: {
-                Text(L("Đặt lại")).font(.system(size: 13, weight: .semibold))
+                Text(L("Đặt lại")).font(.app(size: 13, weight: .semibold))
             }
         }
         .foregroundStyle(.white)
@@ -232,7 +232,7 @@ struct ReceiptCamera: View {
     private var toolRow: some View {
         HStack {
             Button { ratio = aspect.next.rawValue; Haptic.select() } label: {
-                Text(aspect.label).font(.system(size: 14, weight: .semibold, design: .monospaced))
+                Text(aspect.label).font(.app(size: 14, weight: .semibold, design: .monospaced))
                     .frame(width: 52, height: 40)
                     .overlay(CornerMarks().stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round)))
             }
@@ -240,9 +240,9 @@ struct ReceiptCamera: View {
             Spacer()
             Button { timer = timer == 0 ? 3 : timer == 3 ? 10 : 0; Haptic.select() } label: {
                 ZStack {
-                    Image(systemName: "timer").font(.system(size: 24))
+                    Image(systemName: "timer").font(.app(size: 24))
                     if timer > 0 {
-                        Text("\(timer)").font(.system(size: 11, weight: .bold)).foregroundStyle(.black)
+                        Text("\(timer)").font(.app(size: 11, weight: .bold)).foregroundStyle(.black)
                             .padding(.horizontal, 4).background(Color(hex: 0x61BE6E), in: Capsule()).offset(x: 14, y: -12)
                     }
                 }
@@ -252,13 +252,13 @@ struct ReceiptCamera: View {
             Spacer()
             Button { cam.nextFlash(); Haptic.select() } label: {
                 Image(systemName: cam.flashMode == .on ? "bolt.fill" : cam.flashMode == .auto ? "bolt.badge.automatic" : "bolt.slash")
-                    .font(.system(size: 24)).foregroundStyle(cam.flashMode == .on ? Color(hex: 0xFFD43B) : .white)
+                    .font(.app(size: 24)).foregroundStyle(cam.flashMode == .on ? Color(hex: 0xFFD43B) : .white)
                     .frame(width: 52, height: 44)
             }
             .accessibilityLabel(L("Đèn flash"))
             Spacer()
             Button { cam.flip(); Haptic.select() } label: {
-                Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 24)).frame(width: 52, height: 44)
+                Image(systemName: "arrow.triangle.2.circlepath").font(.app(size: 24)).frame(width: 52, height: 44)
             }
             .accessibilityLabel(L("Đổi camera"))
         }
@@ -278,7 +278,7 @@ struct ReceiptCamera: View {
             Spacer()
             Button(action: shoot) {
                 Capsule().fill(Color(hex: 0xE8EBDD))
-                    .overlay(Image(systemName: "circle.grid.3x3.fill").font(.system(size: 22)).foregroundStyle(.black.opacity(0.25)))
+                    .overlay(Image(systemName: "circle.grid.3x3.fill").font(.app(size: 22)).foregroundStyle(.black.opacity(0.25)))
                     .frame(width: 170, height: 76)
                     .padding(6)
                     .background(Capsule().fill(.white.opacity(0.08)))
@@ -289,9 +289,9 @@ struct ReceiptCamera: View {
             Spacer()
             Button { withAnimation(.snappy) { showFilters.toggle() }; Haptic.select() } label: {
                 VStack(spacing: 4) {
-                    Image(systemName: "camera.filters").font(.system(size: 24))
+                    Image(systemName: "camera.filters").font(.app(size: 24))
                         .foregroundStyle(filter == .none ? .white : Color(hex: 0x61BE6E))
-                    Text(filter.title).font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                    Text(filter.title).font(.app(size: 12, weight: .semibold)).lineLimit(1)
                 }
                 .foregroundStyle(.white)
                 .frame(width: 58, height: 58)
@@ -306,7 +306,7 @@ struct ReceiptCamera: View {
             HStack(spacing: 8) {
                 ForEach(CamFilter.allCases, id: \.self) { f in
                     Button { filterRaw = f.rawValue; Haptic.select() } label: {
-                        Text(f.title).font(.system(size: 14, weight: .semibold))
+                        Text(f.title).font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(f == filter ? .black : .white)
                             .padding(.horizontal, 14).frame(height: 34)
                             .background(f == filter ? Color(hex: 0x61BE6E) : .white.opacity(0.14), in: Capsule())
@@ -702,7 +702,7 @@ struct ZoomRuler: View {
             ForEach(Self.labels.filter { $0 >= min - 0.01 && $0 <= max + 0.01 }, id: \.self) { z in
                 let v = log2(Double(z)), px = x(v, w)
                 if px > -20 && px < w + 20 {
-                    soften(Text(z < 1 ? ".5" : "\(Int(z))").font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    soften(Text(z < 1 ? ".5" : "\(Int(z))").font(.app(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundStyle(shade(v)), at: px, w)
                         .position(x: px, y: labelHeight / 2)
                 }

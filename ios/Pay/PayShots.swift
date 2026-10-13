@@ -54,7 +54,7 @@ struct PayShotsSheet: View {
         NavigationStack {
             ScrollView {
                 if shots.isEmpty {
-                    Text(L("Chưa có ảnh nào chụp bằng Pay.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.top, 60)
+                    Text(L("Chưa có ảnh nào chụp bằng Pay.")).font(.app(size: 16)).foregroundStyle(.secondary).padding(.top, 60)
                 }
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 3), spacing: 3) {
                     ForEach(shots, id: \.self) { u in
@@ -74,7 +74,7 @@ struct PayShotsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .bottomBar {
                 PhotosPicker(selection: $library, matching: .images) {
-                    Text(L("Chọn từ thư viện ảnh")).font(.system(size: 17, weight: .semibold)).foregroundStyle(.primary)
+                    Text(L("Chọn từ thư viện ảnh")).font(.app(size: 17, weight: .semibold)).foregroundStyle(.primary)
                         .frame(maxWidth: .infinity).frame(height: 56)
                         .background(Palette.card, in: Capsule())
                 }
@@ -109,7 +109,7 @@ struct LatestShotTile: View {
     var body: some View {
         ZStack {
             if let img { Image(uiImage: img).resizable().scaledToFill() }
-            else { Image(systemName: "photo.on.rectangle").font(.system(size: 22)).foregroundStyle(.white) }
+            else { Image(systemName: "photo.on.rectangle").font(.app(size: 22)).foregroundStyle(.white) }
         }
         .frame(width: 58, height: 58)
         .background(.white.opacity(0.14))

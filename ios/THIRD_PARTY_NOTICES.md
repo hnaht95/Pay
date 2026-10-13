@@ -59,3 +59,6 @@ SOFTWARE.
 Biểu tượng Cài đặt (ios/Pay/Assets.xcassets/icon-settings.imageset) là bánh răng "gear" của Font Awesome Free 7
 (lấy theo bản vẽ trong app Peek): https://fontawesome.com — biểu tượng theo giấy phép CC BY 4.0
 (https://creativecommons.org/licenses/by/4.0/).
+
+Phông Space Mono (ios/Pay/Fonts/SpaceMono-*.ttf) của Colophon Foundry cho Google Fonts, giấy phép SIL Open Font License 1.1:
+https://github.com/googlefonts/spacemono — https://openfontlicense.org

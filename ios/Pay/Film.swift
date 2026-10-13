@@ -153,11 +153,11 @@ struct FilmScreen<Content: View>: View {
         ZStack {
             Capsule().fill(.black).frame(width: 125, height: 36.5).position(x: 201, y: 32.2)
             // Màn hình khoá không hiện giờ ở góc (đã có đồng hồ lớn): giờ chỉ có khi đã vào app
-            if !lightStatus { Text("9:41").font(.system(size: 17, weight: .semibold)).position(x: 73, y: 33) }
+            if !lightStatus { Text("9:41").font(.app(size: 17, weight: .semibold)).position(x: 73, y: 33) }
             HStack(spacing: 6) {
-                Image(systemName: "cellularbars").font(.system(size: 16, weight: .semibold))
-                Image(systemName: "wifi").font(.system(size: 15.5, weight: .semibold))
-                Image(systemName: "battery.100percent").font(.system(size: 21, weight: .regular))
+                Image(systemName: "cellularbars").font(.app(size: 16, weight: .semibold))
+                Image(systemName: "wifi").font(.app(size: 15.5, weight: .semibold))
+                Image(systemName: "battery.100percent").font(.app(size: 21, weight: .regular))
             }
             .position(x: 327, y: 33)
         }
@@ -182,7 +182,7 @@ struct FilmNavBar: View {
             if grabber {
                 // (bảng không còn vạch ngang, như trong app)
             }
-            Text(title).font(.system(size: 17, weight: .semibold))
+            Text(title).font(.app(size: 17, weight: .semibold))
             HStack {
                 if let leading { pill(leading, weight: .regular) }
                 Spacer()
@@ -194,7 +194,7 @@ struct FilmNavBar: View {
     }
 
     private func pill(_ text: String, weight: Font.Weight) -> some View {
-        Text(text).font(.system(size: 17, weight: weight))
+        Text(text).font(.app(size: 17, weight: weight))
             .padding(.horizontal, 17).frame(height: 44)
             .background {
                 Capsule().fill(Color.white.opacity(0.95))

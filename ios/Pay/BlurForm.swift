@@ -38,7 +38,7 @@ struct BlurForm<Content: View>: View {
                         // Cỡ chữ và độ đậm như tiêu đề mục của iOS 26+ (iOS 18 nhỏ, viết hoa)
                         // Bọc trong HStack: tiêu đề chỉ là một Text thì iOS 18 tự viết hoa, bỏ qua textCase
                         HStack(spacing: 0) { sec.header; Spacer(minLength: 0) }
-                            .textCase(nil).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
+                            .textCase(nil).font(AppFont.spaceMono ? .app(size: 17) : .app(size: 17, weight: .semibold)).foregroundStyle(.secondary)
                             .titleEdgeBlur(edge)
                     } footer: {
                         sec.footer.titleEdgeBlur(edge)

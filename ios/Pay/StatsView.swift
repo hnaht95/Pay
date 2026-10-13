@@ -128,7 +128,7 @@ struct StatsView: View {
         let shown = (centerDay.map { locked($0) } ?? false) ? month : (centerDay ?? today)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Text(byMonth ? monthYear(month) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
+                Text(byMonth ? monthYear(month) : monthYear(shown)).font(.app(size: 17, weight: .semibold))
                     .navEdgeBlur()
                     .contentTransition(.numericText())
                     .animation(.snappy, value: monthYear(shown))
@@ -136,7 +136,7 @@ struct StatsView: View {
                 if (!byMonth && (!cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!))))
                     || (byMonth && !cal.isDate(month, equalTo: today, toGranularity: .month)) {
                     Button { withAnimation(.snappy) { goToday() } } label: {
-                        Text(byMonth ? L("Tháng này") : L("Hôm nay")).font(.system(size: 14, weight: .semibold))
+                        Text(byMonth ? L("Tháng này") : L("Hôm nay")).font(.app(size: 14, weight: .semibold))
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 12).frame(height: 30)
                             .background(Capsule().fill(Self.card))
@@ -207,7 +207,7 @@ struct StatsView: View {
                         day = nil
                     }
                 } label: {
-                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 16, weight: .semibold))
+                    Text(m ? L("Tháng") : L("Ngày")).font(.app(size: 16, weight: .semibold))
                         .foregroundStyle(on ? Self.inkText : Color.primary.opacity(0.6))
                         .padding(.horizontal, 22).frame(height: 40)
                         // Nền đen trượt qua lại giữa hai nút (cùng một khối nhờ matchedGeometryEffect)
@@ -279,7 +279,7 @@ struct StatsView: View {
                 Group {
                     if now || cal.component(.month, from: m) == 12 {
                         Text(String(cal.component(.year, from: m)))
-                            .font(.system(size: 11, weight: on ? .bold : .medium))
+                            .font(.app(size: 11, weight: on ? .bold : .medium))
                             .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                     } else {
                         Capsule().fill(Color.primary.opacity(0.15)).frame(width: 6, height: 1.5)
@@ -289,7 +289,7 @@ struct StatsView: View {
                 VStack(spacing: 0) {
                     // Dải tháng: tiếng Việt chỉ ghi số tháng (không "T" phía trước)
                     Text(Lang.isEnglish ? shortMonth(m) : "\(cal.component(.month, from: m))")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .font(.app(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                         .foregroundStyle(on ? Self.inkText : now ? Self.todayTint : Color.primary.opacity(0.8))
                         .frame(height: 24)
                         .padding(.top, 8)
@@ -334,12 +334,12 @@ struct StatsView: View {
                 // Hàng thứ nằm ngoài viên
                 // Luôn là thứ (ngày mùng 1 cũng vậy: ghi "T10" ở đó dễ nhầm với thứ); sang tháng đã có tiêu đề tháng ở trên
                 Text(weekdayShort(d))
-                    .font(.system(size: 11, weight: on ? .bold : .medium))
+                    .font(.app(size: 11, weight: on ? .bold : .medium))
                     .foregroundStyle(Color.primary.opacity(on ? 0.75 : 0.4))
                 // Viên: số ngày ở trên cùng; phần dưới số là chỗ lớp xanh dâng lên theo mức chi, không bao giờ trùm lên số
                 VStack(spacing: 0) {
                     Text("\(cal.component(.day, from: d))")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .font(.app(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                         .foregroundStyle(on ? Self.inkText : today ? Self.todayTint : Color.primary.opacity(0.8))
                         .frame(height: 24)
                         .padding(.top, 8)
@@ -482,8 +482,8 @@ struct StatsView: View {
         let otherYear = cal.component(.year, from: m) != cal.component(.year, from: Date())
         return Button { month = m } label: {
             VStack(spacing: 0) {
-                Text(shortMonth(m)).font(.system(size: 15, weight: on ? .semibold : .regular))
-                if otherYear { Text(String(cal.component(.year, from: m))).font(.system(size: 10)).opacity(0.8) }
+                Text(shortMonth(m)).font(.app(size: 15, weight: on ? .semibold : .regular))
+                if otherYear { Text(String(cal.component(.year, from: m))).font(.app(size: 10)).opacity(0.8) }
             }
             .frame(maxWidth: .infinity, minHeight: 40)
             .foregroundStyle(on ? Self.inkText : Color.secondary)
@@ -499,23 +499,23 @@ struct StatsView: View {
         let total = sum(items)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(heroTitle).font(.system(size: 16, weight: .medium))
+                Text(heroTitle).font(.app(size: 16, weight: .medium))
                 Spacer()
                 iconChip("creditcard", fg: Self.heroBg, bg: Self.heroInk)
             }
-            Text(fmt(total)).font(.system(size: 40, weight: .bold)).kerning(-1).minimumScaleFactor(0.5).lineLimit(1)
+            Text(fmt(total)).font(.app(size: 40, weight: .bold)).kerning(-1).minimumScaleFactor(0.5).lineLimit(1)
             if let d = delta(total, sum(prev)) {
                 HStack(spacing: 8) {
                     // 0% (kể cả do làm tròn) không phải tăng cũng không phải giảm: không vẽ mũi tên
                     Group {
                         if d == 0 { Text(verbatim: "0%") } else { Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down") }
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(Self.heroPill)
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(Self.heroInk, in: Capsule())
                     Text(compareText)
-                        .font(.system(size: 13))
+                        .font(.app(size: 13))
                 }
             }
             // Gộp từ thẻ "Chi theo tháng" cũ (trùng số tiền với khung này): vạch hạn mức (tháng này) và ngày không chi
@@ -592,11 +592,11 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 14) {
             // Biểu tượng tròn căn giữa theo chiều dọc với chữ tiêu đề nhỏ bên trái
             HStack(alignment: .center) {
-                Text(title).font(.system(size: 14)).foregroundStyle(tone.ink.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(title).font(.app(size: 14)).foregroundStyle(tone.ink.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
                 iconChip(icon, fg: tone.onAccent, bg: tone.accent)
             }
-            Text(value).font(.system(size: 22, weight: .bold)).foregroundStyle(tone.ink).minimumScaleFactor(0.5).lineLimit(1)
+            Text(value).font(.app(size: 22, weight: .bold)).foregroundStyle(tone.ink).minimumScaleFactor(0.5).lineLimit(1)
             if let d { deltaPill(d, tone) } else { notePill(note, tone) }
         }
         .padding(18)
@@ -612,7 +612,7 @@ struct StatsView: View {
         } else {
             // Màu theo bảng màu của ô; tăng / giảm đọc qua mũi tên
             Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(tone.onAccent)
                 .padding(.horizontal, 7).padding(.vertical, 3)
                 .background(tone.accent, in: Capsule())
@@ -622,7 +622,7 @@ struct StatsView: View {
     /// Nhãn xám cùng cỡ với nhãn %, cho ô không có gì để so.
     private func notePill(_ text: String, _ tone: Tone) -> some View {
         Text(text)
-            .font(.system(size: 12, weight: .medium))
+            .font(.app(size: 12, weight: .medium))
             .foregroundStyle(tone.ink)
             .lineLimit(1)
             .padding(.horizontal, 7).padding(.vertical, 3)
@@ -666,7 +666,7 @@ struct StatsView: View {
         let current = sum(spending(in: cal.dateInterval(of: .month, for: month)!))
         let vsAvg = avg > 0 ? Int((Double(current - avg) / Double(avg) * 100).rounded()) : 0
         return card {
-            Text(L("Chi theo tháng")).font(.system(size: 17, weight: .semibold))
+            Text(L("Chi theo tháng")).font(.app(size: 17, weight: .semibold))
             Group {
                 if avg > 0 && current > 0 {
                     Text(monthName(month) + " · " + (vsAvg == 0 ? L("bằng mức trung bình")
@@ -675,10 +675,10 @@ struct StatsView: View {
                     Text(monthName(month))
                 }
             }
-            .font(.system(size: 13)).foregroundStyle(.secondary)
+            .font(.app(size: 13)).foregroundStyle(.secondary)
             .padding(.top, 2)
             Text(fmt(current))
-                .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
+                .font(.app(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
                 .foregroundStyle(.primary)
                 .contentTransition(.numericText())
             budgetLine(spent: current)
@@ -714,7 +714,7 @@ struct StatsView: View {
     }
 
     private func chipLabel(_ t: String) -> some View {
-        Text(t).font(.system(size: 13, weight: .medium)).foregroundStyle(Self.heroInk)
+        Text(t).font(.app(size: 13, weight: .medium)).foregroundStyle(Self.heroInk)
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Self.heroInk.opacity(0.1), in: Capsule())
     }
@@ -743,7 +743,7 @@ struct StatsView: View {
                     Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000)))
                         .foregroundStyle(over ? Palette.danger : Self.heroInk.opacity(0.8))
                 }
-                .font(.system(size: 13))
+                .font(.app(size: 13))
             }
             .padding(.top, 4)
         }
@@ -770,7 +770,7 @@ struct StatsView: View {
                     .frame(width: 40, height: h)
                     .frame(height: 88, alignment: .bottom)
                 Text(shortMonth(m))
-                    .font(.system(size: 12, weight: on ? .semibold : .regular))
+                    .font(.app(size: 12, weight: on ? .semibold : .regular))
                     .foregroundStyle(on ? Color.primary : Color.secondary)
             }
             .contentShape(Rectangle())
@@ -798,7 +798,7 @@ struct StatsView: View {
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
         let used = bars.filter { $0.total > 0 }.map(\.total)
         return card {
-            Text(title).font(.system(size: 17, weight: .semibold))
+            Text(title).font(.app(size: 17, weight: .semibold))
             HStack(spacing: 14) {
                 legend(AnyShapeStyle(Self.ink), L("Hoá đơn"))
                 legend(AnyShapeStyle(Self.orange), L("Chi tiêu khác"))
@@ -862,8 +862,8 @@ struct StatsView: View {
 
     private func stat(_ title: String, _ v: Int) -> some View {
         VStack(spacing: 2) {
-            Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
-            Text(short(v)).font(.system(size: 20, weight: .bold))
+            Text(title).font(.app(size: 12)).foregroundStyle(.secondary)
+            Text(short(v)).font(.app(size: 20, weight: .bold))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
@@ -875,7 +875,7 @@ struct StatsView: View {
     private func legend(_ style: AnyShapeStyle, _ title: String) -> some View {
         HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 3).fill(style).frame(width: 12, height: 12)
-            Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(title).font(.app(size: 13)).foregroundStyle(.secondary)
         }
     }
 
@@ -890,7 +890,7 @@ struct StatsView: View {
         // Cùng kiểu hàng "Gần đây" ở màn hình chính: mỗi danh mục một thẻ riêng (ô biểu tượng trắng, tên + %, số tiền,
         // thanh tỉ lệ mảnh ở dưới tên)
         return VStack(alignment: .leading, spacing: 10) {
-            Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            Text(L("Theo danh mục")).font(.app(size: 17, weight: .semibold)).padding(.horizontal, 4)
             // Thanh chia đoạn theo danh mục; danh sách bên dưới làm chú thích (chấm màu, tên, %, số tiền)
             CategoryBreakdown(total: sum(items), top: ranked.map { ($0, byCat[$0.k]!) })
                 .padding(.horizontal, 4).padding(.bottom, 4)
@@ -908,7 +908,7 @@ struct StatsView: View {
                         HStack(spacing: 8) {
                             Text(c.name).font(.rowTitle).lineLimit(1)
                             Text("\(Int((Double(v) / Double(total) * 100).rounded()))%")
-                                .font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                                .font(.app(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Color.primary.opacity(0.07), in: Capsule())
                             Spacer(minLength: 8)
@@ -931,11 +931,11 @@ struct StatsView: View {
         let rows = showAllBig ? sorted : Array(sorted.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Khoản lớn nhất")).font(.system(size: 17, weight: .semibold))
+                Text(L("Khoản lớn nhất")).font(.app(size: 17, weight: .semibold))
                 Spacer()
                 if sorted.count > 5 {
                     Button { withAnimation(.snappy) { showAllBig.toggle() } } label: {
-                        Text(showAllBig ? L("Thu gọn") : L("Xem tất cả")).font(.system(size: 15, weight: .medium)).padding(3)
+                        Text(showAllBig ? L("Thu gọn") : L("Xem tất cả")).font(.app(size: 15, weight: .medium)).padding(3)
                     }
                     .buttonStyle(Pressable()).foregroundStyle(.primary)
                 }
@@ -980,7 +980,7 @@ struct StatsView: View {
     }
 
     private func iconChip(_ symbol: String, fg: Color, bg: Color) -> some View {
-        Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
+        Image(systemName: symbol).font(.app(size: 14, weight: .semibold))
             .foregroundStyle(fg)
             .frame(width: 32, height: 32)
             .background(bg, in: Circle())

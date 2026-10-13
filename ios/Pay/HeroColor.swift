@@ -27,8 +27,8 @@ struct HeroColorSheet: View {
                 VStack(alignment: .leading, spacing: 18) {
                     // Xem trước
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(L("Hôm nay đã chi")).font(.system(size: 15)).foregroundStyle(.secondary)
-                        Text("125.000").font(.system(size: 34, weight: .bold))
+                        Text(L("Hôm nay đã chi")).font(.app(size: 15)).foregroundStyle(.secondary)
+                        Text("125.000").font(.app(size: 34, weight: .bold))
                         Capsule().fill(Color.primary.opacity(0.12)).frame(height: 6)
                             .overlay(alignment: .leading) {
                                 GeometryReader { g in
@@ -48,7 +48,7 @@ struct HeroColorSheet: View {
                     HStack(spacing: 4) {
                         ForEach([false, true], id: \.self) { bar in
                             Button { if editingBar != bar { Haptic.select() }; withAnimation(.snappy(duration: 0.2)) { editingBar = bar } } label: {
-                                Text(bar ? L("Thanh ngân sách") : L("Nền thẻ")).font(.system(size: 16, weight: .semibold))
+                                Text(bar ? L("Thanh ngân sách") : L("Nền thẻ")).font(.app(size: 16, weight: .semibold))
                                     .foregroundStyle(.primary)
                                     .frame(maxWidth: .infinity).frame(height: 44)
                                     .background { if editingBar == bar { Capsule().fill(Color.primary.opacity(0.18)) } }
@@ -71,7 +71,7 @@ struct HeroColorSheet: View {
                         let t = CategoryTone.custom(byte(r) << 16 | byte(g) << 8 | byte(b))
                         if editingBar { barTone = t } else { tone = t }
                     }), supportsOpacity: false) {
-                        Text(L("Tự chọn màu")).font(.system(size: 17))
+                        Text(L("Tự chọn màu")).font(.app(size: 17))
                     }
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .background(Palette.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))

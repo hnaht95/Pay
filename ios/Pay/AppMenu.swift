@@ -39,9 +39,9 @@ struct AppMenu: View {
                 HStack(spacing: 14) {
                     spec.icon
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(spec.title).font(.system(size: 19, weight: .bold)).lineLimit(1)
+                        Text(spec.title).font(.app(size: 19, weight: .bold)).lineLimit(1)
                         if let s = spec.subtitle {
-                            Text(s).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                            Text(s).font(.app(size: 15)).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 0)
@@ -73,14 +73,14 @@ struct AppMenu: View {
 
     private func row(_ item: AppMenuItem) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: item.icon).font(.system(size: item.plain ? 26 : 16, weight: item.plain ? .regular : .semibold))
+            Image(systemName: item.icon).font(.app(size: item.plain ? 26 : 16, weight: item.plain ? .regular : .semibold))
                 .frame(width: 40, height: 40)
                 .foregroundStyle(item.tint.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.primary))
                 .background(item.plain ? Color.clear : item.danger ? Palette.danger.opacity(0.12) : Palette.pill, in: Circle())
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.title).font(.system(size: 17, weight: .medium)).lineLimit(1)
+                Text(item.title).font(.app(size: 17, weight: .medium)).lineLimit(1)
                 if let s = item.subtitle {
-                    Text(s).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(s).font(.app(size: 14)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)

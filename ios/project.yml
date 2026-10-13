@@ -50,6 +50,7 @@ targets:
         NSSpeechRecognitionUsageDescription: Pay chuyển giọng nói thành chữ để ghi khoản chi.
         NSPhotoLibraryAddUsageDescription: Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.
         UILaunchScreen: {}
+        UIAppFonts: [SpaceMono-Regular.ttf, SpaceMono-Bold.ttf]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:

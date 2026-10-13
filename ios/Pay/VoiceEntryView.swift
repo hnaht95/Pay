@@ -394,14 +394,14 @@ struct VoiceEntryView: View {
                 .contentTransition(.opacity)
             Spacer()
             Button { close() } label: {
-                Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
+                Image(systemName: "xmark").font(.app(size: 13, weight: .bold))
                     .frame(width: 30, height: 30).background(Palette.pill, in: Circle())
             }
             .buttonStyle(Pressable())
             .foregroundStyle(.primary)
             .accessibilityLabel(L("Đóng"))
         }
-        .font(.system(size: 15, weight: .medium))
+        .font(.app(size: 15, weight: .medium))
         // Dòng trạng thái là một khối: chữ mới ("Đã ghi") hiện ra ngay trong dòng đang hạ xuống cùng thẻ,
         // không hiện sẵn ở chỗ đích rồi bị số tiền trôi ngang qua
         .geometryGroup()
@@ -443,26 +443,26 @@ struct VoiceEntryView: View {
                     HStack(spacing: 8) {
                         HStack(spacing: 6) {
                             CategoryIcon(c: c, size: 18)
-                            Text(c.name).font(.system(size: 14, weight: .semibold))
+                            Text(c.name).font(.app(size: 14, weight: .semibold))
                         }
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(c.color, in: Capsule())
                         .foregroundStyle(c.ink)
                         if !l.note.isEmpty {
-                            Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                            Text(l.note.capFirst).font(.app(size: 15)).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     // Câu nhắc tới nhiều danh mục ("mua cát cho mèo"): hiện các danh mục còn lại, chạm là đổi
                     let others = Category.matches(l.note).filter { $0 != l.cat }.prefix(3)
                     if !others.isEmpty {
                         HStack(spacing: 6) {
-                            Text(L("Hay là")).font(.system(size: 14)).foregroundStyle(.secondary)
+                            Text(L("Hay là")).font(.app(size: 14)).foregroundStyle(.secondary)
                             ForEach(Array(others), id: \.self) { k in
                                 let o = Category.get(k)
                                 Button { switchCategory(to: k) } label: {
                                     HStack(spacing: 5) {
                                         CategoryIcon(c: o, size: 16)
-                                        Text(o.name).font(.system(size: 14, weight: .medium))
+                                        Text(o.name).font(.app(size: 14, weight: .medium))
                                     }
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(Palette.pill, in: Capsule())
@@ -475,14 +475,14 @@ struct VoiceEntryView: View {
                 }
             } else {
                 // Cùng một dòng chữ, chỉ đổi nội dung ("Đã nghe: …" -> "Nói ví dụ: …"): mờ sang chữ mới trong lúc trượt lên cùng thẻ
-                Text(hint).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(2)
+                Text(hint).font(.app(size: 15)).foregroundStyle(.secondary).lineLimit(2)
                     .contentTransition(.opacity)
             }
         }
     }
 
     private func number(_ s: String, dim: Bool) -> some View {
-        Text(s).font(.system(size: 46, weight: .bold)).kerning(-1.5)
+        Text(s).font(.app(size: 46, weight: .bold)).kerning(-1.5)
             .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
             .contentTransition(.numericText())
             .minimumScaleFactor(0.5).lineLimit(1)
@@ -493,7 +493,7 @@ struct VoiceEntryView: View {
         HStack(alignment: .firstTextBaseline, spacing: -2) {
             ForEach(Array(s.enumerated()), id: \.offset) { i, ch in
                 let p = FilmFrame.spring((elapsed - 0.035 * Double(i)) / 0.42)
-                Text(String(ch)).font(.system(size: 46, weight: .bold))
+                Text(String(ch)).font(.app(size: 46, weight: .bold))
                     .padding(.horizontal, ch == "." || ch == "," ? -2 : 0)   // dấu chấm ôm sát hai số bên cạnh như khi viết liền
                     .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
                     .scaleEffect(leaving ? 1 - 0.3 * min(1, p) : 0.7 + 0.3 * min(1, p))
@@ -557,7 +557,7 @@ struct VoiceEntryView: View {
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 18, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+            Text(title).font(.app(size: 18, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity, minHeight: 64)   // cao cho dễ nhấn
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.pill, in: Capsule())

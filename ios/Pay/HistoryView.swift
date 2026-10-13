@@ -24,12 +24,12 @@ struct HistoryView: View {
                         Spacer()
                         Text(fmt(found.reduce(0) { $0 + $1.a })).fontWeight(.semibold)
                     }
-                    .font(.system(size: 16))
+                    .font(.app(size: 16))
                     .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 12))
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
                 if groups.isEmpty {
-                    Text(query.isEmpty ? L("Chưa có khoản nào.") : L("Không tìm thấy khoản nào.")).font(.system(size: 17)).foregroundStyle(.secondary)
+                    Text(query.isEmpty ? L("Chưa có khoản nào.") : L("Không tìm thấy khoản nào.")).font(.app(size: 17)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity).padding(40)
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
@@ -40,7 +40,7 @@ struct HistoryView: View {
                         HStack {
                             Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))")
                         }
-                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+                        .font(.app(size: 15, weight: .semibold)).foregroundStyle(.secondary)
                         .padding(.top, 14).padding(.bottom, 2)
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
@@ -66,20 +66,20 @@ struct HistoryView: View {
             // nội dung cuộn lên cắt gọn ở vạch dưới ô tìm. Khoảng trên tiêu đề tới mép tấm bằng khoảng dưới tới ô tìm (~20 pt)
             .softTitleBar(plain: true) {
                 VStack(spacing: 0) {
-                    Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.system(size: 21, weight: .bold)).lineLimit(1)
+                    Text(category.map { Category.get($0).name } ?? L("Lịch sử chi tiêu")).font(.app(size: 21, weight: .bold)).lineLimit(1)
                         .frame(maxWidth: .infinity)
                         .padding(.top, Self.titleTop).padding(.bottom, 18)
                     // Ô tìm tự vẽ, cùng kiểu ô ghi chú ở màn nhập (nền nhạt bo 18, không viền, không bóng) thay cho thanh tìm của iOS
                     HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass").font(.system(size: 19, weight: .medium)).foregroundStyle(.secondary)
+                        Image(systemName: "magnifyingglass").font(.app(size: 19, weight: .medium)).foregroundStyle(.secondary)
                         TextField(L("Tìm khoản chi"), text: $query)
-                            .font(.system(size: 18))
+                            .font(.app(size: 18))
                             .focused($searching)
                             .submitLabel(.search)
                             .autocorrectionDisabled()
                         if !query.isEmpty {
                             Button { query = "" } label: {
-                                Image(systemName: "xmark.circle.fill").font(.system(size: 17)).foregroundStyle(.tertiary)
+                                Image(systemName: "xmark.circle.fill").font(.app(size: 17)).foregroundStyle(.tertiary)
                             }
                             .buttonStyle(.plain)
                         }

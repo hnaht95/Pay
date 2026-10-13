@@ -129,6 +129,8 @@ extension English {
         "Nhập số dư": "Set balance",
         "Đã chi": "Spent",
         "Số dư": "Balance",
+        "Số dư %@": "Balance %@",
+        "Số dư, chạm để hiện": "Balance, tap to show",
         "Số dư ban đầu": "Opening balance",
         "Số dư đã đúng": "Balance already matches",
         "Số dư: %@": "Balance: %@",

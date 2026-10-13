@@ -51,6 +51,9 @@ struct HomeView: View {
     @State private var pickingHero = false
     /// Đang đặt / điều chỉnh số dư hiện có
     @State private var balanceOpen = false
+    /// Số dư đang hiện (mặc định che bằng chấm); tự che lại sau ít giây hoặc khi rời app
+    @State private var balanceShown = false
+    @State private var hideBalance: Task<Void, Never>?
     /// Danh mục đang mở danh sách khoản chi (chạm vào ô danh mục)
     @State private var listing: Category?
     @Environment(\.scenePhase) private var scenePhase
@@ -161,7 +164,7 @@ struct HomeView: View {
             // Mỗi lượt một thẻ mới hẳn (micro, trạng thái nghe riêng), kể cả khi thẻ cũ còn đang hiện
             .id(voiceRound)
         }
-        .onChange(of: scenePhase) { _, p in if p == .active { wake() } }
+        .onChange(of: scenePhase) { _, p in if p == .active { wake() } else { balanceShown = false } }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in wake() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
@@ -289,12 +292,25 @@ struct HomeView: View {
     }
 
     /// Cột số dư hiện có: chưa đặt thì mời nhập; chạm để đặt / chỉnh
+    /// Số dư che bằng chấm, chạm để hiện (8 giây rồi tự che lại); đang hiện thì chạm để đặt / chỉnh. Chưa đặt thì mời nhập
     private func balanceColumn(_ size: CGFloat) -> some View {
-        Button { balanceOpen = true } label: {
+        let b = store.balance
+        return Button {
+            guard b != nil, !balanceShown else { balanceOpen = true; return }
+            withAnimation(.snappy(duration: 0.2)) { balanceShown = true }
+            hideBalance?.cancel()
+            hideBalance = Task { try? await Task.sleep(for: .seconds(8)); if !Task.isCancelled { withAnimation(.snappy(duration: 0.2)) { balanceShown = false } } }
+        } label: {
             VStack(alignment: .trailing, spacing: 3) {
-                Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
-                if let b = store.balance {
-                    Text(fmt(b)).font(.system(size: size, weight: .semibold)).foregroundStyle(b < 0 ? Palette.danger : Color.primary)
+                HStack(spacing: 4) {
+                    if b != nil { Image(systemName: balanceShown ? "eye" : "eye.slash").font(.system(size: 11, weight: .medium)) }
+                    Text(L("Số dư")).font(.system(size: 13))
+                }
+                .foregroundStyle(.secondary)
+                if let b {
+                    Text(balanceShown ? fmt(b) : "••••••").font(.system(size: size, weight: .semibold))
+                        .foregroundStyle(balanceShown && b < 0 ? Palette.danger : Color.primary)
+                        .contentTransition(.opacity)
                 } else {
                     Text(L("Nhập số dư")).font(.system(size: size, weight: .semibold)).foregroundStyle(.secondary)
                 }
@@ -303,6 +319,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(Pressable())
+        .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
     }
 
     private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {

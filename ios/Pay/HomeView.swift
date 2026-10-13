@@ -986,10 +986,18 @@ extension View {
                 GeometryReader { g in
                     // Giống mép cuộn mềm của iOS 27: kính mờ (nội dung trôi lên vẫn thấy nhoè nhoè), chỉ phủ nhẹ màu nền,
                     // tan dần qua chân thanh trạng thái thay vì một dải gần như đặc
-                    let bar = g.safeAreaInsets.top, tail: CGFloat = 26
-                    LinearGradient(stops: [.init(color: color.opacity(0.6), location: 0), .init(color: color.opacity(0.3), location: bar / (bar + tail)),
-                                           .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.9), location: bar / (bar + tail) * 0.8),
+                    let bar = g.safeAreaInsets.top, tail: CGFloat = 26, end = bar / (bar + tail)
+                    // iOS 26 trở lên không có lớp nhoè từng khối của app (topScrollBlur chỉ chạy trên iOS cũ hơn 26), nên chỉ phủ
+                    // nhẹ màu nền thì chữ cuộn lên vẫn đè rõ lên đồng hồ. Ở đó dùng kính mờ làm nhoè nội dung, cộng màu nền đậm
+                    // hơn: đặc ở mép trên, nhạt dần qua chân thanh trạng thái
+                    let strong: Bool = { if #available(iOS 26.0, *) { true } else { false } }()
+                    ZStack {
+                        if strong { Rectangle().fill(.ultraThinMaterial) }
+                        LinearGradient(stops: [.init(color: color.opacity(strong ? 1 : 0.6), location: 0),
+                                               .init(color: color.opacity(strong ? 0.8 : 0.3), location: end),
+                                               .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
+                    }
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(strong ? 1 : 0.9), location: end * (strong ? 1 : 0.8)),
                                                  .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                     .frame(height: bar + tail)
                     .offset(y: -bar)

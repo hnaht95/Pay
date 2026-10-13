@@ -262,11 +262,17 @@ struct HomeView: View {
                 BudgetBar(s: bs, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
                     .padding(.top, 14)
             }
-            // Ba cột rộng bằng nhau, cùng kiểu nhãn nhỏ trên số: chi cả tháng, ngân sách còn (kèm mỗi ngày), số dư hiện có
-            HStack(alignment: .top, spacing: 8) {
-                heroStat(monthLabel(now), fmt(month)).frame(maxWidth: .infinity, alignment: .leading)
-                if let bs { budgetColumn(bs, now).frame(maxWidth: .infinity, alignment: .leading) }
-                if film == nil { balanceColumn.frame(maxWidth: .infinity, alignment: .trailing) }
+            // Hai cột: trái đã chi cả tháng / ngân sách (vượt thì số chi đỏ), phải số dư hiện có (chạm để đặt / chỉnh)
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L("Đã chi")).font(.system(size: 13)).foregroundStyle(.secondary)
+                    (Text(fmt(month)).foregroundStyle(bs?.level == .over ? Palette.danger : Color.primary)
+                     + Text(bs.map { "/" + fmt($0.budget) } ?? "").foregroundStyle(.secondary))
+                        .font(.system(size: 17, weight: .semibold))
+                }
+                .lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                if film == nil { balanceColumn }
             }
             .padding(.top, 14)
         }
@@ -277,33 +283,11 @@ struct HomeView: View {
         .environment(\.colorScheme, HeroColor.scheme(heroTone))
     }
 
-    /// Một cột số liệu của thẻ: nhãn nhỏ xám, số đậm
-    private func heroStat(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(.system(size: 13)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 17, weight: .semibold))
-        }
-        .lineLimit(1).minimumScaleFactor(0.7)
-    }
-
-    /// Cột ngân sách: còn bao nhiêu, dưới là mỗi ngày còn tiêu được; vượt thì đỏ, dưới là mức ngân sách
-    private func budgetColumn(_ b: BudgetStatus, _ now: Date) -> some View {
-        let over = b.level == .over
-        return VStack(alignment: .leading, spacing: 3) {
-            Text(b.remaining < 0 ? L("Vượt") : L("Còn")).font(.system(size: 13)).foregroundStyle(.secondary)
-            Text(fmt(abs(b.remaining))).font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(over ? Palette.danger : .primary)
-            Text(b.remaining < 0 ? L("trên %@", fmt(b.budget)) : L("%@/ngày", fmt(b.perDay(at: now))))
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-        }
-        .lineLimit(1).minimumScaleFactor(0.7)
-    }
-
     /// Cột số dư hiện có, căn phải: chưa đặt thì mời nhập. Không mũi tên (mũi tên làm số co nhỏ hơn hai cột kia); chạm để đặt / chỉnh
     private var balanceColumn: some View {
         Button { balanceOpen = true } label: {
             VStack(alignment: .trailing, spacing: 3) {
-                Text(L("Hiện có")).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
                 HStack(spacing: 3) {
                     if let b = store.balance {
                         Text(fmt(b)).font(.system(size: 17, weight: .semibold)).foregroundStyle(b < 0 ? Palette.danger : Color.primary)

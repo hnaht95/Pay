@@ -464,6 +464,10 @@ struct HomeView: View {
                 // Chạm: nhập tay. Vuốt lên: chụp hoá đơn rồi mở màn nhập với ảnh hoá đơn đính kèm
                 BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in if Pro.shared.allow(.photos) { receiptScan = true } }) { entry = .new(cat: nil) }
                     .filmPressed(film?.pressed["dock-add"] ?? 0)
+                    // Thẻ nói để ghi mở ra đè lên nút này nhưng không che hết: góc thẻ bo rộng hơn góc nút, nên mép nút ló ra ở góc
+                    // dưới thẻ, nhìn như góc thẻ bị lõm. Thẻ đang mở thì ẩn nút
+                    .opacity(voiceFrom != nil ? 0 : 1)
+                    .animation(.easeOut(duration: 0.15), value: voiceFrom != nil)
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in

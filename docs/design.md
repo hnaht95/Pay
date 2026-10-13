@@ -31,7 +31,7 @@ Mỗi lần sửa giao diện: build, cài và **kiểm tra trên cả 3 máy �
 | Hàng khoản chi: tên, số tiền | 15 | medium |
 | Hàng khoản chi: danh mục, ngày giờ | 12 | regular, màu phụ |
 | Nút to (BigButton) | 21 | semibold |
-| Tiêu đề mục trong Form | viết thường như iOS 26+ (iOS 18 không tự viết hoa) |
+| Tiêu đề mục trong Form | 17 semibold, màu phụ, viết thường (iOS 18 dùng kiểu tiêu đề nổi bật để không tự viết hoa) |
 
 - Tiêu đề trong khung chụp, số tiêu cự: SF Mono, không nền.
 
@@ -43,6 +43,10 @@ Mỗi lần sửa giao diện: build, cài và **kiểm tra trên cả 3 máy �
 - Trang con: nút quay lại tròn 40 pt bên trái (chevron.left trên nền `primary` 6%).
 - Ô chọn kiểu trang của iOS (Picker navigationLink) không dùng; thay bằng trang chọn của app (`PickLink`).
 - Lịch sử: tiêu đề và ô tìm ghim trên vùng cuộn, nền đặc, có vạch ngăn dưới ô tìm, nội dung cắt gọn ở vạch.
+
+## 3b. Form (Cài đặt, các màn sửa)
+
+- Ô bo 26, hàng cao tối thiểu 52 như Form của iOS 26+ (iOS 18 vẽ lại nền ô trong `BlurForm`, mặc định chỉ bo 10, cao 44).
 
 ## 4. Mép mờ khi cuộn
 

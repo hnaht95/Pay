@@ -1077,7 +1077,7 @@ struct HouseGroupEditor: View {
                 // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
                 .listRowBackground(Color.clear)
                 .cardless()
-                Section(L("Tên")) { TextField(L("Tên nhóm"), text: $name) }
+                Section { TextField(L("Tên nhóm"), text: $name) } header: { Text(L("Tên")).textCase(nil) }
                 Section {
                     VStack(spacing: 10) {
                         swatchRow(CategoryTone.light)
@@ -1201,7 +1201,7 @@ struct HouseMemberEditor: View {
                 // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
                 .listRowBackground(Color.clear)
                 .cardless()
-                Section(L("Tên")) { TextField(L("Tên"), text: $name) }
+                Section { TextField(L("Tên"), text: $name) } header: { Text(L("Tên")).textCase(nil) }
                 Section {
                     // Danh sách dài: mở trang riêng để cuộn
                     PickLink(title: L("Ngân hàng"), selection: $bin,

@@ -1,122 +1,64 @@
+import Photos
 import SwiftUI
-import PhotosUI
 
-/// Ảnh chụp bằng Pay, lưu riêng trong thư mục của app (ngoài bản lưu vào app Ảnh): ô ảnh ở màn chụp hiện ảnh mới nhất,
-/// chạm vào là danh sách ảnh Pay đã chụp (không phải cả thư viện ảnh của máy)
-enum PayShots {
-    private static let fm = FileManager.default
-    static let changed = Notification.Name("payShotsChanged")
+/// Ảnh mới nhất trong app Ảnh của máy, cho ô ảnh ở màn chụp (như ô ảnh của app Camera). Cập nhật khi thư viện đổi
+/// (vd vừa chụp xong, ảnh được lưu vào app Ảnh). Chưa cho phép đọc thư viện thì không có ảnh
+@MainActor
+final class LatestPhoto: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
+    @Published private(set) var image: UIImage?
 
-    private static var dir: URL {
-        let d = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Shots", isDirectory: true)
-        try? fm.createDirectory(at: d, withIntermediateDirectories: true)
-        return d
-    }
-
-    static func save(_ img: UIImage) {
-        guard let data = img.jpegData(compressionQuality: 0.8) else { return }
-        let name = "\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
-        try? data.write(to: dir.appendingPathComponent(name), options: .atomic)
-        NotificationCenter.default.post(name: changed, object: nil)
-    }
-
-    /// Mới nhất trước
-    static func all() -> [URL] {
-        ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
-            .filter { $0.pathExtension == "jpg" }
-            .sorted { $0.lastPathComponent > $1.lastPathComponent }
-    }
-
-    static func remove(_ u: URL) {
-        try? fm.removeItem(at: u)
-        NotificationCenter.default.post(name: changed, object: nil)
-    }
-
-    static func thumb(_ u: URL, side: CGFloat = 200) -> UIImage? {
-        guard let img = UIImage(contentsOfFile: u.path) else { return nil }
-        let s = max(side / img.size.width, side / img.size.height)
-        let size = CGSize(width: img.size.width * s, height: img.size.height * s)
-        let f = UIGraphicsImageRendererFormat(); f.scale = 1
-        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: f).image { _ in
-            img.draw(in: CGRect(x: (side - size.width) / 2, y: (side - size.height) / 2, width: size.width, height: size.height))
-        }
-    }
-}
-
-/// Danh sách ảnh Pay đã chụp: chạm một ảnh để dùng; nhấn giữ để xoá. Dưới cùng vẫn có lối chọn từ thư viện ảnh của máy
-struct PayShotsSheet: View {
-    var pick: (UIImage) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var shots: [URL] = []
-    @State private var library: PhotosPickerItem?
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                if shots.isEmpty {
-                    Text(L("Chưa có ảnh nào chụp bằng Pay.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.top, 60)
-                }
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 3), spacing: 3) {
-                    ForEach(shots, id: \.self) { u in
-                        ShotCell(url: u)
-                            .onTapGesture {
-                                if let img = UIImage(contentsOfFile: u.path) { Haptic.tap(); dismiss(); pick(img) }
-                            }
-                            .contextMenu {
-                                Button(role: .destructive) { PayShots.remove(u); shots = PayShots.all() } label: { Label(L("Xoá"), systemImage: "trash") }
-                            }
-                    }
-                }
-                .padding(.bottom, 100)
+    func start() {
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .authorized, .limited: begin()
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { s in
+                Task { @MainActor in if s == .authorized || s == .limited { self.begin() } }
             }
-            .background(Palette.bg.ignoresSafeArea())
-            .screenTitle(L("Ảnh đã chụp"))
-            .navigationBarTitleDisplayMode(.inline)
-            .bottomBar {
-                PhotosPicker(selection: $library, matching: .images) {
-                    Text(L("Chọn từ thư viện ảnh")).font(.system(size: 17, weight: .semibold)).foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity).frame(height: 56)
-                        .background(Palette.card, in: Capsule())
-                }
-                .tint(.primary)
-                .padding(.horizontal, 16).padding(.bottom, 8)
-            }
+        default: break
         }
-        .onAppear { shots = PayShots.all() }
-        .task(id: library) {
-            guard let item = library, let d = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: d) else { return }
-            dismiss(); pick(img)
+    }
+
+    func stop() { PHPhotoLibrary.shared().unregisterChangeObserver(self) }
+
+    private func begin() {
+        PHPhotoLibrary.shared().register(self)
+        load()
+    }
+
+    nonisolated func photoLibraryDidChange(_ change: PHChange) {
+        Task { @MainActor in self.load() }
+    }
+
+    private func load() {
+        let o = PHFetchOptions()
+        o.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        o.fetchLimit = 1
+        guard let a = PHAsset.fetchAssets(with: .image, options: o).firstObject else { image = nil; return }
+        let r = PHImageRequestOptions()
+        r.deliveryMode = .opportunistic
+        r.isNetworkAccessAllowed = true
+        PHImageManager.default().requestImage(for: a, targetSize: CGSize(width: 160, height: 220), contentMode: .aspectFill, options: r) { img, _ in
+            Task { @MainActor in if let img { self.image = img } }
         }
-        .sheetGrabber()
     }
 }
 
-private struct ShotCell: View {
-    let url: URL
-    @State private var img: UIImage?
-    var body: some View {
-        Color.gray.opacity(0.15)
-            .aspectRatio(1, contentMode: .fit)
-            .overlay { if let img { Image(uiImage: img).resizable().scaledToFill() } }
-            .clipped()
-            .task { img = await Task.detached { PayShots.thumb(url, side: 300) }.value }
-    }
-}
+/// Ô ảnh ở màn chụp: ảnh mới nhất trong app Ảnh, khung dọc bo góc (chưa có quyền / chưa có ảnh thì biểu tượng ảnh)
+struct LatestPhotoTile: View {
+    @StateObject private var latest = LatestPhoto()
+    static let size = CGSize(width: 46, height: 62)
 
-/// Ô ảnh ở màn chụp: ảnh mới nhất Pay đã chụp (chưa có thì biểu tượng ảnh)
-struct LatestShotTile: View {
-    @State private var img: UIImage?
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
         ZStack {
-            if let img { Image(uiImage: img).resizable().scaledToFill() }
-            else { Image(systemName: "photo.on.rectangle").font(.system(size: 22)).foregroundStyle(.white) }
+            if let img = latest.image { Image(uiImage: img).resizable().scaledToFill() }
+            else { Image(systemName: "photo").font(.system(size: 20)).foregroundStyle(.white) }
         }
-        .frame(width: 58, height: 58)
+        .frame(width: Self.size.width, height: Self.size.height)
         .background(.white.opacity(0.14))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(.white.opacity(0.25), lineWidth: 1))
-        .task { load() }
-        .onReceive(NotificationCenter.default.publisher(for: PayShots.changed)) { _ in load() }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(.white.opacity(0.25), lineWidth: 1))
+        .onAppear { latest.start() }
+        .onDisappear { latest.stop() }
     }
-    private func load() { img = PayShots.all().first.flatMap { PayShots.thumb($0, side: 174) } }
 }

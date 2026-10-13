@@ -18,7 +18,6 @@ struct ReceiptCamera: View {
     @State private var review: CropItem?
     /// Ảnh đang căn là ảnh vừa chụp (căn xong mới lưu vào ảnh Pay đã chụp / Ảnh của máy); ảnh chọn từ thư viện thì không lưu lại
     @State private var reviewIsShot = false
-    @State private var showShots = false
     @State private var dialShown = false
     @State private var dragStartZoom: CGFloat?
     @State private var dialHide: DispatchWorkItem?
@@ -41,12 +40,6 @@ struct ReceiptCamera: View {
         .overlay { Color.white.opacity(flash ? 0.7 : 0).ignoresSafeArea().allowsHitTesting(false) }
         .preferredColorScheme(.dark)
         // Chọn ảnh có sẵn (ảnh Pay đã chụp hoặc thư viện máy) cũng qua bước căn lại; chờ bảng chọn đóng hẳn rồi mới mở
-        .sheet(isPresented: $showShots) {
-            PayShotsSheet { img in
-                reviewIsShot = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { review = CropItem(image: img) }
-            }
-        }
         .onAppear { cam.filter = .none; cam.start() }
         .onDisappear { cam.stop() }
         .task(id: photo) {
@@ -64,7 +57,6 @@ struct ReceiptCamera: View {
                 photo = nil
                 guard let img else { return }
                 if reviewIsShot {
-                    PayShots.save(img)
                     if UserDefaults.standard.object(forKey: CamFilter.saveKey) as? Bool ?? true { CamFilter.saveToPhotos(img) }
                 }
                 finish(img)
@@ -157,10 +149,11 @@ struct ReceiptCamera: View {
 
     private var bottomRow: some View {
         HStack {
-            // Ảnh mới nhất Pay đã chụp; chạm: danh sách ảnh Pay đã chụp (trong đó vẫn chọn được từ thư viện máy)
-            Button { showShots = true } label: { LatestShotTile() }
+            // Ảnh mới nhất trong app Ảnh (khung dọc bo góc); chạm: chọn ảnh từ thư viện máy, xong qua bước căn lại như ảnh chụp
+            PhotosPicker(selection: $photo, matching: .images) { LatestPhotoTile() }
                 .buttonStyle(Pressable())
-                .accessibilityLabel(L("Ảnh đã chụp"))
+                .frame(width: 58, height: 58)
+                .accessibilityLabel(L("Chọn ảnh"))
             Spacer()
             Button(action: shoot) {
                 Capsule().fill(Color(hex: 0xE8EBDD))

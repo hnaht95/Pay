@@ -49,6 +49,7 @@ targets:
         NSMicrophoneUsageDescription: Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
         NSSpeechRecognitionUsageDescription: Pay chuyển giọng nói thành chữ để ghi khoản chi.
         NSPhotoLibraryAddUsageDescription: Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.
+        NSPhotoLibraryUsageDescription: Pay hiện ảnh mới nhất trong app Ảnh ở màn chụp để bạn chọn nhanh ảnh hoá đơn có sẵn.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false

@@ -57,7 +57,6 @@ struct LatestPhotoTile: View {
         .frame(width: Self.size.width, height: Self.size.height)
         .background(.white.opacity(0.14))
         .clipShape(shape)
-        .overlay(shape.strokeBorder(.white.opacity(0.25), lineWidth: 1))
         .onAppear { latest.start() }
         .onDisappear { latest.stop() }
     }

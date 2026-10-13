@@ -480,10 +480,6 @@ struct HomeView: View {
                 // Chạm: nhập tay. Vuốt lên: chụp hoá đơn rồi mở màn nhập với ảnh hoá đơn đính kèm
                 BigButton(title: L("Nhập"), icon: "plus", primary: false, swipeUp: { _ in if Pro.shared.allow(.photos) { receiptScan = true } }) { entry = .new(cat: nil) }
                     .filmPressed(film?.pressed["dock-add"] ?? 0)
-                    // Thẻ nói để ghi mở ra phủ cả dải nút: góc dưới của thẻ bo tròn hơn nút nên nút Nhập ló ra ở góc thẻ. Ẩn đi
-                    // cùng lúc thẻ phóng to, hiện lại khi thẻ thu về
-                    .opacity(voiceFrom != nil ? 0 : 1)
-                    .animation(.easeOut(duration: 0.2), value: voiceFrom != nil)
                 // Chạm: quét QR. Vuốt lên: thẻ nói để ghi phóng ra từ chính nút này
                 // Đang là thẻ nói để ghi (biến hình từ nút này ra): nút thật không vẽ gì (ghost), chỉ còn khối biến hình
                 BigButton(title: L("Quét QR"), icon: "qrcode", primary: true, ghost: voiceFrom != nil, swipeUp: { frame in
@@ -827,9 +823,7 @@ struct BigButton: View {
             // Tự xử lý bằng một cử chỉ, mỗi lần nhấn chỉ ra đúng một việc: kéo lên quá 30pt là vuốt lên (làm ngay,
             // nhả tay không làm gì nữa), nhả tại chỗ là chạm, kéo đi hướng khác rồi nhả là bỏ.
             label
-                // Chỉ ghi khung lúc không nhấn: khung toàn màn tính cả hiệu ứng thu nhỏ khi nhấn (0,94) — đo lúc đang nhấn thì khối
-                // biến hình thu về nhỏ hơn nút thật, lúc nút hiện lại trông như nút nhảy to ra (thấy rõ trên iOS 18)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { if !down { frame = $0 } }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
                 .scaleEffect(down ? 0.94 : 1).opacity(down ? 0.72 : 1)
                 .animation(down ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35), value: down)
                 .gesture(DragGesture(minimumDistance: 0)
@@ -953,10 +947,11 @@ extension View {
     /// theo từng điểm ảnh, càng sát mép trên càng nhoè (shader topEdgeBlur), như iOS 27. Áp cho từng khối nội dung, không áp
     /// lên vùng cuộn / List được (hiệu ứng lớp không vẽ được phần của UIKit)
     @ViewBuilder func topScrollBlur() -> some View {
-        // iOS 26: cùng shader nhưng gắn qua TopBlur26 (không visualEffect: trên iOS 26.2 visualEffect trong trang chủ làm các lớp
-        // phủ tự vẽ — bảng nhấn giữ, thẻ Nói để ghi — không hiện)
-        if SystemEdge.homeTop { self }
-        else if #available(iOS 26.0, *) { modifier(TopBlur26()) }
+        // iOS 26: không gắn hiệu ứng lớp. Trên iOS 26.2, chỉ cần trang chủ có một khối gắn hiệu ứng này là các lớp phủ tự vẽ của
+        // trang (bảng nhấn giữ danh mục / thẻ Hôm nay đã chi, thẻ nói để ghi khi vuốt lên từ nút Quét QR) được gán mà không bao
+        // giờ hiện; các màn mở dạng tấm (sheet) thì vẫn lên. iOS 18 và iOS 27 không bị. Mép trên trên iOS 26 vì thế chỉ còn dải
+        // màu nền nhạt dần dưới thanh trạng thái (statusBarEdge), không nhoè theo từng điểm ảnh
+        if #available(iOS 26.0, *) { self }
         else { topScrollBlurOld().dockBlur() }
     }
 
@@ -995,16 +990,14 @@ extension View {
                     // iOS 26 trở lên không có lớp nhoè từng khối của app (topScrollBlur chỉ chạy trên iOS cũ hơn 26), nên chỉ phủ
                     // nhẹ màu nền thì chữ cuộn lên vẫn đè rõ lên đồng hồ. Ở đó dùng kính mờ làm nhoè nội dung, cộng màu nền đậm
                     // hơn: đặc ở mép trên, nhạt dần qua chân thanh trạng thái
-                    // iOS 26 giờ cũng có lớp nhoè từng khối (TopBlur26) như iOS 18: chỉ cần dải màu nhẹ, không kính mờ
-                    let strong = false
+                    let strong: Bool = { if #available(iOS 26.0, *) { true } else { false } }()
                     ZStack {
                         if strong { Rectangle().fill(.ultraThinMaterial) }
-                        // iOS 26: kính mờ làm nhoè, màu nền chỉ phủ vừa (đặc quá thì thành vệt đen che cả đầu trang khi cuộn)
-                        LinearGradient(stops: [.init(color: color.opacity(0.6), location: 0),
-                                               .init(color: color.opacity(strong ? 0.35 : 0.3), location: end),
+                        LinearGradient(stops: [.init(color: color.opacity(strong ? 1 : 0.6), location: 0),
+                                               .init(color: color.opacity(strong ? 0.8 : 0.3), location: end),
                                                .init(color: color.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
                     }
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(strong ? 0.85 : 0.9), location: end * 0.8),
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(strong ? 1 : 0.9), location: end * (strong ? 1 : 0.8)),
                                                  .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
                     .frame(height: bar + tail)
                     .offset(y: -bar)
@@ -1333,20 +1326,4 @@ enum SystemEdge {
         let major = Int(sdk.drop { !$0.isNumber }.prefix { $0.isNumber }) ?? 0
         return major >= 27
     }()
-}
-
-/// iOS 26: nhoè từng điểm ảnh khi khối trôi lên dưới đồng hồ (như topScrollBlurOld) nhưng không dùng visualEffect — trên iOS
-/// 26.2 có visualEffect trong trang chủ là các lớp phủ tự vẽ (bảng nhấn giữ, thẻ Nói để ghi) không hiện. Đo vị trí khối bằng
-/// onGeometryChange rồi gắn layerEffect thường
-@available(iOS 26.0, *)
-private struct TopBlur26: ViewModifier {
-    @State private var y: CGFloat = 1000
-    private static let safeTop = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first?.safeAreaInsets.top ?? 59
-
-    func body(content: Content) -> some View {
-        content
-            .layerEffect(ShaderLibrary.topEdgeBlur(.float(-y), .float(Self.safeTop + 14), .float(7)),
-                         maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < Self.safeTop + 14)
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { y = $0 }
-    }
 }

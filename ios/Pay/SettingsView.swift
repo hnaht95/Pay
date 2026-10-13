@@ -935,7 +935,7 @@ struct CategoryEditor: View {
                         .focused($nameFocused)
                         .submitLabel(.done)
                 } header: {
-                    Text(L("Tên")).textCase(nil)
+                    Text(L("Tên"))
                 } footer: {
                     if duplicate { Text(L("Đã có danh mục tên này.")).foregroundStyle(.red) }
                 }
@@ -964,7 +964,7 @@ struct CategoryEditor: View {
                         }
                     }
                 } header: {
-                    Text(L("Ảnh")).textCase(nil)
+                    Text(L("Ảnh"))
                 }
                 .onChange(of: photoItem) { _, item in
                     guard let item else { return }
@@ -993,15 +993,13 @@ struct CategoryEditor: View {
                     .background(EmojiField(isOn: $pickingEmoji) { icon = $0 }.frame(width: 1, height: 1).opacity(0.01))
                     emojiGrid
                 } header: {
-                    Text(L("Biểu tượng")).textCase(nil)
+                    Text(L("Biểu tượng"))
                 } footer: {
                     Text(L("Chọn nhanh ở trên, hoặc mở bàn phím Emoji để chọn bất kỳ biểu tượng nào của iOS."))
                 }
 
-                Section {
+                Section(L("Màu")) {
                     colorRows
-                } header: {
-                    Text(L("Màu")).textCase(nil)
                 }
 
             }

@@ -35,22 +35,12 @@ struct BlurForm<Content: View>: View {
                         }
                     } header: {
                         // Viết thường như iOS 26+ (iOS 18 tự viết hoa tiêu đề mục; textCase của Form không tới được đây)
-                        // Cỡ chữ và độ đậm như tiêu đề mục của iOS 26+ (iOS 18 nhỏ, viết hoa)
-                        // Bọc trong HStack: tiêu đề chỉ là một Text thì iOS 18 tự viết hoa, bỏ qua textCase
-                        HStack(spacing: 0) { sec.header; Spacer(minLength: 0) }
-                            .textCase(nil).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
-                            .titleEdgeBlur(edge)
+                        sec.header.textCase(nil).titleEdgeBlur(edge)
                     } footer: {
                         sec.footer.titleEdgeBlur(edge)
                     }
-                    .textCase(nil)
-                    // Tiêu đề mục kiểu nổi bật: iOS 18 không tự viết hoa (kiểu thường thì viết hoa, bỏ qua textCase khi mục được dựng lại ở đây)
-                    .headerProminence(.increased)
                 }
             }
-            .textCase(nil)
-            // Hàng cao như Form của iOS 26+ (iOS 18 mặc định 44)
-            .environment(\.defaultMinListRowHeight, 52)
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { edge = $0 }
         } else {
             Form { content }
@@ -58,13 +48,13 @@ struct BlurForm<Content: View>: View {
     }
 }
 
-/// Nền ô của Form kiểu nhóm bo góc, bo 26 như Form của iOS 26+ (UIKit trên iOS 18 chỉ bo 10); vạch ngăn mảnh lùi vào 20
+/// Nền ô của Form kiểu nhóm bo góc (như UIKit trên iOS 18: bo 10, vạch ngăn mảnh giữa các ô lùi vào 20)
 private struct CellBackground: View {
     let first: Bool, last: Bool
 
     var body: some View {
-        UnevenRoundedRectangle(topLeadingRadius: first ? 26 : 0, bottomLeadingRadius: last ? 26 : 0,
-                               bottomTrailingRadius: last ? 26 : 0, topTrailingRadius: first ? 26 : 0, style: .continuous)
+        UnevenRoundedRectangle(topLeadingRadius: first ? 10 : 0, bottomLeadingRadius: last ? 10 : 0,
+                               bottomTrailingRadius: last ? 10 : 0, topTrailingRadius: first ? 10 : 0, style: .continuous)
             .fill(Color(.secondarySystemGroupedBackground))
             .overlay(alignment: .bottom) {
                 if !last { Rectangle().fill(Color(.separator)).frame(height: 1 / 3).padding(.leading, 20) }

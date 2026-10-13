@@ -164,13 +164,6 @@ struct StatsView: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centerDay, anchor: .center)
             .defaultScrollAnchor(.trailing)
-            // Bề ngang viên đo xong sau lần dựng đầu (dải dài ra): cuộn lại về ngày đang giữa, không thì iOS 26 dừng lệch,
-            // hôm nay bị khuất ở mép phải
-            .onChange(of: pillW) { _, _ in
-                let c = centerDay
-                centerDay = nil
-                DispatchQueue.main.async { centerDay = c }
-            }
             .frame(height: Self.pillHeight + 20)
             .modifier(ChipEdges(fade: $stripFade))
             .modifier(SevenColumns())

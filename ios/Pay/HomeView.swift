@@ -262,24 +262,21 @@ struct HomeView: View {
                 BudgetBar(s: bs, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
                     .padding(.top, 14)
             }
-            // Hai cột: trái đã chi cả tháng / ngân sách (vượt thì số chi đỏ), phải số dư hiện có (chạm để đặt / chỉnh).
-            // Chữ luôn một cỡ, không co: số dài quá không vừa một hàng thì số dư xuống hàng dưới
-            let spent = VStack(alignment: .leading, spacing: 3) {
-                Text(L("Đã chi")).font(.system(size: 13)).foregroundStyle(.secondary)
-                (Text(fmt(month)).foregroundStyle(bs?.level == .over ? Palette.danger : Color.primary)
-                 + Text(bs.map { "/" + fmt($0.budget) } ?? "").foregroundStyle(.secondary))
-                    .font(.system(size: 17, weight: .semibold))
-            }
-            .lineLimit(1).fixedSize()
+            // Hai cột cùng hàng: trái đã chi cả tháng / ngân sách (vượt thì số chi đỏ), phải số dư (chạm để đặt / chỉnh).
+            // Hai bên luôn cùng một cỡ chữ: số dài quá thì cả hai cùng hạ một nấc, không bên nào co riêng, không xuống hàng
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 12) {
-                    spent
-                    Spacer(minLength: 0)
-                    if film == nil { balanceColumn(alignment: .trailing) }
-                }
-                VStack(alignment: .leading, spacing: 10) {
-                    spent
-                    if film == nil { balanceColumn(alignment: .leading) }
+                ForEach([17, 15, 13] as [CGFloat], id: \.self) { size in
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(L("Đã chi")).font(.system(size: 13)).foregroundStyle(.secondary)
+                            (Text(fmt(month)).foregroundStyle(bs?.level == .over ? Palette.danger : Color.primary)
+                             + Text(bs.map { "/" + fmt($0.budget) } ?? "").foregroundStyle(.secondary))
+                                .font(.system(size: size, weight: .semibold))
+                        }
+                        .lineLimit(1).fixedSize()
+                        Spacer(minLength: 0)
+                        if film == nil { balanceColumn(size) }
+                    }
                 }
             }
             .padding(.top, 14)
@@ -292,14 +289,14 @@ struct HomeView: View {
     }
 
     /// Cột số dư hiện có: chưa đặt thì mời nhập; chạm để đặt / chỉnh
-    private func balanceColumn(alignment: HorizontalAlignment) -> some View {
+    private func balanceColumn(_ size: CGFloat) -> some View {
         Button { balanceOpen = true } label: {
-            VStack(alignment: alignment, spacing: 3) {
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
                 if let b = store.balance {
-                    Text(fmt(b)).font(.system(size: 17, weight: .semibold)).foregroundStyle(b < 0 ? Palette.danger : Color.primary)
+                    Text(fmt(b)).font(.system(size: size, weight: .semibold)).foregroundStyle(b < 0 ? Palette.danger : Color.primary)
                 } else {
-                    Text(L("Nhập số dư")).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
+                    Text(L("Nhập số dư")).font(.system(size: size, weight: .semibold)).foregroundStyle(.secondary)
                 }
             }
             .lineLimit(1).fixedSize()

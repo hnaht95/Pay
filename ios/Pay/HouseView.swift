@@ -1429,13 +1429,16 @@ struct HouseSpendEditor: View {
             }
             // Vùng cuộn tràn ra sát hai mép bảng (nội dung tự lùi vào 18pt) để thanh cuộn nằm sát mép phải
             .padding(.horizontal, -18)
-            // Tiêu đề ghim ở mép trên vùng cuộn; nội dung cuộn lên chui xuống dưới và bị nhoè như mép trên các màn khác
-            // (Lịch sử, Thống kê, Cài đặt): cùng hiệu ứng mép cuộn mềm của hệ thống. Bảng có vạch ngang, vuốt xuống là đóng
-            .softTitleBar {
-                // Giữa như tiêu đề các màn khác
-                Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold)).lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 26).padding(.bottom, 6)
+            // Tiêu đề ghim ở mép trên vùng cuộn, nền đặc, có vạch mảnh bên dưới; nội dung cuộn lên cắt gọn ở vạch (như Lịch sử
+            // chi tiêu, Thống kê, Cài đặt), không nhoè
+            .softTitleBar(plain: true) {
+                VStack(spacing: 0) {
+                    // Giữa như tiêu đề các màn khác
+                    Text(editing == nil ? L("Khoản chung") : L("Sửa khoản chung")).font(.system(size: 21, weight: .bold)).lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 26).padding(.bottom, 14)
+                    Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1)
+                }
             }
             // Bàn phím số ẩn đi thì thôi gõ số riêng: lần hiện sau lại gõ tổng tiền
             .onChange(of: padShown) { _, on in if !on { target = nil } }

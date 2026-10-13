@@ -1005,21 +1005,27 @@ extension View {
     /// iOS cũ hơn 26, như mép trên trang chủ (dưới đồng hồ): khối nội dung trôi lên dưới thanh tiêu đề nhoè dần theo từng điểm
     /// ảnh (shader topEdgeBlur), càng sát mép trên càng nhoè. Vùng cuộn phải có coordinateSpace(name: "navScroll") và gắn
     /// softTopEdge(home: true). Đo trên máy ảo iOS 18: thanh tiêu đề trong tấm cao 56
-    @ViewBuilder func navEdgeBlur() -> some View {
-        if #available(iOS 26.0, *) { self } else {
-            visualEffect { content, g in
-                let y = g.frame(in: .named("navScroll")).minY
-                // Gốc vùng cuộn có tên nằm ở chân thanh tiêu đề (đo trên máy ảo): nhoè hết mức ở mép trên tấm (-56), hết nhoè
-                // 14 pt dưới chân thanh, như trang chủ (hết nhoè 14 pt dưới thanh trạng thái)
-                return content.layerEffect(ShaderLibrary.topEdgeBlur(.float(-y - 56), .float(70), .float(7)),
-                                           maxSampleOffset: CGSize(width: 11, height: 11), isEnabled: y < 14)
-            }
-        }
+    /// Các tấm có thanh tiêu đề (Thống kê, Cài đặt, Thông báo…) không còn nhoè nội dung dưới thanh tiêu đề: nội dung cắt gọn ở
+    /// vạch dưới thanh (xem softTopEdge(home:)). Giữ hàm để các chỗ gọi không phải đổi
+    func navEdgeBlur() -> some View { self }
+
+    /// iOS 26+: mép cuộn kiểu cứng (không nhoè nội dung dưới thanh tiêu đề)
+    @ViewBuilder func hardTopEdge() -> some View {
+        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.hard, for: .top) } else { self }
     }
 
     /// home: iOS cũ hơn 26 làm như mép trên trang chủ — chỉ phủ nhẹ màu nền, phần nhoè do từng khối tự làm (navEdgeBlur)
     @ViewBuilder func softTopEdge(fade: Color? = nil, home: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
+        if home {
+            // Các tấm có thanh tiêu đề (Thống kê, Cài đặt, Thông báo, sửa nhóm / thành viên / danh mục, chọn ngân hàng…): như Lịch sử
+            // chi tiêu — thanh tiêu đề nền đặc màu trang, một vạch mảnh ngay dưới thanh, nội dung cuộn lên cắt gọn ở vạch. Không nhoè
+            hardTopEdge().toolbarBackground(fade ?? Palette.bg, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                // Vạch nằm ở mép trên vùng cuộn, tức ngay chân thanh tiêu đề; lùi 16 hai bên như vạch dưới ô tìm của Lịch sử
+                .overlay(alignment: .top) {
+                    Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16).allowsHitTesting(false)
+                }
+        } else if #available(iOS 26.0, *) {
             scrollEdgeEffectStyle(.soft, for: .top)
                 .overlay(alignment: .top) {
                     // home: màu fade chỉ dùng cho dải màu nhẹ của iOS cũ; iOS 26+ để nguyên mép mềm của hệ thống (trong như trang chủ)

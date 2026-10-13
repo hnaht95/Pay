@@ -3,7 +3,7 @@
 let cases: [(String, Int?, String)] = [
   // khoản thu
   ("nhận lương mười lăm triệu", 15000000, "nhận lương"), ("lương 15 triệu", 15000000, "lương"), ("được chuyển 500k", 500000, "được chuyển"),
-  ("tiền thưởng hai triệu", 2000000, "tiền thưởng"),
+  ("tiền thưởng hai triệu", 2000000, "tiền thưởng"), ("chuyển vào 500k", 500000, "chuyển vào"), ("chuyển vào năm trăm nghìn", 500000, "chuyển vào"),
   // cũ
   ("35k cafe", 35000, "cafe"), ("ba mươi lăm nghìn cà phê", 35000, "cà phê"), ("ba lăm cafe", 35000, "cafe"), ("cafe ba lăm", 35000, "cafe"),
   ("35 cafe", 35000, "cafe"), ("35 nghìn cà phê", 35000, "cà phê"), ("35.000 đồng cà phê", 35000, "cà phê"),

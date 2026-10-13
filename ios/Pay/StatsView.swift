@@ -28,6 +28,7 @@ struct StatsView: View {
     /// Khoản lớn nhất: đang mở rộng ra mọi khoản của kỳ
     @State private var showAllBig = false
     @State private var showAllIncome = false
+    @State private var balanceOpen = false
     /// Khoản thu đang mở để xem / sửa
     @State private var editing: EntryMode?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -77,6 +78,7 @@ struct StatsView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
+        .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
         }
@@ -87,9 +89,10 @@ struct StatsView: View {
             if film != nil { monthTabs } else { periodHeader }
             // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur); dải ngày nhoè theo từng viên
             hero(items, prev).navEdgeBlur()
-            // Kỳ đang xem có khoản thu: tổng thu, dư / hụt so với chi, thu theo danh mục
-            let incomes = store.incomes.filter { $0.date >= span.start && $0.date < span.end }
-            if !incomes.isEmpty { incomeCard(incomes, spent: sum(items)).navEdgeBlur() }
+            // Số dư đầu kỳ → cuối kỳ, thu / chi của kỳ, rồi từng khoản thu (như báo cáo của Money Lover)
+            if film == nil {
+                balanceCard(store.incomes.filter { $0.date >= span.start && $0.date < span.end }, spent: sum(items)).navEdgeBlur()
+            }
             grid(items, prev).navEdgeBlur()
             if !items.isEmpty {
                 categoryCard(items).navEdgeBlur()
@@ -922,17 +925,23 @@ struct StatsView: View {
         }
     }
 
-    // MARK: Khoản thu
+    // MARK: Số dư, thu chi
 
-    /// Dư (thu trừ chi) hoặc hụt của kỳ, rồi từng khoản thu mới nhất trước (tên, danh mục, ngày giờ, số tiền).
-    /// Chạm một khoản để xem / sửa; quá 5 khoản thì Xem tất cả mở rộng tại chỗ như "Khoản lớn nhất"
-    private func incomeCard(_ incomes: [Expense], spent: Int) -> some View {
-        let left = sum(incomes) - spent
+    /// Số dư đầu kỳ → cuối kỳ (kỳ đang chạy: hiện tại) và chênh lệch; thu, chi, thu − chi của kỳ; rồi từng khoản thu mới nhất trước
+    /// (chạm để xem / sửa, quá 5 khoản thì Xem tất cả). Chưa đặt số dư thì mời nhập; kỳ nằm trước lúc đặt số dư thì không có số dư
+    private func balanceCard(_ incomes: [Expense], spent: Int) -> some View {
+        let got = sum(incomes)
         let sorted = incomes.sorted { $0.t > $1.t }
         let rows = showAllIncome ? sorted : Array(sorted.prefix(5))
+        let start = store.balanceStart
+        let s = span.start.timeIntervalSince1970 * 1000
+        let e = min(span.end.timeIntervalSince1970 * 1000, Date().timeIntervalSince1970 * 1000 + 1)
+        // Kỳ bắt đầu trước lúc đặt số dư: đầu kỳ tính từ ngay sau lần đặt (đã gồm số dư ban đầu)
+        let opening = start.flatMap { st in s > st ? store.balance(before: s) : (e > st ? store.balance(before: st + 1) : nil) }
+        let closing = store.balance(before: e)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Khoản thu")).font(.system(size: 17, weight: .semibold))
+                Text(L("Số dư")).font(.system(size: 17, weight: .semibold))
                 Spacer()
                 if sorted.count > 5 {
                     Button { withAnimation(.snappy) { showAllIncome.toggle() } } label: {
@@ -943,14 +952,43 @@ struct StatsView: View {
             }
             .padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 0) {
-                // Một dòng: dư / hụt so với chi của kỳ (tổng thu không nhắc lại, đã có ở từng khoản bên dưới)
-                HStack(alignment: .firstTextBaseline) {
-                    Text(left >= 0 ? L("Dư so với chi") : L("Hụt so với chi")).font(.system(size: 15)).foregroundStyle(.secondary)
-                    Spacer(minLength: 8)
-                    Text(fmt(abs(left))).font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(left >= 0 ? Color.primary : Palette.danger).lineLimit(1)
+                if let opening, let closing {
+                    let change = closing - opening
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(start.map { s > $0 } == true ? L("Đầu kỳ") : L("Lúc đặt số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
+                            Text(fmt(opening)).font(.system(size: 17, weight: .semibold))
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary).padding(.top, 22)
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
+                            Text(fmt(closing)).font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
+                            Text((change >= 0 ? "+" : "−") + fmt(abs(change))).font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(change >= 0 ? Palette.goodInk : Palette.danger)
+                        }
+                    }
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .padding(.vertical, 14)
+                } else if start == nil {
+                    Button { balanceOpen = true } label: {
+                        HStack {
+                            Text(L("Nhập số dư hiện có")).font(.system(size: 15, weight: .medium))
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(Pressable()).foregroundStyle(.primary)
+                } else {
+                    Text(L("Chưa đặt số dư trong kỳ này")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 14)
                 }
-                .padding(.vertical, 14)
+                flowRow(L("Thu"), "+" + fmt(got), Palette.goodInk)
+                flowRow(L("Chi"), "−" + fmt(spent), Palette.danger)
+                flowRow(L("Thu − chi"), (got >= spent ? "+" : "−") + fmt(abs(got - spent)), got >= spent ? Color.primary : Palette.danger)
                 ForEach(rows) { e in
                     let c = Category.get(e.c)
                     Button { editing = .edit(e) } label: {
@@ -975,6 +1013,18 @@ struct StatsView: View {
             .padding(.horizontal, 18).padding(.vertical, 4)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
         }
+    }
+
+    /// Một dòng thu / chi của thẻ Số dư: tên trái, số phải, kẻ mảnh phía trên
+    private func flowRow(_ title: String, _ value: String, _ color: Color) -> some View {
+        HStack {
+            Text(title).font(.system(size: 15)).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(color)
+        }
+        .lineLimit(1)
+        .padding(.vertical, 10)
+        .overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
     }
 
     // MARK: Khoản lớn nhất

@@ -446,8 +446,17 @@ final class Store: ObservableObject {
     /// Số dư hiện có: lần đặt số dư đầu tiên làm mốc, cộng mọi khoản thu và điều chỉnh, trừ mọi khoản chi từ mốc đó.
     /// Chưa đặt số dư lần nào thì nil (app không biết lúc bắt đầu dùng bạn có bao nhiêu)
     var balance: Int? {
-        guard let start = adjusts.map(\.t).min() else { return nil }
+        guard let start = balanceStart else { return nil }
         return all.filter { $0.t >= start }.reduce(0) { $0 + $1.signed }
+    }
+
+    /// Lúc đặt số dư lần đầu (ms): mốc tính số dư
+    var balanceStart: Double? { adjusts.map(\.t).min() }
+
+    /// Số dư ngay trước thời điểm `t` (ms); trước lúc đặt số dư lần đầu thì nil
+    func balance(before t: Double) -> Int? {
+        guard let start = balanceStart, t > start else { return nil }
+        return all.filter { $0.t >= start && $0.t < t }.reduce(0) { $0 + $1.signed }
     }
 
     /// Đặt số dư hiện có: ghi một khoản "Điều chỉnh số dư" bằng phần chênh với số app đang tính (lần đầu là cả số dư),

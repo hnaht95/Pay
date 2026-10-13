@@ -7,7 +7,7 @@ extension English {
         "trà sữa": "milk tea", "đi chợ": "groceries", "tiền nhà": "rent", "điện nước": "power & water",
         // Danh mục có sẵn
         "Ăn uống": "Food",
-        "Khoản thu": "Income", "Dư so với chi": "Left after spending", "Hụt so với chi": "Short after spending",
+        "Đầu kỳ": "Start", "Lúc đặt số dư": "When set", "Hiện tại": "Now", "Cuối kỳ": "End", "Thu − chi": "In − out", "Chưa đặt số dư trong kỳ này": "No balance set for this period", "Nhập số dư hiện có": "Set your current balance",
         "Cafe": "Coffee",
         "Đi lại": "Transport",
         "Mua sắm": "Shopping",

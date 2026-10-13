@@ -943,12 +943,22 @@ struct StatsView: View {
                     let change = closing - opening
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
-                        Text(fmt(closing)).font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
-                        (Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@ · " : "Lúc đặt %@ · ", fmt(opening))).foregroundStyle(.secondary)
-                         + Text((change >= 0 ? "+" : "−") + fmt(abs(change))).foregroundStyle(change >= 0 ? Palette.goodInk : Palette.danger))
-                            .font(.system(size: 13))
+                        // Chênh lệch so với đầu kỳ đứng cạnh số dư, mũi tên lên / xuống
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(fmt(closing)).font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
+                            if change != 0 {
+                                HStack(spacing: 3) {
+                                    Image(systemName: change > 0 ? "arrow.up" : "arrow.down").font(.system(size: 12, weight: .bold))
+                                    Text(fmt(abs(change))).font(.system(size: 15, weight: .semibold))
+                                }
+                                .foregroundStyle(change > 0 ? Palette.goodInk : Palette.danger)
+                            }
+                        }
+                        Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@" : "Lúc đặt số dư %@", fmt(opening)))
+                            .font(.system(size: 13)).foregroundStyle(.secondary)
                     }
+                    .lineLimit(1).minimumScaleFactor(0.7)
                 } else if start == nil {
                     Button { balanceOpen = true } label: {
                         HStack {
@@ -963,11 +973,15 @@ struct StatsView: View {
                     Text(L("Chưa đặt số dư trong kỳ này")).font(.system(size: 15)).foregroundStyle(.secondary)
                 }
                 Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5)
-                // Hai cột cùng kiểu: nhãn nhỏ trên, số dưới
-                HStack(alignment: .top) {
+                // Các cột cùng kiểu: nhãn nhỏ trên, số dưới. Kỳ có điều chỉnh số dư thì thêm cột Điều chỉnh, để
+                // Thu − Chi + Điều chỉnh khớp với chênh lệch của số dư
+                let adjusted = adjustments(after: start)
+                HStack(alignment: .top, spacing: 8) {
                     flowColumn(L("Thu"), "+" + fmt(got), Palette.goodInk, alignment: .leading)
-                    Spacer(minLength: 12)
-                    flowColumn(L("Chi"), "−" + fmt(spent), Palette.danger, alignment: .trailing)
+                    flowColumn(L("Chi"), "−" + fmt(spent), Palette.danger, alignment: adjusted == 0 ? .trailing : .center)
+                    if adjusted != 0 {
+                        flowColumn(L("Điều chỉnh"), (adjusted > 0 ? "+" : "−") + fmt(abs(adjusted)), .secondary, alignment: .trailing)
+                    }
                 }
             }
             .padding(18)
@@ -982,6 +996,13 @@ struct StatsView: View {
             Text(value).font(.system(size: 17, weight: .semibold)).monospacedDigit().foregroundStyle(color)
         }
         .lineLimit(1).minimumScaleFactor(0.7)
+        .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .top))
+    }
+
+    /// Tổng các lần điều chỉnh số dư trong kỳ (không tính lần đặt số dư đầu tiên: đã nằm trong số dư đầu kỳ)
+    private func adjustments(after start: Double?) -> Int {
+        guard let start else { return 0 }
+        return store.adjusts.filter { $0.date >= span.start && $0.date < span.end && $0.t > start }.reduce(0) { $0 + $1.signed }
     }
 
     // MARK: Khoản thu

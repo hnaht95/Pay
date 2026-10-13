@@ -83,6 +83,9 @@ struct StatsView: View {
             if film != nil { monthTabs } else { periodHeader }
             // iOS cũ hơn 26: từng khối nhoè dần dưới thanh tiêu đề như trang chủ (navEdgeBlur); dải ngày nhoè theo từng viên
             hero(items, prev).navEdgeBlur()
+            // Kỳ đang xem có khoản thu: tổng thu, dư / hụt so với chi, thu theo danh mục
+            let incomes = store.incomes.filter { $0.date >= span.start && $0.date < span.end }
+            if !incomes.isEmpty { incomeCard(incomes, spent: sum(items)).navEdgeBlur() }
             grid(items, prev).navEdgeBlur()
             if !items.isEmpty {
                 categoryCard(items).navEdgeBlur()
@@ -912,6 +915,46 @@ struct StatsView: View {
                 .padding(.leading, ExpenseRow.inset).padding(.trailing, 16).padding(.vertical, 12)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
             }
+        }
+    }
+
+    // MARK: Khoản thu
+
+    /// Tổng thu của kỳ, dư (thu trừ chi) hoặc hụt, rồi từng danh mục thu như thẻ "Theo danh mục"
+    private func incomeCard(_ incomes: [Expense], spent: Int) -> some View {
+        let total = sum(incomes), left = total - spent
+        let byCat = Dictionary(grouping: incomes, by: { Category.get($0.c).k }).mapValues(sum)
+        let ranked = Category.income.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(L("Khoản thu")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L("Đã thu")).font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text("+" + fmt(total)).font(.system(size: 24, weight: .bold)).foregroundStyle(Palette.goodInk)
+                            .minimumScaleFactor(0.5).lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(left >= 0 ? L("Dư") : L("Hụt")).font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text(fmt(abs(left))).font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(left >= 0 ? Color.primary : Palette.danger).lineLimit(1)
+                    }
+                }
+                .padding(.vertical, 14)
+                ForEach(ranked) { c in
+                    HStack(spacing: 12) {
+                        CategoryBadge(c: c, side: 36, radius: 10, iconSize: 22)
+                        Text(c.name).font(.rowTitle).lineLimit(1)
+                        Spacer(minLength: 8)
+                        Text(fmt(byCat[c.k]!)).font(.rowAmount).monospacedDigit().lineLimit(1)
+                    }
+                    .padding(.vertical, 10)
+                    .overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
+                }
+            }
+            .padding(.horizontal, 18).padding(.vertical, 4)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
         }
     }
 

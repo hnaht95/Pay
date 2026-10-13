@@ -936,7 +936,8 @@ struct StatsView: View {
             // Không ô biểu tượng, chữ mảnh nhỏ: một thẻ, mỗi khoản một dòng (tên, ngày giờ · số tiền), kẻ mảnh giữa các dòng
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, e in
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    // Số tiền căn giữa theo chiều dọc của cả hai dòng bên trái (tên + ngày giờ), không treo ngang hàng tên
+                    HStack(alignment: .center, spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(e.n?.isEmpty == false ? e.n!.capFirst : Category.get(e.c).name).font(.system(size: 15)).lineLimit(1)
                             Text(bigWhen(e)).font(.system(size: 12)).foregroundStyle(.secondary)

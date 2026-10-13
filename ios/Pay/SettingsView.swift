@@ -747,6 +747,7 @@ struct CategoryEditor: View {
     @State private var photo: UIImage?
     @State private var photoChanged = false
     @State private var photoItem: PhotosPickerItem?
+    @State private var cropping: CropItem?
     /// Bảng chọn màu của iOS đang mở
     @State private var pickingColor = false
     /// Đang dựng phim giới thiệu (xem Film.swift): biểu tượng, màu đang chọn lấy từ phim
@@ -964,8 +965,9 @@ struct CategoryEditor: View {
                     guard let item else { return }
                     Task {
                         if let data = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: data) {
-                            Haptic.tap()
-                            withAnimation(.snappy) { photo = img; photoChanged = true }
+                            // Căn khung trước rồi mới dùng; chờ bảng chọn ảnh đóng hẳn mới mở màn căn
+                            try? await Task.sleep(for: .milliseconds(450))
+                            cropping = CropItem(image: img)
                         }
                         photoItem = nil
                     }
@@ -1020,6 +1022,12 @@ struct CategoryEditor: View {
             .softTopEdge(fade: Color(.systemGroupedBackground), home: true)
             // Bàn phím hiện lên thì Huỷ / Lưu nằm yên ở đáy, bị bàn phím che (không bị đẩy lên đè lên ô Ảnh)
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            .fullScreenCover(item: $cropping) { c in
+                ImageCropper(image: c.image) { img in
+                    cropping = nil
+                    if let img { Haptic.tap(); withAnimation(.snappy) { photo = img; photoChanged = true } }
+                }
+            }
             .onAppear {
                 if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone; photo = CategoryPhotos.image(e.k) }
                 else { tone = CategoryTone.custom(0xCC7351); nameFocused = true }   // danh mục mới: màu đất nung + em chó

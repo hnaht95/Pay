@@ -25,6 +25,7 @@ extension English {
         "Ngôn ngữ": "Language",
         "Ngôn ngữ app": "App language",
         "Giao diện": "Appearance",
+        "Kéo, chụm để căn ảnh": "Drag and pinch to frame the photo",
         "Lưu ảnh chụp vào app Ảnh": "Save photos to Photos",
         "Theo máy": "System",
         "Sáng": "Light",

@@ -1054,6 +1054,7 @@ struct HouseGroupEditor: View {
     @State private var photo: Data?
     @State private var photoChanged = false
     @State private var pick: PhotosPickerItem?
+    @State private var cropping: CropItem?
     @State private var loaded = false
     /// Đang lưu lên iCloud: nút Lưu mờ đi cho biết đã nhận (vòng xoay ở màn nhóm bị bảng này che)
     @State private var saving = false
@@ -1120,8 +1121,15 @@ struct HouseGroupEditor: View {
             .onChange(of: pick) { _, item in
                 Task {
                     guard let d = try? await item?.loadTransferable(type: Data.self), let img = UIImage(data: d) else { return }
-                    photo = HouseMemberEditor.thumbnail(img)
-                    photoChanged = true
+                    // Căn khung trước rồi mới dùng; chờ bảng chọn ảnh đóng hẳn mới mở màn căn
+                    try? await Task.sleep(for: .milliseconds(450))
+                    cropping = CropItem(image: img)
+                }
+            }
+            .fullScreenCover(item: $cropping) { c in
+                ImageCropper(image: c.image) { img in
+                    cropping = nil
+                    if let img { photo = HouseMemberEditor.thumbnail(img); photoChanged = true }
                 }
             }
         }
@@ -1160,6 +1168,7 @@ struct HouseMemberEditor: View {
     @State private var photo: Data?
     @State private var photoChanged = false
     @State private var pick: PhotosPickerItem?
+    @State private var cropping: CropItem?
     /// Đã nạp thông tin của thành viên vào các ô chưa (chỉ nạp một lần)
     @State private var loaded = false
     /// Đang lưu lên iCloud: nút Lưu mờ đi cho biết đã nhận (vòng xoay ở màn nhóm bị bảng này che)
@@ -1240,8 +1249,15 @@ struct HouseMemberEditor: View {
             .onChange(of: pick) { _, item in
                 Task {
                     guard let d = try? await item?.loadTransferable(type: Data.self), let img = UIImage(data: d) else { return }
-                    photo = Self.thumbnail(img)
-                    photoChanged = true
+                    // Căn khung trước rồi mới dùng; chờ bảng chọn ảnh đóng hẳn mới mở màn căn
+                    try? await Task.sleep(for: .milliseconds(450))
+                    cropping = CropItem(image: img)
+                }
+            }
+            .fullScreenCover(item: $cropping) { c in
+                ImageCropper(image: c.image, circle: true) { img in
+                    cropping = nil
+                    if let img { photo = Self.thumbnail(img); photoChanged = true }
                 }
             }
         }

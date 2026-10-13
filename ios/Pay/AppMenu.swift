@@ -168,7 +168,10 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
     let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
     if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }
     var items = [AppMenuItem(icon: "pencil", title: L("Sửa khoản này"), run: edit)]
-    if let r = store.rule(for: e) {
+    if e.isAdjust {
+        // Điều chỉnh số dư: không sửa / lặp như khoản chi, chỉ xoá (số dư tính lại như trước lần chỉnh)
+        items = []
+    } else if let r = store.rule(for: e) {
         items.append(AppMenuItem(icon: "xmark.circle", title: L("Bỏ lặp hằng tháng"), subtitle: L("Đang tự ghi vào ngày %@ mỗi tháng", String(r.day))) { store.stopRepeating(r) })
     } else {
         items.append(AppMenuItem(icon: "repeat", title: L("Lặp hằng tháng"),
@@ -176,7 +179,7 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
     }
     items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
     return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
-                       title: "\(e.n?.isEmpty == false ? e.n!.capFirst : c.name) · \(e.isIncome ? "+" : "")\(fmt(e.a))",
+                       title: "\(e.n?.isEmpty == false ? e.n!.capFirst : c.name) · \(e.isIncome || e.c == "adj+" ? "+" : e.isAdjust ? "−" : "")\(fmt(e.a))",
                        subtitle: "\(c.name) · \(f.string(from: e.date))", items: items)
 }
 

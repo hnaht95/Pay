@@ -62,8 +62,18 @@ struct Category: Identifiable, Hashable {
         return Array(base.dropLast()) + incomeCustom + [base[base.count - 1]]
     }
 
+    /// Điều chỉnh số dư (không phải thu hay chi): "adj+" cộng vào số dư, "adj-" trừ đi. Khoản đầu tiên là số dư ban đầu
+    static let adjust: [Category] = [
+        Category(k: "adj+", icon: "⚖️", name: "Điều chỉnh số dư", color: Color(hex: 0xE4E4E8), kw: []),
+        Category(k: "adj-", icon: "⚖️", name: "Điều chỉnh số dư", color: Color(hex: 0xE4E4E8), kw: []),
+    ]
+
+    /// Mã khoản điều chỉnh số dư
+    static func isAdjust(_ k: String?) -> Bool { k?.hasPrefix("adj") == true }
+
     /// Danh mục theo mã. Mã lạ (danh mục đã xoá / chưa đồng bộ về) thì "Khác" cùng loại: tiền vào vẫn là tiền vào
     static func get(_ k: String?) -> Category {
+        if let k, isAdjust(k) { return adjust.first { $0.k == k } ?? adjust[0] }
         if let k, isIncome(k) { return income.first { $0.k == k } ?? income.last! }
         return all.first { $0.k == k } ?? all.last!
     }

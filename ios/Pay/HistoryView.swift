@@ -7,6 +7,7 @@ struct HistoryView: View {
     /// Chỉ xem một danh mục (mở từ ô danh mục ở màn hình chính); nil = toàn bộ lịch sử
     var category: String? = nil
     @State private var editing: EntryMode?
+    @State private var balanceOpen = false
     @State private var menu: AppMenuSpec?
     /// Ô tìm: lọc theo ghi chú hoặc tên danh mục, không phân biệt dấu ("ca phe" ra "cà phê")
     @State private var query = ""
@@ -38,7 +39,7 @@ struct HistoryView: View {
                         // Tiêu đề ngày là một dòng thường, cuộn đi cùng danh sách (tiêu đề nhóm của List kiểu plain dính ở đầu
                         // màn khi cuộn, nền trong suốt nên chồng lên nhau và lên khoản đang cuộn qua)
                         HStack {
-                            Text(title(day)); Spacer(); Text("\(fmt(list.reduce(0) { $0 + $1.a }))")
+                            Text(title(day)); Spacer(); Text("\(fmt(list.filter { !$0.isIncome && !$0.isAdjust }.reduce(0) { $0 + $1.a }))")
                         }
                         .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
                         .padding(.top, 14).padding(.bottom, 2)
@@ -46,7 +47,7 @@ struct HistoryView: View {
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                         ForEach(list) { e in
                             // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
-                            TapHold(tap: { editing = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
+                            TapHold(tap: { if e.isAdjust { balanceOpen = true } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                 ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                             }
                             .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
@@ -96,6 +97,7 @@ struct HistoryView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
+        .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .appMenu($menu)
         .sheetGrabber()

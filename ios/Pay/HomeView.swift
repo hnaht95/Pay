@@ -49,6 +49,8 @@ struct HomeView: View {
     @AppStorage(HeroColor.key) private var heroTone = -1
     @AppStorage(HeroColor.barKey) private var heroBarTone = -1
     @State private var pickingHero = false
+    /// Đang đặt / điều chỉnh số dư hiện có
+    @State private var balanceOpen = false
     /// Danh mục đang mở danh sách khoản chi (chạm vào ô danh mục)
     @State private var listing: Category?
     @Environment(\.scenePhase) private var scenePhase
@@ -100,6 +102,7 @@ struct HomeView: View {
         }
         .appMenu($menu)
         .sheet(isPresented: $pickingHero) { HeroColorSheet() }
+        .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         .overlay {
             // Phim: bảng nhấn giữ theo trạng thái phim đưa vào
             if let m = film?.menu, m.shown > 0 {
@@ -277,6 +280,27 @@ struct HomeView: View {
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .padding(.top, 12)
             }
+            // Số dư hiện có (thu trừ chi từ lần đặt số dư); chưa đặt thì mời nhập. Chạm để đặt / điều chỉnh
+            if film == nil {
+                Button { balanceOpen = true } label: {
+                    HStack(spacing: 6) {
+                        if let b = store.balance {
+                            Text(L("Hiện có")).font(.system(size: 15)).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(fmt(b)).font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(b < 0 ? Palette.danger : Color.primary)
+                        } else {
+                            Text(L("Nhập số dư hiện có")).font(.system(size: 15)).foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
+                    }
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .padding(.top, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(Pressable())
+            }
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -435,7 +459,9 @@ struct HomeView: View {
                     // Không gắn topScrollBlur cho hàng trong List: trên iOS cũ hơn 27 mỗi hàng thành lớp hiệu ứng riêng (shader nhoè
                     // mép trên và mép đáy), vuốt xoá thì hàng dịch mỗi khung hình nên SwiftUI tính và vẽ lại lớp đó liên tục, vuốt bị
                     // giật. Hàng trôi lên dưới thanh trạng thái / xuống sau hai nút chỉ còn lớp màu nền mờ dần (không nhoè)
-                    TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
+                    // Khoản điều chỉnh số dư: chạm mở bảng số dư (không sửa như khoản chi)
+                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+                            hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
                     .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
@@ -778,9 +804,10 @@ struct ExpenseRow: View {
             Spacer(minLength: 8)
             // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
             VStack(alignment: .trailing, spacing: 3) {
-                // Tiền vào: dấu cộng, chữ xanh lá
-                Text(e.isIncome ? "+" + fmt(e.a) : fmt(e.a)).font(.rowAmount).monospacedDigit().lineLimit(1)
-                    .foregroundStyle(e.isIncome ? Palette.goodInk : .primary)
+                // Khoản thu: dấu cộng, chữ xanh lá. Điều chỉnh số dư: dấu + / −, chữ xám
+                Text(e.isAdjust ? (e.signed >= 0 ? "+" : "−") + fmt(e.a) : e.isIncome ? "+" + fmt(e.a) : fmt(e.a))
+                    .font(.rowAmount).monospacedDigit().lineLimit(1)
+                    .foregroundStyle(e.isIncome ? AnyShapeStyle(Palette.goodInk) : e.isAdjust ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
                 HStack(spacing: 9) {
                     let parts = when
                     ForEach(Array(parts.enumerated()), id: \.offset) { i, p in

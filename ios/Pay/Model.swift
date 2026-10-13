@@ -14,8 +14,12 @@ struct Expense: Codable, Identifiable, Hashable {
 
     var date: Date { Date(timeIntervalSince1970: t / 1000) }
     var stamp: Double { u ?? t }
-    /// Tiền vào (danh mục tiền vào), không phải khoản chi
+    /// Khoản thu (danh mục thu), không phải khoản chi
     var isIncome: Bool { Category.isIncome(c) }
+    /// Điều chỉnh số dư: không phải thu cũng không phải chi
+    var isAdjust: Bool { Category.isAdjust(c) }
+    /// Ảnh hưởng tới số dư: khoản thu và điều chỉnh cộng thêm cộng, khoản chi và điều chỉnh trừ thì trừ
+    var signed: Int { isIncome || c == "adj+" ? a : -a }
 }
 
 /// Ghi nhớ theo số tài khoản để lần sau quét lại tự điền tên + danh mục.
@@ -167,12 +171,18 @@ final class Store: ObservableObject {
 
     /// Mọi khoản đã ghi: khoản chi và tiền vào (lưu, đồng bộ, sửa, xoá đều trên đây)
     @Published private(set) var all: [Expense] = [] {
-        didSet { items = all.filter { !$0.isIncome }; incomes = all.filter(\.isIncome) }
+        didSet {
+            items = all.filter { !$0.isIncome && !$0.isAdjust }
+            incomes = all.filter(\.isIncome)
+            adjusts = all.filter(\.isAdjust)
+        }
     }
     /// Chỉ khoản chi: mọi tổng chi, ngân sách, thống kê tính trên đây
     @Published private(set) var items: [Expense] = []
-    /// Chỉ tiền vào
+    /// Chỉ khoản thu
     @Published private(set) var incomes: [Expense] = []
+    /// Các lần đặt / điều chỉnh số dư
+    @Published private(set) var adjusts: [Expense] = []
     @Published var memo: [String: Memo] = [:]
     @Published var appId: String = UserDefaults.standard.string(forKey: "bankApp") ?? "acb" {
         didSet { UserDefaults.standard.set(appId, forKey: "bankApp") }
@@ -433,6 +443,25 @@ final class Store: ObservableObject {
         return items.filter { cal.isDate($0.date, equalTo: day, toGranularity: .month) }
     }
 
+    /// Số dư hiện có: lần đặt số dư đầu tiên làm mốc, cộng mọi khoản thu và điều chỉnh, trừ mọi khoản chi từ mốc đó.
+    /// Chưa đặt số dư lần nào thì nil (app không biết lúc bắt đầu dùng bạn có bao nhiêu)
+    var balance: Int? {
+        guard let start = adjusts.map(\.t).min() else { return nil }
+        return all.filter { $0.t >= start }.reduce(0) { $0 + $1.signed }
+    }
+
+    /// Đặt số dư hiện có: ghi một khoản "Điều chỉnh số dư" bằng phần chênh với số app đang tính (lần đầu là cả số dư),
+    /// để Lịch sử thấy lúc nào đã chỉnh và chỉnh bao nhiêu. Không tính vào chi, thu, ngân sách, thống kê
+    func setBalance(_ target: Int) {
+        let first = balance == nil
+        let diff = target - (balance ?? 0)
+        guard first || diff != 0 else { show(L("Số dư đã đúng")); return }
+        let e = Expense(id: UUID().uuidString, t: now, a: abs(diff), n: first ? L("Số dư ban đầu") : nil, c: diff >= 0 ? "adj+" : "adj-", acct: nil)
+        all.append(e)
+        persist()
+        show(L("Số dư: %@", fmt(target))) { [weak self] in self?.remove(id: e.id, toast: false) }
+    }
+
     /// Tổng tiền vào trong tháng chứa `day`
     func monthIncome(_ day: Date) -> Int {
         let cal = Calendar.current
@@ -453,7 +482,7 @@ final class Store: ObservableObject {
         let q = { (s: String) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         var rows = [[L("Ngày"), L("Giờ"), L("Loại"), L("Số tiền"), L("Danh mục"), L("Ghi chú")].map(q).joined(separator: ",")]
         for e in all.sorted(by: { $0.t < $1.t }) {
-            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isIncome ? L("Thu") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
+            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isAdjust ? L("Điều chỉnh") : e.isIncome ? L("Thu") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
         }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).csv")
         guard (try? ("\u{FEFF}" + rows.joined(separator: "\n")).write(to: url, atomically: true, encoding: .utf8)) != nil else { return nil }
@@ -470,7 +499,7 @@ final class Store: ObservableObject {
         let t = now
         // Khoản được khôi phục mang dấu sửa mới và bỏ dấu xoá cũ (vd sau "Xoá tất cả"),
         // nếu không lần gộp iCloud kế tiếp sẽ xoá chúng lần nữa
-        let add = b.items.filter { !ids.contains($0.id) && $0.a > 0 }.map { e -> Expense in
+        let add = b.items.filter { !ids.contains($0.id) && ($0.a > 0 || $0.isAdjust) }.map { e -> Expense in
             var e = e
             e.u = t
             return e

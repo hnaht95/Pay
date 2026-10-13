@@ -975,9 +975,9 @@ struct StatsView: View {
                 }
                 Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5)
                 HStack(alignment: .top) {
-                    flowColumn(L("Thu"), "+" + fmt(got), Palette.goodInk, alignment: .leading)
+                    flowColumn(L("Thu"), fmt(got), "arrow.up", Palette.goodInk, alignment: .leading)
                     Spacer(minLength: 12)
-                    flowColumn(L("Chi"), "−" + fmt(spent), Palette.danger, alignment: .trailing)
+                    flowColumn(L("Chi"), fmt(spent), "arrow.down", Palette.danger, alignment: .trailing)
                 }
             }
             .padding(18)
@@ -986,10 +986,15 @@ struct StatsView: View {
         }
     }
 
-    private func flowColumn(_ title: String, _ value: String, _ color: Color, alignment: HorizontalAlignment) -> some View {
+    /// Cột Thu / Chi: nhãn nhỏ trên; số kèm mũi tên (lên: tiền vào làm số dư tăng, xuống: tiền ra) như chênh lệch cạnh số dư
+    private func flowColumn(_ title: String, _ value: String, _ arrow: String, _ color: Color, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 4) {
             Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(color)
+            HStack(spacing: 3) {
+                Image(systemName: arrow).font(.system(size: 13, weight: .bold))
+                Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+            }
+            .foregroundStyle(color)
         }
         .lineLimit(1).minimumScaleFactor(0.7)
     }

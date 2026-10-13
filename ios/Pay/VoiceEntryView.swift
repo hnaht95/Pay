@@ -419,7 +419,7 @@ struct VoiceEntryView: View {
     @ViewBuilder private var amountBlock: some View {
         // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
         let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
+            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessEntry($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 // Số đổi: app dùng hiệu ứng số của iOS; phim tự vẽ số cũ trôi lên, số mới trồi lên
@@ -573,7 +573,7 @@ struct VoiceEntryView: View {
         // chi tiêu cá nhân. Xong đóng thẻ, báo ở màn chính
         if !said.isEmpty, let hit = House.shared.groupMentioned(in: said),
            let q = QuickParse.spoken(hit.rest) ?? QuickParse.expense(hit.rest) {
-            let cat = store.guessCategory(q.note), note = q.note
+            let cat = store.guessEntry(q.note), note = q.note
             Task {
                 guard let mine = await House.shared.quickSpend(in: hit.group, amount: q.amount, note: note, cat: cat) else {
                     notUnderstood = true

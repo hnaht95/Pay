@@ -265,6 +265,18 @@ struct HomeView: View {
                 if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
             }
             if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
+            // Tháng có tiền vào: tổng tiền vào và còn dư (tiền vào trừ tiền chi của tháng). Không ảnh hưởng ngân sách
+            let income = store.monthIncome(now)
+            if income > 0 {
+                HStack(spacing: 4) {
+                    Text(L("Tiền vào %@", fmt(income))).font(.system(size: 15, weight: .semibold))
+                    Spacer()
+                    Text(income >= month ? L("Dư %@", fmt(income - month)) : L("Hụt %@", fmt(month - income)))
+                        .font(.system(size: 15)).foregroundStyle(income >= month ? Color.secondary : Palette.danger)
+                }
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .padding(.top, 12)
+            }
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -766,7 +778,9 @@ struct ExpenseRow: View {
             Spacer(minLength: 8)
             // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
             VStack(alignment: .trailing, spacing: 3) {
-                Text(fmt(e.a)).font(.rowAmount).monospacedDigit().lineLimit(1)
+                // Tiền vào: dấu cộng, chữ xanh lá
+                Text(e.isIncome ? "+" + fmt(e.a) : fmt(e.a)).font(.rowAmount).monospacedDigit().lineLimit(1)
+                    .foregroundStyle(e.isIncome ? Palette.goodInk : .primary)
                 HStack(spacing: 9) {
                     let parts = when
                     ForEach(Array(parts.enumerated()), id: \.offset) { i, p in

@@ -176,7 +176,7 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
     }
     items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
     return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
-                       title: "\(e.n?.isEmpty == false ? e.n!.capFirst : c.name) · \(fmt(e.a))",
+                       title: "\(e.n?.isEmpty == false ? e.n!.capFirst : c.name) · \(e.isIncome ? "+" : "")\(fmt(e.a))",
                        subtitle: "\(c.name) · \(f.string(from: e.date))", items: items)
 }
 

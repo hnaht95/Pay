@@ -36,6 +36,8 @@ struct EntryView: View {
     @State private var photo: UIImage?
     @State private var photoChanged = false
     @State private var viewingPhoto = false
+    /// Đang ghi tiền vào (công tắc Chi / Vào): hàng chip là danh mục tiền vào
+    @State private var income = false
 
     private var amount: Int { Int(film?.entry?.digits ?? digits) ?? 0 }
     private var shownNote: String { film?.entry?.note ?? note }
@@ -44,11 +46,17 @@ struct EntryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             head
-            Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 26)
+            HStack {
+                Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary)
+                Spacer()
+                if canIncome && film == nil { kindSwitch }
+            }
+            .frame(minHeight: 34)
+            .padding(.top, 18)
             HStack(spacing: 4) {
-                Text(amount > 0 ? fmt(amount) : "0")
+                Text(amount > 0 ? (income ? "+" : "") + fmt(amount) : "0")
                     .font(.system(size: 40, weight: .bold)).kerning(-1)
-                    .foregroundStyle(amount > 0 ? .primary : .tertiary)
+                    .foregroundStyle(amount > 0 ? (income ? AnyShapeStyle(Palette.goodInk) : AnyShapeStyle(.primary)) : AnyShapeStyle(.tertiary))
                     .lineLimit(1).minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
                 // Đang nhập số tiền: vạch nhấp nháy sau số, như con trỏ của ô nhập
@@ -111,6 +119,7 @@ struct EntryView: View {
                     // Đoán lại theo ghi chú đang có, không giữ kết quả của lúc gõ dở (gõ "anh Tuấn mượn" thì "an" từng giữ Ăn uống).
                     // Ghi chú không gợi ra danh mục nào thì về danh mục ban đầu; riêng "Khác" đã học cho ghi chú này
                     // (từ khoá đoán ra danh mục khác mà app vẫn trả "Khác") thì phải chọn đúng "Khác"
+                    if income { cat = store.guessIncome(v); return }
                     let g = store.guessCategory(v)
                     cat = g != "khac" || Category.guess(v) != "khac" ? g : baseCat
                 }
@@ -164,7 +173,7 @@ struct EntryView: View {
         }
         .sheet(isPresented: $addingCat) {
             // Tạo xong là đã đổi danh mục: vào trạng thái sửa như khi bấm một chip, để nút chính thành "Lưu thay đổi"
-            CategoryEditor { k in cat = k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } }
+            CategoryEditor(income: income) { k in cat = k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } }
                 .environmentObject(store)
                 .sheetGrabber()
         }
@@ -211,6 +220,39 @@ struct EntryView: View {
         }
     }
 
+    /// Ghi được tiền vào: nhập mới hoặc sửa (quét QR là trả tiền, luôn là khoản chi)
+    private var canIncome: Bool { isNewEntry || isEdit }
+
+    /// Công tắc Chi / Vào cạnh chữ "Số tiền". Đổi loại thì danh mục đoán lại theo ghi chú trong bộ danh mục của loại đó
+    private var kindSwitch: some View {
+        HStack(spacing: 2) {
+            ForEach([false, true], id: \.self) { inc in
+                let on = income == inc
+                Button {
+                    guard !on else { return }
+                    Haptic.select()
+                    withAnimation(.snappy(duration: 0.25)) {
+                        income = inc
+                        // Chưa có ghi chú: tiền vào chọn sẵn Lương (hay gặp nhất). Danh mục chọn sẵn đứng đầu hàng chip
+                        cat = inc ? (trimmed.isEmpty ? Category.income[0].k : store.guessIncome(trimmed)) : store.guessCategory(trimmed)
+                        catPicked = false; chosen = false; leadCat = cat
+                        editing = true
+                    }
+                } label: {
+                    Text(inc ? L("Vào") : L("Chi")).font(.system(size: 15, weight: .semibold))
+                        .frame(width: 52, height: 30)
+                        .foregroundStyle(on ? (inc ? Color.white : Palette.ctaInk) : Color.secondary)
+                        .background { if on { Capsule().fill(inc ? Palette.goodInk : Palette.cta) } }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(2)
+        .background(Palette.pill, in: Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(L("Loại khoản"))
+    }
+
     /// Nhập mới (tay hoặc từ hoá đơn)
     private var isNewEntry: Bool {
         switch mode { case .new, .receipt: return true; default: return false }
@@ -222,11 +264,11 @@ struct EntryView: View {
 
     private var title: String {
         switch mode {
-        case .new(let c): return c.map { "\(Category.get($0).icon) \(Category.get($0).name)" } ?? L("Lưu khoản chi")
-        case .receipt: return L("Lưu khoản chi")
+        case .new(let c) where c != nil && Category.isIncome(c) == income: return "\(Category.get(c).icon) \(Category.get(c).name)"
+        case .new, .receipt: return income ? L("Lưu tiền vào") : L("Lưu khoản chi")
         case .scan(let q): return L("Trả cho %@", q.name.isEmpty ? L("TK %@", q.acct ?? "") : q.name)
         case .raw: return L("Mã QR không phải VietQR")
-        case .edit, .editNow: return L("Sửa khoản chi")
+        case .edit, .editNow: return income ? L("Sửa tiền vào") : L("Sửa khoản chi")
         }
     }
 
@@ -253,7 +295,7 @@ struct EntryView: View {
                 HStack(spacing: 8) {
                     // Danh mục đã chọn khi mở màn hình đứng đầu hàng (không bị cắt hai bên); bấm chọn danh mục khác thì
                     // thứ tự giữ nguyên, khỏi nhảy chỗ dưới ngón tay
-                    let all = Category.all
+                    let all = income ? Category.income : Category.all
                     let ordered = all.filter { $0.k == leadCat } + all.filter { $0.k != leadCat }
                     ForEach(ordered) { c in
                         Button { if cat != c.k { Haptic.select() }; cat = c.k; catPicked = true; chosen = true; withAnimation(.snappy) { editing = true } } label: {
@@ -271,7 +313,7 @@ struct EntryView: View {
                         .id(c.k)
                     }
                     // Tạo danh mục mới ngay tại đây, tạo xong chọn luôn
-                    Button { if Category.custom.count < Pro.freeCategories || Pro.shared.allow(.categories) { addingCat = true } } label: {
+                    Button { if (income ? Category.incomeCustom : Category.custom).count < Pro.freeCategories || Pro.shared.allow(.categories) { addingCat = true } } label: {
                         Label(L("Mới"), systemImage: "plus")
                             .font(.system(size: 17, weight: .medium))
                             .padding(.horizontal, 16).frame(height: 48)
@@ -339,7 +381,7 @@ struct EntryView: View {
                     BigButton(title: L("Lưu"), icon: "", primary: true) {
                         guard amount > 0 else { return }
                         learn(); store.add(amount: amount, note: trimmed, cat: finalCat)
-                        if let photo, let id = store.items.last?.id { ReceiptPhotos.save(photo, id: id) }
+                        if let photo, let id = store.all.last?.id { ReceiptPhotos.save(photo, id: id) }
                         dismiss()
                     }
                     .opacity(amount == 0 ? 0.55 : 1)
@@ -423,7 +465,7 @@ struct EntryView: View {
     // MARK: Lưu
 
     private var trimmed: String { note.trimmingCharacters(in: .whitespaces) }
-    private var finalCat: String { cat ?? store.guessCategory(trimmed) }
+    private var finalCat: String { cat ?? (income ? store.guessIncome(trimmed) : store.guessCategory(trimmed)) }
 
     /// Tự học: lần sau gõ / nói / quét đúng tên này thì app chọn sẵn danh mục người dùng đã chọn.
     private func learn() {
@@ -444,7 +486,7 @@ struct EntryView: View {
         ready = true
         switch mode {
         case .new(let c):
-            cat = c; catPicked = c != nil
+            cat = c; catPicked = c != nil; income = Category.isIncome(c)
         case .raw:
             break
         case .receipt(let img):
@@ -458,7 +500,7 @@ struct EntryView: View {
             catPicked = m?.c != nil
             baseCat = cat
         case .edit(let e), .editNow(let e):
-            digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date
+            digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date; income = e.isIncome
             let id = e.id
             Task { if let img = await ReceiptPhotos.load(id), !photoChanged { photo = img } }
             // Chạm vào một khoản thì ban đầu chỉ xem; đã bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ) thì vào sửa luôn

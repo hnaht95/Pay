@@ -74,7 +74,7 @@ struct SettingsView: View {
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
         // File sao lưu có cả khoản định kỳ và danh mục đã học: đổi gì cũng làm lại
-        .task(id: [store.items.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
+        .task(id: [store.all.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result { store.importBackup(from: url) }
         }
@@ -109,7 +109,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Group {
                     Text(L("Tháng %@: %@ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
-                    Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
+                    Text(L("Tổng cộng %@ khoản đã ghi", String(store.all.count)))
                 }
                 .font(.system(size: 15)).foregroundStyle(.secondary)
             }
@@ -399,7 +399,7 @@ struct SettingsView: View {
             Button(role: .destructive) { confirmErase = true } label: {
                 row(L("Xoá tất cả khoản chi"), destructive: true)
             }
-            .disabled(store.items.isEmpty)
+            .disabled(store.all.isEmpty)
         } header: {
             Text(L("Dữ liệu"))
         } footer: {
@@ -715,6 +715,8 @@ struct CategoryEditor: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
     var editing: CustomCat? = nil
+    /// Tạo danh mục tiền vào (từ màn nhập đang ở Vào)
+    var income = false
     /// Thêm xong: trả mã danh mục mới (để màn hình nhập chọn luôn)
     var onAdd: (String) -> Void = { _ in }
 
@@ -741,12 +743,13 @@ struct CategoryEditor: View {
 
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     /// Đang sửa danh mục có sẵn (Ăn uống, Cafe…): không xoá được, có "Về mặc định"
-    private var builtin: Category? { editing.flatMap { e in Category.builtin.first { $0.k == e.k } } }
+    private var builtin: Category? { editing.flatMap { Category.base($0.k) } }
+    private var isIncome: Bool { editing.map { Category.isIncome($0.k) } ?? income }
     private var previewColor: Color { fTone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)
-        return !k.isEmpty && Category.all.contains { (strip($0.name) == k || strip($0.rawName) == k) && $0.k != editing?.k }
+        return !k.isEmpty && (isIncome ? Category.income : Category.all).contains { (strip($0.name) == k || strip($0.rawName) == k) && $0.k != editing?.k }
     }
 
     var body: some View {
@@ -1004,7 +1007,7 @@ struct CategoryEditor: View {
 
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-            .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
+            .screenTitle(editing == nil ? (income ? L("Danh mục tiền vào mới") : L("Danh mục mới")) : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày; phía sau mờ dần như thanh tiêu đề
             .bottomBar {
@@ -1093,7 +1096,7 @@ struct CategoryEditor: View {
             store.updateCategory(e.k, name: trimmed == L(e.name) ? e.name : trimmed, icon: icon, tone: tone)
             savePhoto(e.k)
         } else {
-            let k = store.addCategory(name: trimmed, icon: icon, tone: tone)
+            let k = store.addCategory(name: trimmed, icon: icon, tone: tone, income: income)
             savePhoto(k)
             onAdd(k)
         }

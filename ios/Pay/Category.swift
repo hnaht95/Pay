@@ -30,6 +30,8 @@ struct Category: Identifiable, Hashable {
     nonisolated(unsafe) static var custom: [Category] = []
     /// Danh mục có sẵn sau khi người dùng đổi biểu tượng / màu / tên
     nonisolated(unsafe) static var edited: [String: Category] = [:]
+    /// Danh mục tiền vào tự tạo (mã "in-u-…")
+    nonisolated(unsafe) static var incomeCustom: [Category] = []
 
     /// Có sẵn (đã áp chỉnh sửa), rồi tự tạo, "Khác" luôn ở cuối
     static var all: [Category] {
@@ -46,9 +48,45 @@ struct Category: Identifiable, Hashable {
         Category(k: "khac", icon: "📌", name: "Khác", color: Color(hex: 0xCFEEDD), kw: []),
     ]
 
-    static func get(_ k: String?) -> Category { all.first { $0.k == k } ?? all.last! }
+    /// Danh mục tiền vào có sẵn. Mã bắt đầu bằng "in-": khoản nào mang mã này là tiền vào (không tính vào chi tiêu, ngân sách)
+    static let incomeBuiltin: [Category] = [
+        Category(k: "in-luong", icon: "💼", name: "Lương", color: Color(hex: 0xC9F2D4), kw: ["luong", "tien luong", "nhan luong", "salary", "payroll", "wage", "wages"]),
+        Category(k: "in-thuong", icon: "🎁", name: "Thưởng", color: Color(hex: 0xFFE7A8), kw: ["tien thuong", "thuong tet", "nhan thuong", "li xi", "lixi", "bonus"]),
+        Category(k: "in-nhan", icon: "💸", name: "Được chuyển", color: Color(hex: 0xC8E6FF), kw: ["duoc chuyen", "nhan tien", "nhan chuyen khoan", "chuyen den", "tien ve", "hoan tien", "refund", "cashback", "received"]),
+        Category(k: "in-khac", icon: "💰", name: "Khác", color: Color(hex: 0xE4E4E8), kw: ["tien vao", "thu nhap", "income"]),
+    ]
 
-    static func isBuiltin(_ k: String) -> Bool { builtin.contains { $0.k == k } }
+    /// Danh mục tiền vào: có sẵn (đã áp chỉnh sửa), rồi tự tạo, "Khác" luôn ở cuối
+    static var income: [Category] {
+        let base = incomeBuiltin.map { edited[$0.k] ?? $0 }
+        return Array(base.dropLast()) + incomeCustom + [base[base.count - 1]]
+    }
+
+    /// Danh mục theo mã. Mã lạ (danh mục đã xoá / chưa đồng bộ về) thì "Khác" cùng loại: tiền vào vẫn là tiền vào
+    static func get(_ k: String?) -> Category {
+        if let k, isIncome(k) { return income.first { $0.k == k } ?? income.last! }
+        return all.first { $0.k == k } ?? all.last!
+    }
+
+    static func isBuiltin(_ k: String) -> Bool { builtin.contains { $0.k == k } || incomeBuiltin.contains { $0.k == k } }
+
+    /// Bản gốc của danh mục có sẵn (chi hoặc tiền vào)
+    static func base(_ k: String) -> Category? { (builtin + incomeBuiltin).first { $0.k == k } }
+
+    /// Mã danh mục tiền vào
+    static func isIncome(_ k: String?) -> Bool { k?.hasPrefix("in-") == true }
+
+    /// Đoán danh mục tiền vào theo ghi chú (từ khoá dài nhất); không khớp từ nào thì nil
+    static func guessIncome(_ text: String?) -> String? {
+        let s = " " + strip(text ?? "").map { $0.isLetter || $0.isNumber || $0 == " " ? String($0) : " " }.joined() + " "
+        // Danh mục tự tạo ưu tiên trước, như guess()
+        for list in [incomeCustom, income] {
+            var best: String?, len = 0
+            for c in list { for w in c.kw where s.contains(" \(w) ") && w.count > len { best = c.k; len = w.count } }
+            if let best { return best }
+        }
+        return nil
+    }
 
     /// Màu đậm dùng cho biểu đồ (màu pastel ở trên quá nhạt để phân biệt). Cùng tông với màu pastel,
     /// cố định theo danh mục; đã kiểm tra phân biệt được cả khi mù màu, ở chế độ sáng lẫn tối.
@@ -60,6 +98,10 @@ struct Category: Identifiable, Hashable {
         case "di": Color(light: 0xD93A3C, dark: 0xEA5455)
         case "mua": Color(light: 0x3E9BD6, dark: 0x5AAFE3)
         case "hd": Color(light: 0x4A3AA7, dark: 0x9085E9)
+        case "in-luong": Color(light: 0x2E9E55, dark: 0x45C06E)
+        case "in-thuong": Color(light: 0xB58A00, dark: 0xE5B000)
+        case "in-nhan": Color(light: 0x2F7FC9, dark: 0x5AAFE3)
+        case "in-khac": Color(light: 0x6B6B78, dark: 0x9A9AA6)
         default: Color(light: 0x1BAF7A, dark: 0x199E70)
         }
     }

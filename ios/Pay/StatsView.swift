@@ -939,44 +939,36 @@ struct StatsView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text(L("Số dư")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 16) {
-                // Dạng sao kê, đọc từ trên xuống như một phép tính: đầu kỳ + thu − chi (± điều chỉnh) = hiện tại / cuối kỳ
-                let adjusted = adjustments(after: start)
+                // Hai cỡ chữ: số dư lớn; mọi số khác 15 (đầu kỳ · chênh lệch, Thu, Chi), nhãn 13
                 if let opening, let closing {
-                    VStack(spacing: 0) {
-                        statementRow(start.map { s > $0 } == true ? L("Đầu kỳ") : L("Lúc đặt số dư"), fmt(opening), .primary)
-                        statementRow(L("Thu"), "+" + fmt(got), Palette.goodInk)
-                        statementRow(L("Chi"), "−" + fmt(spent), Palette.danger)
-                        if adjusted != 0 {
-                            statementRow(L("Điều chỉnh số dư"), (adjusted > 0 ? "+" : "−") + fmt(abs(adjusted)), .secondary)
-                        }
-                        Rectangle().fill(Color.primary.opacity(0.15)).frame(height: 1).padding(.vertical, 6)
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 17, weight: .semibold))
-                            Spacer(minLength: 8)
-                            Text(fmt(closing)).font(.system(size: 22, weight: .bold)).monospacedDigit()
-                                .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
-                        }
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                        .padding(.top, 4)
+                    let change = closing - opening
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
+                        Text(fmt(closing)).font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
+                        (Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@ · " : "Lúc đặt %@ · ", fmt(opening))).foregroundStyle(.secondary)
+                         + Text((change >= 0 ? "+" : "−") + fmt(abs(change))).foregroundStyle(change >= 0 ? Palette.goodInk : Palette.danger))
+                            .font(.system(size: 15))
                     }
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                } else if start == nil {
+                    Button { balanceOpen = true } label: {
+                        HStack {
+                            Text(L("Nhập số dư hiện có")).font(.system(size: 15, weight: .medium))
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(Pressable()).foregroundStyle(.primary)
                 } else {
-                    if start == nil {
-                        Button { balanceOpen = true } label: {
-                            HStack {
-                                Text(L("Nhập số dư hiện có")).font(.system(size: 15, weight: .medium))
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(.tertiary)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(Pressable()).foregroundStyle(.primary)
-                    } else {
-                        Text(L("Chưa đặt số dư trong kỳ này")).font(.system(size: 15)).foregroundStyle(.secondary)
-                    }
-                    VStack(spacing: 0) {
-                        statementRow(L("Thu"), "+" + fmt(got), Palette.goodInk)
-                        statementRow(L("Chi"), "−" + fmt(spent), Palette.danger)
-                    }
+                    Text(L("Chưa đặt số dư trong kỳ này")).font(.system(size: 15)).foregroundStyle(.secondary)
+                }
+                Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5)
+                HStack(alignment: .top) {
+                    flowColumn(L("Thu"), "+" + fmt(got), Palette.goodInk, alignment: .leading)
+                    Spacer(minLength: 12)
+                    flowColumn(L("Chi"), "−" + fmt(spent), Palette.danger, alignment: .trailing)
                 }
             }
             .padding(18)
@@ -985,21 +977,12 @@ struct StatsView: View {
         }
     }
 
-    /// Một dòng sao kê: tên trái, số phải
-    private func statementRow(_ title: String, _ value: String, _ color: Color) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.system(size: 15)).foregroundStyle(.secondary)
-            Spacer(minLength: 8)
+    private func flowColumn(_ title: String, _ value: String, _ color: Color, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 4) {
+            Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
             Text(value).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(color)
         }
         .lineLimit(1).minimumScaleFactor(0.7)
-        .padding(.vertical, 5)
-    }
-
-    /// Tổng các lần điều chỉnh số dư trong kỳ (không tính lần đặt số dư đầu tiên: đã nằm trong số dư đầu kỳ)
-    private func adjustments(after start: Double?) -> Int {
-        guard let start else { return 0 }
-        return store.adjusts.filter { $0.date >= span.start && $0.date < span.end && $0.t > start }.reduce(0) { $0 + $1.signed }
     }
 
     // MARK: Khoản thu

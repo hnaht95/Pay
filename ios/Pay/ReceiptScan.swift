@@ -137,12 +137,18 @@ struct ReceiptCamera: View {
                 Text("\(countdown)").font(.system(size: 96, weight: .bold, design: .rounded)).foregroundStyle(.white)
                     .contentTransition(.numericText()).shadow(radius: 8)
             }
-            // Vòng tiêu cự (đang vuốt trái / phải ở chỗ số tiêu cự): nửa vòng tròn chia vạch như Camera của iOS
+            // Thước tiêu cự (đang vuốt trái / phải ở chỗ số tiêu cự), cùng kiểu thước hẹn giờ của Peek
             if dialShown {
-                ZoomDial(zoom: cam.zoom, min: cam.minZoom, max: cam.maxZoom)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
+                VStack(spacing: 6) {
+                    Text(zoomText(cam.zoom)).font(.system(size: 17, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(ZoomRuler.amber)
+                    ZoomRuler(zoom: cam.zoom, min: cam.minZoom, max: cam.maxZoom)
+                }
+                .padding(.top, 14).padding(.bottom, 62)
+                .background(LinearGradient(colors: [.black.opacity(0), .black.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .allowsHitTesting(false)
+                .transition(.opacity)
             }
             VStack(spacing: 10) {
                 Spacer()
@@ -173,11 +179,11 @@ struct ReceiptCamera: View {
                     guard abs(v.translation.width) > 6 || dialShown else { return }
                     if !dialShown { dialShown = true; Haptic.select() }
                     dialHide?.cancel()
-                    // Kéo sang phải: vạch chạy sang phải, nấc nhỏ hơn về giữa (như Camera của iOS); ~110 pt mỗi lần gấp đôi
-                    let z = (dragStartZoom ?? 1) * pow(2, -v.translation.width / 110)
+                    // Kéo sang phải: vạch chạy sang phải, nấc nhỏ hơn về giữa; thước đi đúng theo tay (ZoomRuler.perDouble pt mỗi lần gấp đôi)
+                    let z = (dragStartZoom ?? 1) * pow(2, -v.translation.width / ZoomRuler.perDouble)
                     let old = cam.zoom
                     cam.setZoom(z)
-                    if ZoomDial.majors.contains(where: { (old - $0) * (cam.zoom - $0) < 0 }) { Haptic.select() }
+                    if ZoomRuler.labels.contains(where: { (old - $0) * (cam.zoom - $0) < 0 }) { Haptic.select() }
                 }
                 .onEnded { v in
                     if !dialShown { cam.nextZoom(); Haptic.select() }
@@ -529,11 +535,12 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         guard let d = device else { return }
         let wide = d.deviceType == .builtInTripleCamera || d.deviceType == .builtInDualWideCamera
         zoomBase = wide ? CGFloat(d.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue ?? 2) : 1
-        zoomSteps = d.position == .front ? [1] : wide ? [1, 0.5, 2] : [1, 2]
+        // Camera sau mở ở 1.2x (gần hoá đơn hơn, ít méo hơn 1x); bấm nhãn tiêu cự xoay vòng các mốc, mốc đầu là mặc định
+        zoomSteps = d.position == .front ? [1] : wide ? [1.2, 0.5, 2] : [1.2, 2]
         minZoom = d.minAvailableVideoZoomFactor / zoomBase
         maxZoom = max(minZoom, min(d.maxAvailableVideoZoomFactor / zoomBase, 15))
         zoomIndex = 0
-        setZoom(1)
+        setZoom(zoomSteps[0])
     }
 
     func nextZoom() {
@@ -645,58 +652,88 @@ private struct CameraPreview: UIViewRepresentable {
     }
 }
 
-/// Vòng tiêu cự: nửa vòng tròn tối ở đáy khung, vạch chia theo thang log (mỗi lần gấp đôi một khoảng bằng nhau), số ở các nấc
-/// chính, nấc đang chọn ở đỉnh vòng màu vàng kèm tiêu cự tương đương (mm)
-struct ZoomDial: View {
+/// Thước tiêu cự, cùng kiểu thước hẹn giờ của Peek (TimerRuler): hàng nhãn, dải vạch, kim tam giác đứng yên ở giữa, thước
+/// trôi dưới kim. Vạch sáng tới mốc đang chọn, tối phía sau; hai mép nhoè và mờ dần (smoothstep, nhoè từng vạch một).
+/// Thang log: mỗi lần gấp đôi tiêu cự là một khoảng bằng nhau (0,5 → 1 → 2 cách đều)
+struct ZoomRuler: View {
     let zoom: CGFloat, min: CGFloat, max: CGFloat
-    static let majors: [CGFloat] = [0.5, 1, 2, 3, 5, 10, 15]
-    /// Góc cho mỗi lần gấp đôi tiêu cự
-    private static let perDouble = 34.0
+    /// Màu hổ phách như thước hẹn giờ của Peek
+    static let amber = Color(red: 0xF0 / 255, green: 0x97 / 255, blue: 0x48 / 255)
+    static let labels: [CGFloat] = [0.5, 1, 2, 3, 5, 10, 15]
+    /// Điểm cho mỗi lần gấp đôi; kéo cũng theo tỉ lệ này nên vạch đi đúng theo tay
+    static let perDouble: CGFloat = 120
+    /// Số vạch mỗi lần gấp đôi: ~6,7 pt một vạch, như mật độ thước Peek
+    private let ticksPerDouble = 18
+    private let softenFrom = 0.40, fadeFrom = 0.72
+    private let softenRadius: CGFloat = 4
+    private let tickHeight: CGFloat = 24, labelHeight: CGFloat = 12, pointerHeight: CGFloat = 5
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        Canvas { ctx, size in
-            let r = size.width * 0.78
-            let c = CGPoint(x: size.width / 2, y: size.height + r - 150)
-            // Nền nửa vòng
-            ctx.fill(Path(ellipseIn: CGRect(x: c.x - r - 30, y: c.y - r - 30, width: (r + 30) * 2, height: (r + 30) * 2)),
-                     with: .color(.black.opacity(0.45)))
-            func angle(_ v: CGFloat) -> Double { (log2(Double(v)) - log2(Double(zoom))) * Self.perDouble }
-            func point(_ deg: Double, _ rad: CGFloat) -> CGPoint {
-                let a = (deg - 90) * .pi / 180
-                return CGPoint(x: c.x + rad * CGFloat(cos(a)), y: c.y + rad * CGFloat(sin(a)))
+        GeometryReader { g in
+            let w = g.size.width
+            VStack(spacing: 3) {
+                labelsRow(w)
+                ticksRow(w)
+                Triangle().fill(Self.amber).frame(width: 9, height: pointerHeight)
             }
-            // Vạch nhỏ
-            var v = min
-            while v <= max + 0.001 {
-                let deg = angle(v)
-                if abs(deg) < 80 {
-                    let major = Self.majors.contains { abs($0 - v) < 0.01 }
-                    var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - (major ? 20 : 11)))
-                    ctx.stroke(p, with: .color(.white.opacity(major ? 0.95 : 0.5)), lineWidth: major ? 2 : 1)
-                }
-                v += v < 1 ? 0.05 : v < 3 ? 0.1 : v < 10 ? 0.5 : 1
-                v = (v * 100).rounded() / 100
-            }
-            // Số ở nấc chính (trừ chỗ đang chọn, chỗ đó vẽ số vàng)
-            for m in Self.majors where m >= min - 0.01 && m <= max + 0.01 {
-                let deg = angle(m)
-                guard abs(deg) < 75, abs(deg) > 9 else { continue }
-                let s = m < 1 ? "0,5" : "\(Int(m))"
-                ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white),
-                         at: point(deg, r - 38))
-            }
-            // Nấc đang chọn: tam giác vàng ở đỉnh, số và mm
-            var tri = Path()
-            tri.move(to: CGPoint(x: c.x - 5, y: c.y - r - 4)); tri.addLine(to: CGPoint(x: c.x + 5, y: c.y - r - 4))
-            tri.addLine(to: CGPoint(x: c.x, y: c.y - r + 6)); tri.closeSubpath()
-            ctx.fill(tri, with: .color(Color(hex: 0xFFD43B)))
-            let z = (zoom * 10).rounded() / 10
-            let label = (z == z.rounded() ? "\(Int(z))" : String(format: "%.1f", z)).replacingOccurrences(of: ".", with: ",") + "×"
-            ctx.draw(Text(label).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(Color(hex: 0xFFD43B)),
-                     at: CGPoint(x: c.x, y: c.y - r + 40))
-            ctx.draw(Text("\(Int((24 * zoom).rounded())) MM").font(.system(size: 13, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color(hex: 0xFFD43B)),
-                     at: CGPoint(x: c.x, y: c.y - r + 64))
+            .frame(width: w)
         }
+        .frame(height: labelHeight + tickHeight + pointerHeight + 6)
+        .padding(.horizontal, 8)
+    }
+
+    private var cur: Double { log2(Double(zoom)) }
+    private func x(_ v: Double, _ w: CGFloat) -> CGFloat { w / 2 + CGFloat(v - cur) * Self.perDouble }
+    private func shade(_ v: Double) -> Color { v <= cur + 0.001 ? Self.amber : Self.amber.opacity(0.24) }
+
+    private static func smooth(_ from: Double, _ d: Double) -> Double {
+        let t = Swift.min(1, Swift.max(0, (d - from) / (1 - from))); return t * t * (3 - 2 * t)
+    }
+    @ViewBuilder private func soften<C: View>(_ c: C, at px: CGFloat, _ w: CGFloat) -> some View {
+        let d = Swift.min(1, abs(Double(px - w / 2)) / Double(w / 2))
+        let b = softenRadius * CGFloat(Self.smooth(softenFrom, d))
+        let f = 1 - Self.smooth(fadeFrom, d)
+        if b > 0.03 { c.blur(radius: b).opacity(f) } else { c.opacity(f) }
+    }
+
+    private func labelsRow(_ w: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(Self.labels.filter { $0 >= min - 0.01 && $0 <= max + 0.01 }, id: \.self) { z in
+                let v = log2(Double(z)), px = x(v, w)
+                if px > -20 && px < w + 20 {
+                    soften(Text(z < 1 ? ".5" : "\(Int(z))").font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(shade(v)), at: px, w)
+                        .position(x: px, y: labelHeight / 2)
+                }
+            }
+        }
+        .frame(height: labelHeight)
+    }
+
+    private func ticksRow(_ w: CGFloat) -> some View {
+        let lo = log2(Double(min)), hi = log2(Double(max))
+        let half = Double(w / Self.perDouble) / 2 + 0.2
+        let a = Int(((cur - half) * Double(ticksPerDouble)).rounded(.down))
+        let b = Int(((cur + half) * Double(ticksPerDouble)).rounded(.up))
+        let bar = Swift.max(1, (2.5 * displayScale).rounded()) / displayScale
+        return ZStack(alignment: .topLeading) {
+            ForEach(a...Swift.max(a, b), id: \.self) { i in
+                let v = Double(i) / Double(ticksPerDouble), px = x(v, w)
+                let outside = v < lo - 0.001 || v > hi + 0.001
+                soften(Capsule().fill(outside ? Self.amber.opacity(0.1) : shade(v)).frame(width: bar, height: tickHeight), at: px, w)
+                    .position(x: px, y: tickHeight / 2)
+            }
+        }
+        .frame(height: tickHeight)
+    }
+}
+
+/// Tam giác nhọn hướng lên, kim của thước
+private struct Triangle: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.midX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY)); p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        p.closeSubpath(); return p
     }
 }

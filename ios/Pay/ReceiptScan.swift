@@ -22,6 +22,7 @@ struct ReceiptCamera: View {
     @State private var adjusting: CamAdjust?
     @State private var showFilters = false
     @State private var countdown = 0
+    @State private var showShots = false
     @State private var dialShown = false
     @State private var dragStartZoom: CGFloat?
     @State private var dialHide: DispatchWorkItem?
@@ -45,6 +46,7 @@ struct ReceiptCamera: View {
         }
         .overlay { Color.white.opacity(flash ? 0.7 : 0).ignoresSafeArea().allowsHitTesting(false) }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showShots) { PayShotsSheet { img in finish(img) } }
         .onAppear { cam.filter = filter; cam.start() }
         .onDisappear { cam.stop() }
         .onChange(of: filterRaw) { _, _ in cam.filter = filter }
@@ -237,12 +239,10 @@ struct ReceiptCamera: View {
 
     private var bottomRow: some View {
         HStack {
-            PhotosPicker(selection: $photo, matching: .images) {
-                Image(systemName: "photo.on.rectangle").font(.system(size: 22)).foregroundStyle(.white)
-                    .frame(width: 58, height: 58)
-                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .accessibilityLabel(L("Chọn ảnh"))
+            // Ảnh mới nhất Pay đã chụp; chạm: danh sách ảnh Pay đã chụp (trong đó vẫn chọn được từ thư viện máy)
+            Button { showShots = true } label: { LatestShotTile() }
+                .buttonStyle(Pressable())
+                .accessibilityLabel(L("Ảnh đã chụp"))
             Spacer()
             Button(action: shoot) {
                 Capsule().fill(Color(hex: 0xE8EBDD))
@@ -313,6 +313,7 @@ struct ReceiptCamera: View {
         cam.capture { img in
             guard let img else { finish(nil); return }
             let out = CamFilter.develop(img, ratio: r, filter: f)
+            PayShots.save(out)
             if UserDefaults.standard.object(forKey: CamFilter.saveKey) as? Bool ?? true { CamFilter.saveToPhotos(out) }
             finish(out)
         }

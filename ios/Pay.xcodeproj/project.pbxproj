@@ -21,6 +21,7 @@
 		3521B0FBA62679FC23377283 /* Pro.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D089C49DAB9DD5CD6BE0CF /* Pro.swift */; };
 		353DD484D4B5BAD4AC365650 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24AA5434B7C4F15242E106C2 /* WidgetViews.swift */; };
 		3B5B0E6A0C5E55A60D345A70 /* ReceiptPhotos.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE3F2358FF0A2540E730066 /* ReceiptPhotos.swift */; };
+		3EE977B055A9EAE5B6D69472 /* PayShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22504626552B809AA7E3BD49 /* PayShots.swift */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
 		414AAD28F01726AB65D67F0F /* CalendarShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3EBD642701EF9188E81FC44 /* CalendarShape.swift */; };
 		4D2AC3C30D76AC35350E54A4 /* Highlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609388C25572F0E507533210 /* Highlight.swift */; };
@@ -107,6 +108,7 @@
 		12194354B3B9408BEBA73165 /* FilmTouches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmTouches.swift; sourceTree = "<group>"; };
 		12AB5AFA5A99EE9F7A62F93F /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		1A44344E8096362017AC591B /* QuickParse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickParse.swift; sourceTree = "<group>"; };
+		22504626552B809AA7E3BD49 /* PayShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayShots.swift; sourceTree = "<group>"; };
 		24AA5434B7C4F15242E106C2 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
 		2570B6E3237FC8FCF77F722D /* ImageCropper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCropper.swift; sourceTree = "<group>"; };
 		2AC4452634BACD32EE6204C2 /* FilmWidgetScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmWidgetScene.swift; sourceTree = "<group>"; };
@@ -187,6 +189,7 @@
 				ED087675452679C35387B98C /* Model.swift */,
 				FB2C448D9BD583AC4EC95DEC /* Pay.entitlements */,
 				5EC9417995E09D8907ED785B /* PayApp.swift */,
+				22504626552B809AA7E3BD49 /* PayShots.swift */,
 				3259FD0A108A269C333686A7 /* PrivacyInfo.xcprivacy */,
 				B5D089C49DAB9DD5CD6BE0CF /* Pro.swift */,
 				1A44344E8096362017AC591B /* QuickParse.swift */,
@@ -319,7 +322,7 @@
 					2CA39577F5A44AC9D635F905 = {
 						DevelopmentTeam = U5DGWB7A5X;
 						ProvisioningStyle = Automatic;
-						SystemCapabilities = "[\"com.apple.iCloud\": [\"enabled\": 1], \"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
 					};
 				};
 			};
@@ -400,6 +403,7 @@
 				7ADE6CEEACA7F952115FACC8 /* MyQR.swift in Sources */,
 				AD211944DCFBAC31AA4D6A80 /* Parts.swift in Sources */,
 				40405BB47395FF979965CD24 /* PayApp.swift in Sources */,
+				3EE977B055A9EAE5B6D69472 /* PayShots.swift in Sources */,
 				3521B0FBA62679FC23377283 /* Pro.swift in Sources */,
 				F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */,
 				AE24570C6B434FB73A74E915 /* QuickParse.swift in Sources */,

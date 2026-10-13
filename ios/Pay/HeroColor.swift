@@ -44,11 +44,21 @@ struct HeroColorSheet: View {
                     .environment(\.colorScheme, HeroColor.scheme(tone))
 
                     // Đổi màu nào: nền thẻ hay thanh ngân sách
-                    Picker("", selection: $editingBar) {
-                        Text(L("Nền thẻ")).tag(false)
-                        Text(L("Thanh ngân sách")).tag(true)
+                    // Tự vẽ (thanh phân đoạn của iOS thấp, không đổi được chiều cao): cao 48, bo tròn
+                    HStack(spacing: 4) {
+                        ForEach([false, true], id: \.self) { bar in
+                            Button { if editingBar != bar { Haptic.select() }; withAnimation(.snappy(duration: 0.2)) { editingBar = bar } } label: {
+                                Text(bar ? L("Thanh ngân sách") : L("Nền thẻ")).font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity).frame(height: 44)
+                                    .background { if editingBar == bar { Capsule().fill(Color.primary.opacity(0.18)) } }
+                                    .contentShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .pickerStyle(.segmented)
+                    .padding(4)
+                    .background(Palette.card, in: Capsule())
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 6), spacing: 12) {
                         swatch(-1, editingBar ? Color(red: 0.18, green: 0.62, blue: 0.32) : .white)
                         ForEach(CategoryTone.all.indices, id: \.self) { i in swatch(i, CategoryTone.bg(i)) }

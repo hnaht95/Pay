@@ -131,7 +131,7 @@ struct HomeView: View {
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store).sheetCorners() }
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
         #if DEBUG
-        // Ảnh so sánh giữa các bản iOS (scripts/shots.sh): -shotOpen stats|settings|history|house|entry mở sẵn một màn
+        // Ảnh so sánh giữa các bản iOS (scripts/shots.sh): -shotOpen stats|settings|history|house|entry|voice mở sẵn một màn
         .task {
             switch UserDefaults.standard.string(forKey: "shotOpen") {
             case "stats": showStats = true
@@ -139,6 +139,7 @@ struct HomeView: View {
             case "history": showHistory = true
             case "house": showHouse = true
             case "entry": entry = .new(cat: nil)
+            case "voice": voiceFrom = CGRect(x: 181, y: 780, width: 205, height: 78)   // khung nút Quét QR trên iPhone 16 Pro
             default: break
             }
         }

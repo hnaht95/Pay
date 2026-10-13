@@ -951,8 +951,7 @@ extension View {
         // trang (bảng nhấn giữ danh mục / thẻ Hôm nay đã chi, thẻ nói để ghi khi vuốt lên từ nút Quét QR) được gán mà không bao
         // giờ hiện; các màn mở dạng tấm (sheet) thì vẫn lên. iOS 18 và iOS 27 không bị. Mép trên trên iOS 26 vì thế chỉ còn dải
         // màu nền nhạt dần dưới thanh trạng thái (statusBarEdge), không nhoè theo từng điểm ảnh
-        if #available(iOS 27.0, *) { self }
-        else if #available(iOS 26.0, *) { self }
+        if #available(iOS 26.0, *) { self }
         else { topScrollBlurOld().dockBlur() }
     }
 
@@ -981,7 +980,7 @@ extension View {
 
     /// Như topScrollBlur nhưng theo chân thanh tiêu đề tự vẽ (edge: toạ độ toàn màn), cho iOS cũ hơn 26 (không có mép cuộn mềm)
     @ViewBuilder func statusBarEdge(on: Bool, color: Color = Palette.bg) -> some View {
-        if #available(iOS 27.0, *) { self }
+        if SystemEdge.homeTop { self }
         else if on {
             overlay(alignment: .top) {
                 GeometryReader { g in
@@ -1164,17 +1163,6 @@ private struct ScreenTitle: ViewModifier {
     }
 }
 
-/// Thanh tiêu đề của hệ thống bị ẩn ở các trang đẩy vào (có nút quay lại tự vẽ): giữ cử chỉ vuốt từ mép trái để quay lại,
-/// vốn bị tắt theo khi ẩn thanh
-extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
-    override open func viewDidLoad() {
-        super.viewDidLoad()
-        interactivePopGestureRecognizer?.delegate = self
-    }
-
-    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool { viewControllers.count > 1 }
-}
-
 /// Một dòng chọn trong Form: mở trang danh sách riêng (thay ô chọn kiểu trang của iOS, để trang ấy cũng có thanh tiêu đề của
 /// app). Chọn xong tự quay lại
 struct PickLink<T: Hashable, Label: View>: View {
@@ -1318,4 +1306,16 @@ extension Font {
     static let rowTitle = Font.system(size: 15, weight: .medium)
     static let rowSub = Font.system(size: 12)
     static let rowAmount = Font.system(size: 15, weight: .medium)
+}
+
+/// Mép trên trang chủ (dưới đồng hồ, pin): iOS 27 tự nhoè nội dung cuộn lên, nhưng chỉ với app được dựng bằng SDK iOS 27 trở
+/// lên. Bản dựng bằng Xcode cũ hơn (SDK 26) chạy trên iOS 27 không được hệ thống nhoè giúp, nên app vẫn phải tự phủ dải mờ như
+/// trên iOS cũ. Xem SDK lúc dựng trong Info.plist (DTSDKName, vd "iphoneos26.2")
+enum SystemEdge {
+    static let homeTop: Bool = {
+        guard #available(iOS 27.0, *) else { return false }
+        let sdk = Bundle.main.object(forInfoDictionaryKey: "DTSDKName") as? String ?? ""
+        let major = Int(sdk.drop { !$0.isNumber }.prefix { $0.isNumber }) ?? 0
+        return major >= 27
+    }()
 }

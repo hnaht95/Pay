@@ -64,11 +64,12 @@ struct HomeView: View {
                     header(now).topScrollBlur()
                     // Chạm: mở Thống kê; nhấn giữ: đổi màu thẻ
                     TapHold(tap: { showStats = true }, hold: {
-                        menu = AppMenuSpec(icon: AnyView(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(HeroColor.bg(heroTone))
-                                                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(0.1)))
+                        // Đầu bảng như bảng nhấn giữ danh mục: ô bo góc màu thẻ, biểu tượng ở giữa
+                        menu = AppMenuSpec(icon: AnyView(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(HeroColor.bg(heroTone))
+                                                            .overlay(Text("💸").font(.system(size: 30)))
                                                             .frame(width: 56, height: 56)),
                                            title: L("Hôm nay đã chi"), subtitle: nil,
-                                           items: [AppMenuItem(icon: "paintpalette", title: L("Đổi màu thẻ")) { pickingHero = true }])
+                                           items: [AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi màu thẻ"), plain: true) { pickingHero = true }])
                     }) { hero(now) }
                         .topScrollBlur()
                         .padding(.top, 14)
@@ -388,10 +389,10 @@ struct HomeView: View {
     private func categoryMenu(_ c: Category) -> AppMenuSpec {
         let month = store.monthItems(now).filter { Category.get($0.c).k == c.k }
         var items = [
-            AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true, tint: Color(hex: 0xF07B3F)) { editingCat = CatEdit.of(c.k, store: store) },
+            AppMenuItem(icon: "pencil.tip.crop.circle", title: L("Đổi biểu tượng, màu, tên"), plain: true) { editingCat = CatEdit.of(c.k, store: store) },
             store.isWide(c.k)
-                ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, false) } }
-                : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true, tint: Color(hex: 0x61BE6E)) { withAnimation(.snappy) { store.setWide(c.k, true) } },
+                ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, false) } }
+                : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, true) } },
         ]
         if Category.isBuiltin(c.k) {
             if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward.circle", title: L("Về mặc định"), plain: true) { store.resetCategory(c.k) }) }

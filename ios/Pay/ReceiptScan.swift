@@ -490,24 +490,36 @@ struct ZoomDial: View {
                 let a = (deg - 90) * .pi / 180
                 return CGPoint(x: c.x + rad * CGFloat(cos(a)), y: c.y + rad * CGFloat(sin(a)))
             }
-            // Vạch nhỏ
-            var v = min
-            while v <= max + 0.001 {
-                let deg = angle(v)
-                if abs(deg) < 80 {
-                    let major = Self.majors.contains { abs($0 - v) < 0.01 }
-                    var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - (major ? 20 : 11)))
-                    ctx.stroke(p, with: .color(.white.opacity(major ? 0.95 : 0.5)), lineWidth: major ? 2 : 1)
-                }
-                v += v < 1 ? 0.05 : v < 3 ? 0.1 : v < 10 ? 0.5 : 1
-                v = (v * 100).rounded() / 100
+            // Vạch nhỏ cách đều nhau theo góc (thang log: mỗi lần gấp đôi tiêu cự là 12 vạch), mốc ở 1x nên vạch đứng yên trên vòng
+            // khi xoay; chỉ vẽ trong khoảng máy làm được. Vạch quá gần một nấc chính thì bỏ, nấc chính vẽ riêng đúng vị trí của nó.
+            // Hai mép mờ dần
+            let step = Self.perDouble / 12
+            let lo = log2(Double(min)) * Self.perDouble, hi = log2(Double(max)) * Self.perDouble
+            let majorAngles = Self.majors.filter { $0 >= min - 0.01 && $0 <= max + 0.01 }.map { log2(Double($0)) * Self.perDouble }
+            let cur = log2(Double(zoom)) * Self.perDouble
+            // Góc của mép khung (vòng rộng hơn khung): vạch, số chỉ vẽ trong phần nhìn thấy, mờ dần tới mép
+            let edge = asin(Double(Swift.min(1, size.width / 2 / r))) * 180 / .pi
+            func fade(_ deg: Double) -> Double { Swift.max(0, Swift.min(1, (edge - abs(deg)) / 12)) }
+            var k = (lo / step).rounded(.up)
+            while k * step <= hi + 0.001 {
+                let at = k * step, deg = at - cur
+                k += 1
+                guard abs(deg) < edge, !majorAngles.contains(where: { abs($0 - at) < step * 0.5 }) else { continue }
+                var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - 11))
+                ctx.stroke(p, with: .color(.white.opacity(0.5 * fade(deg))), lineWidth: 1)
+            }
+            for at in majorAngles {
+                let deg = at - cur
+                guard abs(deg) < edge else { continue }
+                var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - 20))
+                ctx.stroke(p, with: .color(.white.opacity(0.95 * fade(deg))), style: StrokeStyle(lineWidth: 2, lineCap: .round))
             }
             // Số ở nấc chính (trừ chỗ đang chọn, chỗ đó vẽ số vàng)
             for m in Self.majors where m >= min - 0.01 && m <= max + 0.01 {
                 let deg = angle(m)
-                guard abs(deg) < 75, abs(deg) > 9 else { continue }
+                guard abs(deg) < edge - 6, abs(deg) > 9 else { continue }
                 let s = m < 1 ? "0,5" : "\(Int(m))"
-                ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white),
+                ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(fade(deg))),
                          at: point(deg, r - 38))
             }
             // Nấc đang chọn: tam giác vàng ở đỉnh, số và mm

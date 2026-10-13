@@ -939,16 +939,25 @@ struct StatsView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text(L("Số dư")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 16) {
-                // Hai cỡ chữ: số dư lớn; mọi số khác 15 (đầu kỳ · chênh lệch, Thu, Chi), nhãn 13
+                // Số dư lớn; mọi số khác 15 (chênh lệch, đầu kỳ, Thu, Chi); nhãn 13
                 if let opening, let closing {
                     let change = closing - opening
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isRunning ? L("Hiện tại") : L("Cuối kỳ")).font(.system(size: 13)).foregroundStyle(.secondary)
-                        Text(fmt(closing)).font(.system(size: 26, weight: .bold))
-                            .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
-                        (Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@ · " : "Lúc đặt %@ · ", fmt(opening))).foregroundStyle(.secondary)
-                         + Text((change >= 0 ? "+" : "−") + fmt(abs(change))).foregroundStyle(change >= 0 ? Palette.goodInk : Palette.danger))
-                            .font(.system(size: 15))
+                        // Chênh lệch so với đầu kỳ đứng cạnh số dư, mũi tên lên / xuống
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text(fmt(closing)).font(.system(size: 26, weight: .bold))
+                                .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
+                            if change != 0 {
+                                HStack(spacing: 3) {
+                                    Image(systemName: change > 0 ? "arrow.up" : "arrow.down").font(.system(size: 13, weight: .bold))
+                                    Text(fmt(abs(change))).font(.system(size: 15, weight: .semibold))
+                                }
+                                .foregroundStyle(change > 0 ? Palette.goodInk : Palette.danger)
+                            }
+                        }
+                        Text(L(start.map { s > $0 } == true ? "Đầu kỳ %@" : "Lúc đặt số dư %@", fmt(opening)))
+                            .font(.system(size: 15)).foregroundStyle(.secondary)
                     }
                     .lineLimit(1).minimumScaleFactor(0.7)
                 } else if start == nil {

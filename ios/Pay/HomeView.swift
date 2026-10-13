@@ -1009,9 +1009,9 @@ extension View {
     /// vạch dưới thanh (xem softTopEdge(home:)). Giữ hàm để các chỗ gọi không phải đổi
     func navEdgeBlur() -> some View { self }
 
-    /// iOS 26+: mép cuộn kiểu cứng (không nhoè nội dung dưới thanh tiêu đề)
-    @ViewBuilder func hardTopEdge() -> some View {
-        if #available(iOS 26.0, *) { scrollEdgeEffectStyle(.hard, for: .top) } else { self }
+    /// iOS 26+: tắt hẳn hiệu ứng mép cuộn ở mép trên (không nhoè, không lớp nền của hệ thống sau thanh tiêu đề)
+    @ViewBuilder func noTopEdgeEffect() -> some View {
+        if #available(iOS 26.0, *) { scrollEdgeEffectHidden(true, for: .top) } else { self }
     }
 
     /// home: iOS cũ hơn 26 làm như mép trên trang chủ — chỉ phủ nhẹ màu nền, phần nhoè do từng khối tự làm (navEdgeBlur)
@@ -1024,14 +1024,16 @@ extension View {
             // cách chân thanh 24), nên đệm thêm 5 pt trên vạch cho khoảng trên và dưới tiêu đề bằng nhau
             let color = fade ?? Palette.bg
             let extra: CGFloat = { if #available(iOS 26.0, *) { 5 } else { 0 } }()
-            hardTopEdge().toolbarBackground(color, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
+            // Nền thanh tiêu đề do app tự tô, đúng màu nền trang: tắt nền thanh của hệ thống và lớp mép cuộn của iOS 26+ (hai lớp
+            // ấy pha thêm sắc sáng, thanh tiêu đề trông lệch màu với phần bên dưới), rồi cho nền của thanh vạch tràn lên tận mép
+            // trên tấm, phủ sau tiêu đề; nội dung cuộn lên chui dưới lớp này và cắt gọn ở vạch
+            noTopEdgeEffect().toolbarBackground(.hidden, for: .navigationBar)
                 .safeAreaInset(edge: .top, spacing: 0) {
                     VStack(spacing: 0) {
                         color.frame(height: extra)
                         Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
                     }
-                    .background(color)
+                    .background { color.ignoresSafeArea(edges: .top) }
                     .allowsHitTesting(false)
                 }
         } else if #available(iOS 26.0, *) {

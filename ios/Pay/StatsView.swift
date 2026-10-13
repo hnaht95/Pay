@@ -511,7 +511,7 @@ struct StatsView: View {
                 HStack(spacing: 8) {
                     // 0% (kể cả do làm tròn) không phải tăng cũng không phải giảm: không vẽ mũi tên
                     Group {
-                        if d == 0 { Text(verbatim: "0%") } else { Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down") }
+                        if d == 0 { Text(verbatim: "0%") } else { HStack(spacing: 2) { AmountArrow(up: d > 0, size: 13); Text(verbatim: "\(abs(d))%") } }
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Self.heroPill)
@@ -614,7 +614,7 @@ struct StatsView: View {
             notePill("0%", tone)
         } else {
             // Màu theo bảng màu của ô; tăng / giảm đọc qua mũi tên
-            Label("\(abs(d))%", systemImage: d > 0 ? "arrow.up" : "arrow.down")
+            HStack(spacing: 2) { AmountArrow(up: d > 0, size: 12); Text(verbatim: "\(abs(d))%") }
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(tone.onAccent)
                 .padding(.horizontal, 7).padding(.vertical, 3)

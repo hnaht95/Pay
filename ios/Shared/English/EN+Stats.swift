@@ -7,7 +7,7 @@ extension English {
         "trà sữa": "milk tea", "đi chợ": "groceries", "tiền nhà": "rent", "điện nước": "power & water",
         // Danh mục có sẵn
         "Ăn uống": "Food",
-        "Khoản thu": "Income", "Đã thu": "Received", "Dư": "Left", "Hụt": "Short",
+        "Khoản thu": "Income", "Đã thu · 1 khoản": "Received · 1 item", "Đã thu · %d khoản": "Received · %d items", "Dư": "Left", "Hụt": "Short",
         "Cafe": "Coffee",
         "Đi lại": "Transport",
         "Mua sắm": "Shopping",

@@ -432,7 +432,9 @@ struct VoiceEntryView: View {
                         // Phim: giữ cùng cách xếp chữ số như lúc đang chuyển, để chuyển xong con số không nhảy chỗ
                         digits(now, dim: live == nil, elapsed: 10, leaving: false)
                     } else {
-                        number(now, dim: live == nil)
+                        // Khoản thu: dấu cộng, chữ xanh như ở danh sách
+                        let inc = live.map { Category.isIncome($0.cat) } ?? false
+                        number(inc ? "+" + now : now, dim: live == nil, income: inc)
                     }
                 }
             }
@@ -481,9 +483,9 @@ struct VoiceEntryView: View {
         }
     }
 
-    private func number(_ s: String, dim: Bool) -> some View {
+    private func number(_ s: String, dim: Bool, income: Bool = false) -> some View {
         Text(s).font(.system(size: 46, weight: .bold)).kerning(-1.5)
-            .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
+            .foregroundStyle(dim ? Color.secondary.opacity(0.5) : income ? Palette.goodInk : .primary)
             .contentTransition(.numericText())
             .minimumScaleFactor(0.5).lineLimit(1)
     }
@@ -507,7 +509,7 @@ struct VoiceEntryView: View {
     private var hint: String {
         if undone { return L("Bấm Nói lại để nói khoản khác.") }
         if notUnderstood { return mic.text.isEmpty ? L("Không nghe thấy gì.") : L("Đã nghe: \"%@\"", mic.text) }
-        if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : heard }
+        if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\" hoặc \"nhận lương mười lăm triệu\"") : heard }
         if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
         return ""
     }
@@ -573,7 +575,7 @@ struct VoiceEntryView: View {
         // chi tiêu cá nhân. Xong đóng thẻ, báo ở màn chính
         if !said.isEmpty, let hit = House.shared.groupMentioned(in: said),
            let q = QuickParse.spoken(hit.rest) ?? QuickParse.expense(hit.rest) {
-            let cat = store.guessEntry(q.note), note = q.note
+            let cat = store.guessCategory(q.note), note = q.note
             Task {
                 guard let mine = await House.shared.quickSpend(in: hit.group, amount: q.amount, note: note, cat: cat) else {
                     notUnderstood = true

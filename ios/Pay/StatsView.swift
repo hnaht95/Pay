@@ -27,6 +27,9 @@ struct StatsView: View {
     @State private var day: Date?
     /// Khoản lớn nhất: đang mở rộng ra mọi khoản của kỳ
     @State private var showAllBig = false
+    @State private var showAllIncome = false
+    /// Khoản thu đang mở để xem / sửa
+    @State private var editing: EntryMode?
     /// Đang dựng phim giới thiệu (xem Film.swift)
     @Environment(\.film) private var film
 
@@ -73,6 +76,7 @@ struct StatsView: View {
 
             .navigationBarTitleDisplayMode(.inline)
         }
+        .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
         }
@@ -920,17 +924,29 @@ struct StatsView: View {
 
     // MARK: Khoản thu
 
-    /// Tổng thu của kỳ, dư (thu trừ chi) hoặc hụt, rồi từng danh mục thu như thẻ "Theo danh mục"
+    /// Tổng thu của kỳ, dư (thu trừ chi) hoặc hụt, rồi từng khoản thu mới nhất trước (tên, danh mục, ngày giờ, số tiền).
+    /// Chạm một khoản để xem / sửa; quá 5 khoản thì Xem tất cả mở rộng tại chỗ như "Khoản lớn nhất"
     private func incomeCard(_ incomes: [Expense], spent: Int) -> some View {
         let total = sum(incomes), left = total - spent
-        let byCat = Dictionary(grouping: incomes, by: { Category.get($0.c).k }).mapValues(sum)
-        let ranked = Category.income.filter { (byCat[$0.k] ?? 0) > 0 }.sorted { byCat[$0.k]! > byCat[$1.k]! }
+        let sorted = incomes.sorted { $0.t > $1.t }
+        let rows = showAllIncome ? sorted : Array(sorted.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
-            Text(L("Khoản thu")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            HStack {
+                Text(L("Khoản thu")).font(.system(size: 17, weight: .semibold))
+                Spacer()
+                if sorted.count > 5 {
+                    Button { withAnimation(.snappy) { showAllIncome.toggle() } } label: {
+                        Text(showAllIncome ? L("Thu gọn") : L("Xem tất cả")).font(.system(size: 15, weight: .medium)).padding(3)
+                    }
+                    .buttonStyle(Pressable()).foregroundStyle(.primary)
+                }
+            }
+            .padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(L("Đã thu")).font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text(sorted.count == 1 ? L("Đã thu · 1 khoản") : L("Đã thu · %d khoản", sorted.count))
+                            .font(.system(size: 14)).foregroundStyle(.secondary)
                         Text("+" + fmt(total)).font(.system(size: 24, weight: .bold)).foregroundStyle(Palette.goodInk)
                             .minimumScaleFactor(0.5).lineLimit(1)
                     }
@@ -942,14 +958,24 @@ struct StatsView: View {
                     }
                 }
                 .padding(.vertical, 14)
-                ForEach(ranked) { c in
-                    HStack(spacing: 12) {
-                        CategoryBadge(c: c, side: 36, radius: 10, iconSize: 22)
-                        Text(c.name).font(.rowTitle).lineLimit(1)
-                        Spacer(minLength: 8)
-                        Text(fmt(byCat[c.k]!)).font(.rowAmount).monospacedDigit().lineLimit(1)
+                ForEach(rows) { e in
+                    let c = Category.get(e.c)
+                    Button { editing = .edit(e) } label: {
+                        HStack(spacing: 12) {
+                            CategoryBadge(c: c, side: 40, radius: 12, iconSize: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(e.n?.isEmpty == false ? e.n!.capFirst : c.name).font(.rowTitle).lineLimit(1)
+                                Text(e.n?.isEmpty == false ? "\(c.name) · \(bigWhen(e))" : bigWhen(e))
+                                    .font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            Text("+" + fmt(e.a)).font(.rowAmount).monospacedDigit().foregroundStyle(Palette.goodInk).lineLimit(1)
+                        }
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.vertical, 10)
+                    .buttonStyle(Pressable())
+                    .foregroundStyle(.primary)
                     .overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
                 }
             }

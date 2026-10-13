@@ -157,7 +157,15 @@ struct ReceiptCamera: View {
             Spacer()
             Button(action: shoot) {
                 Capsule().fill(Color(hex: 0xE8EBDD))
-                    .overlay(Image(systemName: "circle.grid.3x3.fill").font(.system(size: 22)).foregroundStyle(.black.opacity(0.25)))
+                    // Chấm trang trí: 2 hàng × 3 chấm, cách đều, căn giữa nút
+                    .overlay {
+                        Grid(horizontalSpacing: 9, verticalSpacing: 9) {
+                            ForEach(0..<2, id: \.self) { _ in
+                                GridRow { ForEach(0..<3, id: \.self) { _ in Circle().frame(width: 7, height: 7) } }
+                            }
+                        }
+                        .foregroundStyle(.black.opacity(0.25))
+                    }
                     .frame(width: 170, height: 76)
                     .padding(6)
                     .background(Capsule().fill(.white.opacity(0.08)))

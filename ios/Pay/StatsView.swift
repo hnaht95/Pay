@@ -889,7 +889,7 @@ struct StatsView: View {
             ForEach(ranked) { c in
                 let v = byCat[c.k]!
                 HStack(spacing: 14) {
-                    CategoryBadge(c: c, side: 56, radius: ExpenseRow.radius - ExpenseRow.inset)
+                    CategoryBadge(c: c, side: 48, radius: ExpenseRow.radius - ExpenseRow.inset)
                         // Chấm màu của đoạn trên thanh, ở góc trên phải ô biểu tượng như chấm "có ảnh hoá đơn" của Gần đây
                         .overlay(alignment: .topTrailing) {
                             Circle().fill(Palette.card).frame(width: 14, height: 14)
@@ -898,13 +898,13 @@ struct StatsView: View {
                         }
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            Text(c.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                            Text(c.name).font(.rowTitle).lineLimit(1)
                             Text("\(Int((Double(v) / Double(total) * 100).rounded()))%")
-                                .font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                .font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Color.primary.opacity(0.07), in: Capsule())
                             Spacer(minLength: 8)
-                            Text("\(fmt(v))").font(.system(size: 19, weight: .bold)).lineLimit(1)
+                            Text("\(fmt(v))").font(.rowAmount).monospacedDigit().lineLimit(1)
                         }
                     }
                 }
@@ -939,11 +939,11 @@ struct StatsView: View {
                     // Số tiền căn giữa theo chiều dọc của cả hai dòng bên trái (tên + ngày giờ), không treo ngang hàng tên
                     HStack(alignment: .center, spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(e.n?.isEmpty == false ? e.n!.capFirst : Category.get(e.c).name).font(.system(size: 15)).lineLimit(1)
-                            Text(bigWhen(e)).font(.system(size: 12)).foregroundStyle(.secondary)
+                            Text(e.n?.isEmpty == false ? e.n!.capFirst : Category.get(e.c).name).font(.rowTitle).lineLimit(1)
+                            Text(bigWhen(e)).font(.rowSub).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
-                        Text(fmt(e.a)).font(.system(size: 15, weight: .medium)).monospacedDigit()
+                        Text(fmt(e.a)).font(.rowAmount).monospacedDigit()
                     }
                     .padding(.vertical, 11)
                     .overlay(alignment: .bottom) {

@@ -609,8 +609,8 @@ struct HouseView: View {
         return HStack(spacing: 12) {
             HouseAvatar(id: other, name: name, size: 40)
             VStack(alignment: .leading, spacing: 1) {
-                Text(outgoing ? L("Trả %@", name) : L("%@ trả bạn", name)).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
-                Text(fmt(t.amount)).font(.system(size: 18, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+                Text(outgoing ? L("Trả %@", name) : L("%@ trả bạn", name)).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                Text(fmt(t.amount)).font(.rowTitle).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
             }
             Spacer(minLength: 4)
             Button {
@@ -712,12 +712,12 @@ struct HouseView: View {
         return HStack(spacing: 12) {
             HouseAvatar(id: m.id, name: m.name, size: 40)
             HStack(spacing: 6) {
-                Text(name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                Text(name).font(.rowTitle).lineLimit(1)
                 if m.hasBank { Image(systemName: "creditcard.fill").font(.system(size: 11)).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 4)
             Text(v > 0 ? L("sẽ nhận %@", fmt(v)) : v < 0 ? L("cần trả %@", fmt(-v)) : L("không nợ"))
-                .font(.system(size: 15, weight: .medium))
+                .font(.rowAmount)
                 .foregroundStyle(v < 0 ? Palette.danger : v > 0 ? Palette.goodInk : .secondary)
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
@@ -744,16 +744,16 @@ struct HouseView: View {
         HStack(spacing: 14) {
             CategoryBadge(c: c, side: 52, radius: 16, iconSize: 28)
             VStack(alignment: .leading, spacing: 3) {
-                Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.rowTitle).lineLimit(1)
                 Text(L("%@ trả · %@", e.payer == house.me ? L("Bạn") : payer, day(e.date)))
-                    .font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 3) {
-                Text(fmt(e.amount)).font(.system(size: 17, weight: .bold))
+                Text(fmt(e.amount)).font(.rowAmount).monospacedDigit()
                 if let me = house.me, e.shares.contains(me) {
                     Text(L("bạn chịu %@", fmt(Settle.parts(e)[me] ?? 0)))
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.rowSub).foregroundStyle(.secondary)
                 }
             }
         }
@@ -805,12 +805,12 @@ struct HouseView: View {
                 .frame(width: 52, height: 52)
                 .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text(L("%@ chuyển %@", from, to)).font(.system(size: 17, weight: .semibold)).lineLimit(1)
-                Text("\(note) · \(day(s.date))").font(.system(size: 14)).foregroundStyle(.secondary)
+                Text(L("%@ chuyển %@", from, to)).font(.rowTitle).lineLimit(1)
+                Text("\(note) · \(day(s.date))").font(.rowSub).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
             // Số tiền màu chữ thường cho dễ đọc; trạng thái đã có ở biểu tượng màu bên trái
-            Text(fmt(s.amount)).font(.system(size: 17, weight: .bold)).foregroundStyle(s.status == "no" ? .secondary : .primary)
+            Text(fmt(s.amount)).font(.rowAmount).monospacedDigit().foregroundStyle(s.status == "no" ? .secondary : .primary)
                 .strikethrough(s.status == "no")
         }
         .padding(.leading, 12).padding(.trailing, 16).padding(.vertical, 12)

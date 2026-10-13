@@ -751,7 +751,7 @@ struct ExpenseRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                    Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.system(size: 15, weight: .medium))
+                    Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.rowTitle)
                         .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                     if repeats {
                         Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
@@ -760,18 +760,18 @@ struct ExpenseRow: View {
                 }
                 // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục)
                 if e.n?.isEmpty == false {
-                    Text(c.name).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(c.name).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 8)
             // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
             VStack(alignment: .trailing, spacing: 3) {
-                Text(fmt(e.a)).font(.system(size: 15, weight: .medium)).monospacedDigit().lineLimit(1)
+                Text(fmt(e.a)).font(.rowAmount).monospacedDigit().lineLimit(1)
                 HStack(spacing: 9) {
                     let parts = when
                     ForEach(Array(parts.enumerated()), id: \.offset) { i, p in
                         if i > 0 { Rectangle().fill(Color.primary.opacity(0.18)).frame(width: 1, height: 13) }
-                        Text(p).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                        Text(p).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
             }
@@ -1183,4 +1183,12 @@ enum Haptic {
     private static let selection = UISelectionFeedbackGenerator()
     static func select() { selection.selectionChanged(); selection.prepare() }
     static func tap(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .light) { UIImpactFeedbackGenerator(style: style).impactOccurred() }
+}
+
+/// Cỡ chữ chung của mọi hàng danh sách trong app (Gần đây, Lịch sử, Thống kê, Nhóm chung): tên hàng, dòng phụ, số tiền.
+/// Lấy theo hàng khoản chi (ExpenseRow); hàng ở màn nào cũng dùng bộ này để cỡ chữ không lệch nhau giữa các màn
+extension Font {
+    static let rowTitle = Font.system(size: 15, weight: .medium)
+    static let rowSub = Font.system(size: 12)
+    static let rowAmount = Font.system(size: 15, weight: .medium)
 }

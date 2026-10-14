@@ -518,7 +518,7 @@ struct HouseView: View {
         let mine = net[me] ?? 0
 
         // 1. Việc của bạn: phải trả ai / ai trả bạn, mỗi người một dòng kèm nút
-        youCard(mine, transfers.filter { $0.from == me || $0.to == me })
+        youCard(mine, transfers.filter { $0.from == me || $0.to == me }, groupDone: groupDone(net))
 
         // Chỉ nhắc thêm tài khoản khi mình là người được nhận tiền (để người khác bấm Trả ngay)
         if mine > 0, let m = house.members.first(where: { $0.id == me }), !m.hasBank {
@@ -561,7 +561,7 @@ struct HouseView: View {
     }
 
     /// Thẻ trên cùng: số tiền của riêng bạn, bên dưới là từng người bạn cần trả / sẽ trả bạn.
-    private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer]) -> some View {
+    private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer], groupDone: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Màu đỏ / xanh chỉ ở dòng chữ nhỏ; số tiền to màu chữ thường cho dễ đọc trên nền xám
             if mine != 0 {
@@ -573,11 +573,12 @@ struct HouseView: View {
                     .foregroundStyle(.primary)
                     .minimumScaleFactor(0.5).lineLimit(1)
                     .padding(.top, 6)
-            } else {
-                // Không ai nợ ai phần của mình: một dòng nói thẳng ra, cỡ chữ vừa (không thay chỗ số tiền to)
+            } else if !groupDone {
+                // Phần của mình xong mà người khác còn nợ nhau: một dòng ngắn. Cả nhóm đã xong thì không có dòng này, thẻ
+                // "Cả nhóm đã trả xong" bên dưới đã nói (hai dòng trùng ý)
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).foregroundStyle(Palette.goodInk)
-                    Text(L("Bạn không nợ ai, cũng không ai nợ bạn")).font(.system(size: 17, weight: .semibold))
+                    Text(L("Phần của bạn đã xong")).font(.system(size: 17, weight: .semibold))
                 }
             }
             if !mineTransfers.isEmpty {
@@ -724,12 +725,17 @@ struct HouseView: View {
     /// Khoản chi của đợt đang mở (sau lần chốt gần nhất)
     private var openSpends: [HouseSpend] { house.spends.filter { s in lastClose.map { s.date > $0 } ?? true } }
 
+    /// Cả nhóm xong đợt này: đợt có khoản chi, không ai còn nợ ai, không còn lần trả chờ xác nhận (lần trả đang chờ của bất kỳ ai
+    /// cũng chưa coi là xong). Lúc này hiện thẻ chốt sổ thay cho dòng "phần của bạn đã xong"
+    private func groupDone(_ net: [String: Int]) -> Bool {
+        !openSpends.isEmpty && net.values.allSatisfy { $0 == 0 } && !house.settles.contains { $0.status == "wait" }
+    }
+
     /// Thẻ chốt sổ: chỉ hiện khi không ai còn nợ ai, không còn lần trả chờ xác nhận, và đợt này có khoản chi.
     /// Mỗi người chịu bao nhiêu trong đợt, rồi nút Chốt sổ (hỏi lại trước khi chốt)
     @ViewBuilder private func closeCard(_ net: [String: Int]) -> some View {
         let open = openSpends
-        // Lần trả đang chờ xác nhận của bất kỳ ai cũng chưa coi là xong
-        if !open.isEmpty, net.values.allSatisfy({ $0 == 0 }), !house.settles.contains(where: { $0.status == "wait" }) {
+        if groupDone(net) {
             var share: [String: Int] = [:]
             let _ = open.forEach { e in for (id, p) in Settle.parts(e) { share[id, default: 0] += p } }
             VStack(alignment: .leading, spacing: 12) {

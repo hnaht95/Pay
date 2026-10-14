@@ -239,12 +239,13 @@ struct HomeView: View {
         // voiceRound). Đóng rồi mở trong vài trăm mili giây thì iOS có khi giữ lại thẻ cũ, mà thẻ cũ đã tắt micro lúc bị đóng:
         // kẹt ở "Đang bật micro…"
         let renew = k == .voice && listening
-        let busy = entry != nil || scanning || showHistory || showSettings || showStats || showHouse || (listening && !renew) || listing != nil
+        let busy = entry != nil || scanning || receiptScan || showHistory || showSettings || showStats || showHouse || (listening && !renew) || listing != nil
             || addingCat || editingCat != nil
         // Thẻ nói còn mở thì không bỏ qua lệnh nói: thẻ có thể đã ngừng nghe từ lâu (đã ghi, chưa nghe rõ, thiếu quyền micro),
         // ở đây không biết được, nên đóng rồi mở lại để nghe ngay
         if k == .scan && scanning { return }
-        entry = nil; scanning = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listing = nil; voiceFrom = nil
+        if k == .photo && receiptScan { return }
+        entry = nil; scanning = false; receiptScan = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listing = nil; voiceFrom = nil
         if !renew { listening = false }
         addingCat = false; editingCat = nil; menu = nil
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
@@ -252,6 +253,7 @@ struct HomeView: View {
         case .scan: scanning = true
         case .add: entry = .new(cat: nil)
         case .voice: listen()
+        case .photo: if Pro.shared.allow(.photos) { receiptScan = true }
         }
     }
 

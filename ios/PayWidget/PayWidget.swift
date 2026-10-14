@@ -11,6 +11,7 @@ struct PayWidgets: WidgetBundle {
         if #available(iOS 18.0, *) {
             VoiceControl()
             ScanControl()
+            PhotoControl()
         }
     }
 }
@@ -113,6 +114,19 @@ struct VoiceControl: ControlWidget {
         }
         .displayName("\(L("Pay: Ghi bằng giọng nói"))")
         .description("\(L("Mở Pay và nghe luôn, nói \"35k cafe\" là ghi."))")
+    }
+}
+
+@available(iOS 18.0, *)
+struct PhotoControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "PhotoControl") {
+            ControlWidgetButton(action: PhotoIntent()) {
+                Label(L("Chụp hoá đơn"), systemImage: "camera.fill")
+            }
+        }
+        .displayName("\(L("Pay: Chụp hoá đơn"))")
+        .description("\(L("Mở Pay và chụp ngay ảnh hoá đơn."))")
     }
 }
 

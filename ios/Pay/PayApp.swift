@@ -55,6 +55,8 @@ struct PayShortcuts: AppShortcutsProvider {
                     shortTitle: "Ghi chi tiêu", systemImageName: "mic.fill")
         AppShortcut(intent: ScanIntent(), phrases: ["Quét QR bằng \(.applicationName)", "\(.applicationName) quét QR"],
                     shortTitle: "Quét QR", systemImageName: "qrcode.viewfinder")
+        AppShortcut(intent: PhotoIntent(), phrases: ["Chụp hoá đơn bằng \(.applicationName)", "\(.applicationName) chụp hoá đơn"],
+                    shortTitle: "Chụp hoá đơn", systemImageName: "camera.fill")
         AppShortcut(intent: CardPaymentIntent(), phrases: ["Ghi giao dịch thẻ bằng \(.applicationName)"],
                     shortTitle: "Ghi giao dịch thẻ", systemImageName: "creditcard")
         AppShortcut(intent: AddIntent(), phrases: ["Nhập chi tiêu bằng \(.applicationName)", "\(.applicationName) nhập khoản chi"],

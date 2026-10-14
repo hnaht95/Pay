@@ -143,10 +143,14 @@ extension English {
         "Nút Tác vụ: quét QR": "Action button: scan QR",
         "Bấm Chọn điều khiển, tìm \"Pay: Quét QR\".": "Tap Choose a Control, then search for \"Pay: Scan QR\".",
         "Nhấn giữ nút Tác vụ là mở camera quét ngay.": "Press and hold the Action button to open the scanner right away.",
-        "Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói hoặc quét QR. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển.": "Requires iOS 18 or later. The Action button can do only one thing: choose voice logging or QR scanning. The \"Pay: Scan QR\" control can also be added to Control Center.",
+        "Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói, quét QR hoặc chụp hoá đơn. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển.": "Requires iOS 18 or later. The Action button can do only one thing: voice logging, QR scanning or receipt scanning. The \"Pay: Scan QR\" control can also be added to Control Center.",
+        "Bấm Chọn điều khiển, tìm \"Pay: Chụp hoá đơn\".": "Tap Choose a Control, then search for \"Pay: Scan receipt\".",
+        "Nhấn giữ nút Tác vụ là mở camera chụp hoá đơn ngay, chụp xong nhập số tiền.": "Press and hold the Action button to snap a receipt right away, then enter the amount.",
+        "Nút Tác vụ: chụp hoá đơn": "Action button: scan receipt",
+        "Cần iOS 18 trở lên. Nút \"Pay: Chụp hoá đơn\" cũng thêm được vào Trung tâm điều khiển hoặc màn hình khoá.": "Requires iOS 18 or later. The \"Pay: Scan receipt\" control can also be added to Control Center or the Lock Screen.",
         "Siri và Phím tắt": "Siri and Shortcuts",
-        "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\".": "Say \"Log expense with Pay\" to Siri, then say the expense. Or \"Scan QR with Pay\".",
-        "Hoặc mở app Phím tắt, hai lệnh này có sẵn trong mục Pay.": "Or open the Shortcuts app; both actions are listed under Pay.",
+        "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\", \"Chụp hoá đơn bằng Pay\".": "Say \"Log expense with Pay\" to Siri, then say the expense. Or \"Scan QR with Pay\", \"Scan receipt with Pay\".",
+        "Hoặc mở app Phím tắt, các lệnh này có sẵn trong mục Pay.": "Or open the Shortcuts app; these actions are listed under Pay.",
         "Tự chọn màu": "Custom color",
     ]
 }

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Việc cần làm ngay khi app được mở từ widget, nút Tác vụ hoặc Phím tắt.
 enum QuickKind: String {
-    case scan, add, voice
+    case scan, add, voice, photo
 
     init?(url: URL) {
         guard url.scheme == "sochipay", let k = url.host.flatMap(QuickKind.init(rawValue:)) else { return nil }
@@ -44,6 +44,19 @@ struct VoiceIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         QuickAction.shared.pending = .voice
+        return .result()
+    }
+}
+
+/// Mở Pay và vào thẳng màn chụp hoá đơn (như vuốt lên ở nút Nhập). Gán cho nút Tác vụ qua nút điều khiển "Pay: Chụp hoá đơn"
+struct PhotoIntent: AppIntent {
+    static let title: LocalizedStringResource = "Chụp hoá đơn"
+    static let description = IntentDescription("Mở Pay và chụp ngay ảnh hoá đơn, chụp xong nhập số tiền.")
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        QuickAction.shared.pending = .photo
         return .result()
     }
 }

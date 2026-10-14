@@ -1206,12 +1206,22 @@ struct QuickAccessHelp: View {
             } header: {
                 Label(L("Nút Tác vụ: quét QR"), systemImage: "qrcode.viewfinder")
             } footer: {
-                Text(L("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói hoặc quét QR. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển."))
+                Text(L("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói, quét QR hoặc chụp hoá đơn. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển."))
             }
 
             Section {
-                step(1, "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\".")
-                step(2, "Hoặc mở app Phím tắt, hai lệnh này có sẵn trong mục Pay.")
+                step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Điều khiển.")
+                step(2, "Bấm Chọn điều khiển, tìm \"Pay: Chụp hoá đơn\".")
+                step(3, "Nhấn giữ nút Tác vụ là mở camera chụp hoá đơn ngay, chụp xong nhập số tiền.")
+            } header: {
+                Label(L("Nút Tác vụ: chụp hoá đơn"), systemImage: "camera.fill")
+            } footer: {
+                Text(L("Cần iOS 18 trở lên. Nút \"Pay: Chụp hoá đơn\" cũng thêm được vào Trung tâm điều khiển hoặc màn hình khoá."))
+            }
+
+            Section {
+                step(1, "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\", \"Chụp hoá đơn bằng Pay\".")
+                step(2, "Hoặc mở app Phím tắt, các lệnh này có sẵn trong mục Pay.")
             } header: {
                 Label(L("Siri và Phím tắt"), systemImage: "wand.and.stars")
             }

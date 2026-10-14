@@ -75,6 +75,7 @@ struct HouseView: View {
             FilmScroll {
                 VStack(alignment: .leading, spacing: 0) {
                     header.hidden()   // giữ chỗ cho đầu trang phủ bên trên
+                    Color.clear.frame(height: 17)   // vạch dưới đầu trang + khoảng 16 tới thẻ đầu
                     content
                 }
                 .padding(.horizontal, 16)
@@ -256,14 +257,15 @@ struct HouseView: View {
         }
         // Tên ở chính giữa màn hình, không theo khoảng trống giữa các nút (bên phải có hai nút, bên trái một nút)
         .overlay {
-            // Trong nhóm: tên nhóm nằm ngay trên số tiền (xem youCard), đầu trang chỉ còn các nút
-            if !inGroup {
-                Text(creating ? L("Nhóm mới") : L("Nhóm chung"))
-                    .font(.system(size: 21, weight: .bold)).lineLimit(1)   // cùng cỡ tiêu đề các màn khác
-                    .padding(.horizontal, 100)
-            }
+            // Tiêu đề ở giữa như các tấm khác: trong nhóm là tên nhóm
+            Text(inGroup ? house.name : creating ? L("Nhóm mới") : L("Nhóm chung"))
+                .font(.system(size: 21, weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)   // cùng cỡ tiêu đề các màn khác
+                .padding(.horizontal, 100)
         }
-        .padding(.top, 14).padding(.bottom, 14)
+        // Cùng kích thước thanh tiêu đề các tấm khác (xem ScreenTitle): cao theo dòng chữ 26, cách mép trên 20 và cách vạch 20;
+        // các nút tròn 36 tràn ra trên dưới chứ không làm thanh cao thêm
+        .frame(height: 26)
+        .padding(.top, 20).padding(.bottom, 20)
         .sheet(isPresented: $showInbox) { inbox.sheetCorners() }
         .sheet(item: $editingGroup) { HouseGroupEditor(group: $0).sheetGrabber() }
     }
@@ -561,7 +563,6 @@ struct HouseView: View {
     /// Thẻ trên cùng: số tiền của riêng bạn, bên dưới là từng người bạn cần trả / sẽ trả bạn.
     private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(house.name).font(.system(size: 21, weight: .bold)).lineLimit(2).padding(.bottom, 14)
             // Màu đỏ / xanh chỉ ở dòng chữ nhỏ; số tiền to màu chữ thường cho dễ đọc trên nền xám
             Text(mine > 0 ? L("Bạn sẽ nhận") : mine < 0 ? L("Bạn cần trả") : L("Bạn không nợ ai"))
                 .font(.system(size: 15, weight: mine == 0 ? .regular : .semibold))
@@ -1833,14 +1834,14 @@ private struct PinnedHeader<H: View>: ViewModifier {
     let film: Bool
 
     func body(content: Content) -> some View {
+        // Như thanh tiêu đề các tấm khác: nền đặc màu trang, vạch mảnh lùi 16 hai bên ở dưới; nội dung cuộn lên cắt gọn ở vạch
+        // (trước là dải màu nền mờ dần, chữ trôi lên dưới thành vệt tối)
         content.noSystemEdge(.top).overlay(alignment: .top) {
-            header.background(alignment: .top) {
-                LinearGradient(stops: [.init(color: Palette.bg, location: 0), .init(color: Palette.bg, location: 0.55),
-                                       .init(color: Palette.bg.opacity(0), location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-                    .padding(.bottom, -28)
-                    .allowsHitTesting(false)
+            VStack(spacing: 0) {
+                header
+                Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)
             }
+            .background { Palette.bg.ignoresSafeArea(edges: .top).allowsHitTesting(false) }
         }
     }
 }

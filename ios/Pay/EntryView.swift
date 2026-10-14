@@ -32,6 +32,9 @@ struct EntryView: View {
     @State private var editing = true
     @FocusState private var noteFocused: Bool
     @State private var scanningReceipt = false
+    /// Nói để điền (nút micro cạnh ô ghi chú): "35k cafe" điền số tiền, ghi chú, danh mục
+    @StateObject private var dictation = VoiceListener()
+    @State private var dictating = false
     /// Ảnh hoá đơn đính kèm khoản (lưu trong Pay, xem ReceiptPhotos); đổi / xoá rồi thì lưu lại lúc bấm Lưu
     @State private var photo: UIImage?
     @State private var photoChanged = false
@@ -127,6 +130,7 @@ struct EntryView: View {
                 // Chạm vào ghi chú cũng là bắt đầu sửa
                 .onChange(of: noteFocused) { _, on in if on { withAnimation(.snappy) { editing = true } } }
             }
+            micTile
             photoTile
             }
             .padding(.top, 24)
@@ -218,6 +222,66 @@ struct EntryView: View {
             }
             .buttonStyle(Pressable())
             .accessibilityLabel(photo != nil ? L("Ảnh hoá đơn") : L("Chụp hoá đơn"))
+        }
+    }
+
+    /// Nút micro cạnh ô ghi chú (cùng cỡ ô ảnh): chạm để nói "35k cafe", ngừng nói là điền số tiền, ghi chú, danh mục; chạm lần
+    /// nữa khi đang nghe là dừng và điền phần đã nghe. Đang nghe: nền đỏ nhạt, chấm micro nhấp nháy, ô ghi chú hiện chữ đang nghe
+    @ViewBuilder private var micTile: some View {
+        if (isNewEntry || isEdit) && film == nil {
+            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            Button { dictating ? dictation.finish() : startDictation() } label: {
+                (dictating ? Palette.danger.opacity(0.15) : Color.primary.opacity(0.05))
+                    .overlay {
+                        Image(systemName: dictating ? "waveform" : "mic.fill").font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(dictating ? Palette.danger : .secondary)
+                            .symbolEffect(.variableColor.iterative, isActive: dictating)
+                    }
+                    .frame(width: Self.noteH, height: Self.noteH)
+                    .clipShape(shape)
+                    .contentShape(shape)
+            }
+            .buttonStyle(Pressable())
+            .accessibilityLabel(dictating ? L("Dừng nghe") : L("Nói để điền"))
+            .onChange(of: dictation.text) { _, t in if dictating, !t.isEmpty { note = t } }
+            .onChange(of: dictation.phase) { _, p in
+                if case .failed(let why) = p { dictating = false; store.showError(why) }
+                if p == .denied { dictating = false; store.showError(L("Cần quyền micro")) }
+            }
+            .onDisappear { dictation.cancel() }
+        }
+    }
+
+    private func startDictation() {
+        noteFocused = false
+        Haptic.tap()
+        withAnimation(.snappy) { editing = true; dictating = true }
+        dictation.onFinish = { said in applyDictation(said) }
+        Task {
+            await dictation.start()
+            // Không bật được micro (thiếu quyền, lỗi): phase đã báo ở onChange; còn lại mà vẫn không nghe thì thôi
+            if dictation.phase != .listening && dictating { if case .idle = dictation.phase { dictating = false } }
+        }
+    }
+
+    /// Câu vừa nói: có số tiền thì điền số tiền + ghi chú (+ danh mục đoán theo ghi chú, tiền vào nếu có từ như "lương"); không
+    /// đọc được số tiền thì cả câu vào ghi chú
+    private func applyDictation(_ said: String) {
+        withAnimation(.snappy) { dictating = false }
+        let t = said.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        guard let q = QuickParse.spoken(t) ?? QuickParse.expense(t) else { note = t; return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.snappy) {
+            digits = String(q.amount)
+            if !catPicked && canIncome {
+                let k = store.guessEntry(q.note)
+                income = Category.isIncome(k)
+                note = q.note
+                cat = k
+            } else {
+                note = q.note
+            }
         }
     }
 

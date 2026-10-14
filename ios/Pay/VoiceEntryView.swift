@@ -223,6 +223,10 @@ struct VoiceEntryView: View {
     /// Vừa bấm Hoàn tác: khoản vừa ghi đã xoá
     @State private var undone = false
     @State private var autoClose: Task<Void, Never>?
+    /// Đang chụp ảnh cho khoản vừa ghi (nút camera trên thẻ đã ghi)
+    @State private var shooting = false
+    /// Khoản vừa ghi đã có ảnh chụp kèm
+    @State private var attached = false
     /// Bấm Xong khi đang nghe: ghi xong thì đóng thẻ ngay
     @State private var closeAfterSave = false
     @State private var shown = false
@@ -367,6 +371,25 @@ struct VoiceEntryView: View {
             starting = false
         }
         .onDisappear { mic.cancel() }
+        .fullScreenCover(isPresented: $shooting) {
+            ReceiptCamera { img in
+                shooting = false
+                if let img, var e = saved {
+                    ReceiptPhotos.save(img, id: e.id)
+                    store.update(e)   // đổi dấu sửa: hàng ở Gần đây vẽ lại với ảnh, iCloud nhận bản mới
+                    e = store.all.first { $0.id == e.id } ?? e
+                    saved = e
+                    withAnimation(.snappy) { attached = true }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                }
+                // Chụp xong (hoặc huỷ) thì lại để vài giây rồi tự đóng như sau khi ghi
+                autoClose = Task {
+                    try? await Task.sleep(for: .seconds(4))
+                    guard !Task.isCancelled else { return }
+                    leave()
+                }
+            }
+        }
     }
 
     // MARK: Thẻ
@@ -600,6 +623,19 @@ struct VoiceEntryView: View {
         HStack(spacing: 10) {
             Group {
                 if let e = savedNow {
+                    // Chụp ảnh hoá đơn gắn thẳng vào khoản vừa ghi (không phải mở màn sửa)
+                    Button {
+                        autoClose?.cancel()
+                        if Pro.shared.allow(.photos) { shooting = true }
+                    } label: {
+                        Image(systemName: attached ? "checkmark" : "camera.fill").font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(attached ? Palette.goodInk : .primary)
+                            .frame(width: 64, height: 64)
+                            .background(Palette.pill, in: Circle())
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .buttonStyle(Pressable())
+                    .accessibilityLabel(attached ? L("Đã có ảnh") : L("Chụp ảnh hoá đơn"))
                     // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
                     pill(L("Hoàn tác"), primary: false) { undo(e) }
                     pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }

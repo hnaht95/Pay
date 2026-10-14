@@ -124,22 +124,25 @@ struct ReceiptCamera: View {
         .animation(.easeOut(duration: 0.2), value: dialShown)
     }
 
-    /// Đổi camera như app Camera: rung ngay khi chạm, khung xem lật nửa vòng quanh trục dọc và mờ đi; giữa chừng (lúc khung đang
-    /// nghiêng 90°, không nhìn thấy hình) mới đổi camera, rồi lật nốt về và hiện hình camera mới
+    /// Đổi camera như app Camera: rung ngay khi chạm, khung xem lật nửa vòng quanh trục dọc và mờ đi. Đổi camera bắt đầu ngay lúc
+    /// chạm, chạy song song với nửa đầu hiệu ứng (trước đây đợi lật xong nửa đầu mới đổi, cộng dồn hai khoảng thời gian); xong thì
+    /// lật nốt về và hiện hình camera mới
     private func flipCamera() {
         guard !flipping else { return }
         flipping = true
         flipHaptic.impactOccurred()
         withAnimation(.snappy(duration: 0.35)) { flips += 1 }
-        withAnimation(.easeIn(duration: 0.2)) { flipAngle = 90; flipVeil = true }
+        withAnimation(.easeIn(duration: 0.16)) { flipAngle = 90; flipVeil = true }
         Task {
-            try? await Task.sleep(for: .milliseconds(200))
+            let started = Date()
             await cam.flip()
+            // Nửa đầu chưa lật xong thì đợi cho xong, khỏi giật
+            let left = 0.16 - Date().timeIntervalSince(started)
+            if left > 0 { try? await Task.sleep(for: .milliseconds(Int(left * 1000))) }
             flipAngle = -90
-            withAnimation(.easeOut(duration: 0.25)) { flipAngle = 0 }
-            // Đợi camera mới ra vài khung hình rồi mới bỏ lớp mờ
-            try? await Task.sleep(for: .milliseconds(120))
-            withAnimation(.easeOut(duration: 0.25)) { flipVeil = false }
+            withAnimation(.easeOut(duration: 0.22)) { flipAngle = 0 }
+            try? await Task.sleep(for: .milliseconds(80))
+            withAnimation(.easeOut(duration: 0.2)) { flipVeil = false }
             flipping = false
         }
     }
@@ -398,6 +401,10 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         }
     }
 
+    /// Mọi việc nặng với phiên chụp (bật, đổi camera) chạy lần lượt trên một hàng đợi riêng, như Apple hướng dẫn: không chiếm
+    /// luồng chính, và không chạy chồng lên nhau (bật camera chưa xong đã đổi camera thì chậm, có khi lỗi)
+    nonisolated static let sessionQueue = DispatchQueue(label: "pay.cam.session", qos: .userInitiated)
+
     private static func camera(_ pos: AVCaptureDevice.Position) -> AVCaptureDevice? {
         if pos == .front { return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) }
         return AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back)
@@ -416,26 +423,19 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             session.sessionPreset = .photo
             session.addInput(inp)
             session.addOutput(output)
-            videoOut.alwaysDiscardsLateVideoFrames = true
-            videoOut.setSampleBufferDelegate(self, queue: videoQueue)
-            if session.canAddOutput(videoOut) { session.addOutput(videoOut) }
+            // Không gắn đầu ra khung hình (videoOut): chỉ dùng cho bộ lọc xem trước, mà màn chụp đã bỏ bộ lọc. Gắn thêm nó thì mỗi lần
+            // đổi camera phiên chụp phải dựng thêm một luồng khung hình, đổi camera chậm hẳn
             session.commitConfiguration()
             input = inp
-            orientVideo()
             // Đặt lại tiêu cự sau khi cấu hình xong: đổi sessionPreset / gắn camera làm camera về định dạng mới, tiêu cự đặt trước
             // đó bị trả về mặc định (góc siêu rộng) trong khi số vẫn hiện mức cũ. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
             setZoom(zoom)
             configured = true
         }
         let s = session
-        DispatchQueue.global(qos: .userInitiated).async { if !s.isRunning { s.startRunning() } }
+        Self.sessionQueue.async { if !s.isRunning { s.startRunning() } }
     }
 
-    private func orientVideo() {
-        guard let c = videoOut.connection(with: .video) else { return }
-        if c.isVideoRotationAngleSupported(90) { c.videoRotationAngle = 90 }
-        if c.isVideoMirroringSupported { c.isVideoMirrored = device?.position == .front }
-    }
 
     /// Tiêu cự camera sau lúc chuyển sang camera trước: quay lại camera sau thì về đúng tiêu cự này (như app Camera), không
     /// đặt lại 1×
@@ -504,13 +504,14 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     /// Đổi camera trước / sau như app Camera: camera trước luôn 1×; quay lại camera sau thì giữ tiêu cự đang dùng trước khi đổi.
     /// Cấu hình lại phiên chụp chạy ngoài luồng chính (mất vài trăm mili giây): chạy trên luồng chính thì hiệu ứng lật khựng lại
     func flip() async {
+        // Cấu hình ngay, song song với nửa đầu hiệu ứng lật (xem flipCamera); chạy trên hàng đợi riêng của phiên chụp
         guard configured, let cur = input, let d = Self.camera(cur.device.position == .back ? .front : .back),
               let inp = try? AVCaptureDeviceInput(device: d) else { return }
         if cur.device.position == .back { backZoom = zoom }
         prepareZoom(d, to: d.position == .back ? backZoom : 1)
         let s = session, factor = zoom * zoomBase
         let added: Bool = await withCheckedContinuation { done in
-            DispatchQueue.global(qos: .userInitiated).async {
+            Self.sessionQueue.async {
                 s.beginConfiguration()
                 s.removeInput(cur)
                 let ok = s.canAddInput(inp)
@@ -526,14 +527,13 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         }
         guard added else { return }
         input = inp
-        orientVideo()
         let w = warmth, e = exposure
         setWarmth(w); setExposure(e)
     }
 
     func stop() {
         let s = session
-        DispatchQueue.global().async { if s.isRunning { s.stopRunning() } }
+        Self.sessionQueue.async { if s.isRunning { s.stopRunning() } }
     }
 
     func capture(_ done: @escaping (UIImage?) -> Void) {

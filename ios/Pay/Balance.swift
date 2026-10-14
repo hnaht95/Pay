@@ -24,9 +24,12 @@ struct BalanceSheet: View {
             // Các lần đặt / điều chỉnh số dư (không hiện ở Gần đây, Lịch sử chi tiêu: không phải tiêu tiền)
             if !store.adjusts.isEmpty {
                 Button { showLog = true } label: {
-                    HStack(spacing: 4) {
-                        Text(L("Các lần điều chỉnh · %ld", store.adjusts.count))
-                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 6) {
+                        Text(L("Các lần điều chỉnh"))
+                        // Số lần trong vòng tròn xám
+                        Text("\(store.adjusts.count)").font(.system(size: 13, weight: .semibold)).monospacedDigit()
+                            .frame(minWidth: 22, minHeight: 22)
+                            .background(Color.primary.opacity(0.12), in: Circle())
                     }
                     .font(.system(size: 15, weight: .medium))
                     .padding(.horizontal, 14).padding(.vertical, 7)

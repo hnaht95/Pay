@@ -37,7 +37,6 @@ struct ReceiptCamera: View {
             }
             .padding(.horizontal, 16)
         }
-        .overlay { Color.white.opacity(flash ? 0.7 : 0).ignoresSafeArea().allowsHitTesting(false) }
         .preferredColorScheme(.dark)
         // Ảnh chọn từ thư viện máy qua bước căn vào khung 3:4; chờ bảng chọn đóng hẳn rồi mới mở
         .onAppear { cam.filter = .none; cam.start() }
@@ -80,6 +79,8 @@ struct ReceiptCamera: View {
         return ZStack {
             Color(hex: 0x1C1C1E)
             CameraPreview(session: cam.session)
+            // Chụp: khung xem tối sầm thoáng qua (như màn trập của Camera), chỉ trong khung, phần còn lại của màn để nguyên
+            Color.black.opacity(flash ? 0.85 : 0).allowsHitTesting(false)
             // Lưới chia ba (như lưới của Camera iOS): giúp đặt hoá đơn thẳng và giữa khung. Không có trong ảnh chụp
             ThirdsGrid().allowsHitTesting(false)
             // Bộ lọc khác "Gốc": khung xem vẽ lại từng hình đã qua bộ lọc (giống ảnh sẽ chụp)
@@ -180,7 +181,7 @@ struct ReceiptCamera: View {
     private func shoot() { snap() }
 
     private func snap() {
-        // Rung một nhịp như nút chụp của Camera, màn loé trắng thoáng qua
+        // Rung một nhịp như nút chụp của Camera, khung xem tối sầm thoáng qua
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         flash = true
         withAnimation(.easeOut(duration: 0.35)) { flash = false }

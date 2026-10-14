@@ -243,7 +243,7 @@ struct EntryView: View {
             }
             .buttonStyle(Pressable())
             .accessibilityLabel(dictating ? L("Dừng nghe") : L("Nói để điền"))
-            .onChange(of: dictation.text) { _, t in if dictating, !t.isEmpty { note = t } }
+            .onChange(of: dictation.text) { _, t in if dictating, !t.isEmpty { liveDictation(t) } }
             .onChange(of: dictation.phase) { _, p in
                 if case .failed(let why) = p { dictating = false; store.showError(why) }
                 if p == .denied { dictating = false; store.showError(L("Cần quyền micro")) }
@@ -261,6 +261,17 @@ struct EntryView: View {
             await dictation.start()
             // Không bật được micro (thiếu quyền, lỗi): phase đã báo ở onChange; còn lại mà vẫn không nghe thì thôi
             if dictation.phase != .listening && dictating { if case .idle = dictation.phase { dictating = false } }
+        }
+    }
+
+    /// Đang nói: đọc được số tiền thì số hiện ngay ở ô số tiền, ô ghi chú chỉ còn phần chữ ("35k cafe" → 35.000 · "cafe"),
+    /// không để cả câu nằm ở ghi chú rồi mới nhảy lên khi nói xong. Chưa ra số tiền thì chưa đụng ô số tiền
+    private func liveDictation(_ t: String) {
+        if let q = QuickParse.spoken(t) ?? QuickParse.expense(t) {
+            digits = String(q.amount)
+            note = q.note
+        } else {
+            note = t
         }
     }
 

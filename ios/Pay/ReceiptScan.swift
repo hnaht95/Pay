@@ -71,17 +71,6 @@ struct ReceiptCamera: View {
             }
             .accessibilityLabel(L("Đóng"))
             Spacer()
-            // Đổi camera trước / sau (như nút của app Camera); biểu tượng xoay nửa vòng mỗi lần chạm
-            Button {
-                Haptic.tap(.light)
-                withAnimation(.snappy(duration: 0.35)) { flips += 1 }
-                cam.flip()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 22, weight: .medium))
-                    .rotationEffect(.degrees(Double(flips) * 180))
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel(L("Đổi camera"))
         }
         .foregroundStyle(.white)
         .buttonStyle(Pressable())
@@ -111,13 +100,40 @@ struct ReceiptCamera: View {
             }
             VStack(spacing: 10) {
                 Spacer()
-                zoomControl.padding(.bottom, 10)
+                // Số tiêu cự ở giữa; nút đổi camera ngang hàng bên phải, cùng cỡ và kiểu với số (trắng, có bóng mờ)
+                zoomControl
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .trailing) { flipButton.opacity(dialShown ? 0 : 1) }
+                    .padding(.bottom, 10)
             }
         }
         .aspectRatio(aspect.value, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
         .animation(.easeOut(duration: 0.2), value: dialShown)
+    }
+
+    /// Đổi camera trước / sau; biểu tượng xoay nửa vòng mỗi lần chạm
+    private var flipButton: some View {
+        Button {
+            Haptic.tap(.light)
+            withAnimation(.snappy(duration: 0.35)) { flips += 1 }
+            cam.flip()
+        } label: {
+            Group {
+                if #available(iOS 18.0, *) { Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90") }
+                else { Image(systemName: "arrow.triangle.2.circlepath") }   // biểu tượng trên chưa có ở iOS 17
+            }
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.5), radius: 3)
+            .rotationEffect(.degrees(Double(flips) * 180))
+            .frame(width: 52, height: 52)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(Pressable())
+        .padding(.trailing, 6)
+        .accessibilityLabel(L("Đổi camera"))
     }
 
     /// Tiêu cự quy đổi ra mm (như máy ảnh), chữ đơn cách, không nền. Chạm: đổi nấc (30 · 12 · 24 · 48 mm); vuốt trái / phải: thu

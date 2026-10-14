@@ -112,7 +112,7 @@ Nút đổi kiểu ở mục Gần đây và ở Lịch sử, chung một lựa 
 ## 10. Màn chụp hoá đơn (`ReceiptScan.swift`)
 
 - Khung xem 3:4 cố định, bo 32, có lưới chia ba (vạch trắng mờ, không có trong ảnh). Trong khung chỉ có tiêu cự tính bằng mm (chữ đơn cách, không nền), mở ở 30mm; chạm đổi nấc 30 · 12 · 24 · 48mm, vuốt ngang hiện vòng tiêu cự (vạch số cũng bằng mm).
-- Thanh trên: quay lại (trái), đổi camera trước / sau (phải).
+- Thanh trên chỉ có nút quay lại. Nút đổi camera trước / sau nằm ngang hàng số mm, sát mép phải khung xem, cùng cỡ và kiểu với số (trắng, bóng mờ).
 - Hàng dưới, cao hơn vạch Home 28: ô ảnh bên trái, nút chụp ở giữa, nút nhà bên phải. Ô ảnh và nút nhà đứng **giữa khoảng từ mép màn tới mép nút chụp**.
   - Ô ảnh: hai ảnh mới nhất trong app Ảnh, khung 3:4 bo 6, xếp chồng lệch nhau, viền trắng mảnh.
   - Nút nhà: SF Symbols `house`, nét đậm, không nền. Chỉ có khi mở từ trang chủ.

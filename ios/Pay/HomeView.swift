@@ -1169,16 +1169,16 @@ private struct ReceiptFlow: View {
     @State private var shot: EntryMode?
     /// Số khoản lúc mở màn nhập: lúc đóng nhiều hơn là đã lưu
     @State private var countAtShot = 0
-    /// Đổi để dựng lại màn chụp từ đầu (bật lại camera) khi quay lại chụp
+    /// Đổi để màn chụp nhận chụp tiếp khi quay lại từ màn nhập (camera vẫn chạy suốt, không dựng lại: dựng lại thì khung xem đen
+    /// một nhịp lúc bật lại camera)
     @State private var round = 0
 
     var body: some View {
-        ReceiptCamera(home: close) { img in
+        ReceiptCamera(resume: round, home: close) { img in
             guard let img else { close(); return }
             countAtShot = store.all.count
             shot = .receipt(img)
         }
-        .id(round)
         .sheet(item: $shot, onDismiss: {
             if store.all.count > countAtShot { close() } else { round += 1 }
         }) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }

@@ -9,6 +9,8 @@ import SwiftUI
 /// chọn ảnh có sẵn bên trái. Không có bộ lọc, lưới, tỉ lệ, hẹn giờ, đèn, đổi camera, nhiệt độ màu / độ sáng.
 /// Không dùng máy quét tài liệu của iOS: nó có sẵn bộ lọc / chế độ chụp không ẩn được
 struct ReceiptCamera: View {
+    /// Đổi số này để màn chụp nhận chụp tiếp sau khi đã chụp xong một ảnh (quay lại từ màn nhập), giữ nguyên camera đang chạy
+    var resume = 0
     /// Nút về trang chủ bên phải nút chụp (chụp hoá đơn mở từ trang chủ). Không có thì chỗ đó để trống
     var home: (() -> Void)? = nil
     var done: (UIImage?) -> Void
@@ -44,6 +46,7 @@ struct ReceiptCamera: View {
         .preferredColorScheme(.dark)
         // Ảnh chọn từ thư viện máy qua bước căn vào khung 3:4; chờ bảng chọn đóng hẳn rồi mới mở
         .onAppear { cam.filter = .none; cam.start() }
+        .onChange(of: resume) { finished = false }
         .onDisappear { cam.stop() }
         .task(id: photo) {
             guard let item = photo, let data = try? await item.loadTransferable(type: Data.self), !Task.isCancelled,
@@ -245,10 +248,9 @@ struct ReceiptCamera: View {
     private func finish(_ img: UIImage?) {
         guard !finished else { return }
         finished = true
-        if img != nil {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            cam.stop()   // màn nhập mở chồng lên màn chụp (xem ReceiptFlow): tắt camera luôn, không đợi màn chụp đóng
-        }
+        // Camera vẫn chạy dưới màn nhập (xem ReceiptFlow): Huỷ ở màn nhập thì quay lại chụp tiếp ngay, không phải bật lại camera
+        // (bật lại thì khung xem đen một nhịp). Màn chụp đóng hẳn mới tắt (onDisappear)
+        if img != nil { UINotificationFeedbackGenerator().notificationOccurred(.success) }
         done(img)
     }
 }

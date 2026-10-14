@@ -77,6 +77,14 @@ final class VoiceListener: ObservableObject {
         guard !cancelled else { return }
         // Bật micro, hỏng thì thử lại tối đa 3 lần với engine mới: lần đầu sau khi app vừa quay lại, iOS hay chưa trả micro kịp
         // (app khác vừa nhả âm thanh, phiên âm thanh cũ chưa tắt hẳn)
+        // Bật phiên âm thanh (phần chậm nhất, có khi vài trăm mili giây) trên luồng nền cho luồng chính rảnh vẽ thẻ; boot bật lại
+        // cũng không sao (đã bật thì gần như tức thì)
+        await Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try? session.setActive(true, options: .notifyOthersOnDeactivation)
+        }.value
+        guard !cancelled else { return }
         var lastError: Error?
         for attempt in 0..<3 {
             if attempt > 0 {
@@ -341,6 +349,11 @@ struct VoiceEntryView: View {
                 // đúng lúc nút đang biến thành thẻ thì hiệu ứng bị khựng: lò xo đang nảy đứng hình ở chỗ vọt quá, xong mới chạy
                 // nốt, trông như thẻ co thêm một nhịp. Chờ lò xo dừng hẳn rồi mới bật.
                 try? await Task.sleep(for: .milliseconds(700))
+                guard !Task.isCancelled else { return }
+            } else if !instant {
+                // Mở từ nút Tác vụ / lối tắt: thẻ trượt lên từ đáy. Bật micro ngay lúc đó thì luồng chính bị chiếm, thẻ đứng hình giữa
+                // chừng rồi mới hiện đủ (rõ nhất khi app vừa được mở từ đầu). Chờ thẻ trượt xong rồi mới bật
+                try? await Task.sleep(for: .milliseconds(380))
                 guard !Task.isCancelled else { return }
             }
             await mic.start()

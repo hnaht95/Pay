@@ -176,11 +176,10 @@ struct ReceiptCamera: View {
             // Về trang chủ (cùng cỡ ô ảnh bên trái, để nút chụp nằm giữa)
             if let home {
                 Button(action: home) {
-                    Image(systemName: "house.fill").font(.system(size: 20, weight: .medium)).foregroundStyle(.white)
-                        .frame(width: 44, height: 62)
-                        .background(Capsule().fill(.white.opacity(0.14)))
-                        .padding(3)
-                        .background(Capsule().fill(.white.opacity(0.08)))
+                    // Biểu tượng nhà nét mảnh của SF Symbols, không khung nền
+                    Image(systemName: "house").font(.system(size: 24, weight: .regular)).foregroundStyle(.white.opacity(0.85))
+                        .frame(width: 58, height: 68)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(Pressable())
                 .frame(width: 58, height: 68)

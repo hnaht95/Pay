@@ -197,7 +197,10 @@ struct ReceiptCamera: View {
     private func finish(_ img: UIImage?) {
         guard !finished else { return }
         finished = true
-        if img != nil { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+        if img != nil {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            cam.stop()   // màn nhập mở chồng lên màn chụp (xem ReceiptFlow): tắt camera luôn, không đợi màn chụp đóng
+        }
         done(img)
     }
 }

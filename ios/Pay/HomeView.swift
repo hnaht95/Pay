@@ -116,14 +116,9 @@ struct HomeView: View {
         // Nhập / sửa khoản chi mở dạng tấm (sheet) như danh mục, thống kê, cài đặt — không phủ kín màn hình
         .sheet(item: $entry) { EntryView(mode: $0).id($0.id).sheetGrabber() }   // id: đổi khoản khi tấm còn mở thì dựng lại từ đầu, không mang trạng thái của khoản trước
         .fullScreenCover(isPresented: $receiptScan) {
-            ReceiptCamera { img in
-                receiptScan = false
-                guard let img else { return }
-                Task {
-                    try? await Task.sleep(for: .milliseconds(350))   // đợi màn chụp đóng hẳn rồi mới mở màn nhập
-                    entry = .receipt(img)
-                }
-            }
+            // Chụp xong: màn nhập kèm ảnh mở ngay trên màn chụp (không đóng màn chụp về trang chủ rồi mới mở). Lưu / huỷ ở màn
+            // nhập thì cả màn chụp lẫn màn nhập cùng trượt xuống một lượt
+            ReceiptFlow(store: store) { receiptScan = false }
         }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }
@@ -1094,3 +1089,18 @@ extension Font {
     static let rowAmount = Font.system(size: 15, weight: .medium)
 }
 
+
+/// Màn chụp hoá đơn mở từ trang chủ (vuốt lên từ nút Nhập). Chụp xong, màn nhập kèm ảnh mở chồng ngay lên màn chụp; lưu hoặc
+/// huỷ ở màn nhập thì đóng luôn màn chụp, cả hai cùng trượt xuống một lượt về trang chủ
+private struct ReceiptFlow: View {
+    let store: Store
+    var close: () -> Void
+    @State private var shot: EntryMode?
+
+    var body: some View {
+        ReceiptCamera { img in
+            if let img { shot = .receipt(img) } else { close() }
+        }
+        .sheet(item: $shot, onDismiss: close) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
+    }
+}

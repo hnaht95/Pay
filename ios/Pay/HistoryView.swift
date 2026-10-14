@@ -29,12 +29,12 @@ struct HistoryView: View {
                         Spacer()
                         Text(fmt(found.reduce(0) { $0 + $1.a })).fontWeight(.semibold)
                     }
-                    .font(.system(size: 16))
+                    .font(.system(size: 15))
                     .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 12))
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
                 if groups.isEmpty {
-                    Text(query.isEmpty ? L("Chưa có khoản nào.") : L("Không tìm thấy khoản nào.")).font(.system(size: 17)).foregroundStyle(.secondary)
+                    Text(query.isEmpty ? L("Chưa có khoản nào.") : L("Không tìm thấy khoản nào.")).font(.system(size: 15)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity).padding(40)
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
@@ -92,7 +92,7 @@ struct HistoryView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass").font(.system(size: 19, weight: .medium)).foregroundStyle(.secondary)
                         TextField(L("Tìm khoản chi"), text: $query)
-                            .font(.system(size: 18))
+                            .font(.system(size: 17))
                             .focused($searching)
                             .submitLabel(.search)
                             .autocorrectionDisabled()

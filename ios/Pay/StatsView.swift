@@ -144,7 +144,7 @@ struct StatsView: View {
                 if (!byMonth && (!cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!))))
                     || (byMonth && !cal.isDate(month, equalTo: today, toGranularity: .month)) {
                     Button { withAnimation(.snappy) { goToday() } } label: {
-                        Text(byMonth ? L("Tháng này") : L("Hôm nay")).font(.system(size: 14, weight: .semibold))
+                        Text(byMonth ? L("Tháng này") : L("Hôm nay")).font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                             .padding(.horizontal, 12).frame(height: 30)
                             .background(Capsule().fill(Self.card))
@@ -208,7 +208,7 @@ struct StatsView: View {
                         day = nil
                     }
                 } label: {
-                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 16, weight: .semibold))
+                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(on ? Self.inkText : Color.primary.opacity(0.6))
                         .padding(.horizontal, 22).frame(height: 40)
                         // Nền đen trượt qua lại giữa hai nút (cùng một khối nhờ matchedGeometryEffect)
@@ -484,7 +484,7 @@ struct StatsView: View {
         return Button { month = m } label: {
             VStack(spacing: 0) {
                 Text(shortMonth(m)).font(.system(size: 15, weight: on ? .semibold : .regular))
-                if otherYear { Text(String(cal.component(.year, from: m))).font(.system(size: 10)).opacity(0.8) }
+                if otherYear { Text(String(cal.component(.year, from: m))).font(.system(size: 12)).opacity(0.8) }
             }
             .frame(maxWidth: .infinity, minHeight: 40)
             .foregroundStyle(on ? Self.inkText : Color.secondary)
@@ -500,7 +500,7 @@ struct StatsView: View {
         let total = sum(items)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(heroTitle).font(.system(size: 16, weight: .medium))
+                Text(heroTitle).font(.system(size: 15, weight: .medium))
                 Spacer()
                 iconChip("creditcard", fg: Self.heroBg, bg: Self.heroInk)
             }
@@ -593,11 +593,11 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 14) {
             // Biểu tượng tròn căn giữa theo chiều dọc với chữ tiêu đề nhỏ bên trái
             HStack(alignment: .center) {
-                Text(title).font(.system(size: 14)).foregroundStyle(tone.ink.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(title).font(.system(size: 13)).foregroundStyle(tone.ink.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
                 iconChip(icon, fg: tone.onAccent, bg: tone.accent)
             }
-            Text(value).font(.system(size: 22, weight: .bold)).foregroundStyle(tone.ink).minimumScaleFactor(0.5).lineLimit(1)
+            Text(value).font(.system(size: 24, weight: .bold)).foregroundStyle(tone.ink).minimumScaleFactor(0.5).lineLimit(1)
             if let d { deltaPill(d, tone) } else { notePill(note, tone) }
         }
         .padding(18)
@@ -667,7 +667,7 @@ struct StatsView: View {
         let current = sum(spending(in: cal.dateInterval(of: .month, for: month)!))
         let vsAvg = avg > 0 ? Int((Double(current - avg) / Double(avg) * 100).rounded()) : 0
         return card {
-            Text(L("Chi theo tháng")).font(.system(size: 17, weight: .semibold))
+            Text(L("Chi theo tháng")).font(.system(size: 16, weight: .semibold))
             Group {
                 if avg > 0 && current > 0 {
                     Text(monthName(month) + " · " + (vsAvg == 0 ? L("bằng mức trung bình")
@@ -679,7 +679,7 @@ struct StatsView: View {
             .font(.system(size: 13)).foregroundStyle(.secondary)
             .padding(.top, 2)
             Text(fmt(current))
-                .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
+                .font(.system(size: 24, weight: .bold, design: .rounded)).monospacedDigit()
                 .foregroundStyle(.primary)
                 .contentTransition(.numericText())
             budgetLine(spent: current)
@@ -799,7 +799,7 @@ struct StatsView: View {
         let gap = Double(top) * 0.02   // khe hở giữa hai đoạn của cùng một cột
         let used = bars.filter { $0.total > 0 }.map(\.total)
         return card {
-            Text(title).font(.system(size: 17, weight: .semibold))
+            Text(title).font(.system(size: 16, weight: .semibold))
             HStack(spacing: 14) {
                 legend(AnyShapeStyle(Self.ink), L("Hoá đơn"))
                 legend(AnyShapeStyle(Self.orange), L("Chi tiêu khác"))
@@ -863,8 +863,8 @@ struct StatsView: View {
 
     private func stat(_ title: String, _ v: Int) -> some View {
         VStack(spacing: 2) {
-            Text(title).font(.system(size: 12)).foregroundStyle(.secondary)
-            Text(short(v)).font(.system(size: 20, weight: .bold))
+            Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(short(v)).font(.system(size: 19, weight: .bold))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
@@ -891,7 +891,7 @@ struct StatsView: View {
         // Cùng kiểu hàng "Gần đây" ở màn hình chính: mỗi danh mục một thẻ riêng (ô biểu tượng trắng, tên + %, số tiền,
         // thanh tỉ lệ mảnh ở dưới tên)
         return VStack(alignment: .leading, spacing: 10) {
-            Text(L("Theo danh mục")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            Text(L("Theo danh mục")).font(.system(size: 16, weight: .semibold)).padding(.horizontal, 4)
             // Thanh chia đoạn theo danh mục; danh sách bên dưới làm chú thích (chấm màu, tên, %, số tiền)
             CategoryBreakdown(total: sum(items), top: ranked.map { ($0, byCat[$0.k]!) })
                 .padding(.horizontal, 4).padding(.bottom, 4)
@@ -935,7 +935,7 @@ struct StatsView: View {
         let opening = start.flatMap { st in s > st ? store.balance(before: s) : (e > st ? store.balance(before: st + 1) : nil) }
         let closing = store.balance(before: e)
         return VStack(alignment: .leading, spacing: 10) {
-            Text(L("Số dư")).font(.system(size: 17, weight: .semibold)).padding(.horizontal, 4)
+            Text(L("Số dư")).font(.system(size: 16, weight: .semibold)).padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 16) {
                 // Số dư lớn; mọi số khác 15 (chênh lệch, đầu kỳ, Thu, Chi); nhãn 13
                 if let opening, let closing {
@@ -946,7 +946,7 @@ struct StatsView: View {
                             .font(.system(size: 13)).foregroundStyle(.secondary)
                         // Chênh lệch so với đầu kỳ đứng cạnh số dư, mũi tên lên / xuống; căn giữa theo chiều cao số dư
                         HStack(alignment: .center, spacing: 10) {
-                            Text(fmt(closing)).font(.system(size: 26, weight: .bold))
+                            Text(fmt(closing)).font(.system(size: 24, weight: .bold))
                                 .foregroundStyle(closing < 0 ? Palette.danger : Color.primary)
                             if change != 0 {
                                 HStack(spacing: 3) {
@@ -1006,7 +1006,7 @@ struct StatsView: View {
         let rows = showAllIncome ? sorted : Array(sorted.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Khoản thu")).font(.system(size: 17, weight: .semibold))
+                Text(L("Khoản thu")).font(.system(size: 16, weight: .semibold))
                 Spacer()
                 if sorted.count > 5 {
                     Button { withAnimation(.snappy) { showAllIncome.toggle() } } label: {
@@ -1056,7 +1056,7 @@ struct StatsView: View {
         let rows = showAllBig ? sorted : Array(sorted.prefix(5))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L("Khoản lớn nhất")).font(.system(size: 17, weight: .semibold))
+                Text(L("Khoản lớn nhất")).font(.system(size: 16, weight: .semibold))
                 Spacer()
                 if sorted.count > 5 {
                     Button { withAnimation(.snappy) { showAllBig.toggle() } } label: {

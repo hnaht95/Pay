@@ -39,9 +39,9 @@ struct AppMenu: View {
                 HStack(spacing: 14) {
                     spec.icon
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(spec.title).font(.system(size: 19, weight: .bold)).lineLimit(1)
+                        Text(spec.title).font(.system(size: 21, weight: .bold)).lineLimit(1)
                         if let s = spec.subtitle {
-                            Text(s).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
+                            Text(s).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 0)
@@ -80,7 +80,7 @@ struct AppMenu: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title).font(.system(size: 17, weight: .medium)).lineLimit(1)
                 if let s = item.subtitle {
-                    Text(s).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(s).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)

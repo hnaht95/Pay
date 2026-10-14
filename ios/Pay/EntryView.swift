@@ -103,13 +103,13 @@ struct EntryView: View {
             if film != nil {
                 // Phim: ô nhập chữ của iOS không vẽ ra được, thay bằng chữ cùng kiểu
                 Text(shownNote.isEmpty ? L("Ghi chú (không bắt buộc)") : shownNote)
-                    .font(.system(size: 18)).foregroundStyle(shownNote.isEmpty ? .tertiary : .primary).lineLimit(1)
+                    .font(.system(size: 17)).foregroundStyle(shownNote.isEmpty ? .tertiary : .primary).lineLimit(1)
                     .padding(.horizontal, 18)
                     .frame(maxWidth: .infinity, minHeight: Self.noteH, alignment: .leading)
                     .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             } else {
             TextField(L("Ghi chú (không bắt buộc)"), text: $note)
-                .font(.system(size: 18))
+                .font(.system(size: 17))
                 .focused($noteFocused)
                 .submitLabel(.done)
                 .padding(.horizontal, 18)
@@ -609,7 +609,7 @@ struct DateSheet: View {
                 Spacer(minLength: 8)
                 let showsToday = !isThisWeek
                 Button { jumpToToday() } label: {
-                    Text(L("Hôm nay")).font(.system(size: 15.75, weight: .medium))
+                    Text(L("Hôm nay")).font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Color.primary.opacity(0.6))
                         .fixedSize()
                         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { todayW = ceil($0) + 24 }
@@ -785,7 +785,7 @@ struct DateSheet: View {
             forward = Date() > first
             withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { when = Date(); month = Date() }
         } label: {
-            Text(L("Bây giờ")).font(.system(size: 16, weight: .semibold))
+            Text(L("Bây giờ")).font(.system(size: 17, weight: .semibold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .foregroundStyle(Color.primary.opacity(isNow ? 0.35 : 0.85))
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: P.frameR * k, style: .continuous))
@@ -1206,7 +1206,7 @@ struct BankChooser: View {
     private func header(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary)
-            Text(detail).font(.system(size: 14)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
+            Text(detail).font(.system(size: 13)).foregroundStyle(Color.primary.opacity(0.6)).fixedSize(horizontal: false, vertical: true)
         }
         .textCase(nil)
         .padding(.bottom, 4)

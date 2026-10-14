@@ -187,7 +187,7 @@ struct SettingsView: View {
                     CategoryBadge(c: c, side: 34, radius: 10, iconSize: 20, edge: true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(r.n?.isEmpty == false ? r.n!.capFirst : c.name).lineLimit(1)
-                        Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text(L("Ngày %@ hằng tháng", String(r.day))).font(.system(size: 13)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
                     Text("\(fmt(r.a))").fontWeight(.semibold).lineLimit(1)
@@ -779,7 +779,7 @@ struct CategoryEditor: View {
                             .frame(width: 56, height: 56).background(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         Text(shownName.isEmpty ? L("Tên danh mục") : shownName)
-                            .font(.system(size: 20, weight: .semibold)).lineLimit(1)
+                            .font(.system(size: 21, weight: .bold)).lineLimit(1)
                             .opacity(shownName.isEmpty ? 0.4 : 1)
                         Spacer(minLength: 0)
                     }
@@ -1280,7 +1280,7 @@ struct ApplePayHelp: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("\(n)").font(.system(size: 15, weight: .bold, design: .rounded))
                 .frame(width: 24, height: 24).background(Palette.pill, in: Circle())
-            Text(text).font(.system(size: 16))
+            Text(text).font(.system(size: 15))
         }
         .padding(.vertical, 4)
     }

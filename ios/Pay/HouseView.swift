@@ -310,8 +310,8 @@ struct HouseView: View {
     private func message(_ symbol: String, _ title: String, _ text: String) -> some View {
         VStack(spacing: 10) {
             Image(systemName: symbol).font(.system(size: 34)).foregroundStyle(.secondary)
-            Text(title).font(.system(size: 20, weight: .bold))
-            Text(text).font(.system(size: 16)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text(title).font(.system(size: 21, weight: .bold))
+            Text(text).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(28)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -320,7 +320,7 @@ struct HouseView: View {
 
     private func primaryButton(_ title: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 19, weight: .semibold))
+            Text(title).font(.system(size: 21, weight: .semibold))
                 .frame(maxWidth: .infinity, minHeight: 60)
                 .foregroundStyle(Palette.ctaInk)
                 .background(Palette.cta, in: Capsule())
@@ -332,7 +332,7 @@ struct HouseView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.system(size: 15)).foregroundStyle(.secondary).padding(.leading, 4)
             TextField(label, text: text)
-                .font(.system(size: 18))
+                .font(.system(size: 17))
                 .padding(.horizontal, 18).padding(.vertical, 15)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
@@ -347,9 +347,9 @@ struct HouseView: View {
                     HouseAvatar(id: "demo\(i)", name: n, size: 52).overlay(Circle().stroke(Palette.surface, lineWidth: 3))
                 }
             }
-            Text(L("Sổ chi tiêu chung")).font(.system(size: 26, weight: .bold))
+            Text(L("Sổ chi tiêu chung")).font(.system(size: 21, weight: .bold))
             Text(L("Cho nhà chung, phòng trọ, chuyến đi… Ai ứng tiền thì ghi vào đây, Pay tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất."))
-                .font(.system(size: 16)).foregroundStyle(.secondary)
+                .font(.system(size: 15)).foregroundStyle(.secondary)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -376,7 +376,7 @@ struct HouseView: View {
         .padding(.top, 20)
 
         Text(L("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Pay và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi."))
-            .font(.system(size: 14)).foregroundStyle(.secondary)
+            .font(.system(size: 13)).foregroundStyle(.secondary)
             .padding(.top, 12).padding(.horizontal, 4)
     }
 
@@ -427,12 +427,12 @@ struct HouseView: View {
             HStack(spacing: 14) {
                 groupIcon(g)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(g.name.isEmpty ? L("Nhóm chung") : g.name).font(.system(size: 18, weight: .semibold)).lineLimit(1)
+                    Text(g.name.isEmpty ? L("Nhóm chung") : g.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                     HStack(spacing: -6) {
                         ForEach(g.members.prefix(5)) { m in
                             HouseAvatar(id: m.id, name: m.name, size: 22).overlay(Circle().stroke(Palette.card, lineWidth: 1.5))
                         }
-                        Text("  " + L("%d người", g.members.count)).font(.system(size: 14)).foregroundStyle(.secondary)
+                        Text("  " + L("%d người", g.members.count)).font(.system(size: 13)).foregroundStyle(.secondary)
                             .lineLimit(1).fixedSize()
                     }
                 }
@@ -441,7 +441,7 @@ struct HouseView: View {
                     Text(net > 0 ? L("Được nhận") : net < 0 ? L("Còn phải trả") : L("Đã cân bằng"))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                     if net != 0 {
-                        Text(fmt(abs(net))).font(.system(size: 17, weight: .bold))
+                        Text(fmt(abs(net))).font(.system(size: 19, weight: .bold))
                             .foregroundStyle(net < 0 ? Palette.danger : Palette.goodInk).lineLimit(1)
                     }
                 }
@@ -476,8 +476,8 @@ struct HouseView: View {
     // MARK: Chọn "tôi là ai"
 
     @ViewBuilder private var pickMe: some View {
-        Text(L("Bạn là ai trong nhóm?")).font(.system(size: 26, weight: .bold)).padding(.top, 10)
-        Text(L("Chỉ để biết phần nào là của bạn trên máy này.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.top, 4)
+        Text(L("Bạn là ai trong nhóm?")).font(.system(size: 21, weight: .bold)).padding(.top, 10)
+        Text(L("Chỉ để biết phần nào là của bạn trên máy này.")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 4)
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(house.members) { m in
                 Button { Task { await house.claim(m.id) } } label: {
@@ -554,14 +554,14 @@ struct HouseView: View {
     /// Thẻ trên cùng: số tiền của riêng bạn, bên dưới là từng người bạn cần trả / sẽ trả bạn.
     private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(house.name).font(.system(size: 28, weight: .bold)).lineLimit(2).padding(.bottom, 14)
+            Text(house.name).font(.system(size: 21, weight: .bold)).lineLimit(2).padding(.bottom, 14)
             // Màu đỏ / xanh chỉ ở dòng chữ nhỏ; số tiền to màu chữ thường cho dễ đọc trên nền xám
             Text(mine > 0 ? L("Bạn sẽ nhận") : mine < 0 ? L("Bạn cần trả") : L("Bạn không nợ ai"))
-                .font(.system(size: 16, weight: mine == 0 ? .regular : .semibold))
+                .font(.system(size: 15, weight: mine == 0 ? .regular : .semibold))
                 .foregroundStyle(mine < 0 ? Palette.danger : mine > 0 ? Palette.goodInk : .secondary)
             if mine != 0 {
                 Text(fmt(abs(mine)))
-                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
+                    .font(.system(size: 40, weight: .bold)).kerning(-1.5)
                     .foregroundStyle(.primary)
                     .minimumScaleFactor(0.5).lineLimit(1)
                     .padding(.top, 6)
@@ -640,7 +640,7 @@ struct HouseView: View {
     /// Mục "Cả nhóm" (luôn hiện). Số dư từng người bằng chữ, các lần trả giữa người khác, lịch sử trả tiền.
     private var addMemberLabel: some View {
         Label(L("Thêm người"), systemImage: "plus")
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: 17, weight: .semibold))
             .frame(maxWidth: .infinity, minHeight: 50)
             .background(Palette.card, in: Capsule())
             .foregroundStyle(.primary)
@@ -666,7 +666,7 @@ struct HouseView: View {
                 }
 
                 if !others.isEmpty {
-                    Text(L("Giữa những người khác")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
+                    Text(L("Giữa những người khác")).font(.system(size: 16, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
                     ForEach(others, id: \.self) { t in
                         HStack(spacing: 8) {
                             HouseAvatar(id: t.from, name: house.memberName(t.from), size: 32)
@@ -682,7 +682,7 @@ struct HouseView: View {
                 }
 
                 if !house.settles.isEmpty {
-                    Text(L("Lịch sử trả tiền")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
+                    Text(L("Lịch sử trả tiền")).font(.system(size: 16, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 10)
                     SwipeCards(items: house.settles.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { settleRow($0) }
                 }
             }
@@ -714,7 +714,7 @@ struct HouseView: View {
     @ViewBuilder private var spendList: some View {
         if house.spends.isEmpty {
             Text(L("Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhà."))
-                .font(.system(size: 16)).foregroundStyle(.secondary)
+                .font(.system(size: 15)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
@@ -835,8 +835,8 @@ struct HouseView: View {
                                 Image(systemName: "bell.slash.fill").font(.system(size: 18)).foregroundStyle(.orange)
                                     .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(L("Đang tắt thông báo")).font(.system(size: 16, weight: .semibold))
-                                    Text(L("Bật để biết ngay khi có người báo đã chuyển tiền.")).font(.system(size: 14)).foregroundStyle(.secondary)
+                                    Text(L("Đang tắt thông báo")).font(.system(size: 15, weight: .semibold))
+                                    Text(L("Bật để biết ngay khi có người báo đã chuyển tiền.")).font(.system(size: 13)).foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 0)
                                 Text(L("Bật")).font(.system(size: 15, weight: .semibold))
@@ -853,13 +853,13 @@ struct HouseView: View {
                     Text(L("Gần đây")).font(.system(size: 21, weight: .bold)).padding(.top, 16)
                     let recent = activity
                     if recent.isEmpty {
-                        Text(L("Chưa có gì mới.")).font(.system(size: 16)).foregroundStyle(.secondary).padding(.vertical, 20)
+                        Text(L("Chưa có gì mới.")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.vertical, 20)
                     }
                     ForEach(recent, id: \.id) { a in
                         HStack(alignment: .top, spacing: 12) {
                             HouseAvatar(id: a.who, name: house.memberName(a.who), size: 40)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(a.text).font(.system(size: 16)).fixedSize(horizontal: false, vertical: true)
+                                Text(a.text).font(.system(size: 15)).fixedSize(horizontal: false, vertical: true)
                                 Text(ago(a.date)).font(.system(size: 13)).foregroundStyle(.secondary)
                             }
                             Spacer(minLength: 0)
@@ -939,8 +939,8 @@ struct HouseView: View {
                 HouseAvatar(id: incoming ? s.from : s.to, name: incoming ? from : to, size: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(incoming ? L("%@ báo đã chuyển cho bạn", from) : s.status == "no" ? L("%@ chưa nhận được", to) : L("Chờ %@ xác nhận", to))
-                        .font(.system(size: 16, weight: .semibold)).lineLimit(1)
-                    Text(fmt(s.amount)).font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    Text(fmt(s.amount)).font(.system(size: 19, weight: .bold))
                         .foregroundStyle(s.status == "no" ? Palette.danger : .primary)
                 }
                 Spacer(minLength: 0)
@@ -956,7 +956,7 @@ struct HouseView: View {
                 }
             } else if s.status == "no" {
                 Text(L("Kiểm tra lại giao dịch trong app ngân hàng. Nếu chưa chuyển được thì chuyển lại."))
-                    .font(.system(size: 14)).foregroundStyle(.secondary)
+                    .font(.system(size: 13)).foregroundStyle(.secondary)
                 HStack(spacing: 8) {
                     pill(L("Bỏ"), primary: false) { Task { await house.delete(s.id) } }
                     pill(L("Chuyển lại"), primary: true) {
@@ -977,7 +977,7 @@ struct HouseView: View {
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 16, weight: .semibold))
+            Text(title).font(.system(size: 17, weight: .semibold))
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.surface, in: Capsule())   // nút phụ nền trắng trên thẻ xám
@@ -1050,7 +1050,7 @@ struct HouseGroupEditor: View {
                             PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")) }
                             if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
                         }
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng
                     }
                     .frame(maxWidth: .infinity)
@@ -1174,7 +1174,7 @@ struct HouseMemberEditor: View {
                             PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")) }
                             if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
                         }
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng (thiếu thì chạm "Đổi ảnh" là "Bỏ ảnh" cũng chạy)
                     }
                     .frame(maxWidth: .infinity)
@@ -1337,7 +1337,7 @@ struct HouseSpendEditor: View {
 
                     TextField(L("Ghi chú, ví dụ: đi chợ"), text: $note)
                         .focused($noteFocused)
-                        .font(.system(size: 18))
+                        .font(.system(size: 17))
                         .padding(.horizontal, 18).padding(.vertical, 15)
                         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .padding(.top, 16)
@@ -1384,8 +1384,8 @@ struct HouseSpendEditor: View {
                         Button { logMine.toggle() } label: {
                             HStack(spacing: 12) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(L("Ghi %@ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 16, weight: .semibold))
-                                    Text(L("Thống kê và ngân sách chỉ tính phần của bạn.")).font(.system(size: 14)).foregroundStyle(.secondary)
+                                    Text(L("Ghi %@ vào chi tiêu của tôi", fmt(mine))).font(.system(size: 15, weight: .semibold))
+                                    Text(L("Thống kê và ngân sách chỉ tính phần của bạn.")).font(.system(size: 13)).foregroundStyle(.secondary)
                                 }
                                 .multilineTextAlignment(.leading)
                                 Spacer(minLength: 8)
@@ -1545,7 +1545,7 @@ struct HouseSpendEditor: View {
                     Button { cat = c.k; catPicked = true } label: {
                         HStack(spacing: 8) {
                             CategoryBadge(c: c, side: 32, radius: 9, iconSize: 20)
-                            Text(c.name).font(.system(size: 16, weight: on ? .semibold : .medium))
+                            Text(c.name).font(.system(size: 17, weight: on ? .semibold : .medium))
                         }
                         .padding(.leading, 5).padding(.trailing, 14).padding(.vertical, 5)
                         .foregroundStyle(on ? c.ink : Color.primary)
@@ -1564,7 +1564,7 @@ struct HouseSpendEditor: View {
             HStack(spacing: 10) {
                 HouseAvatar(id: m.id, name: m.name, size: 36)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                    Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
                     if let line = sub { Text(line).font(.system(size: 13)).foregroundStyle(on ? Palette.ctaInk.opacity(0.7) : .secondary).lineLimit(1) }
                 }
             }
@@ -1590,7 +1590,7 @@ struct HouseSpendEditor: View {
         let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
         return HStack(spacing: 10) {
             HouseAvatar(id: m.id, name: m.name, size: 36)
-            Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 16, weight: .semibold)).lineLimit(1).padding(.leading, 2)
+            Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 17, weight: .semibold)).lineLimit(1).padding(.leading, 2)
             Spacer(minLength: 8)
             if on {
                 // Ô số tiền: số riêng in đậm, số chia đều nhạt hơn; đang gõ thì viền xanh và có vạch nhấp nháy
@@ -1601,7 +1601,7 @@ struct HouseSpendEditor: View {
                 } label: {
                     HStack(spacing: 3) {
                         Text(typing ? fmt(mine ?? 0) : amount > 0 || mine != nil ? fmt(mine ?? parts[m.id] ?? 0) : "0")
-                            .font(.system(size: 16, weight: .medium))   // không in đậm: số riêng chỉ khác ở màu chữ đậm hơn
+                            .font(.system(size: 17, weight: .medium))   // không in đậm: số riêng chỉ khác ở màu chữ đậm hơn
                             .foregroundStyle(typing || mine != nil ? Color.primary : Color.secondary)
                             .contentTransition(.numericText())
                             .lineLimit(1)
@@ -1640,11 +1640,11 @@ struct HouseSpendEditor: View {
                 Text(amount == 0 ? L("Số riêng cộng lại %@", fmt(ownSum))
                      : ownSum > amount ? L("Số riêng cộng lại %@, nhiều hơn tổng", fmt(ownSum))
                      : L("Còn %@ chưa chia cho ai", fmt(amount - ownSum)))
-                    .font(.system(size: 14)).foregroundStyle(amount == 0 ? Color.secondary : Palette.danger)
+                    .font(.system(size: 13)).foregroundStyle(amount == 0 ? Color.secondary : Palette.danger)
                 Spacer(minLength: 0)
                 Button(L("Đặt tổng %@", fmt(ownSum))) { withAnimation(.snappy(duration: 0.15)) { amountText = String(ownSum) } }
                     .buttonStyle(Pressable())
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
             }
             .padding(.top, 10)
         } else if !shares.isEmpty {

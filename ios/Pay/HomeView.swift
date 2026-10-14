@@ -110,7 +110,7 @@ struct HomeView: View {
                     }) {
                         Button { showHistory = true } label: {
                             // To hơn nhãn "Tháng 10" ở mục Danh mục một chút: đây là nút bấm
-                            Text(L("Xem tất cả")).font(.system(size: 17, weight: .medium))
+                            Text(L("Xem tất cả")).font(.system(size: 15, weight: .medium))
                                 .padding(.horizontal, 3).padding(.vertical, 3)
                         }
                         .buttonStyle(Pressable()).foregroundStyle(.primary)
@@ -294,10 +294,10 @@ struct HomeView: View {
                 Spacer()
                 Text(dayLabel(now))
             }
-            .font(.system(size: 16)).foregroundStyle(.secondary)
+            .font(.system(size: 15)).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(fmt(store.total(on: now)))
-                    .font(.system(size: 46, weight: .bold)).kerning(-1.5)
+                    .font(.system(size: 40, weight: .bold)).kerning(-1.5)
                     .minimumScaleFactor(0.5).lineLimit(1)
             }
             .padding(.top, 8)
@@ -463,7 +463,7 @@ struct HomeView: View {
             CategoryBadge(c: c, side: 52, radius: 12)
             Spacer(minLength: 14)
             // Tên mờ 70% (pha màu nền); số tiền giữ đậm rõ cho dễ đọc
-            Text(c.name).font(.system(size: 16, weight: .medium)).opacity(0.7)
+            Text(c.name).font(.system(size: 15, weight: .medium)).opacity(0.7)
             Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
         }
         .foregroundStyle(c.ink)
@@ -501,7 +501,7 @@ struct HomeView: View {
         if list.isEmpty {
             // Chữ có **đậm** (Markdown): đưa qua LocalizedStringKey để Text vẽ đậm
             Text(LocalizedStringKey(L("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")))
-                .font(.system(size: 17)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else if film != nil {
@@ -1111,7 +1111,7 @@ struct ToastView: View {
                     // Hoàn tác có hiệu ứng: hàng vừa xoá trượt / hiện lại vào chỗ cũ, các hàng dưới dịch xuống nhường chỗ
                     Button { Haptic.tap(); withAnimation(.snappy(duration: 0.35)) { undo(); store.toast = nil } } label: {
                         Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold))
                             .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài
                             .padding(.horizontal, 18).frame(height: 48)
                             .background(Palette.ctaInk.opacity(0.14), in: Capsule())

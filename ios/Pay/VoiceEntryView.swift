@@ -446,7 +446,7 @@ struct VoiceEntryView: View {
                         // Khoản thu: mũi tên lên, chữ xanh như ở danh sách
                         let inc = live.map { Category.isIncome($0.cat) } ?? false
                         HStack(spacing: 4) {
-                            if inc && live != nil { AmountArrow(up: true, size: 46).foregroundStyle(Palette.goodInk) }
+                            if inc && live != nil { AmountArrow(up: true, size: 40).foregroundStyle(Palette.goodInk) }
                             number(now, dim: live == nil, income: inc)
                         }
                     }
@@ -459,7 +459,7 @@ struct VoiceEntryView: View {
                     HStack(spacing: 8) {
                         HStack(spacing: 6) {
                             CategoryIcon(c: c, size: 18)
-                            Text(c.name).font(.system(size: 14, weight: .semibold))
+                            Text(c.name).font(.system(size: 15, weight: .semibold))
                         }
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(c.color, in: Capsule())
@@ -472,13 +472,13 @@ struct VoiceEntryView: View {
                     let others = Category.matches(l.note).filter { $0 != l.cat }.prefix(3)
                     if !others.isEmpty {
                         HStack(spacing: 6) {
-                            Text(L("Hay là")).font(.system(size: 14)).foregroundStyle(.secondary)
+                            Text(L("Hay là")).font(.system(size: 13)).foregroundStyle(.secondary)
                             ForEach(Array(others), id: \.self) { k in
                                 let o = Category.get(k)
                                 Button { switchCategory(to: k) } label: {
                                     HStack(spacing: 5) {
                                         CategoryIcon(c: o, size: 16)
-                                        Text(o.name).font(.system(size: 14, weight: .medium))
+                                        Text(o.name).font(.system(size: 15, weight: .medium))
                                     }
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(Palette.pill, in: Capsule())
@@ -498,7 +498,7 @@ struct VoiceEntryView: View {
     }
 
     private func number(_ s: String, dim: Bool, income: Bool = false) -> some View {
-        Text(s).font(.system(size: 46, weight: .bold)).kerning(-1.5)
+        Text(s).font(.system(size: 40, weight: .bold)).kerning(-1.5)
             .foregroundStyle(dim ? Color.secondary.opacity(0.5) : income ? Palette.goodInk : .primary)
             .contentTransition(.numericText())
             .minimumScaleFactor(0.5).lineLimit(1)
@@ -509,7 +509,7 @@ struct VoiceEntryView: View {
         HStack(alignment: .firstTextBaseline, spacing: -2) {
             ForEach(Array(s.enumerated()), id: \.offset) { i, ch in
                 let p = FilmFrame.spring((elapsed - 0.035 * Double(i)) / 0.42)
-                Text(String(ch)).font(.system(size: 46, weight: .bold))
+                Text(String(ch)).font(.system(size: 40, weight: .bold))
                     .padding(.horizontal, ch == "." || ch == "," ? -2 : 0)   // dấu chấm ôm sát hai số bên cạnh như khi viết liền
                     .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
                     .scaleEffect(leaving ? 1 - 0.3 * min(1, p) : 0.7 + 0.3 * min(1, p))
@@ -573,7 +573,7 @@ struct VoiceEntryView: View {
 
     private func pill(_ title: String, primary: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).font(.system(size: 18, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+            Text(title).font(.system(size: 17, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity, minHeight: 64)   // cao cho dễ nhấn
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.pill, in: Capsule())

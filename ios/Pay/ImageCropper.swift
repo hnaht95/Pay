@@ -68,7 +68,7 @@ struct ImageCropper: View {
                 .ignoresSafeArea()
 
             VStack {
-                Text(L("Kéo, chụm để căn ảnh")).font(.system(size: 16, weight: .medium)).foregroundStyle(.white.opacity(0.85))
+                Text(L("Kéo, chụm để căn ảnh")).font(.system(size: 15, weight: .medium)).foregroundStyle(.white.opacity(0.85))
                     .padding(.top, 24)
                 Spacer()
                 HStack(spacing: 12) {

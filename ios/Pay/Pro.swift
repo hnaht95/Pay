@@ -210,7 +210,7 @@ struct ProPaywall: View {
                         .frame(width: 64 * HandPayPro.aspect, height: 64)
                         .accessibilityElement().accessibilityLabel("Pay Pro")
                         Text(L("Ghi chép luôn miễn phí. Pro dành cho khi bạn dùng Pay lâu dài."))
-                            .font(.system(size: 16)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     .padding(.top, 30).padding(.horizontal, 24)
 
@@ -219,7 +219,7 @@ struct ProPaywall: View {
                     VStack(spacing: 10) {
                         ForEach(ordered) { f in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(f.title).font(.system(size: 18, weight: .semibold))
+                                Text(f.title).font(.system(size: 17, weight: .semibold))
                                 Text(f.detail).font(.system(size: 15)).foregroundStyle(.secondary)
                                     .lineLimit(1).minimumScaleFactor(0.85)
                             }
@@ -286,13 +286,13 @@ struct ProPaywall: View {
         return Button { if !on { Haptic.select() }; pick = p.id } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(title).font(.system(size: 16, weight: .semibold))
+                    Text(title).font(.system(size: 17, weight: .semibold))
                     Spacer()
                     Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.system(size: 20))
                         .foregroundStyle(on ? Color(hex: 0x61BE6E) : Color.primary.opacity(0.25))
                 }
                 Text(p.id == Pro.yearlyID ? L("%@/năm", p.displayPrice) : p.displayPrice)
-                    .font(.system(size: 22, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
+                    .font(.system(size: 24, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
                 Text(note).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)
             }
             .padding(14)

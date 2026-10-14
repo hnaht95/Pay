@@ -28,23 +28,34 @@ Mục tiêu: **iOS 18, iOS 26 và iOS 27 trông và dùng giống nhau.** Chỗ 
 
 ## 2. Chữ
 
-| Chỗ | Cỡ | Độ đậm |
-|---|---|---|
-| Tiêu đề màn / tấm, tiêu đề mục (Gần đây, Danh mục…) | 21 | bold |
-| Hàng danh sách: tên, số tiền (`Font.rowTitle`, `.rowAmount`) | 15 | medium |
-| Hàng danh sách: danh mục, ngày giờ (`Font.rowSub`) | 12 | regular, màu phụ |
-| Nút to (`BigButton`) | 21 | semibold |
-| Tiêu đề mục trong Form | 17 | semibold, màu phụ, viết thường |
-| Số tiền trên ô lưới ảnh | 12 | semibold, trắng, trong viên đen 45% |
+Chỉ dùng các cỡ dưới đây (thang chữ). Chọn theo **vai trò**, không theo cảm giác từng màn. Cần cỡ mới thì sửa bảng này trước.
 
-Mọi danh sách khoản chi (Gần đây, Lịch sử, Thống kê, Nhóm chung) dùng chung bộ `Font.row*`, không đặt cỡ riêng.
+| Cấp | Cỡ, độ đậm | Dùng cho |
+|---|---|---|
+| Số lớn | 40 bold | Số tiền chính của màn: thẻ Hôm nay đã chi, thẻ nói, màn Nhập, Thống kê, Nhóm chung, Khoản chung |
+| Số nổi bật trong thẻ | 24 bold | Chi theo tháng, Số dư, ô màu Thống kê, giá gói Pro |
+| Số đi kèm | 19 bold | Ô danh mục trang chủ, Trung bình / Thấp nhất / Cao nhất, Cần xác nhận, Được nhận / Còn phải trả |
+| Tiêu đề | 21 bold | Tiêu đề màn / tấm, tiêu đề mục (Gần đây, Danh mục…), tiêu đề lớn trong trang (tên nhóm…), tiêu đề bảng nhấn giữ |
+| Nút to | 21 semibold | `BigButton`, Lưu / Huỷ, nút chính cao 60 |
+| Nhấn | 17 semibold / medium | Nút nhỏ, viên chọn danh mục, dòng của bảng nhấn giữ và Cài đặt, tên thành viên, ô nhập chữ |
+| Tiêu đề thẻ | 16 semibold | Chi theo tháng, Theo danh mục, Số dư, Khoản thu, Khoản lớn nhất, Giữa những người khác, Lịch sử trả tiền |
+| Nội dung | 15 regular / medium / semibold | Hàng danh sách (`Font.rowTitle`, `.rowAmount`), đoạn mô tả, chữ trống ("Chưa có khoản nào"), "Xem tất cả", công tắc 2 lựa chọn (Ngày / Tháng, Chi / Thu) |
+| Phụ | 13 regular, màu phụ | Dòng phụ dưới tiêu đề, chú thích, nhãn ô số liệu |
+| Nhỏ | 12 | Ngày giờ trong hàng (`Font.rowSub`), số trên ô lưới ảnh, % so với cùng kỳ, chấm đếm |
+
+Ngoại lệ có chủ đích:
+- Tiêu đề mục trong Form: 17 semibold màu phụ, viết thường.
+- Hàng Đã chi / Số dư trên thẻ trang chủ: 17, tự hạ 15 → 13 khi số quá dài (hai bên luôn cùng cỡ).
+- Chữ số trong ô lịch và viên ngày / tháng ở Thống kê: 18 semibold kiểu tròn.
+- Màn chụp: chữ đơn cách trên khung xem (số tiêu cự 15–20). Cảnh phim quảng cáo theo kịch bản riêng.
+- Biểu tượng emoji / SF Symbols chỉnh cỡ theo hình, không theo thang này (xem mục 6).
 
 ## 3. Khoảng cách, bo góc
 
 - Lề trái phải của trang: **16**.
 - Khe giữa các thẻ / ô: 10 (danh sách), 8 (lưới ảnh).
 - Bo góc đồng tâm: bo thẻ = bo phần tử bên trong + khoảng cách tới mép. Ví dụ hàng khoản chi: ô 56 bo 13, cách mép 10 → thẻ bo 23.
-- Bo: thẻ danh mục 32, thẻ hàng khoản chi 23, ô lưới ảnh 18, khung xem camera 32, tấm 38.
+- Bo: thẻ Hôm nay đã chi 32, thẻ danh mục 28, thẻ hàng khoản chi 23, ô lưới ảnh 18, khung xem camera 32, tấm 38.
 
 ## 4. Thanh tiêu đề (`screenTitle`, `softTopEdge`, `softTitleBar`)
 

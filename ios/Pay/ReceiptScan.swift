@@ -120,7 +120,8 @@ struct ReceiptCamera: View {
         .animation(.easeOut(duration: 0.2), value: dialShown)
     }
 
-    /// Chỉ số tiêu cự, chữ đơn cách, không nền. Chạm: đổi nấc (1x · 0.5x · 2x); vuốt trái / phải: thu phóng liền, hiện vòng tiêu cự
+    /// Tiêu cự quy đổi ra mm (như máy ảnh), chữ đơn cách, không nền. Chạm: đổi nấc (30 · 12 · 24 · 48 mm); vuốt trái / phải: thu
+    /// phóng liền, hiện vòng tiêu cự
     private var zoomControl: some View {
         Text(zoomText(cam.zoom))
             .font(.system(size: dialShown ? 17 : 15, weight: .semibold, design: .monospaced))
@@ -152,11 +153,7 @@ struct ReceiptCamera: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    private func zoomText(_ z: CGFloat) -> String {
-        let r = (z * 10).rounded() / 10
-        let s = r == r.rounded() ? String(Int(r)) : String(format: "%.1f", r)
-        return (s.hasPrefix("0.") ? String(s.dropFirst()) : s) + "x"
-    }
+    private func zoomText(_ z: CGFloat) -> String { "\(ReceiptCam.mm(z))mm" }
 
     // MARK: Hàng dưới: chọn ảnh, chụp, bộ lọc
 
@@ -326,10 +323,15 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     @Published var exposure: Float = 0
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     /// Tiêu cự đang dùng, tính theo camera chính = 1x
-    @Published private(set) var zoom: CGFloat = 1
+    @Published private(set) var zoom: CGFloat = 30.0 / 24   // 30 mm, xem startZoom
     @Published private(set) var minZoom: CGFloat = 1
     @Published private(set) var maxZoom: CGFloat = 10
     private var zoomSteps: [CGFloat] = [1, 2]
+    /// Tiêu cự camera chính quy đổi ra phim 35 mm (iPhone đời mới: 24 mm); mở camera ở 30 mm
+    static let mainMM: CGFloat = 24
+    static let startZoom: CGFloat = 30 / mainMM
+    /// Tiêu cự (mm) ứng với mức thu phóng
+    nonisolated static func mm(_ zoom: CGFloat) -> Int { Int((24 * zoom).rounded()) }
     private var zoomIndex = 0
     /// Hệ số thu phóng của máy ứng với "1x" (camera ảo có góc siêu rộng: 1x là camera chính, nằm ở mốc chuyển thứ nhất)
     private var zoomBase: CGFloat = 1
@@ -386,11 +388,12 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         guard let d = device else { return }
         let wide = d.deviceType == .builtInTripleCamera || d.deviceType == .builtInDualWideCamera
         zoomBase = wide ? CGFloat(d.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue ?? 2) : 1
-        zoomSteps = d.position == .front ? [1] : wide ? [1, 0.5, 2] : [1, 2]
+        // Camera sau mở ở 30 mm (1,25× camera chính 24 mm), chạm lần lượt 12 · 24 · 48 mm rồi về 30
+        zoomSteps = d.position == .front ? [1] : wide ? [Self.startZoom, 0.5, 1, 2] : [Self.startZoom, 1, 2]
         minZoom = d.minAvailableVideoZoomFactor / zoomBase
         maxZoom = max(minZoom, min(d.maxAvailableVideoZoomFactor / zoomBase, 15))
         zoomIndex = 0
-        setZoom(1)
+        setZoom(zoomSteps[0])
     }
 
     func nextZoom() {
@@ -567,7 +570,7 @@ struct ZoomDial: View {
             for m in Self.majors where m >= min - 0.01 && m <= max + 0.01 {
                 let deg = angle(m)
                 guard abs(deg) < edge - 6, abs(deg) > 9 else { continue }
-                let s = m < 1 ? "0,5" : "\(Int(m))"
+                let s = "\(ReceiptCam.mm(m))"
                 ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(fade(deg))),
                          at: point(deg, r - 38))
             }
@@ -576,13 +579,8 @@ struct ZoomDial: View {
             tri.move(to: CGPoint(x: c.x - 5, y: c.y - r - 4)); tri.addLine(to: CGPoint(x: c.x + 5, y: c.y - r - 4))
             tri.addLine(to: CGPoint(x: c.x, y: c.y - r + 6)); tri.closeSubpath()
             ctx.fill(tri, with: .color(Color(hex: 0xFFD43B)))
-            let z = (zoom * 10).rounded() / 10
-            let label = (z == z.rounded() ? "\(Int(z))" : String(format: "%.1f", z)).replacingOccurrences(of: ".", with: ",") + "×"
-            ctx.draw(Text(label).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(Color(hex: 0xFFD43B)),
+            ctx.draw(Text("\(ReceiptCam.mm(zoom))mm").font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(Color(hex: 0xFFD43B)),
                      at: CGPoint(x: c.x, y: c.y - r + 40))
-            ctx.draw(Text("\(Int((24 * zoom).rounded())) MM").font(.system(size: 13, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color(hex: 0xFFD43B)),
-                     at: CGPoint(x: c.x, y: c.y - r + 64))
         }
     }
 }

@@ -470,13 +470,25 @@ struct VoiceEntryView: View {
             Text(headerTitle).foregroundStyle(.secondary).lineLimit(2)
                 .contentTransition(.opacity)
             Spacer()
-            Button { close() } label: {
-                Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
-                    .frame(width: 30, height: 30).background(Palette.pill, in: Circle())
+            if let e = savedNow {
+                // Đã ghi: góc này là Hoàn tác (đóng thẻ đã có nút Xong ở dưới), hàng nút dưới còn camera · Sửa · Xong cho rộng
+                Button { undo(e) } label: {
+                    Text(L("Hoàn tác")).font(.system(size: 15, weight: .semibold))
+                        .padding(.horizontal, 14).frame(height: 30).background(Palette.pill, in: Capsule())
+                }
+                .buttonStyle(Pressable())
+                .foregroundStyle(.primary)
+                .transition(.opacity)
+            } else {
+                Button { close() } label: {
+                    Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
+                        .frame(width: 30, height: 30).background(Palette.pill, in: Circle())
+                }
+                .buttonStyle(Pressable())
+                .foregroundStyle(.primary)
+                .accessibilityLabel(L("Đóng"))
+                .transition(.opacity)
             }
-            .buttonStyle(Pressable())
-            .foregroundStyle(.primary)
-            .accessibilityLabel(L("Đóng"))
         }
         .font(.system(size: 15, weight: .medium))
         // Dòng trạng thái là một khối: chữ mới ("Đã ghi") hiện ra ngay trong dòng đang hạ xuống cùng thẻ,
@@ -618,7 +630,7 @@ struct VoiceEntryView: View {
     }
 
     /// Nút chính là cùng một nút qua mọi trạng thái (nghe xong nó chỉ hẹp lại, không biến mất rồi hiện lại);
-    /// chỉ các nút phụ bên trái đổi: "Quét QR" khi chưa ghi, "Hoàn tác" + "Sửa" khi đã ghi.
+    /// chỉ các nút phụ bên trái đổi: "Quét QR" khi chưa ghi, camera + "Sửa" khi đã ghi (Hoàn tác ở góc trên phải thẻ).
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 10) {
             Group {
@@ -636,8 +648,6 @@ struct VoiceEntryView: View {
                     }
                     .buttonStyle(Pressable())
                     .accessibilityLabel(attached ? L("Đã có ảnh") : L("Chụp ảnh hoá đơn"))
-                    // Hoàn tác nằm ngay trong thẻ (không hiện thanh "Đã lưu" bên ngoài nữa)
-                    pill(L("Hoàn tác"), primary: false) { undo(e) }
                     pill(L("Sửa"), primary: false) { autoClose?.cancel(); leave(); onEdit(e) }
                 } else if primaryButton != nil {
                     pill(L("Quét QR"), primary: false) { mic.cancel(); leave(); onScan() }

@@ -92,9 +92,8 @@ struct HomeView: View {
                             Button { withAnimation(.snappy(duration: 0.3)) { recentGrid.toggle() } } label: {
                                 Image(systemName: recentGrid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
                                     .font(.system(size: 17, weight: .semibold))
-                                    .frame(width: 37, height: 37)   // cao bằng viên "Xem tất cả" bên cạnh
-                                    .background(Palette.pill, in: Circle())
-                                    .contentShape(Circle())
+                                    .frame(width: 37, height: 37)   // vùng chạm cao bằng viên "Xem tất cả" bên cạnh; không nền
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(Pressable()).foregroundStyle(.primary)
                             .accessibilityLabel(recentGrid ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
@@ -483,13 +482,13 @@ struct HomeView: View {
         } else if film != nil {
             VStack(spacing: 10) { ForEach(list) { ExpenseRow(e: $0, showDay: true, now: now, repeats: store.rule(for: $0) != nil) } }
         } else if recentGrid {
-            // Lưới so le 2 cột (kiểu Pinterest): 10 khoản gần nhất xếp lần lượt trái, phải; mỗi ô cao theo tỉ lệ ảnh hoá đơn
-            // (không có ảnh thì màu và biểu tượng danh mục, cao thấp xen kẽ), số tiền ở góc
-            let items = Array(store.sorted.prefix(10))
+            // Lưới so le 3 cột (kiểu Pinterest): 12 khoản gần nhất xếp lần lượt từ trái sang phải; mỗi ô cao theo tỉ lệ ảnh hoá
+            // đơn (không có ảnh thì màu và biểu tượng danh mục, cao thấp xen kẽ), số tiền ở góc
+            let items = Array(store.sorted.prefix(12))
             HStack(alignment: .top, spacing: 8) {
-                ForEach(0..<2, id: \.self) { col in
+                ForEach(0..<3, id: \.self) { col in
                     LazyVStack(spacing: 8) {
-                        ForEach(Array(items.enumerated()).filter { $0.offset % 2 == col }, id: \.element.id) { _, e in
+                        ForEach(Array(items.enumerated()).filter { $0.offset % 3 == col }, id: \.element.id) { _, e in
                             TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
                                     hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                                 ExpenseTile(e: e, free: true)
@@ -1180,7 +1179,7 @@ struct ExpenseTile: View {
                 } else {
                     ZStack {
                         c.color
-                        CategoryIcon(c: c, size: free ? 56 : 40)   // ô so le to gấp rưỡi ô vuông
+                        CategoryIcon(c: c, size: 40)
                     }
                 }
             }

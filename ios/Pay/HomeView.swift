@@ -758,8 +758,10 @@ private struct CardSwipe: ViewModifier {
 }
 
 struct ExpenseRow: View {
-    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 86pt: vừa tên hai dòng + dòng phụ).
-    static let rowHeight: CGFloat = 96
+    /// Cao một hàng kể cả khoảng cách 10pt giữa các hàng (thẻ 76pt: ô biểu tượng 56 cách trên dưới 10, vừa tên hai dòng + dòng phụ)
+    static let rowHeight: CGFloat = 86
+    /// Thẻ hàng khoản chi: ô biểu tượng cách mép thẻ 10 cả trên, dưới, trái; bo thẻ đồng tâm với ô (bo ô 13 + 10)
+    static let rowRadius: CGFloat = 23, rowInset: CGFloat = 10
     /// Bo góc của thẻ (bằng ô danh mục) và khoảng cách từ ô biểu tượng tới mép thẻ: ô 56pt trong thẻ cao 86pt
     /// cách trên dưới 15pt, nên bên trái cũng 15pt
     static let radius: CGFloat = 28, inset: CGFloat = 15
@@ -786,10 +788,10 @@ struct ExpenseRow: View {
                 if let thumb {
                     Image(uiImage: thumb).resizable().scaledToFill()
                         .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: Self.radius - Self.inset, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: Self.rowRadius - Self.rowInset, style: .continuous))
                         .accessibilityLabel(L("Có ảnh hoá đơn"))
                 } else {
-                    CategoryBadge(c: c, side: 56, radius: Self.radius - Self.inset)
+                    CategoryBadge(c: c, side: 56, radius: Self.rowRadius - Self.rowInset)
                 }
             }
             .task(id: "\(e.id)\(e.u ?? 0)") { thumb = await ReceiptPhotos.thumb(e.id) }
@@ -840,9 +842,9 @@ struct ExpenseRow: View {
             .fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
-        .padding(.leading, Self.inset).padding(.trailing, 16).padding(.vertical, 12)
+        .padding(.leading, Self.rowInset).padding(.trailing, 14).padding(.vertical, Self.rowInset)
         .frame(minHeight: Self.rowHeight - 10)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.rowRadius, style: .continuous))
     }
 
     /// Ngày (nếu cần) và giờ của khoản chi

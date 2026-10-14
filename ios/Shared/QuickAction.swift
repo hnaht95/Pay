@@ -16,7 +16,9 @@ enum QuickKind: String {
 @MainActor
 final class QuickAction: ObservableObject {
     static let shared = QuickAction()
-    @Published var pending: QuickKind?
+    /// Lệnh Chụp hoá đơn vừa tới: app gắn vào đây việc bật camera sớm (widget dùng chung file này nên không gọi thẳng camera)
+    static var onPhoto: (() -> Void)?
+    @Published var pending: QuickKind? { didSet { if pending == .photo { Self.onPhoto?() } } }
     /// Vừa nhận lời mời vào Nhà chung: mở màn hình nhóm
     @Published var openHouse = false
 }

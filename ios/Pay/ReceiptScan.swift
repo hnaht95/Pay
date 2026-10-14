@@ -408,6 +408,27 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         }
     }
 
+    /// Phiên chụp bật sớm (lệnh Chụp hoá đơn): camera chạy sẵn trong lúc app còn đang mở màn chụp. Màn chụp bật phiên của nó
+    /// thì tắt phiên này; camera đã nóng nên phiên của màn chụp lên gần như ngay. Không ai dùng tới thì tự tắt sau 5 giây
+    nonisolated(unsafe) private static var warm: AVCaptureSession?
+
+    static func warmStart() {
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized, let d = back(for: startZoom) else { return }
+        sessionQueue.async {
+            guard warm == nil else { return }
+            let s = AVCaptureSession()
+            s.beginConfiguration()
+            s.sessionPreset = .photo
+            if let inp = try? AVCaptureDeviceInput(device: d), s.canAddInput(inp) { s.addInput(inp) }
+            let out = AVCapturePhotoOutput()
+            if s.canAddOutput(out) { s.addOutput(out) }
+            s.commitConfiguration()
+            s.startRunning()
+            warm = s
+            sessionQueue.asyncAfter(deadline: .now() + 5) { if warm === s { s.stopRunning(); warm = nil } }
+        }
+    }
+
     func start() {
         AVCaptureDevice.requestAccess(for: .video) { ok in
             Task { @MainActor in
@@ -456,7 +477,11 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             configured = true
         }
         let s = session
-        Self.sessionQueue.async { if !s.isRunning { s.startRunning() } }
+        Self.sessionQueue.async {
+            // Phiên bật sớm (nếu có) nhường camera cho phiên của màn chụp
+            if let w = Self.warm { w.stopRunning(); Self.warm = nil }
+            if !s.isRunning { s.startRunning() }
+        }
     }
 
 

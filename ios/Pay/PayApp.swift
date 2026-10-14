@@ -11,6 +11,11 @@ struct PayApp: App {
     /// Đổi ngôn ngữ trong Cài đặt: dựng lại toàn bộ giao diện bằng ngôn ngữ mới, widget vẽ lại theo
     @State private var lang = Lang.current
 
+    init() {
+        // Lệnh Chụp hoá đơn (nút Tác vụ, Phím tắt): bật camera ngay lúc lệnh tới, song song với lúc dựng giao diện
+        QuickAction.onPhoto = { if Pro.shared.active { ReceiptCam.warmStart() } }
+    }
+
     var body: some Scene {
         WindowGroup {
             HomeView()

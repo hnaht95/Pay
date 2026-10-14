@@ -12,6 +12,8 @@ struct HistoryView: View {
     /// Ô tìm: lọc theo ghi chú hoặc tên danh mục, không phân biệt dấu ("ca phe" ra "cà phê")
     @State private var query = ""
     @FocusState private var searching: Bool
+    /// Xem dạng lưới ảnh (chung một lựa chọn với mục Gần đây ở trang chủ)
+    @AppStorage("recentGrid") private var grid = false
 
     var body: some View {
         NavigationStack {
@@ -45,12 +47,26 @@ struct HistoryView: View {
                         .padding(.top, 14).padding(.bottom, 2)
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
-                        ForEach(list) { e in
-                            // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
-                            TapHold(tap: { if e.isAdjust { balanceOpen = true } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
-                                ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
+                        if grid {
+                            // Lưới ảnh 3 cột như mục Gần đây ở trang chủ: cả ngày là một hàng của List
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                                ForEach(list) { e in
+                                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
+                                        ExpenseTile(e: e)
+                                    }
+                                }
                             }
-                            .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
+                            .padding(.vertical, 4)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 8))
+                            .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                        } else {
+                            ForEach(list) { e in
+                                // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
+                                TapHold(tap: { if e.isAdjust { balanceOpen = true } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
+                                    ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
+                                }
+                                .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
+                            }
                         }
                     }
                     .listSectionSeparator(.hidden)
@@ -89,6 +105,18 @@ struct HistoryView: View {
                     // Nền đục (màu nền tấm + lớp nhạt): nội dung cuộn chui xuống dưới không lộ qua ô
                     .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    // Cạnh ô tìm: đổi kiểu xem danh sách / lưới ảnh (cùng nút ở mục Gần đây)
+                    .safeAreaInset(edge: .trailing, spacing: 10) {
+                        Button { withAnimation(.snappy(duration: 0.3)) { grid.toggle() } } label: {
+                            Image(systemName: grid ? "list.bullet" : "square.grid.3x3")
+                                .font(.system(size: 18, weight: .semibold))
+                                .frame(width: 58, height: 58)
+                                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(Pressable()).foregroundStyle(.primary)
+                        .accessibilityLabel(grid ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
+                    }
                     .padding(.horizontal, 16).padding(.bottom, 16)
                     // Vạch ngăn mảnh, rộng bằng ô tìm: nội dung cuộn lên cắt gọn ngay dưới vạch
                     Rectangle().fill(Color.primary.opacity(0.1)).frame(height: 1).padding(.horizontal, 16)

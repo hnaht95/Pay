@@ -1170,14 +1170,14 @@ struct ExpenseTile: View {
             .clipShape(shape)
             .overlay(alignment: .bottomLeading) {
                 HStack(spacing: 2) {
-                    if e.isIncome || e.isAdjust { AmountArrow(up: e.signed >= 0, size: 14) }
-                    Text(fmt(e.a)).font(.system(size: 14, weight: .bold)).monospacedDigit()
+                    if e.isIncome || e.isAdjust { AmountArrow(up: e.signed >= 0, size: 12) }
+                    Text(fmt(e.a)).font(.system(size: 12, weight: .semibold)).monospacedDigit()
                 }
-                .lineLimit(1).minimumScaleFactor(0.7)
+                .lineLimit(1).minimumScaleFactor(0.8)
                 .foregroundStyle(.white)
-                .padding(.horizontal, 9).padding(.vertical, 5)
+                .padding(.horizontal, 7).padding(.vertical, 3)
                 .background(.black.opacity(0.45), in: Capsule())
-                .padding(7)
+                .padding(6)
             }
             .contentShape(shape)
             .task(id: "\(e.id)\(e.u ?? 0)") { photo = await ReceiptPhotos.tile(e.id) }

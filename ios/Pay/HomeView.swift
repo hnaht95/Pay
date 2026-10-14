@@ -816,8 +816,11 @@ struct ExpenseRow: View {
     private let c: Category
     @State private var thumb: UIImage?
 
-    init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false) {
-        self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats
+    /// Dòng phụ thay cho tên danh mục (vd "Số dư sau: …" ở Các lần điều chỉnh)
+    var sub: String? = nil
+
+    init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false, sub: String? = nil) {
+        self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats; self.sub = sub
         c = Category.get(e.c)
     }
 
@@ -825,6 +828,8 @@ struct ExpenseRow: View {
         HStack(spacing: 14) {
             // Ô vuông nền trắng như ô danh mục; bo đồng tâm với thẻ (bo thẻ trừ khoảng cách tới mép)
             // Có ảnh hoá đơn đính kèm: ảnh đó làm ô biểu tượng (cùng khung bo góc)
+            // Thẻ điều chỉnh số dư: không có ô biểu tượng (không phải khoản chi theo danh mục)
+            if !e.isAdjust {
             Group {
                 if let thumb {
                     Image(uiImage: thumb).resizable().scaledToFill()
@@ -847,6 +852,7 @@ struct ExpenseRow: View {
                             .accessibilityLabel(L("Có ảnh hoá đơn"))
                     }
                 }
+            }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
@@ -858,7 +864,9 @@ struct ExpenseRow: View {
                     }
                 }
                 // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục)
-                if e.n?.isEmpty == false {
+                if let sub {
+                    Text(sub).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                } else if e.n?.isEmpty == false {
                     Text(c.name).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
@@ -883,7 +891,7 @@ struct ExpenseRow: View {
             .fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
-        .padding(.leading, Self.rowInset).padding(.trailing, 14).padding(.vertical, Self.rowInset)
+        .padding(.leading, e.isAdjust ? 18 : Self.rowInset).padding(.trailing, 14).padding(.vertical, Self.rowInset)
         .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.rowRadius, style: .continuous))
     }

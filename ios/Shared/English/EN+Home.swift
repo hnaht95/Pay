@@ -140,7 +140,7 @@ extension English {
         "App đang tính: %@. Nhập số bạn đang có thật, phần chênh được ghi vào Các lần điều chỉnh.": "Pay shows %@. Enter what you really have; the difference is logged under Adjustments.",
         "Các lần điều chỉnh": "Adjustments",
         "Chưa điều chỉnh số dư lần nào.": "No balance adjustments yet.",
-        "Số dư sau đó: %@": "Balance after: %@",
+        "Số dư sau: %@": "Balance after: %@",
         "Tổng tiền bạn đang có (tiền mặt, tài khoản…). Từ giờ app tự cộng khoản thu, trừ khoản chi.": "All the money you have now (cash, accounts…). From now on Pay adds income and subtracts spending.",
         "Mới": "New",
         "Lưu": "Save",

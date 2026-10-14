@@ -91,19 +91,15 @@ struct BalanceLog: View {
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 }
                 ForEach(log) { e in
-                    VStack(alignment: .leading, spacing: 6) {
-                        ExpenseRow(e: e, showDay: true)
-                        // Số dư ngay sau lần này
-                        if let before = store.balance(before: e.t + 1) {
-                            Text(L("Số dư sau đó: %@", fmt(before))).font(.system(size: 13)).foregroundStyle(.secondary)
-                                .padding(.leading, 12)
-                        }
-                    }
+                    // Dòng phụ bên trái (ngang hàng ngày giờ bên phải): số dư ngay sau lần này
+                    ExpenseRow(e: e, showDay: true, sub: store.balance(before: e.t + 1).map { L("Số dư sau: %@", fmt($0)) })
                     .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            // Thẻ đầu cách vạch dưới tiêu đề 16 (bằng lề hai bên), không dính sát vạch
+            .contentMargins(.top, 16, for: .scrollContent)
             .padding(.leading, -16).padding(.trailing, -8)
             .padding(.horizontal, 16)
             .background(Palette.surface.ignoresSafeArea())

@@ -975,7 +975,7 @@ final class PayAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationC
         center.delegate = self
         // Nút ngay trên thông báo: xác nhận mà không cần mở app
         center.setNotificationCategories([UNNotificationCategory(identifier: "HOUSE_CONFIRM", actions: [
-            UNNotificationAction(identifier: "yes", title: L("Đã nhận"), options: []),
+            UNNotificationAction(identifier: "yes", title: L("Đã nhận được"), options: []),
             UNNotificationAction(identifier: "no", title: L("Chưa nhận được"), options: [.destructive]),
         ], intentIdentifiers: [])])
         application.registerForRemoteNotifications()

@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let house: [String: String] = [
+        "Báo đã nhận": "Mark received",
+        "Đã nhận được": "Received",
         "Bạn không nợ ai, cũng không ai nợ bạn": "You owe no one, and no one owes you",
         "Không nợ ai": "All square",
         "Cả nhóm đã trả xong": "Everyone is settled up",

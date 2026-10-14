@@ -106,7 +106,7 @@ struct HouseView: View {
         .confirmationDialog(confirming.map { L("%@ báo đã chuyển %@ cho bạn", house.memberName($0.from), fmt($0.amount)) } ?? "",
                             isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible,
                             presenting: confirming) { c in
-            Button(L("Đã nhận")) { Task { await house.respond(c.id, received: true) } }
+            Button(L("Đã nhận được")) { Task { await house.respond(c.id, received: true) } }
             Button(L("Chưa nhận được"), role: .destructive) { Task { await house.respond(c.id, received: false) } }
             Button(L("Huỷ"), role: .cancel) {}
         } message: { _ in Text(L("Kiểm tra tài khoản rồi xác nhận.")) }
@@ -611,7 +611,8 @@ struct HouseView: View {
                 if canPay { menu = payMenu(t, name) } else { paying = t }
             } label: {
                 // Có tài khoản: Trả ngay (mở app ngân hàng). Không có: báo đã trả bằng cách khác. Người nhận: xác nhận đã nhận
-                Text(canPay ? L("Trả ngay") : outgoing ? L("Báo đã trả") : L("Đã nhận"))
+                // Nút là việc mình làm (bắt đầu bằng động từ "Báo"), không đọc nhầm thành trạng thái "đã nhận rồi"
+                Text(canPay ? L("Trả ngay") : outgoing ? L("Báo đã trả") : L("Báo đã nhận"))
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1).fixedSize()
                     .padding(.horizontal, 14).frame(height: 38)
@@ -1065,7 +1066,7 @@ struct HouseView: View {
             if incoming {
                 HStack(spacing: 8) {
                     pill(L("Chưa nhận được"), primary: false) { Task { await house.respond(s.id, received: false) } }
-                    pill(L("Đã nhận"), primary: true) { Task { await house.respond(s.id, received: true) } }
+                    pill(L("Đã nhận được"), primary: true) { Task { await house.respond(s.id, received: true) } }
                         .filmPressed(film?.pressed["received"] ?? 0)
                 }
             } else if s.status == "no" {

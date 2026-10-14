@@ -393,6 +393,9 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             session.commitConfiguration()
             input = inp
             orientVideo()
+            // Đặt lại tiêu cự sau khi cấu hình xong: đổi sessionPreset / gắn camera làm camera về định dạng mới, tiêu cự đặt trước
+            // đó bị trả về mặc định (góc siêu rộng) trong khi số vẫn hiện 30mm. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
+            setZoom(zoom)
             configured = true
         }
         let s = session
@@ -478,8 +481,10 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         session.beginConfiguration()
         session.removeInput(cur)
         if session.canAddInput(inp) { session.addInput(inp); input = inp } else { session.addInput(cur) }
+        setZoom(zoom)   // đặt cả trong lúc cấu hình, để khung đầu tiên của camera mới đã đúng tiêu cự
         session.commitConfiguration()
         orientVideo()
+        setZoom(zoom)   // như lúc mở: gắn camera xong tiêu cự có thể bị trả về mặc định
         let w = warmth, e = exposure
         setWarmth(w); setExposure(e)
     }

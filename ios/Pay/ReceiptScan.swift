@@ -407,8 +407,10 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
 
     private static func camera(_ pos: AVCaptureDevice.Position) -> AVCaptureDevice? {
         if pos == .front { return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) }
-        return AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back)
-            ?? AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back)
+        // Camera sau ghép hai ống (chính + góc siêu rộng), không dùng camera ghép ba ống (thêm tele) dù máy có: đổi từ camera trước
+        // về camera sau phải khởi động lại mọi ống của camera ghép, ba ống chậm thấy rõ. Hai ống vẫn đủ 0,5× · 1× · 2× (2× cắt từ
+        // cảm biến chính), chỉ mất ống tele cho mức phóng 3× trở lên (vẫn phóng được, bằng cắt ảnh)
+        return AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back)
             ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
     }
 

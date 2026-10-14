@@ -51,6 +51,9 @@ struct HomeView: View {
     @AppStorage(HeroColor.key) private var heroTone = -1
     /// Mục Gần đây xem dạng lưới ảnh (3 cột, ảnh hoá đơn và số tiền) thay cho danh sách
     @AppStorage("recentGrid") private var recentGrid = false
+    /// Kiểu đang vẽ ở mục Gần đây. Đổi theo recentGrid nhưng qua withAnimation: recentGrid là @AppStorage, thay đổi đến qua
+    /// UserDefaults nên không mang hiệu ứng, kiểu cũ biến mất và kiểu mới hiện ra tức thì
+    @State private var gridShown = UserDefaults.standard.bool(forKey: "recentGrid")
     /// Lưới so le: chiều cao từng cột khi chưa tính ô cuối (đo được), để ô cuối mỗi cột co giãn cho ba cột cùng một đáy
     @State private var gridCols: [Int: CGFloat] = [:]
     @AppStorage(HeroColor.barKey) private var heroBarTone = -1
@@ -91,18 +94,18 @@ struct HomeView: View {
                     sectionTitle(L("Gần đây"), accessory: {
                         // Đổi kiểu xem: danh sách / lưới ảnh
                         if film == nil {
-                            Button { withAnimation(.snappy(duration: 0.3)) { recentGrid.toggle() } } label: {
+                            Button { recentGrid.toggle() } label: {
                                 // Cùng cỡ chữ thì hình ba vạch nhỏ hơn hẳn hình hai tấm ảnh (đo: 85×81 so với 109×126): tăng cỡ ba vạch, giảm cỡ hai tấm
                                 // cho hai biểu tượng trông to bằng nhau (~18×17 và ~17×20 điểm)
-                                Image(systemName: recentGrid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
-                                    .font(.system(size: recentGrid ? 21 : 16, weight: .semibold))
+                                Image(systemName: gridShown ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
+                                    .font(.system(size: gridShown ? 21 : 16, weight: .semibold))
                                     // Đổi biểu tượng kiểu thay hình của SF Symbols (hình cũ thu nhỏ biến đi, hình mới bật ra), nhanh gọn hơn mờ chéo
                                     .contentTransition(.symbolEffect(.replace.downUp.byLayer))
                                     .frame(width: 37, height: 37)   // vùng chạm cao bằng viên "Xem tất cả" bên cạnh; không nền
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(Pressable()).foregroundStyle(.primary)
-                            .accessibilityLabel(recentGrid ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
+                            .accessibilityLabel(gridShown ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
                         }
                     }) {
                         Button { showHistory = true } label: {
@@ -117,7 +120,7 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                 // Cuộn hết: đáy nội dung cách mép trên hai nút đúng 16 (bằng lề hai bên). Nút cao 78, đáy nút cách mép màn 16, vùng
                 // an toàn dưới 34: 16 + 78 + 16 − 34 = 76. Danh sách giữ 120 (hàng cuối đã có sẵn khoảng 10 dưới thẻ)
-                .padding(.bottom, recentGrid && film == nil && !store.sorted.isEmpty ? 76 : 120)
+                .padding(.bottom, gridShown && film == nil && !store.sorted.isEmpty ? 76 : 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
             .statusBarEdge(on: film == nil)
@@ -126,6 +129,8 @@ struct HomeView: View {
             .withDock(dock: dock, fallbackBlur: bottomBlur, film: film != nil) { ToastView() }
         }
         .appMenu($menu)
+        // Đổi kiểu xem: kiểu cũ mờ đi, kiểu mới mờ vào và nở nhẹ từ trên xuống (xem swapStyle)
+        .onChange(of: recentGrid) { _, v in withAnimation(.snappy(duration: 0.35)) { gridShown = v } }
         .sheet(isPresented: $pickingHero) { HeroColorSheet() }
         .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         .overlay {
@@ -487,6 +492,10 @@ struct HomeView: View {
                            items: items)
     }
 
+    /// Hiệu ứng đổi giữa danh sách và lưới ảnh: hiện ra thì mờ vào và nở từ 96%, mất đi thì chỉ mờ đi
+    static let swapStyle: AnyTransition = .asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top)),
+                                                      removal: .opacity)
+
     @ViewBuilder private var recent: some View {
         let list = Array(store.sorted.prefix(5))
         if list.isEmpty {
@@ -497,7 +506,7 @@ struct HomeView: View {
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else if film != nil {
             VStack(spacing: 10) { ForEach(list) { ExpenseRow(e: $0, showDay: true, now: now, repeats: store.rule(for: $0) != nil) } }
-        } else if recentGrid {
+        } else if gridShown {
             // Lưới so le 3 cột (kiểu Pinterest): 12 khoản gần nhất xếp lần lượt từ trái sang phải; mỗi ô cao theo tỉ lệ ảnh hoá
             // đơn (không có ảnh thì màu và biểu tượng danh mục, cao thấp xen kẽ), số tiền ở góc
             // Ba cột dài ngắn khác nhau: ô cuối của mỗi cột co giãn chiều cao để cả ba cột cùng dừng ở một đường (không cột nào
@@ -521,7 +530,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .transition(.opacity)
+            .transition(Self.swapStyle)
         } else {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
@@ -542,6 +551,7 @@ struct HomeView: View {
             .frame(height: CGFloat(list.count) * ExpenseRow.rowHeight)
             // Tràn ra mép trái màn (hàng tự lùi 16 trong expenseSwipe): vuốt xoá thì hàng trượt ra tận mép màn
             .padding(.leading, -16).padding(.trailing, -8)
+            .transition(Self.swapStyle)
         }
     }
 

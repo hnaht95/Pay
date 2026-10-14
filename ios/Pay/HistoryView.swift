@@ -14,6 +14,8 @@ struct HistoryView: View {
     @FocusState private var searching: Bool
     /// Xem dạng lưới ảnh (chung một lựa chọn với mục Gần đây ở trang chủ)
     @AppStorage("recentGrid") private var grid = false
+    /// Kiểu đang vẽ: đổi theo grid qua withAnimation (grid là @AppStorage, thay đổi không mang hiệu ứng)
+    @State private var gridShown = UserDefaults.standard.bool(forKey: "recentGrid")
 
     var body: some View {
         NavigationStack {
@@ -47,7 +49,7 @@ struct HistoryView: View {
                         .padding(.top, 14).padding(.bottom, 2)
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
-                        if grid {
+                        if gridShown {
                             // Lưới ảnh 3 cột như mục Gần đây ở trang chủ: cả ngày là một hàng của List
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                                 ForEach(list) { e in
@@ -107,11 +109,11 @@ struct HistoryView: View {
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     // Cạnh ô tìm: đổi kiểu xem danh sách / lưới ảnh (cùng nút ở mục Gần đây)
                     .safeAreaInset(edge: .trailing, spacing: 10) {
-                        Button { withAnimation(.snappy(duration: 0.3)) { grid.toggle() } } label: {
+                        Button { grid.toggle() } label: {
                             // Cùng cỡ chữ thì hình ba vạch nhỏ hơn hẳn hình hai tấm ảnh (đo: 85×81 so với 109×126): tăng cỡ ba vạch, giảm cỡ hai tấm
                             // cho hai biểu tượng trông to bằng nhau (~18×17 và ~17×20 điểm)
-                            Image(systemName: grid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
-                                .font(.system(size: grid ? 21 : 16, weight: .semibold))
+                            Image(systemName: gridShown ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
+                                .font(.system(size: gridShown ? 21 : 16, weight: .semibold))
                                 // Đổi biểu tượng kiểu thay hình của SF Symbols (hình cũ thu nhỏ biến đi, hình mới bật ra), nhanh gọn hơn mờ chéo
                                 .contentTransition(.symbolEffect(.replace.downUp.byLayer))
                                 .frame(width: 58, height: 58)
@@ -119,7 +121,7 @@ struct HistoryView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(Pressable()).foregroundStyle(.primary)
-                        .accessibilityLabel(grid ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
+                        .accessibilityLabel(gridShown ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
                     }
                     .padding(.horizontal, 16).padding(.bottom, 16)
                     // Vạch ngăn mảnh, rộng bằng ô tìm: nội dung cuộn lên cắt gọn ngay dưới vạch
@@ -132,6 +134,7 @@ struct HistoryView: View {
         .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .appMenu($menu)
+        .onChange(of: grid) { _, v in withAnimation(.snappy(duration: 0.35)) { gridShown = v } }
         .sheetGrabber()
     }
 

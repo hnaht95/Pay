@@ -443,7 +443,7 @@ struct HouseView: View {
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(net > 0 ? L("Được nhận") : net < 0 ? L("Còn phải trả") : L("Đã cân bằng"))
+                    Text(net > 0 ? L("Được nhận") : net < 0 ? L("Còn phải trả") : L("Không nợ ai"))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                     if net != 0 {
                         Text(fmt(abs(net))).font(.system(size: 19, weight: .bold))
@@ -564,21 +564,21 @@ struct HouseView: View {
     private func youCard(_ mine: Int, _ mineTransfers: [HouseTransfer]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Màu đỏ / xanh chỉ ở dòng chữ nhỏ; số tiền to màu chữ thường cho dễ đọc trên nền xám
-            Text(mine > 0 ? L("Bạn sẽ nhận") : mine < 0 ? L("Bạn cần trả") : L("Bạn không nợ ai"))
-                .font(.system(size: 15, weight: mine == 0 ? .regular : .semibold))
-                .foregroundStyle(mine < 0 ? Palette.danger : mine > 0 ? Palette.goodInk : .secondary)
             if mine != 0 {
+                Text(mine > 0 ? L("Bạn sẽ nhận") : L("Bạn cần trả"))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(mine < 0 ? Palette.danger : Palette.goodInk)
                 Text(fmt(abs(mine)))
                     .font(.system(size: 40, weight: .bold)).kerning(-1.5)
                     .foregroundStyle(.primary)
                     .minimumScaleFactor(0.5).lineLimit(1)
                     .padding(.top, 6)
             } else {
+                // Không ai nợ ai phần của mình: một dòng nói thẳng ra, cỡ chữ vừa (không thay chỗ số tiền to)
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(.green)
-                    Text(L("Đã cân bằng")).font(.system(size: 22, weight: .bold))
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).foregroundStyle(Palette.goodInk)
+                    Text(L("Bạn không nợ ai, cũng không ai nợ bạn")).font(.system(size: 17, weight: .semibold))
                 }
-                .padding(.top, 6)
             }
             if !mineTransfers.isEmpty {
                 VStack(spacing: 8) {

@@ -57,6 +57,9 @@ struct HouseView: View {
     @State private var menu: AppMenuSpec?
     /// Khoản / lần trả vừa vuốt xoá: ẩn ngay trên máy, chờ hết thanh Hoàn tác (3,5 giây) mới xoá thật trên iCloud
     @State private var hidden: Set<String> = []
+    /// Các đợt đã chốt đang mở rộng (mã mốc chốt)
+    @State private var openCloses: Set<String> = []
+    @State private var confirmClose = false
     @State private var notifyOn: Bool?
     /// Khoản chung đang sửa
     @State private var editingSpend: HouseSpend?
@@ -535,9 +538,13 @@ struct HouseView: View {
         // 2. Cần xác nhận (chỉ khi có)
         pendingSection
 
-        // 3. Khoản chi chung
+        // Cả nhóm đã trả xong mà đợt này còn khoản chi: mời chốt sổ
+        closeCard(net)
+
+        // 3. Khoản chi chung: đợt đang mở, rồi các đợt đã chốt (thu gọn)
         sectionTitle(L("Khoản chi"), trailing: monthTotal)
         spendList
+        closedPeriods
 
         // 4. Cả nhóm (thu gọn)
         groupSection(net, transfers.filter { $0.from != me && $0.to != me })
@@ -710,15 +717,121 @@ struct HouseView: View {
         .onTapGesture { editingMember = m }
     }
 
-    /// Các khoản chi chung, mới nhất trước.
+    /// Mốc chốt gần nhất: khoản chi từ sau mốc này là đợt đang mở
+    private var lastClose: Date? { house.closes.first?.date }
+    /// Khoản chi của đợt đang mở (sau lần chốt gần nhất)
+    private var openSpends: [HouseSpend] { house.spends.filter { s in lastClose.map { s.date > $0 } ?? true } }
+
+    /// Thẻ chốt sổ: chỉ hiện khi không ai còn nợ ai, không còn lần trả chờ xác nhận, và đợt này có khoản chi.
+    /// Mỗi người chịu bao nhiêu trong đợt, rồi nút Chốt sổ (hỏi lại trước khi chốt)
+    @ViewBuilder private func closeCard(_ net: [String: Int]) -> some View {
+        let open = openSpends
+        // Lần trả đang chờ xác nhận của bất kỳ ai cũng chưa coi là xong
+        if !open.isEmpty, net.values.allSatisfy({ $0 == 0 }), !house.settles.contains(where: { $0.status == "wait" }) {
+            var share: [String: Int] = [:]
+            let _ = open.forEach { e in for (id, p) in Settle.parts(e) { share[id, default: 0] += p } }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill").font(.system(size: 20)).foregroundStyle(Palette.goodInk)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L("Cả nhóm đã trả xong")).font(.system(size: 17, weight: .semibold))
+                        Text(L("%ld khoản · tổng %@", open.count, fmt(open.reduce(0) { $0 + $1.amount })))
+                            .font(.system(size: 13)).foregroundStyle(.secondary)
+                    }
+                }
+                // Mỗi người chịu bao nhiêu trong đợt (lớn trước)
+                VStack(spacing: 6) {
+                    ForEach(share.filter { $0.value > 0 }.sorted { $0.value > $1.value }, id: \.key) { id, v in
+                        HStack(spacing: 8) {
+                            HouseAvatar(id: id, name: house.memberName(id), size: 24)
+                            Text(id == house.me ? L("Bạn") : house.memberName(id)).font(.system(size: 15)).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text(fmt(v)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                        }
+                    }
+                }
+                pill(L("Chốt sổ đợt này"), primary: true) { confirmClose = true }
+            }
+            .padding(18)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(.top, 10)
+            .confirmationDialog(L("Chốt sổ đợt này?"), isPresented: $confirmClose, titleVisibility: .visible) {
+                Button(L("Chốt sổ")) { Task { await house.closeBook() }; Haptic.tap() }
+                Button(L("Huỷ"), role: .cancel) {}
+            } message: {
+                Text(L("Các khoản chi tới giờ gom vào một đợt đã chốt (vẫn xem lại được), đợt mới bắt đầu từ 0. Cả nhóm cùng thấy."))
+            }
+        }
+    }
+
+    /// Các đợt đã chốt, mới nhất trước: một dòng thu gọn (ngày chốt, số khoản, tổng), chạm để mở xem từng khoản;
+    /// nhấn giữ để bỏ chốt (lỡ tay)
+    @ViewBuilder private var closedPeriods: some View {
+        let cs = house.closes
+        if !cs.isEmpty {
+            ForEach(Array(cs.enumerated()), id: \.element.id) { i, c in
+                let prev = i + 1 < cs.count ? cs[i + 1].date : nil
+                let items = house.spends.filter { e in e.date <= c.date && (prev.map { e.date > $0 } ?? true) }
+                let expanded = openCloses.contains(c.id)
+                VStack(spacing: 10) {
+                    TapHold(tap: {
+                        withAnimation(.snappy) { if expanded { openCloses.remove(c.id) } else { openCloses.insert(c.id) } }
+                    }, hold: { closeMenu(c, count: items.count) }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "archivebox.fill").font(.system(size: 17)).foregroundStyle(.secondary)
+                                .frame(width: 40, height: 40).background(Palette.pill, in: Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(L("Đã chốt %@", fullDay(c.date))).font(.rowTitle).lineLimit(1)
+                                Text(L("%ld khoản · tổng %@", items.count, fmt(items.reduce(0) { $0 + $1.amount })))
+                                    .font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.down").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
+                                .rotationEffect(.degrees(expanded ? 180 : 0))
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 10)
+                        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    }
+                    if expanded {
+                        SwipeCards(items: items.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { spendRow($0) }
+                    }
+                }
+                .padding(.top, 10)
+            }
+        }
+    }
+
+    private func closeMenu(_ c: HouseSettle, count: Int) {
+        menu = AppMenuSpec(icon: AnyView(Image(systemName: "archivebox.fill").font(.system(size: 26)).foregroundStyle(.secondary)
+                                            .frame(width: 56, height: 56).background(Palette.pill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
+                           title: L("Đã chốt %@", fullDay(c.date)), subtitle: L("%ld khoản", count),
+                           items: [AppMenuItem(icon: "arrow.uturn.backward", title: L("Bỏ chốt"), subtitle: L("Các khoản quay lại đợt đang mở")) {
+                               Task { await house.delete(c.id) }
+                           }])
+    }
+
+    /// "31/10/2026"
+    private func fullDay(_ d: Date) -> String {
+        if Lang.isEnglish { return d.formatted(.dateTime.month(.abbreviated).day().year().locale(Lang.locale)) }
+        let c = Calendar.current.dateComponents([.day, .month, .year], from: d)
+        return "\(c.day!)/\(c.month!)/\(c.year!)"
+    }
+
+    /// Các khoản chi chung của đợt đang mở, mới nhất trước.
     @ViewBuilder private var spendList: some View {
-        if house.spends.isEmpty {
+        if openSpends.isEmpty && !house.closes.isEmpty {
+            Text(L("Đợt mới chưa có khoản nào."))
+                .font(.system(size: 15)).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity).padding(24)
+                .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        } else if house.spends.isEmpty {
             Text(L("Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhà."))
                 .font(.system(size: 15)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity).padding(24)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        SwipeCards(items: house.spends.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { spendRow($0) }
+        SwipeCards(items: openSpends.filter { !hidden.contains($0.id) }.sorted { $0.date > $1.date }) { spendRow($0) }
     }
 
     private func spendRow(_ e: HouseSpend) -> some View {

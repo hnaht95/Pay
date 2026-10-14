@@ -2,6 +2,16 @@ import Foundation
 
 extension English {
     static let house: [String: String] = [
+        "Cả nhóm đã trả xong": "Everyone is settled up",
+        "%ld khoản · tổng %@": "%ld items · total %@",
+        "Chốt sổ đợt này": "Close this round",
+        "Chốt sổ đợt này?": "Close this round?",
+        "Chốt sổ": "Close round",
+        "Các khoản chi tới giờ gom vào một đợt đã chốt (vẫn xem lại được), đợt mới bắt đầu từ 0. Cả nhóm cùng thấy.": "Expenses so far move into a closed round (you can still look back), and a new round starts from zero. Everyone in the group sees it.",
+        "Đã chốt %@": "Closed %@",
+        "Bỏ chốt": "Reopen",
+        "Các khoản quay lại đợt đang mở": "Its expenses go back to the current round",
+        "Đợt mới chưa có khoản nào.": "No expenses in this round yet.",
         "Trả qua %@": "Pay with %@",
         "Trả qua app ngân hàng khác": "Pay with another bank app",
         "Chọn app ngân hàng để trả": "Choose a bank app to pay",

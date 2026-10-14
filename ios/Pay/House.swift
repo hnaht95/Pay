@@ -52,8 +52,10 @@ struct HouseSettle: Identifiable, Hashable {
     var to: String
     var amount: Int
     var date: Date
-    /// ok: đã xong; wait: người trả báo đã chuyển, chờ người nhận xác nhận; no: người nhận báo chưa nhận được
+    /// ok: đã xong; wait: người trả báo đã chuyển, chờ người nhận xác nhận; no: người nhận báo chưa nhận được;
+    /// close: không phải lần trả mà là mốc chốt sổ (xem HouseGroup.closes)
     var status = "ok"
+    static let close = "close"
 }
 
 struct HouseTransfer: Hashable {
@@ -152,6 +154,8 @@ struct HouseGroup: Identifiable {
     var members: [HouseMember] = []
     var spends: [HouseSpend] = []
     var settles: [HouseSettle] = []
+    /// Các lần chốt sổ (mới nhất trước): khoản chi trước mốc chốt thuộc đợt đã chốt, gom lại để xem; số dư vẫn tính trên tất cả
+    var closes: [HouseSettle] = []
     var me: String?
     /// Ảnh đại diện của nhóm do người dùng chọn: màu (chỉ số trong CategoryTone) hoặc ảnh. Chưa chọn thì màu theo mã nhóm
     var tone: Int?
@@ -266,6 +270,7 @@ final class House: ObservableObject {
     var members: [HouseMember] { current?.members ?? [] }
     var spends: [HouseSpend] { current?.spends ?? [] }
     var settles: [HouseSettle] { current?.settles ?? [] }
+    var closes: [HouseSettle] { current?.closes ?? [] }
     var isOwner: Bool { current?.isOwner ?? false }
     /// Thành viên là chính mình trong nhóm đang mở (mỗi máy tự chọn, nhớ theo nhóm)
     var me: String? {
@@ -420,7 +425,7 @@ final class House: ObservableObject {
     }
 
     private static func rebuild(_ g: inout HouseGroup) {
-        var ms: [HouseMember] = [], sp: [HouseSpend] = [], st: [HouseSettle] = []
+        var ms: [HouseMember] = [], sp: [HouseSpend] = [], st: [HouseSettle] = [], cl: [HouseSettle] = []
         for r in g.records.values {
             let id = r.recordID.recordName
             switch r.recordType {
@@ -434,9 +439,11 @@ final class House: ObservableObject {
                                      date: r["date"] as? Date ?? r.creationDate ?? Date(), cat: r["cat"] as? String ?? "khac",
                                      fixed: HouseSpend.fixed(from: r["fixed"] as? [String] ?? [])))
             case "Settle":
-                st.append(HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
-                                      amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
-                                      status: r["status"] as? String ?? "ok"))
+                let s = HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
+                                    amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
+                                    status: r["status"] as? String ?? "ok")
+                // Mốc chốt sổ lưu cùng loại bản ghi với lần trả (status "close", 0đ): không phải thêm loại bản ghi mới trên iCloud
+                if s.status == HouseSettle.close { cl.append(s) } else { st.append(s) }
             case "Info":
                 g.name = r["name"] as? String ?? g.name
                 g.tone = (r["tone"] as? Int64).map(Int.init)
@@ -447,6 +454,7 @@ final class House: ObservableObject {
         g.members = ms.sorted { ($0.name.lowercased(), $0.id) < ($1.name.lowercased(), $1.id) }
         g.spends = sp.sorted { $0.date > $1.date }
         g.settles = st.sorted { $0.date > $1.date }
+        g.closes = cl.sorted { $0.date > $1.date }
     }
 
     // MARK: Tạo / tham gia / rời nhóm
@@ -719,6 +727,20 @@ final class House: ObservableObject {
         notifyChanges(i)
     }
 
+    /// Chốt sổ: đánh dấu mốc bây giờ. Khoản chi đến lúc này gom vào một đợt đã chốt (thu gọn, xem lại được), đợt mới bắt đầu từ 0.
+    /// Chỉ chốt khi cả nhóm đã trả xong (xem HouseView), nên không có khoản nợ nào bị khoá lại trong đợt cũ
+    func closeBook() async {
+        let who = me ?? ""
+        if demo, let i = cur {
+            groups[i].closes.insert(HouseSettle(id: UUID().uuidString, from: who, to: who, amount: 0, date: Date(), status: HouseSettle.close), at: 0)
+            return
+        }
+        guard let zone else { return }
+        let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
+        r["from"] = who; r["to"] = who; r["amount"] = Int64(0); r["date"] = Date(); r["status"] = HouseSettle.close
+        _ = await run([r])
+    }
+
     /// Người nhận trả lời: đã nhận (xong) hoặc chưa nhận được (báo lại người trả).
     func respond(_ id: String, received: Bool) async {
         let status = received ? "ok" : "no"
@@ -856,7 +878,10 @@ final class House: ObservableObject {
     }
 
     func delete(_ id: String) async {
-        if demo, let i = cur { groups[i].spends.removeAll { $0.id == id }; groups[i].settles.removeAll { $0.id == id }; return }
+        if demo, let i = cur {
+            groups[i].spends.removeAll { $0.id == id }; groups[i].settles.removeAll { $0.id == id }; groups[i].closes.removeAll { $0.id == id }
+            return
+        }
         guard let g = current else { return }
         let gid = g.id, rid = CKRecord.ID(recordName: id, zoneID: g.zone)
         busy = true; defer { busy = false }

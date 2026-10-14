@@ -120,7 +120,7 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                 // Cuộn hết: đáy nội dung cách mép trên hai nút đúng 16 (bằng lề hai bên). Nút cao 78, đáy nút cách mép màn 16, vùng
                 // an toàn dưới 34: 16 + 78 + 16 − 34 = 76. Danh sách giữ 120 (hàng cuối đã có sẵn khoảng 10 dưới thẻ)
-                .padding(.bottom, gridShown && film == nil && !store.sorted.isEmpty ? 76 : 120)
+                .padding(.bottom, gridShown && film == nil && !store.activity.isEmpty ? 76 : 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
             .statusBarEdge(on: film == nil)
@@ -161,7 +161,7 @@ struct HomeView: View {
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store).sheetCorners() }
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
         #if DEBUG
-        // Ảnh so sánh giữa các bản iOS (scripts/shots.sh): -shotOpen stats|settings|history|house|entry|voice|camera mở sẵn một màn
+        // Ảnh so sánh giữa các bản iOS (scripts/shots.sh): -shotOpen stats|settings|history|house|entry|voice|camera|balance|balancelog mở sẵn một màn
         .task {
             switch UserDefaults.standard.string(forKey: "shotOpen") {
             case "stats": showStats = true
@@ -170,9 +170,12 @@ struct HomeView: View {
             case "house": showHouse = true
             case "entry": entry = .new(cat: nil)
             case "camera": receiptScan = true
+            case "balance", "balancelog": balanceOpen = true
             case "voice": voiceFrom = CGRect(x: 181, y: 780, width: 205, height: 78)   // khung nút Quét QR trên iPhone 16 Pro
             default: break
             }
+            // -shotAdjust YES: đặt số dư rồi điều chỉnh một lần, để có các lần điều chỉnh
+            if UserDefaults.standard.bool(forKey: "shotAdjust"), store.adjusts.isEmpty { store.setBalance(5_000_000); store.setBalance(4_820_000) }
             // -shotWide an,cafe: kéo các ô danh mục đó dài cả hàng
             for k in (UserDefaults.standard.string(forKey: "shotWide") ?? "").split(separator: ",") { store.setWide(String(k), true) }
         }
@@ -501,7 +504,7 @@ struct HomeView: View {
                                                       removal: .opacity)
 
     @ViewBuilder private var recent: some View {
-        let list = Array(store.sorted.prefix(5))
+        let list = Array(store.activity.prefix(5))
         if list.isEmpty {
             // Chữ có **đậm** (Markdown): đưa qua LocalizedStringKey để Text vẽ đậm
             Text(LocalizedStringKey(L("Chưa có khoản nào.\nBấm **Quét QR** khi trả tiền,\nhoặc **Nhập** / bấm một danh mục ở trên.")))
@@ -516,7 +519,7 @@ struct HomeView: View {
             // Ba cột dài ngắn khác nhau: ô cuối của mỗi cột co giãn chiều cao để cả ba cột cùng dừng ở một đường (không cột nào
             // hụt để lại khoảng trống lởm chởm, không ô nào bị cắt). Đường đáy: ngang đáy cột ngắn nhất, nhưng ô cuối của cột nào
             // cũng cao ít nhất 90
-            let items = Array(store.sorted.prefix(12))
+            let items = Array(store.activity.prefix(12))
             let cols = (0..<3).map { c in items.enumerated().filter { $0.offset % 3 == c }.map(\.element) }
             let line: CGFloat? = gridCols.count == 3 ? gridCols.values.max().map { $0 + 8 + 90 } : nil
             HStack(alignment: .top, spacing: 8) {

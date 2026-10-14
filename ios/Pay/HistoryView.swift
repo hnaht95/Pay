@@ -152,8 +152,8 @@ struct HistoryView: View {
         let hit = { (e: Expense) -> Bool in
             q.isEmpty || Store.noteKey(e.n ?? "").contains(q) || Store.noteKey(Category.get(e.c).name).contains(q)
         }
-        // Lịch sử chung có cả tiền vào; mở từ một danh mục chi thì chỉ khoản chi
-        let dict = Dictionary(grouping: (category == nil ? store.all : store.items).filter { (want == nil || canon($0.c) == want) && hit($0) }) { cal.startOfDay(for: $0.date) }
+        // Lịch sử chung có cả khoản thu (không có các lần điều chỉnh số dư: xem ở bảng Số dư); mở từ một danh mục chi thì chỉ khoản chi
+        let dict = Dictionary(grouping: (category == nil ? store.all.filter { !$0.isAdjust } : store.items).filter { (want == nil || canon($0.c) == want) && hit($0) }) { cal.startOfDay(for: $0.date) }
         return dict.keys.sorted(by: >).map { ($0, dict[$0]!.sorted { $0.t > $1.t }) }
     }
 

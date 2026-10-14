@@ -6,6 +6,7 @@ struct BalanceSheet: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
     @State private var digits = ""
+    @State private var showLog = false
 
     private var amount: Int { Int(digits) ?? 0 }
 
@@ -15,11 +16,26 @@ struct BalanceSheet: View {
             Text(current == nil ? L("Số dư hiện có") : L("Điều chỉnh số dư")).font(.system(size: 21, weight: .bold))
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .padding(.top, 8)
-            Text(current.map { L("App đang tính: %@. Nhập số bạn đang có thật, phần chênh được ghi vào Lịch sử.", fmt($0)) }
+            Text(current.map { L("App đang tính: %@. Nhập số bạn đang có thật, phần chênh được ghi vào Các lần điều chỉnh.", fmt($0)) }
                  ?? L("Tổng tiền bạn đang có (tiền mặt, tài khoản…). Từ giờ app tự cộng khoản thu, trừ khoản chi."))
                 .font(.system(size: 15)).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).frame(maxWidth: .infinity)
                 .padding(.top, 4)
+            // Các lần đặt / điều chỉnh số dư (không hiện ở Gần đây, Lịch sử chi tiêu: không phải tiêu tiền)
+            if !store.adjusts.isEmpty {
+                Button { showLog = true } label: {
+                    HStack(spacing: 4) {
+                        Text(L("Các lần điều chỉnh · %ld", store.adjusts.count))
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                    }
+                    .font(.system(size: 15, weight: .medium))
+                    .padding(.horizontal, 14).padding(.vertical, 7)
+                    .background(Palette.pill, in: Capsule())
+                }
+                .buttonStyle(Pressable()).foregroundStyle(.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 12)
+            }
             Text(digits.isEmpty ? "0" : fmt(amount))
                 .font(.system(size: 40, weight: .bold)).kerning(-1)
                 .foregroundStyle(digits.isEmpty ? .tertiary : .primary)
@@ -47,6 +63,50 @@ struct BalanceSheet: View {
         }
         .padding(.horizontal, 16)
         .background(Palette.surface.ignoresSafeArea())
-        .onAppear { if let current, current > 0 { digits = String(current) } }
+        .onAppear {
+            if let current, current > 0 { digits = String(current) }
+            #if DEBUG
+            if UserDefaults.standard.string(forKey: "shotOpen") == "balancelog" { showLog = true }
+            #endif
+        }
+        .sheet(isPresented: $showLog) { BalanceLog().environmentObject(store).sheetGrabber() }
+    }
+}
+
+/// Các lần đặt / điều chỉnh số dư: ngày giờ, số tiền chênh, số dư sau lần đó. Vuốt để xoá (lỡ nhập sai)
+struct BalanceLog: View {
+    @EnvironmentObject var store: Store
+
+    var body: some View {
+        NavigationStack {
+            List {
+                let log = store.adjustLog
+                if log.isEmpty {
+                    Text(L("Chưa điều chỉnh số dư lần nào.")).font(.system(size: 15)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity).padding(40)
+                        .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                }
+                ForEach(log) { e in
+                    VStack(alignment: .leading, spacing: 6) {
+                        ExpenseRow(e: e, showDay: true)
+                        // Số dư ngay sau lần này
+                        if let before = store.balance(before: e.t + 1) {
+                            Text(L("Số dư sau đó: %@", fmt(before))).font(.system(size: 13)).foregroundStyle(.secondary)
+                                .padding(.leading, 12)
+                        }
+                    }
+                    .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .padding(.leading, -16).padding(.trailing, -8)
+            .padding(.horizontal, 16)
+            .background(Palette.surface.ignoresSafeArea())
+            .softTopEdge(fade: Palette.surface)
+            .screenTitle(L("Các lần điều chỉnh"))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
     }
 }

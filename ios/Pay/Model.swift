@@ -312,6 +312,10 @@ final class Store: ObservableObject {
 
     var bankApp: BankApp { BankData.apps.first { $0.id == appId } ?? BankData.apps[0] }
     var sorted: [Expense] { all.sorted { $0.t > $1.t } }
+    /// Khoản chi và khoản thu, mới nhất trước — không có các lần điều chỉnh số dư (chúng không phải tiêu tiền; xem ở bảng Số dư)
+    var activity: [Expense] { all.filter { !$0.isAdjust }.sorted { $0.t > $1.t } }
+    /// Các lần đặt / điều chỉnh số dư, mới nhất trước
+    var adjustLog: [Expense] { adjusts.sorted { $0.t > $1.t } }
 
     private func persist() {
         writeLocal()

@@ -395,6 +395,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     /// nên chậm hẳn; làm sẵn trong nền thì lần vuốt đầu cũng mở nhanh như các lần sau. Không bật camera (không có chấm xanh)
     static func prewarm() {
         guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        LatestPhoto.prewarm()
         let devices = [wide, ultra, front].compactMap { $0 }
         sessionQueue.async {
             let s = AVCaptureSession()

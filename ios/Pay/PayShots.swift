@@ -30,8 +30,26 @@ final class LatestPhoto: NSObject, ObservableObject, PHPhotoLibraryChangeObserve
 
     func stop() { PHPhotoLibrary.shared().unregisterChangeObserver(self) }
 
+    /// Đọc thư viện Ảnh làm trên hàng đợi riêng: lần đầu trong một lần mở app iOS phải nạp cơ sở dữ liệu ảnh (đo trên iPhone 15 Pro:
+    /// ~0,7 giây). Làm trên luồng chính thì chặn luôn việc bật camera, màn chụp mở xong mà khung xem đen gần một giây
+    nonisolated private static let queue = DispatchQueue(label: "pay.latestPhoto", qos: .utility)
+
+    /// Nạp sẵn thư viện Ảnh trong nền lúc app vừa mở (đã có quyền), để lần mở màn chụp đầu tiên ô ảnh hiện ngay
+    nonisolated static func prewarm() {
+        let s = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard s == .authorized || s == .limited else { return }
+        queue.async { _ = fetch() }
+    }
+
+    nonisolated private static func fetch() -> PHFetchResult<PHAsset> {
+        let o = PHFetchOptions()
+        o.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        o.fetchLimit = 2
+        return PHAsset.fetchAssets(with: .image, options: o)
+    }
+
     private func begin() {
-        PHPhotoLibrary.shared().register(self)
+        Self.queue.async { PHPhotoLibrary.shared().register(self) }
         load()
     }
 
@@ -40,17 +58,21 @@ final class LatestPhoto: NSObject, ObservableObject, PHPhotoLibraryChangeObserve
     }
 
     private func load() {
-        let o = PHFetchOptions()
-        o.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        o.fetchLimit = 2
-        let found = PHAsset.fetchAssets(with: .image, options: o)
-        guard found.count > 0 else { images = []; return }
-        if images.count != found.count { images = Array(repeating: nil, count: found.count) }
+        Self.queue.async {
+            let found = Self.fetch()
+            let assets = (0..<found.count).map { found[$0] }
+            Task { @MainActor in self.show(assets) }
+        }
+    }
+
+    private func show(_ assets: [PHAsset]) {
+        guard !assets.isEmpty else { images = []; return }
+        if images.count != assets.count { images = Array(repeating: nil, count: assets.count) }
         let r = PHImageRequestOptions()
         r.deliveryMode = .opportunistic
         r.isNetworkAccessAllowed = true
-        for i in 0..<found.count {
-            PHImageManager.default().requestImage(for: found[i], targetSize: CGSize(width: 180, height: 240), contentMode: .aspectFill, options: r) { img, _ in
+        for (i, a) in assets.enumerated() {
+            PHImageManager.default().requestImage(for: a, targetSize: CGSize(width: 180, height: 240), contentMode: .aspectFill, options: r) { img, _ in
                 Task { @MainActor in if let img, i < self.images.count { self.images[i] = img } }
             }
         }

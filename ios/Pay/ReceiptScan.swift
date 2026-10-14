@@ -575,6 +575,12 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         #endif
         guard configured else { return }
         onPhoto = done
+        // Camera trước: khung xem hiện như soi gương, nên ảnh chụp cũng lật gương cho giống hệt cái đã thấy (mặc định iOS trả ảnh
+        // không lật, chụp xong thấy ảnh bị đảo ngược so với lúc ngắm)
+        if let c = output.connection(with: .video), c.isVideoMirroringSupported {
+            c.automaticallyAdjustsVideoMirroring = false
+            c.isVideoMirrored = device?.position == .front
+        }
         let s = AVCapturePhotoSettings()
         if output.supportedFlashModes.contains(flashMode) { s.flashMode = flashMode }
         output.capturePhoto(with: s, delegate: self)

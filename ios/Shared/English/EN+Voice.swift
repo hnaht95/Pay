@@ -15,7 +15,7 @@ extension English {
         "Bấm Nói lại để nói khoản khác.": "Tap Try Again to log something else.",
         "Vui lòng nói số tiền để ghi, ví dụ: \"ba lăm nghìn cà phê\"": "Please say an amount to log, e.g. \"35k coffee\"",
         "Đã nghe: \"%@\"": "Heard: \"%@\"",
-        "Nói ví dụ: \"ba lăm nghìn cà phê\"": "Say e.g. \"35k coffee\"",
+        "Nói ví dụ: \"ba lăm nghìn cà phê\" hoặc \"nhận lương mười lăm triệu\"": "Say e.g. \"35k coffee\" or \"salary 15 million\"",
         "Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.": "Go to Settings › Pay and turn on Microphone and Speech Recognition.",
         "Cần quyền micro": "Microphone access needed",
         "Đang bật micro…": "Starting microphone…",

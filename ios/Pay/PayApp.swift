@@ -88,7 +88,7 @@ struct CardPaymentIntent: AppIntent {
         }
         let store = Store.shared
         let note = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        store.add(amount: a, note: note, cat: store.guessCategory(note), toast: false)
+        store.add(amount: a, note: note, cat: store.guessEntry(note), toast: false)
         return .result(dialog: IntentDialog(stringLiteral: L("Đã ghi %@ %@.", fmt(a), note.isEmpty ? L("giao dịch thẻ") : note)))
     }
 

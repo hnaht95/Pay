@@ -51,6 +51,11 @@ struct HomeView: View {
     @AppStorage(HeroColor.key) private var heroTone = -1
     @AppStorage(HeroColor.barKey) private var heroBarTone = -1
     @State private var pickingHero = false
+    /// Đang đặt / điều chỉnh số dư hiện có
+    @State private var balanceOpen = false
+    /// Số dư đang hiện (mặc định che bằng chấm); tự che lại sau ít giây hoặc khi rời app
+    @State private var balanceShown = false
+    @State private var hideBalance: Task<Void, Never>?
     /// Danh mục đang mở danh sách khoản chi (chạm vào ô danh mục)
     @State private var listing: Category?
     @Environment(\.scenePhase) private var scenePhase
@@ -100,6 +105,7 @@ struct HomeView: View {
         }
         .appMenu($menu)
         .sheet(isPresented: $pickingHero) { HeroColorSheet() }
+        .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         .overlay {
             // Phim: bảng nhấn giữ theo trạng thái phim đưa vào
             if let m = film?.menu, m.shown > 0 {
@@ -172,7 +178,7 @@ struct HomeView: View {
             // Mỗi lượt một thẻ mới hẳn (micro, trạng thái nghe riêng), kể cả khi thẻ cũ còn đang hiện
             .id(voiceRound)
         }
-        .onChange(of: scenePhase) { _, p in if p == .active { wake() } }
+        .onChange(of: scenePhase) { _, p in if p == .active { wake() } else { balanceShown = false } }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in wake() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }
@@ -259,7 +265,6 @@ struct HomeView: View {
 
     private func hero(_ now: Date) -> some View {
         let month = store.monthItems(now).reduce(0) { $0 + $1.a }
-        let n = store.count(on: now)
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(L("Hôm nay đã chi"))
@@ -272,17 +277,30 @@ struct HomeView: View {
                     .font(.system(size: 46, weight: .bold)).kerning(-1.5)
                     .minimumScaleFactor(0.5).lineLimit(1)
             }
-            .padding(.top, 8).padding(.bottom, 14)
-            HStack {
-                Text(L("%@: %@", monthLabel(now), fmt(month)))
-                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(.primary)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(heroTone < 0 ? Palette.pill : Color.primary.opacity(0.1), in: Capsule())
-                    .lineLimit(1)
-                Spacer()
-                if n > 0 { Text(n == 1 ? L("1 khoản") : L("%d khoản", n)).font(.system(size: 15)).foregroundStyle(.secondary) }
+            .padding(.top, 8)
+            let bs = store.budgetStatus(now)
+            if let bs {
+                BudgetBar(s: bs, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
+                    .padding(.top, 14)
             }
-            if let b = store.budgetStatus(now) { budget(b, now).padding(.top, 16) }
+            // Hai cột cùng hàng: trái đã chi cả tháng / ngân sách (vượt thì số chi đỏ), phải số dư (chạm để đặt / chỉnh).
+            // Hai bên luôn cùng một cỡ chữ: số dài quá thì cả hai cùng hạ một nấc, không bên nào co riêng, không xuống hàng
+            ViewThatFits(in: .horizontal) {
+                ForEach([17, 15, 13] as [CGFloat], id: \.self) { size in
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(L("Đã chi")).font(.system(size: 13)).foregroundStyle(.secondary)
+                            (Text(fmt(month)).foregroundStyle(bs?.level == .over ? Palette.danger : Color.primary)
+                             + Text(bs.map { "/" + fmt($0.budget) } ?? "").foregroundStyle(.secondary))
+                                .font(.system(size: size, weight: .semibold))
+                        }
+                        .lineLimit(1).fixedSize()
+                        Spacer(minLength: 0)
+                        if film == nil { balanceColumn(size) }
+                    }
+                }
+            }
+            .padding(.top, 14)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -291,20 +309,31 @@ struct HomeView: View {
         .environment(\.colorScheme, HeroColor.scheme(heroTone))
     }
 
-    /// Thanh ngân sách tháng: còn / vượt bao nhiêu, mỗi ngày còn tiêu được bao nhiêu.
-    private func budget(_ b: BudgetStatus, _ now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            BudgetBar(s: b, height: 6, track: heroTone < 0 ? Palette.pill : Color.primary.opacity(0.12), fill: HeroColor.bar(heroBarTone))
-            HStack(spacing: 4) {
-                // Chữ giữ màu chữ thường cho dễ đọc; chỉ khi vượt mới đỏ, kèm biểu tượng
-                if b.level == .over { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13)).foregroundStyle(Palette.danger) }
-                Text(b.remaining >= 0 ? L("Còn %@", fmt(b.remaining)) : L("Vượt %@", fmt(-b.remaining))).font(.system(size: 15, weight: .semibold)).foregroundStyle(b.level == .over ? Palette.danger : .primary)
-                Spacer()
-                Text(b.level == .over ? L("Ngân sách %@", fmt(b.budget)) : L("%@/ngày", fmt(b.perDay(at: now))))
-                    .font(.system(size: 15)).foregroundStyle(.secondary)
+    /// Cột số dư hiện có: chưa đặt thì mời nhập; chạm để đặt / chỉnh
+    /// Số dư che bằng chấm, chạm để hiện (8 giây rồi tự che lại); đang hiện thì chạm để đặt / chỉnh. Chưa đặt thì mời nhập
+    private func balanceColumn(_ size: CGFloat) -> some View {
+        let b = store.balance
+        return Button {
+            guard b != nil, !balanceShown else { balanceOpen = true; return }
+            withAnimation(.snappy(duration: 0.2)) { balanceShown = true }
+            hideBalance?.cancel()
+            hideBalance = Task { try? await Task.sleep(for: .seconds(8)); if !Task.isCancelled { withAnimation(.snappy(duration: 0.2)) { balanceShown = false } } }
+        } label: {
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
+                if let b {
+                    Text(balanceShown ? fmt(b) : "••••••").font(.system(size: size, weight: .semibold))
+                        .foregroundStyle(balanceShown && b < 0 ? Palette.danger : Color.primary)
+                        .contentTransition(.opacity)
+                } else {
+                    Text(L("Nhập số dư")).font(.system(size: size, weight: .semibold)).foregroundStyle(.secondary)
+                }
             }
-            .lineLimit(1).minimumScaleFactor(0.8)
+            .lineLimit(1).fixedSize()
+            .contentShape(Rectangle())
         }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
     }
 
     private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {
@@ -438,7 +467,9 @@ struct HomeView: View {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
                 ForEach(list) { e in
-                    TapHold(tap: { entry = .edit(e) }, hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
+                    // Khoản điều chỉnh số dư: chạm mở bảng số dư (không sửa như khoản chi)
+                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+                            hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
                     .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
@@ -756,7 +787,13 @@ struct ExpenseRow: View {
             Spacer(minLength: 8)
             // Bên phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh, mờ ngăn giữa). Luôn hiện đủ: phần tên nhường chỗ
             VStack(alignment: .trailing, spacing: 3) {
-                Text(fmt(e.a)).font(.rowAmount).monospacedDigit().lineLimit(1)
+                // Khoản chi: chữ đỏ. Khoản thu: mũi tên lên, chữ xanh lá. Điều chỉnh số dư: mũi tên lên / xuống, chữ xám
+                HStack(spacing: 3) {
+                    if e.isIncome || e.isAdjust { AmountArrow(up: e.signed >= 0) }
+                    Text(fmt(e.a)).font(.rowAmount).monospacedDigit()
+                }
+                .lineLimit(1)
+                .foregroundStyle(e.isIncome ? AnyShapeStyle(Palette.goodInk) : e.isAdjust ? AnyShapeStyle(.secondary) : AnyShapeStyle(Palette.danger))
                 HStack(spacing: 9) {
                     let parts = when
                     ForEach(Array(parts.enumerated()), id: \.offset) { i, p in

@@ -430,7 +430,7 @@ struct VoiceEntryView: View {
     @ViewBuilder private var amountBlock: some View {
         // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
         let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessCategory($0.note)) }
+            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessEntry($0.note)) }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 // Số đổi: app dùng hiệu ứng số của iOS; phim tự vẽ số cũ trôi lên, số mới trồi lên
@@ -443,7 +443,12 @@ struct VoiceEntryView: View {
                         // Phim: giữ cùng cách xếp chữ số như lúc đang chuyển, để chuyển xong con số không nhảy chỗ
                         digits(now, dim: live == nil, elapsed: 10, leaving: false)
                     } else {
-                        number(now, dim: live == nil)
+                        // Khoản thu: mũi tên lên, chữ xanh như ở danh sách
+                        let inc = live.map { Category.isIncome($0.cat) } ?? false
+                        HStack(spacing: 4) {
+                            if inc && live != nil { AmountArrow(up: true, size: 46).foregroundStyle(Palette.goodInk) }
+                            number(now, dim: live == nil, income: inc)
+                        }
                     }
                 }
             }
@@ -492,9 +497,9 @@ struct VoiceEntryView: View {
         }
     }
 
-    private func number(_ s: String, dim: Bool) -> some View {
+    private func number(_ s: String, dim: Bool, income: Bool = false) -> some View {
         Text(s).font(.system(size: 46, weight: .bold)).kerning(-1.5)
-            .foregroundStyle(dim ? Color.secondary.opacity(0.5) : .primary)
+            .foregroundStyle(dim ? Color.secondary.opacity(0.5) : income ? Palette.goodInk : .primary)
             .contentTransition(.numericText())
             .minimumScaleFactor(0.5).lineLimit(1)
     }
@@ -518,7 +523,7 @@ struct VoiceEntryView: View {
     private var hint: String {
         if undone { return L("Bấm Nói lại để nói khoản khác.") }
         if notUnderstood { return mic.text.isEmpty ? L("Vui lòng nói số tiền để ghi, ví dụ: \"ba lăm nghìn cà phê\"") : L("Đã nghe: \"%@\"", mic.text) }
-        if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\"") : heard }
+        if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\" hoặc \"nhận lương mười lăm triệu\"") : heard }
         if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
         return ""
     }

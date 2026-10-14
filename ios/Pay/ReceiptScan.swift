@@ -5,8 +5,8 @@ import Photos
 import PhotosUI
 import SwiftUI
 
-/// Màn chụp hoá đơn / ảnh đính kèm, kiểu app máy ảnh: khung xem bo góc có lưới, nhiệt độ màu · thu phóng · độ sáng ngay trên
-/// khung, hàng tỉ lệ / hẹn giờ / đèn / đổi camera, nút chụp to ở giữa, chọn ảnh có sẵn bên trái, bộ lọc bên phải.
+/// Màn chụp hoá đơn / ảnh đính kèm, tối giản: khung xem bo góc (3:4), thu phóng ngay trên khung, nút chụp to ở giữa,
+/// chọn ảnh có sẵn bên trái. Không có bộ lọc, lưới, tỉ lệ, hẹn giờ, đèn, đổi camera, nhiệt độ màu / độ sáng.
 /// Không dùng máy quét tài liệu của iOS: nó có sẵn bộ lọc / chế độ chụp không ẩn được
 struct ReceiptCamera: View {
     var done: (UIImage?) -> Void
@@ -18,21 +18,12 @@ struct ReceiptCamera: View {
     @State private var review: CropItem?
     /// Ảnh đang căn là ảnh vừa chụp (căn xong mới lưu vào ảnh Pay đã chụp / Ảnh của máy); ảnh chọn từ thư viện thì không lưu lại
     @State private var reviewIsShot = false
-    @AppStorage("cam.grid") private var grid = true
-    @AppStorage("cam.ratio") private var ratio = CamRatio.r34.rawValue
-    @AppStorage("cam.timer") private var timer = 0
-    @AppStorage("cam.filter") private var filterRaw = CamFilter.none.rawValue
-    /// Đang chỉnh nhiệt độ màu hay độ sáng (thanh trượt hiện trên khung)
-    @State private var adjusting: CamAdjust?
-    @State private var showFilters = false
-    @State private var countdown = 0
-    @State private var showShots = false
     @State private var dialShown = false
     @State private var dragStartZoom: CGFloat?
     @State private var dialHide: DispatchWorkItem?
 
-    private var filter: CamFilter { CamFilter(rawValue: filterRaw) ?? .none }
-    private var aspect: CamRatio { CamRatio(rawValue: ratio) ?? .r34 }
+    /// Khung cố định 3:4 (ảnh dọc), như ảnh của camera
+    private let aspect = CamRatio.r34
 
     var body: some View {
         ZStack {
@@ -42,8 +33,6 @@ struct ReceiptCamera: View {
                 Spacer(minLength: 8)
                 viewfinder
                 Spacer(minLength: 8)
-                if showFilters { filterRow.transition(.move(edge: .bottom).combined(with: .opacity)) }
-                toolRow.padding(.top, 14)
                 bottomRow.padding(.top, 22).padding(.bottom, 8)
             }
             .padding(.horizontal, 16)
@@ -51,15 +40,8 @@ struct ReceiptCamera: View {
         .overlay { Color.white.opacity(flash ? 0.7 : 0).ignoresSafeArea().allowsHitTesting(false) }
         .preferredColorScheme(.dark)
         // Chọn ảnh có sẵn (ảnh Pay đã chụp hoặc thư viện máy) cũng qua bước căn lại; chờ bảng chọn đóng hẳn rồi mới mở
-        .sheet(isPresented: $showShots) {
-            PayShotsSheet { img in
-                reviewIsShot = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { review = CropItem(image: img) }
-            }
-        }
-        .onAppear { cam.filter = filter; cam.start() }
+        .onAppear { cam.filter = .none; cam.start() }
         .onDisappear { cam.stop() }
-        .onChange(of: filterRaw) { _, _ in cam.filter = filter }
         .task(id: photo) {
             guard let item = photo, let data = try? await item.loadTransferable(type: Data.self), !Task.isCancelled,
                   let img = UIImage(data: data) else { return }
@@ -75,7 +57,6 @@ struct ReceiptCamera: View {
                 photo = nil
                 guard let img else { return }
                 if reviewIsShot {
-                    PayShots.save(img)
                     if UserDefaults.standard.object(forKey: CamFilter.saveKey) as? Bool ?? true { CamFilter.saveToPhotos(img) }
                 }
                 finish(img)
@@ -92,27 +73,6 @@ struct ReceiptCamera: View {
             }
             .accessibilityLabel(L("Đóng"))
             Spacer()
-            Button { toggle(.warmth) } label: {
-                Image(systemName: "thermometer.medium").font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(adjusting == .warmth || cam.warmth != 0 ? Color(hex: 0x61BE6E) : .white)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel(L("Nhiệt độ màu"))
-            Button { toggle(.exposure) } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "sun.max").font(.system(size: 19, weight: .medium))
-                    if cam.exposure != 0 {
-                        Text(String(format: "%+.1f", cam.exposure)).font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    }
-                }
-                .foregroundStyle(adjusting == .exposure || cam.exposure != 0 ? Color(hex: 0x61BE6E) : .white)
-                .frame(minWidth: 44, minHeight: 44)
-            }
-            .accessibilityLabel(L("Độ sáng"))
-            Button { grid.toggle(); Haptic.select() } label: {
-                Image(systemName: grid ? "squareshape.split.3x3" : "square").font(.system(size: 20, weight: .medium)).frame(width: 44, height: 44)
-            }
-            .accessibilityLabel(L("Lưới"))
         }
         .foregroundStyle(.white)
         .buttonStyle(Pressable())
@@ -126,16 +86,8 @@ struct ReceiptCamera: View {
             Color(hex: 0x1C1C1E)
             CameraPreview(session: cam.session)
             // Bộ lọc khác "Gốc": khung xem vẽ lại từng hình đã qua bộ lọc (giống ảnh sẽ chụp)
-            if filter != .none, let f = cam.frame {
-                Image(decorative: f, scale: 1).resizable().scaledToFill()
-            }
-            if grid { GridLines().stroke(.white.opacity(0.45), lineWidth: 1).allowsHitTesting(false) }
             if let e = cam.error {
                 Text(e).font(.system(size: 16, weight: .medium)).foregroundStyle(.white).multilineTextAlignment(.center).padding(28)
-            }
-            if countdown > 0 {
-                Text("\(countdown)").font(.system(size: 96, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                    .contentTransition(.numericText()).shadow(radius: 8)
             }
             // Vòng tiêu cự (đang vuốt trái / phải ở chỗ số tiêu cự): nửa vòng tròn chia vạch như Camera của iOS
             if dialShown {
@@ -146,15 +98,12 @@ struct ReceiptCamera: View {
             }
             VStack(spacing: 10) {
                 Spacer()
-                if let a = adjusting, !dialShown { slider(a).transition(.opacity) }
                 zoomControl.padding(.bottom, 10)
             }
         }
         .aspectRatio(aspect.value, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
-        .animation(.snappy(duration: 0.25), value: ratio)
-        .animation(.snappy(duration: 0.2), value: adjusting)
         .animation(.easeOut(duration: 0.2), value: dialShown)
     }
 
@@ -196,146 +145,49 @@ struct ReceiptCamera: View {
         return (s.hasPrefix("0.") ? String(s.dropFirst()) : s) + "x"
     }
 
-    private func pillBg(_ on: Bool) -> Color { on ? Color(hex: 0x61BE6E).opacity(0.9) : Color(hex: 0x2C2C2E).opacity(0.8) }
-
-    private func toggle(_ a: CamAdjust) {
-        Haptic.select()
-        adjusting = adjusting == a ? nil : a
-    }
-
-    private func slider(_ a: CamAdjust) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: a == .warmth ? "snowflake" : "sun.min").font(.system(size: 14))
-            Slider(value: a == .warmth ? Binding(get: { Double(cam.warmth) }, set: { cam.setWarmth(Float($0)) })
-                                       : Binding(get: { Double(cam.exposure) }, set: { cam.setExposure(Float($0)) }),
-                   in: a == .warmth ? -1...1 : -2...2)
-                .tint(Color(hex: 0x61BE6E))
-            Image(systemName: a == .warmth ? "flame" : "sun.max.fill").font(.system(size: 14))
-            Button { a == .warmth ? cam.setWarmth(0) : cam.setExposure(0); Haptic.select() } label: {
-                Text(L("Đặt lại")).font(.system(size: 13, weight: .semibold))
-            }
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 16).padding(.vertical, 10)
-        .background(Color(hex: 0x2C2C2E).opacity(0.85), in: Capsule())
-        .padding(.horizontal, 14)
-    }
-
-    // MARK: Hàng công cụ: tỉ lệ, hẹn giờ, đèn, đổi camera
-
-    private var toolRow: some View {
-        HStack {
-            Button { ratio = aspect.next.rawValue; Haptic.select() } label: {
-                Text(aspect.label).font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .frame(width: 52, height: 40)
-                    .overlay(CornerMarks().stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round)))
-            }
-            .accessibilityLabel(L("Tỉ lệ ảnh"))
-            Spacer()
-            Button { timer = timer == 0 ? 3 : timer == 3 ? 10 : 0; Haptic.select() } label: {
-                ZStack {
-                    Image(systemName: "timer").font(.system(size: 24))
-                    if timer > 0 {
-                        Text("\(timer)").font(.system(size: 11, weight: .bold)).foregroundStyle(.black)
-                            .padding(.horizontal, 4).background(Color(hex: 0x61BE6E), in: Capsule()).offset(x: 14, y: -12)
-                    }
-                }
-                .frame(width: 52, height: 44)
-            }
-            .accessibilityLabel(L("Hẹn giờ"))
-            Spacer()
-            Button { cam.nextFlash(); Haptic.select() } label: {
-                Image(systemName: cam.flashMode == .on ? "bolt.fill" : cam.flashMode == .auto ? "bolt.badge.automatic" : "bolt.slash")
-                    .font(.system(size: 24)).foregroundStyle(cam.flashMode == .on ? Color(hex: 0xFFD43B) : .white)
-                    .frame(width: 52, height: 44)
-            }
-            .accessibilityLabel(L("Đèn flash"))
-            Spacer()
-            Button { cam.flip(); Haptic.select() } label: {
-                Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 24)).frame(width: 52, height: 44)
-            }
-            .accessibilityLabel(L("Đổi camera"))
-        }
-        .foregroundStyle(.white)
-        .buttonStyle(Pressable())
-        .padding(.horizontal, 24)
-    }
-
     // MARK: Hàng dưới: chọn ảnh, chụp, bộ lọc
 
     private var bottomRow: some View {
         HStack {
-            // Ảnh mới nhất Pay đã chụp; chạm: danh sách ảnh Pay đã chụp (trong đó vẫn chọn được từ thư viện máy)
-            Button { showShots = true } label: { LatestShotTile() }
+            // Ảnh mới nhất trong app Ảnh (khung dọc bo góc); chạm: chọn ảnh từ thư viện máy, xong qua bước căn lại như ảnh chụp
+            PhotosPicker(selection: $photo, matching: .images) { LatestPhotoTile() }
                 .buttonStyle(Pressable())
-                .accessibilityLabel(L("Ảnh đã chụp"))
+                .frame(width: 58, height: 58)
+                .accessibilityLabel(L("Chọn ảnh"))
             Spacer()
             Button(action: shoot) {
                 Capsule().fill(Color(hex: 0xE8EBDD))
-                    .overlay(Image(systemName: "circle.grid.3x3.fill").font(.system(size: 22)).foregroundStyle(.black.opacity(0.25)))
+                    // Chấm trang trí: 2 hàng × 3 chấm, cách đều, căn giữa nút
+                    .overlay {
+                        Grid(horizontalSpacing: 9, verticalSpacing: 9) {
+                            ForEach(0..<2, id: \.self) { _ in
+                                GridRow { ForEach(0..<3, id: \.self) { _ in Circle().frame(width: 7, height: 7) } }
+                            }
+                        }
+                        .foregroundStyle(.black.opacity(0.25))
+                    }
                     .frame(width: 170, height: 76)
                     .padding(6)
                     .background(Capsule().fill(.white.opacity(0.08)))
             }
             .buttonStyle(Pressable())
             .accessibilityLabel(L("Chụp"))
-            .disabled(countdown > 0)
             Spacer()
-            Button { withAnimation(.snappy) { showFilters.toggle() }; Haptic.select() } label: {
-                VStack(spacing: 4) {
-                    Image(systemName: "camera.filters").font(.system(size: 24))
-                        .foregroundStyle(filter == .none ? .white : Color(hex: 0x61BE6E))
-                    Text(filter.title).font(.system(size: 12, weight: .semibold)).lineLimit(1)
-                }
-                .foregroundStyle(.white)
-                .frame(width: 58, height: 58)
-            }
-            .buttonStyle(Pressable())
-            .accessibilityLabel(L("Bộ lọc"))
+            // Chỗ trống cùng cỡ ô ảnh bên trái, để nút chụp nằm giữa
+            Color.clear.frame(width: 58, height: 58)
         }
-    }
-
-    private var filterRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(CamFilter.allCases, id: \.self) { f in
-                    Button { filterRaw = f.rawValue; Haptic.select() } label: {
-                        Text(f.title).font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(f == filter ? .black : .white)
-                            .padding(.horizontal, 14).frame(height: 34)
-                            .background(f == filter ? Color(hex: 0x61BE6E) : .white.opacity(0.14), in: Capsule())
-                    }
-                    .buttonStyle(Pressable())
-                }
-            }
-            .padding(.horizontal, 2)
-        }
-        .padding(.top, 6)
     }
 
     // MARK: Chụp
 
-    private func shoot() {
-        guard countdown == 0 else { return }
-        if timer > 0 {
-            countdown = timer
-            Task {
-                while countdown > 0 {
-                    Haptic.select()
-                    try? await Task.sleep(for: .seconds(1))
-                    withAnimation { countdown -= 1 }
-                }
-                snap()
-            }
-        } else { snap() }
-    }
+    private func shoot() { snap() }
 
     private func snap() {
         // Rung một nhịp như nút chụp của Camera, màn loé trắng thoáng qua
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         flash = true
         withAnimation(.easeOut(duration: 0.35)) { flash = false }
-        let r = aspect.value, f = filter
+        let r = aspect.value, f = CamFilter.none
         cam.capture { img in
             guard let img else { finish(nil); return }
             let out = CamFilter.develop(img, ratio: r, filter: f)
@@ -352,8 +204,6 @@ struct ReceiptCamera: View {
         done(img)
     }
 }
-
-enum CamAdjust { case warmth, exposure }
 
 /// Tỉ lệ khung (rộng / cao, ảnh dọc)
 enum CamRatio: String, CaseIterable {
@@ -424,31 +274,6 @@ enum CamFilter: String, CaseIterable {
         ci = filter.apply(ci.cropped(to: crop))
         guard let cg = context.createCGImage(ci, from: ci.extent) else { return up }
         return UIImage(cgImage: cg)
-    }
-}
-
-/// Lưới 3 × 3
-private struct GridLines: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        for i in 1...2 {
-            let x = r.minX + r.width * CGFloat(i) / 3, y = r.minY + r.height * CGFloat(i) / 3
-            p.move(to: CGPoint(x: x, y: r.minY)); p.addLine(to: CGPoint(x: x, y: r.maxY))
-            p.move(to: CGPoint(x: r.minX, y: y)); p.addLine(to: CGPoint(x: r.maxX, y: y))
-        }
-        return p
-    }
-}
-
-/// Bốn góc ngoặc quanh chữ tỉ lệ
-private struct CornerMarks: Shape {
-    func path(in r: CGRect) -> Path {
-        let l: CGFloat = 8
-        var p = Path()
-        for (cx, cy, dx, dy) in [(r.minX, r.minY, 1.0, 1.0), (r.maxX, r.minY, -1.0, 1.0), (r.minX, r.maxY, 1.0, -1.0), (r.maxX, r.maxY, -1.0, -1.0)] {
-            p.move(to: CGPoint(x: cx + l * dx, y: cy)); p.addLine(to: CGPoint(x: cx, y: cy)); p.addLine(to: CGPoint(x: cx, y: cy + l * dy))
-        }
-        return p
     }
 }
 
@@ -665,24 +490,36 @@ struct ZoomDial: View {
                 let a = (deg - 90) * .pi / 180
                 return CGPoint(x: c.x + rad * CGFloat(cos(a)), y: c.y + rad * CGFloat(sin(a)))
             }
-            // Vạch nhỏ
-            var v = min
-            while v <= max + 0.001 {
-                let deg = angle(v)
-                if abs(deg) < 80 {
-                    let major = Self.majors.contains { abs($0 - v) < 0.01 }
-                    var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - (major ? 20 : 11)))
-                    ctx.stroke(p, with: .color(.white.opacity(major ? 0.95 : 0.5)), lineWidth: major ? 2 : 1)
-                }
-                v += v < 1 ? 0.05 : v < 3 ? 0.1 : v < 10 ? 0.5 : 1
-                v = (v * 100).rounded() / 100
+            // Vạch nhỏ cách đều nhau theo góc (thang log: mỗi lần gấp đôi tiêu cự là 12 vạch), mốc ở 1x nên vạch đứng yên trên vòng
+            // khi xoay; chỉ vẽ trong khoảng máy làm được. Vạch quá gần một nấc chính thì bỏ, nấc chính vẽ riêng đúng vị trí của nó.
+            // Hai mép mờ dần
+            let step = Self.perDouble / 12
+            let lo = log2(Double(min)) * Self.perDouble, hi = log2(Double(max)) * Self.perDouble
+            let majorAngles = Self.majors.filter { $0 >= min - 0.01 && $0 <= max + 0.01 }.map { log2(Double($0)) * Self.perDouble }
+            let cur = log2(Double(zoom)) * Self.perDouble
+            // Góc của mép khung (vòng rộng hơn khung): vạch, số chỉ vẽ trong phần nhìn thấy, mờ dần tới mép
+            let edge = asin(Double(Swift.min(1, size.width / 2 / r))) * 180 / .pi
+            func fade(_ deg: Double) -> Double { Swift.max(0, Swift.min(1, (edge - abs(deg)) / 12)) }
+            var k = (lo / step).rounded(.up)
+            while k * step <= hi + 0.001 {
+                let at = k * step, deg = at - cur
+                k += 1
+                guard abs(deg) < edge, !majorAngles.contains(where: { abs($0 - at) < step * 0.5 }) else { continue }
+                var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - 11))
+                ctx.stroke(p, with: .color(.white.opacity(0.5 * fade(deg))), lineWidth: 1)
+            }
+            for at in majorAngles {
+                let deg = at - cur
+                guard abs(deg) < edge else { continue }
+                var p = Path(); p.move(to: point(deg, r)); p.addLine(to: point(deg, r - 20))
+                ctx.stroke(p, with: .color(.white.opacity(0.95 * fade(deg))), style: StrokeStyle(lineWidth: 2, lineCap: .round))
             }
             // Số ở nấc chính (trừ chỗ đang chọn, chỗ đó vẽ số vàng)
             for m in Self.majors where m >= min - 0.01 && m <= max + 0.01 {
                 let deg = angle(m)
-                guard abs(deg) < 75, abs(deg) > 9 else { continue }
+                guard abs(deg) < edge - 6, abs(deg) > 9 else { continue }
                 let s = m < 1 ? "0,5" : "\(Int(m))"
-                ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white),
+                ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(fade(deg))),
                          at: point(deg, r - 38))
             }
             // Nấc đang chọn: tam giác vàng ở đỉnh, số và mm

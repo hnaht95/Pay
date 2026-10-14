@@ -9,6 +9,9 @@ struct SettingsView: View {
     /// Tài khoản nhận tiền của mình, cho widget mã QR
     @State private var myQR = MyQR.load()
     @State private var importing = false
+    /// Đang chọn file CSV (nhập từ app khác / Excel) thay vì file sao lưu
+    @State private var importingCSV = false
+    @State private var csvResult: CSVImport.Result?
     @State private var confirmErase = false
     @State private var syncing = false
     @State private var jsonURL: URL?
@@ -62,8 +65,6 @@ struct SettingsView: View {
                     LabeledContent { Text(version).foregroundStyle(.secondary) } label: {
                         row(L("Phiên bản"))
                     }
-                } footer: {
-                    Text(L("Pay — ghi chi tiêu tối giản: gõ 35k cafe hoặc quét VietQR."))
                 }
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
@@ -74,9 +75,18 @@ struct SettingsView: View {
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
         // File sao lưu có cả khoản định kỳ và danh mục đã học: đổi gì cũng làm lại
-        .task(id: [store.items.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-            if case .success(let url) = result { store.importBackup(from: url) }
+        .task(id: [store.all.hashValue, store.rules.hashValue, store.memo.hashValue]) { jsonURL = store.exportJSON(); csvURL = store.exportCSV() }
+        // Một bảng chọn file cho cả hai việc (hai fileImporter trên cùng màn thì chỉ cái sau chạy)
+        .fileImporter(isPresented: Binding(get: { importing || importingCSV }, set: { if !$0 { importing = false; importingCSV = false } }),
+                      allowedContentTypes: importingCSV ? [.commaSeparatedText, .tabSeparatedText, .plainText] : [.json]) { result in
+            guard case .success(let url) = result else { return }
+            // Theo đuôi file (cờ đang chọn CSV đã bị tắt lúc bảng chọn file đóng, trước khi tới đây)
+            if url.pathExtension.lowercased() == "json" { store.importBackup(from: url); return }
+            switch CSVImport.read(url, store: store) {
+            case .success(let r): csvResult = r
+            case .failure(.noColumns): store.showError(L("Không tìm thấy cột ngày và số tiền trong file"))
+            case .failure: store.showError(L("Không đọc được file CSV"))
+            }
         }
         .confirmationDialog(L("Xoá tất cả khoản chi?"), isPresented: $confirmErase, titleVisibility: .visible) {
             Button(L("Xoá tất cả"), role: .destructive) { store.eraseAll() }
@@ -84,6 +94,7 @@ struct SettingsView: View {
             Text((store.cloudOn ? L("Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá.") : L("Không hoàn tác được."))
                  + (store.rules.values.contains(where: \.on) ? " " + L("Khoản định kỳ cũng dừng tự ghi.") : "") + " " + L("Nên sao lưu trước."))
         }
+        .sheet(item: $csvResult) { CSVImportSheet(result: $0).environmentObject(store).sheetGrabber() }
         .alert(L("Ngân sách tháng"), isPresented: $typingBudget) {
             TextField(L("Ví dụ 8.000.000"), text: $budgetText).keyboardType(.numberPad)
             Button(L("Huỷ"), role: .cancel) {}
@@ -109,7 +120,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Group {
                     Text(L("Tháng %@: %@ · %@ khoản", monthName(now), fmt(month.reduce(0) { $0 + $1.a }), String(month.count)))
-                    Text(L("Tổng cộng %@ khoản đã ghi", String(store.items.count)))
+                    Text(L("Tổng cộng %@ khoản đã ghi", String(store.all.count)))
                 }
                 .font(.system(size: 15)).foregroundStyle(.secondary)
             }
@@ -391,6 +402,7 @@ struct SettingsView: View {
                 ShareLink(item: jsonURL) { row(L("Sao lưu ra file")) }
             }
             Button { importing = true } label: { row(L("Khôi phục từ file sao lưu")) }
+            Button { importingCSV = true } label: { row(L("Nhập từ CSV (app khác, Excel)")) }
             if pro.active, let csvURL {
                 ShareLink(item: csvURL) { row(L("Xuất CSV cho Excel")) }
             } else if !pro.active {
@@ -399,11 +411,11 @@ struct SettingsView: View {
             Button(role: .destructive) { confirmErase = true } label: {
                 row(L("Xoá tất cả khoản chi"), destructive: true)
             }
-            .disabled(store.items.isEmpty)
+            .disabled(store.all.isEmpty)
         } header: {
             Text(L("Dữ liệu"))
         } footer: {
-            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè."))
+            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè. Nhập CSV: file của Pay, Money Lover, Wallet, YNAB hoặc bảng Excel có cột ngày và số tiền; khoản đã có thì bỏ qua."))
         }
     }
 
@@ -715,6 +727,8 @@ struct CategoryEditor: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
     var editing: CustomCat? = nil
+    /// Tạo danh mục tiền vào (từ màn nhập đang ở Vào)
+    var income = false
     /// Thêm xong: trả mã danh mục mới (để màn hình nhập chọn luôn)
     var onAdd: (String) -> Void = { _ in }
 
@@ -741,12 +755,13 @@ struct CategoryEditor: View {
 
     private var trimmed: String { name.trimmingCharacters(in: .whitespaces) }
     /// Đang sửa danh mục có sẵn (Ăn uống, Cafe…): không xoá được, có "Về mặc định"
-    private var builtin: Category? { editing.flatMap { e in Category.builtin.first { $0.k == e.k } } }
+    private var builtin: Category? { editing.flatMap { Category.base($0.k) } }
+    private var isIncome: Bool { editing.map { Category.isIncome($0.k) } ?? income }
     private var previewColor: Color { fTone < 0 ? (builtin?.color ?? CategoryTone.bg(0)) : CategoryTone.bg(fTone) }
     /// Trùng tên danh mục đang có (không tính chính nó)
     private var duplicate: Bool {
         let k = strip(trimmed)
-        return !k.isEmpty && Category.all.contains { (strip($0.name) == k || strip($0.rawName) == k) && $0.k != editing?.k }
+        return !k.isEmpty && (isIncome ? Category.income : Category.all).contains { (strip($0.name) == k || strip($0.rawName) == k) && $0.k != editing?.k }
     }
 
     var body: some View {
@@ -1004,7 +1019,7 @@ struct CategoryEditor: View {
 
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-            .screenTitle(editing == nil ? L("Danh mục mới") : L("Sửa danh mục"))
+            .screenTitle(editing == nil ? (income ? L("Danh mục thu mới") : L("Danh mục mới")) : L("Sửa danh mục"))
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, cùng kiểu hai nút to như màn nhập khoản chi và chọn ngày; phía sau mờ dần như thanh tiêu đề
             .bottomBar {
@@ -1093,7 +1108,7 @@ struct CategoryEditor: View {
             store.updateCategory(e.k, name: trimmed == L(e.name) ? e.name : trimmed, icon: icon, tone: tone)
             savePhoto(e.k)
         } else {
-            let k = store.addCategory(name: trimmed, icon: icon, tone: tone)
+            let k = store.addCategory(name: trimmed, icon: icon, tone: tone, income: income)
             savePhoto(k)
             onAdd(k)
         }

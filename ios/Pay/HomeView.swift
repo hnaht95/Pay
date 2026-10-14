@@ -322,9 +322,14 @@ struct HomeView: View {
             VStack(alignment: .trailing, spacing: 3) {
                 Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
                 if let b {
-                    Text(balanceShown ? fmt(b) : "••••••").font(.system(size: size, weight: .semibold))
-                        .foregroundStyle(balanceShown && b < 0 ? Palette.danger : Color.primary)
-                        .contentTransition(.opacity)
+                    // Số và chấm chồng lên nhau, chỉ đổi độ mờ: khung luôn rộng bằng bên dài hơn nên hiện / che không làm cột đổi
+                    // bề ngang. Đổi chữ thẳng thì bề ngang đổi theo, cả hàng (ViewThatFits) dàn lại giữa chừng hiệu ứng, số trượt từ
+                    // mép ngoài thẻ vào / ra
+                    ZStack(alignment: .trailing) {
+                        Text(fmt(b)).foregroundStyle(b < 0 ? Palette.danger : Color.primary).opacity(balanceShown ? 1 : 0)
+                        Text("••••••").foregroundStyle(Color.primary).opacity(balanceShown ? 0 : 1)
+                    }
+                    .font(.system(size: size, weight: .semibold))
                 } else {
                     Text(L("Nhập số dư")).font(.system(size: size, weight: .semibold)).foregroundStyle(.secondary)
                 }

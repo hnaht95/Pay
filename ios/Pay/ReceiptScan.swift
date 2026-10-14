@@ -85,6 +85,8 @@ struct ReceiptCamera: View {
         return ZStack {
             Color(hex: 0x1C1C1E)
             CameraPreview(session: cam.session)
+            // Lưới chia ba (như lưới của Camera iOS): giúp đặt hoá đơn thẳng và giữa khung. Không có trong ảnh chụp
+            ThirdsGrid().allowsHitTesting(false)
             // Bộ lọc khác "Gốc": khung xem vẽ lại từng hình đã qua bộ lọc (giống ảnh sẽ chụp)
             if let e = cam.error {
                 Text(e).font(.system(size: 16, weight: .medium)).foregroundStyle(.white).multilineTextAlignment(.center).padding(28)
@@ -448,6 +450,23 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         ci = f.apply(ci.transformed(by: CGAffineTransform(scaleX: s, y: s)))
         guard let cg = CamFilter.context.createCGImage(ci, from: ci.extent) else { return }
         Task { @MainActor in if self.liveFilter != .none { self.frame = cg } }
+    }
+}
+
+/// Hai vạch dọc, hai vạch ngang chia khung làm ba, nét mảnh trắng mờ có bóng nhẹ để thấy được trên cả nền sáng
+private struct ThirdsGrid: View {
+    var body: some View {
+        Canvas { ctx, size in
+            var p = Path()
+            for i in 1...2 {
+                let x = (size.width * CGFloat(i) / 3).rounded(), y = (size.height * CGFloat(i) / 3).rounded()
+                p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: size.height))
+                p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: size.width, y: y))
+            }
+            ctx.stroke(p, with: .color(.black.opacity(0.15)), lineWidth: 1.5)
+            ctx.stroke(p, with: .color(.white.opacity(0.45)), lineWidth: 0.75)
+        }
+        .accessibilityHidden(true)
     }
 }
 

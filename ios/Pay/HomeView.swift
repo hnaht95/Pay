@@ -96,6 +96,8 @@ struct HomeView: View {
                                 // cho hai biểu tượng trông to bằng nhau (~18×17 và ~17×20 điểm)
                                 Image(systemName: recentGrid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
                                     .font(.system(size: recentGrid ? 21 : 16, weight: .semibold))
+                                    // Đổi biểu tượng kiểu thay hình của SF Symbols (hình cũ thu nhỏ biến đi, hình mới bật ra), nhanh gọn hơn mờ chéo
+                                    .contentTransition(.symbolEffect(.replace.downUp.byLayer))
                                     .frame(width: 37, height: 37)   // vùng chạm cao bằng viên "Xem tất cả" bên cạnh; không nền
                                     .contentShape(Rectangle())
                             }

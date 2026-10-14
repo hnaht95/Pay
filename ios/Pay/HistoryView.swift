@@ -112,6 +112,8 @@ struct HistoryView: View {
                             // cho hai biểu tượng trông to bằng nhau (~18×17 và ~17×20 điểm)
                             Image(systemName: grid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
                                 .font(.system(size: grid ? 21 : 16, weight: .semibold))
+                                // Đổi biểu tượng kiểu thay hình của SF Symbols (hình cũ thu nhỏ biến đi, hình mới bật ra), nhanh gọn hơn mờ chéo
+                                .contentTransition(.symbolEffect(.replace.downUp.byLayer))
                                 .frame(width: 58, height: 58)
                                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 .contentShape(Rectangle())

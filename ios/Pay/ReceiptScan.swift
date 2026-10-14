@@ -126,8 +126,11 @@ struct ReceiptCamera: View {
             }
             .font(.system(size: 17, weight: .semibold))
             .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.5), radius: 3)
             .rotationEffect(.degrees(Double(flips) * 180))
+            // Nền tròn kính mờ (nhoè hình camera phía sau), để biểu tượng rõ trên mọi cảnh
+            .frame(width: 40, height: 40)
+            .background(.ultraThinMaterial, in: Circle())
+            .environment(\.colorScheme, .dark)
             .frame(width: 52, height: 52)
             .contentShape(Rectangle())
         }

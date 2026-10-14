@@ -108,7 +108,7 @@ struct HistoryView: View {
                     // Cạnh ô tìm: đổi kiểu xem danh sách / lưới ảnh (cùng nút ở mục Gần đây)
                     .safeAreaInset(edge: .trailing, spacing: 10) {
                         Button { withAnimation(.snappy(duration: 0.3)) { grid.toggle() } } label: {
-                            Image(systemName: grid ? "list.bullet" : "square.grid.3x3")
+                            Image(systemName: grid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
                                 .font(.system(size: 18, weight: .semibold))
                                 .frame(width: 58, height: 58)
                                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))

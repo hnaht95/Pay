@@ -33,6 +33,18 @@ enum ReceiptPhotos {
     /// Ảnh vuông to hơn (360 px) cho ô lưới ảnh ở mục Gần đây
     static func tile(_ id: String) async -> UIImage? { await square(id, side: 360) }
 
+    /// Ảnh giữ nguyên tỉ lệ, ngang 400 px, cho lưới so le (mỗi ô cao theo tỉ lệ ảnh) ở mục Gần đây
+    static func preview(_ id: String) async -> UIImage? {
+        let key = "\(id)@w400" as NSString
+        if let t = thumbs.object(forKey: key) { return t }
+        guard has(id), let img = await load(id) else { return nil }
+        let w: CGFloat = 400, size = CGSize(width: w, height: (w * img.size.height / max(1, img.size.width)).rounded())
+        let t = UIGraphicsImageRenderer(size: size, format: { let f = UIGraphicsImageRendererFormat(); f.scale = 1; return f }())
+            .image { _ in img.draw(in: CGRect(origin: .zero, size: size)) }
+        thumbs.setObject(t, forKey: key)
+        return t
+    }
+
     private static func square(_ id: String, side: CGFloat) async -> UIImage? {
         let key = "\(id)@\(Int(side))" as NSString
         if let t = thumbs.object(forKey: key) { return t }
@@ -47,7 +59,7 @@ enum ReceiptPhotos {
 
     /// Thu nhỏ cạnh dài còn 1600 px, nén JPEG chất lượng 0,6
     static func save(_ image: UIImage, id: String) {
-        for side in [168, 360] { thumbs.removeObject(forKey: "\(id)@\(side)" as NSString) }
+        for k in ["168", "360", "w400"] { thumbs.removeObject(forKey: "\(id)@\(k)" as NSString) }
         let maxSide: CGFloat = 1600
         let scale = min(1, maxSide / max(image.size.width, image.size.height))
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
@@ -86,7 +98,7 @@ enum ReceiptPhotos {
     }
 
     static func remove(_ id: String) {
-        for side in [168, 360] { thumbs.removeObject(forKey: "\(id)@\(side)" as NSString) }
+        for k in ["168", "360", "w400"] { thumbs.removeObject(forKey: "\(id)@\(k)" as NSString) }
         try? fm.removeItem(at: localDir.appendingPathComponent(name(id)))
         cloudIndex.remove(id)
         DispatchQueue.global(qos: .utility).async {

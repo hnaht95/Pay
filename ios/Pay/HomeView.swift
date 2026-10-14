@@ -90,7 +90,7 @@ struct HomeView: View {
                         // Đổi kiểu xem: danh sách / lưới ảnh
                         if film == nil {
                             Button { withAnimation(.snappy(duration: 0.3)) { recentGrid.toggle() } } label: {
-                                Image(systemName: recentGrid ? "list.bullet" : "square.grid.3x3")
+                                Image(systemName: recentGrid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
                                     .font(.system(size: 17, weight: .semibold))
                                     .frame(width: 37, height: 37)   // cao bằng viên "Xem tất cả" bên cạnh
                                     .background(Palette.pill, in: Circle())
@@ -483,12 +483,18 @@ struct HomeView: View {
         } else if film != nil {
             VStack(spacing: 10) { ForEach(list) { ExpenseRow(e: $0, showDay: true, now: now, repeats: store.rule(for: $0) != nil) } }
         } else if recentGrid {
-            // Lưới ảnh 3 cột: 9 khoản gần nhất, mỗi ô là ảnh hoá đơn (không có ảnh thì màu và biểu tượng danh mục), số tiền ở góc
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                ForEach(Array(store.sorted.prefix(9))) { e in
-                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
-                            hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
-                        ExpenseTile(e: e)
+            // Lưới so le 2 cột (kiểu Pinterest): 10 khoản gần nhất xếp lần lượt trái, phải; mỗi ô cao theo tỉ lệ ảnh hoá đơn
+            // (không có ảnh thì màu và biểu tượng danh mục, cao thấp xen kẽ), số tiền ở góc
+            let items = Array(store.sorted.prefix(10))
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(0..<2, id: \.self) { col in
+                    LazyVStack(spacing: 8) {
+                        ForEach(Array(items.enumerated()).filter { $0.offset % 2 == col }, id: \.element.id) { _, e in
+                            TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+                                    hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
+                                ExpenseTile(e: e, free: true)
+                            }
+                        }
                     }
                 }
             }
@@ -1148,22 +1154,33 @@ private struct ReceiptFlow: View {
 /// giữa. Số tiền trong viên tối mờ ở góc dưới trái (như ô ảnh của app Ảnh có nhãn)
 struct ExpenseTile: View {
     let e: Expense
+    /// Ô cao theo tỉ lệ ảnh (lưới so le ở trang chủ) thay vì ô vuông
+    var free = false
     private let c: Category
     @State private var photo: UIImage?
 
-    init(e: Expense) { self.e = e; c = Category.get(e.c) }
+    init(e: Expense, free: Bool = false) { self.e = e; self.free = free; c = Category.get(e.c) }
+
+    /// Rộng / cao của ô: ô vuông; lưới so le thì theo ảnh (giới hạn 0,6…1,3 cho ảnh quá dài / quá dẹt), chưa có ảnh thì một trong
+    /// ba dáng cố định theo mã khoản để các ô cao thấp xen kẽ
+    private var aspect: CGFloat {
+        guard free else { return 1 }
+        if let photo { return min(1.3, max(0.6, photo.size.width / max(1, photo.size.height))) }
+        // Không dùng hashValue: Swift đổi giá trị mỗi lần mở app, ô sẽ đổi dáng
+        return [0.75, 1, 0.8][e.id.utf8.reduce(0) { $0 &+ Int($1) } % 3]
+    }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         Color.clear
-            .aspectRatio(1, contentMode: .fit)
+            .aspectRatio(aspect, contentMode: .fit)
             .overlay {
                 if let photo {
                     Image(uiImage: photo).resizable().scaledToFill()
                 } else {
                     ZStack {
                         c.color
-                        CategoryIcon(c: c, size: 40)
+                        CategoryIcon(c: c, size: free ? 56 : 40)   // ô so le to gấp rưỡi ô vuông
                     }
                 }
             }
@@ -1180,7 +1197,7 @@ struct ExpenseTile: View {
                 .padding(6)
             }
             .contentShape(shape)
-            .task(id: "\(e.id)\(e.u ?? 0)") { photo = await ReceiptPhotos.tile(e.id) }
+            .task(id: "\(e.id)\(e.u ?? 0)") { photo = await (free ? ReceiptPhotos.preview(e.id) : ReceiptPhotos.tile(e.id)) }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(e.n?.isEmpty == false ? e.n! : c.name), \(fmt(e.a))")
     }

@@ -66,6 +66,7 @@ Ngoại lệ có chủ đích:
 - Chữ 21 bold ở giữa, cách mép trên tấm 20 và cách vạch 20; vạch mảnh 1 pt (`primary` 10%), lùi vào 16 hai bên.
 - Nền thanh là màu đặc của trang. Nội dung cuộn lên **cắt gọn ở vạch**, không nhoè.
 - Trang con trong tấm: nút quay lại tròn 40 bên trái (chevron.left, nền `primary` 6%). **Không** có vuốt mép trái để quay lại.
+- **Nút quay lại chỉ có khi trong cùng tấm có màn trước đó** để quay về (vd danh sách nhóm → một nhóm, Cài đặt → trang con). Màn đầu tiên của tấm không có nút quay lại; đóng tấm bằng vuốt xuống. Nhóm chung: luôn có màn danh sách nhóm (kể cả khi chỉ có một nhóm), vào một nhóm thì có nút quay lại danh sách.
 - Không dùng ô chọn kiểu trang của iOS (`Picker` `.navigationLink`); dùng `PickLink` / `PickPage` của app.
 - Lịch sử: tiêu đề và ô tìm ghim trên vùng cuộn, vạch ngăn dưới ô tìm; nút đổi kiểu xem nằm cạnh ô tìm.
 

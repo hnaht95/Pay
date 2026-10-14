@@ -386,8 +386,6 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         return s + "×"
     }
     private var zoomIndex = 0
-    /// Hệ số thu phóng của máy ứng với "1x" (camera ảo có góc siêu rộng: 1x là camera chính, nằm ở mốc chuyển thứ nhất)
-    private var zoomBase: CGFloat = 1
     var filter: CamFilter = .none { didSet { liveFilter = filter; if filter == .none { frame = nil } } }
     nonisolated(unsafe) private var liveFilter: CamFilter = .none
     nonisolated(unsafe) private var lastFrame = Date.distantPast
@@ -405,18 +403,23 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     /// luồng chính, và không chạy chồng lên nhau (bật camera chưa xong đã đổi camera thì chậm, có khi lỗi)
     nonisolated static let sessionQueue = DispatchQueue(label: "pay.cam.session", qos: .userInitiated)
 
-    private static func camera(_ pos: AVCaptureDevice.Position) -> AVCaptureDevice? {
-        if pos == .front { return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) }
-        // Camera sau ghép hai ống (chính + góc siêu rộng), không dùng camera ghép ba ống (thêm tele) dù máy có: đổi từ camera trước
-        // về camera sau phải khởi động lại mọi ống của camera ghép, ba ống chậm thấy rõ. Hai ống vẫn đủ 0,5× · 1× · 2× (2× cắt từ
-        // cảm biến chính), chỉ mất ống tele cho mức phóng 3× trở lên (vẫn phóng được, bằng cắt ảnh)
-        return AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back)
-            ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
-    }
+    /// Camera trước và hai ống camera sau, mỗi cái là một camera vật lý riêng (một ống kính). Không dùng camera "ghép" của iOS
+    /// (ghép hai / ba ống, tự chuyển ống khi phóng): mỗi lần gắn vào phiên chụp nó phải khởi động mọi ống bên trong, nên đổi từ
+    /// camera trước về camera sau chậm hẳn so với chiều ngược lại. Các app chụp ảnh khác cũng dùng camera vật lý và tự đổi ống:
+    /// camera trước ↔ camera sau giờ cùng là một ống, nhanh như nhau
+    private static let front = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+    private static let wide = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+    private static let ultra = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
+
+    /// Camera sau cho mức thu phóng `z`: dưới 1× là ống góc siêu rộng (nếu máy có), còn lại ống chính
+    private static func back(for z: CGFloat) -> AVCaptureDevice? { z < 1 ? (ultra ?? wide) : wide }
+
+    /// Ống góc siêu rộng ứng với 0,5×: hệ số phóng của nó = mức thu phóng / 0,5
+    nonisolated private static func lensZoom(_ d: AVCaptureDevice) -> CGFloat { d.deviceType == .builtInUltraWideCamera ? 0.5 : 1 }
 
     private func configure() {
         if !configured {
-            guard let d = Self.camera(.back), let inp = try? AVCaptureDeviceInput(device: d),
+            guard let d = Self.back(for: Self.startZoom), let inp = try? AVCaptureDeviceInput(device: d),
                   session.canAddInput(inp), session.canAddOutput(output) else {
                 error = L("Không mở được camera. Bấm \"Chọn ảnh\" để dùng ảnh có sẵn."); return
             }
@@ -430,8 +433,8 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             session.commitConfiguration()
             input = inp
             // Đặt lại tiêu cự sau khi cấu hình xong: đổi sessionPreset / gắn camera làm camera về định dạng mới, tiêu cự đặt trước
-            // đó bị trả về mặc định (góc siêu rộng) trong khi số vẫn hiện mức cũ. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
-            setZoom(zoom)
+            // đó bị trả về mặc định trong khi số vẫn hiện mức cũ. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
+            Self.apply(zoom, to: d)
             configured = true
         }
         let s = session
@@ -443,22 +446,55 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     /// đặt lại 1×
     private var backZoom: CGFloat = ReceiptCam.startZoom
 
-    /// Đặt các nấc thu phóng cho camera `d` và đặt sẵn tiêu cự `target` lên camera đó. Gọi trước khi gắn camera vào phiên chụp:
-    /// gắn xong mới đặt thì vài khung hình đầu ra ở tiêu cự mặc định của camera (góc siêu rộng) rồi mới nhảy về tiêu cự đúng
+    /// Đặt các nấc thu phóng cho phía camera của `d` và đặt sẵn tiêu cự `target` lên `d`. Gọi trước khi gắn camera vào phiên chụp:
+    /// gắn xong mới đặt thì vài khung hình đầu ra ở tiêu cự mặc định rồi mới nhảy về tiêu cự đúng
     private func prepareZoom(_ d: AVCaptureDevice, to target: CGFloat) {
-        let wide = d.deviceType == .builtInTripleCamera || d.deviceType == .builtInDualWideCamera
-        zoomBase = wide ? CGFloat(d.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue ?? 2) : 1
+        let isBack = d.position == .back
         // Như app Camera: camera sau mở ở 1×, chạm lần lượt 2× · 0,5× rồi về 1× (máy không có góc siêu rộng: 1× · 2×)
-        zoomSteps = d.position == .front ? [1] : wide ? [1, 2, 0.5] : [1, 2]
-        minZoom = d.minAvailableVideoZoomFactor / zoomBase
-        maxZoom = max(minZoom, min(d.maxAvailableVideoZoomFactor / zoomBase, 15))
+        zoomSteps = !isBack ? [1] : Self.ultra != nil ? [1, 2, 0.5] : [1, 2]
+        minZoom = isBack && Self.ultra != nil ? 0.5 : 1
+        maxZoom = max(minZoom, min((isBack ? Self.wide ?? d : d).maxAvailableVideoZoomFactor, 15))
         zoom = min(max(target, minZoom), maxZoom)
         // Nấc gần nhất với tiêu cự đặt lại, để chạm tiếp đi sang nấc kế tiếp như thường
         zoomIndex = zoomSteps.indices.min { abs(zoomSteps[$0] - zoom) < abs(zoomSteps[$1] - zoom) } ?? 0
+        Self.apply(zoom, to: d)
+    }
+
+    /// Đặt hệ số phóng lên camera vật lý `d` cho mức thu phóng `z` (tính theo ống chính = 1×)
+    nonisolated private static func apply(_ z: CGFloat, to d: AVCaptureDevice) {
         guard (try? d.lockForConfiguration()) != nil else { return }
-        d.videoZoomFactor = min(max(zoom * zoomBase, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
+        d.videoZoomFactor = min(max(z / lensZoom(d), d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
         d.unlockForConfiguration()
     }
+
+    /// Gắn camera `d` thay camera đang dùng (đổi trước / sau, hoặc đổi ống khi phóng qua mốc 1×), đặt tiêu cự `z`. Chạy trên hàng
+    /// đợi của phiên chụp, không chiếm luồng chính
+    private func attach(_ d: AVCaptureDevice, zoom z: CGFloat) async -> Bool {
+        guard let cur = input else { return false }
+        let s = session
+        let inp: AVCaptureDeviceInput? = await withCheckedContinuation { done in
+            Self.sessionQueue.async {
+                guard let inp = try? AVCaptureDeviceInput(device: d) else { done.resume(returning: nil); return }
+                Self.apply(z, to: d)
+                s.beginConfiguration()
+                s.removeInput(cur)
+                let ok = s.canAddInput(inp)
+                if ok { s.addInput(inp) } else { s.addInput(cur) }
+                s.commitConfiguration()
+                if ok { Self.apply(z, to: d) }   // gắn xong tiêu cự có thể bị trả về mặc định: đặt lại
+                done.resume(returning: ok ? inp : nil)
+            }
+        }
+        guard let inp else { return false }
+        input = inp
+        let w = warmth, e = exposure
+        setWarmth(w); setExposure(e)
+        return true
+    }
+
+    /// Đang đổi ống (phóng qua mốc 1×): mức thu phóng mới nhất trong lúc chờ, áp lên khi đổi xong
+    private var lensSwapping = false
+    private var pendingZoom: CGFloat?
 
     func nextZoom() {
         guard zoomSteps.count > 1 else { return }
@@ -469,9 +505,23 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     /// Tiêu cự liền (vuốt vòng tiêu cự), kẹp trong khoảng máy làm được
     func setZoom(_ z: CGFloat) {
         zoom = min(max(z, minZoom), maxZoom)
-        guard let d = device, (try? d.lockForConfiguration()) != nil else { return }
-        d.videoZoomFactor = min(max(zoom * zoomBase, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
-        d.unlockForConfiguration()
+        guard let d = device else { return }
+        // Camera sau: phóng qua mốc 1× thì đổi ống (góc siêu rộng ↔ ống chính)
+        if d.position == .back, let want = Self.back(for: zoom), want != d {
+            pendingZoom = zoom
+            guard !lensSwapping else { return }
+            lensSwapping = true
+            Task {
+                while let z = pendingZoom {
+                    pendingZoom = nil
+                    if let want = Self.back(for: z), want != device { _ = await attach(want, zoom: z) }
+                    else if let d = device { Self.apply(z, to: d) }
+                }
+                lensSwapping = false
+            }
+            return
+        }
+        Self.apply(zoom, to: d)
     }
 
     /// -1 lạnh … 1 ấm; 0 là cân bằng trắng tự động
@@ -503,34 +553,15 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         flashMode = flashMode == .off ? .auto : flashMode == .auto ? .on : .off
     }
 
-    /// Đổi camera trước / sau như app Camera: camera trước luôn 1×; quay lại camera sau thì giữ tiêu cự đang dùng trước khi đổi.
-    /// Cấu hình lại phiên chụp chạy ngoài luồng chính (mất vài trăm mili giây): chạy trên luồng chính thì hiệu ứng lật khựng lại
+    /// Đổi camera trước / sau như app Camera: camera trước luôn 1×; quay lại camera sau thì giữ tiêu cự đang dùng trước khi đổi
     func flip() async {
-        // Cấu hình ngay, song song với nửa đầu hiệu ứng lật (xem flipCamera); chạy trên hàng đợi riêng của phiên chụp
-        guard configured, let cur = input, let d = Self.camera(cur.device.position == .back ? .front : .back),
-              let inp = try? AVCaptureDeviceInput(device: d) else { return }
-        if cur.device.position == .back { backZoom = zoom }
-        prepareZoom(d, to: d.position == .back ? backZoom : 1)
-        let s = session, factor = zoom * zoomBase
-        let added: Bool = await withCheckedContinuation { done in
-            Self.sessionQueue.async {
-                s.beginConfiguration()
-                s.removeInput(cur)
-                let ok = s.canAddInput(inp)
-                if ok { s.addInput(inp) } else { s.addInput(cur) }
-                s.commitConfiguration()
-                // Gắn camera xong tiêu cự có thể bị trả về mặc định: đặt lại
-                if ok, (try? d.lockForConfiguration()) != nil {
-                    d.videoZoomFactor = min(max(factor, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
-                    d.unlockForConfiguration()
-                }
-                done.resume(returning: ok)
-            }
-        }
-        guard added else { return }
-        input = inp
-        let w = warmth, e = exposure
-        setWarmth(w); setExposure(e)
+        guard configured, let cur = input else { return }
+        let toBack = cur.device.position == .front
+        if !toBack { backZoom = zoom }
+        let target: CGFloat = toBack ? backZoom : 1
+        guard let d = toBack ? Self.back(for: target) : Self.front else { return }
+        prepareZoom(d, to: target)
+        _ = await attach(d, zoom: zoom)
     }
 
     func stop() {

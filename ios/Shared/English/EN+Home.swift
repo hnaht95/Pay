@@ -64,6 +64,8 @@ extension English {
         "Danh mục": "Categories",
         "Gần đây": "Recent",
         "Xem tất cả": "See all",
+        "Xem dạng danh sách": "Show as list",
+        "Xem dạng lưới ảnh": "Show as photo grid",
         "Nhóm chung": "Groups",
         "Thống kê": "Stats",
         "Cài đặt": "Settings",

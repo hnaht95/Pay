@@ -49,6 +49,8 @@ struct HomeView: View {
     /// Danh mục đang mở bảng tuỳ chọn (nhấn giữ) và danh mục đang bị nhấn
     @State private var menu: AppMenuSpec?
     @AppStorage(HeroColor.key) private var heroTone = -1
+    /// Mục Gần đây xem dạng lưới ảnh (3 cột, ảnh hoá đơn và số tiền) thay cho danh sách
+    @AppStorage("recentGrid") private var recentGrid = false
     @AppStorage(HeroColor.barKey) private var heroBarTone = -1
     @State private var pickingHero = false
     /// Đang đặt / điều chỉnh số dư hiện có
@@ -84,7 +86,20 @@ struct HomeView: View {
                     sectionTitle(L("Danh mục")) { Text(monthLabel(now)) }
                     tiles(now)
 
-                    sectionTitle(L("Gần đây")) {
+                    sectionTitle(L("Gần đây"), accessory: {
+                        // Đổi kiểu xem: danh sách / lưới ảnh
+                        if film == nil {
+                            Button { withAnimation(.snappy(duration: 0.3)) { recentGrid.toggle() } } label: {
+                                Image(systemName: recentGrid ? "list.bullet" : "square.grid.3x3")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .frame(width: 37, height: 37)   // cao bằng viên "Xem tất cả" bên cạnh
+                                    .background(Palette.pill, in: Circle())
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(Pressable()).foregroundStyle(.primary)
+                            .accessibilityLabel(recentGrid ? L("Xem dạng danh sách") : L("Xem dạng lưới ảnh"))
+                        }
+                    }) {
                         Button { showHistory = true } label: {
                             // To hơn nhãn "Tháng 10" ở mục Danh mục một chút: đây là nút bấm
                             Text(L("Xem tất cả")).font(.system(size: 17, weight: .medium))
@@ -337,10 +352,13 @@ struct HomeView: View {
         .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
     }
 
-    private func sectionTitle<T: View>(_ title: String, @ViewBuilder trailing: () -> T) -> some View {
-        HStack {
+    /// accessory: nút tròn riêng đứng trước viên bên phải (vd đổi kiểu xem ở mục Gần đây)
+    private func sectionTitle<T: View, A: View>(_ title: String, @ViewBuilder accessory: () -> A = { EmptyView() },
+                                                @ViewBuilder trailing: () -> T) -> some View {
+        HStack(spacing: 8) {
             Text(title).font(.system(size: 21, weight: .bold))
             Spacer()
+            accessory()
             trailing()
                 .font(.system(size: 15)).foregroundStyle(.secondary)
                 .padding(.horizontal, 14).padding(.vertical, 7)
@@ -464,6 +482,17 @@ struct HomeView: View {
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         } else if film != nil {
             VStack(spacing: 10) { ForEach(list) { ExpenseRow(e: $0, showDay: true, now: now, repeats: store.rule(for: $0) != nil) } }
+        } else if recentGrid {
+            // Lưới ảnh 3 cột: 9 khoản gần nhất, mỗi ô là ảnh hoá đơn (không có ảnh thì màu và biểu tượng danh mục), số tiền ở góc
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                ForEach(Array(store.sorted.prefix(9))) { e in
+                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+                            hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
+                        ExpenseTile(e: e)
+                    }
+                }
+            }
+            .transition(.opacity)
         } else {
             // List để dùng thao tác vuốt có sẵn của iOS; không tự cuộn, cao vừa đủ số hàng
             List {
@@ -1112,5 +1141,47 @@ private struct ReceiptFlow: View {
         .sheet(item: $shot, onDismiss: {
             if store.all.count > countAtShot { close() } else { round += 1 }
         }) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
+    }
+}
+
+/// Một ô của lưới ảnh ở mục Gần đây: ảnh hoá đơn phủ kín ô vuông bo góc; không có ảnh thì nền màu danh mục với biểu tượng ở
+/// giữa. Số tiền trong viên tối mờ ở góc dưới trái (như ô ảnh của app Ảnh có nhãn)
+struct ExpenseTile: View {
+    let e: Expense
+    private let c: Category
+    @State private var photo: UIImage?
+
+    init(e: Expense) { self.e = e; c = Category.get(e.c) }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                if let photo {
+                    Image(uiImage: photo).resizable().scaledToFill()
+                } else {
+                    ZStack {
+                        c.color
+                        CategoryIcon(c: c, size: 40)
+                    }
+                }
+            }
+            .clipShape(shape)
+            .overlay(alignment: .bottomLeading) {
+                HStack(spacing: 2) {
+                    if e.isIncome || e.isAdjust { AmountArrow(up: e.signed >= 0, size: 14) }
+                    Text(fmt(e.a)).font(.system(size: 14, weight: .bold)).monospacedDigit()
+                }
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 9).padding(.vertical, 5)
+                .background(.black.opacity(0.45), in: Capsule())
+                .padding(7)
+            }
+            .contentShape(shape)
+            .task(id: "\(e.id)\(e.u ?? 0)") { photo = await ReceiptPhotos.tile(e.id) }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(e.n?.isEmpty == false ? e.n! : c.name), \(fmt(e.a))")
     }
 }

@@ -33,7 +33,8 @@ struct ReceiptCamera: View {
                 Spacer(minLength: 8)
                 viewfinder
                 Spacer(minLength: 8)
-                bottomRow.padding(.top, 22).padding(.bottom, 8)
+                // Nút chụp và ô ảnh nâng cao hơn vạch Home một chút (trước sát quá, 8)
+                bottomRow.padding(.top, 22).padding(.bottom, 28)
             }
             .padding(.horizontal, 16)
         }

@@ -1,4 +1,4 @@
-# Pay – quy chuẩn thiết kế
+# Payso – quy chuẩn thiết kế
 
 Mục tiêu: **iOS 18, iOS 26 và iOS 27 trông và dùng giống nhau.** Chỗ nào hệ thống vẽ khác nhau theo bản iOS (thanh tiêu đề, mép mờ khi cuộn, ô Form, vuốt xoá…) thì app tự vẽ.
 

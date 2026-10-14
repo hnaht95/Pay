@@ -88,7 +88,7 @@ struct CardPaymentIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // Tính năng Pro (đọc cờ đã lưu: intent chạy nền, không chờ App Store)
         guard UserDefaults.standard.bool(forKey: "proActive") else {
-            return .result(dialog: IntentDialog(stringLiteral: L("Tự ghi giao dịch thẻ cần Pay Pro. Mở Pay để nâng cấp.")))
+            return .result(dialog: IntentDialog(stringLiteral: L("Tự ghi giao dịch thẻ cần Payso Pro. Mở Payso để nâng cấp.")))
         }
         guard let a = Self.parse(amount), a > 0 else {
             return .result(dialog: IntentDialog(stringLiteral: L("Không đọc được số tiền của giao dịch.")))
@@ -109,7 +109,7 @@ struct CardPaymentIntent: AppIntent {
     }
 }
 
-/// Nói một câu là ghi luôn, không mở app: "Ghi chi tiêu bằng Pay" -> Siri hỏi -> "35k cafe".
+/// Nói một câu là ghi luôn, không mở app: "Ghi chi tiêu bằng Payso" -> Siri hỏi -> "35k cafe".
 /// Gán vào nút Tác vụ: Cài đặt > Nút Tác vụ > Phím tắt > Pay > Ghi chi tiêu.
 struct LogExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "Ghi chi tiêu"

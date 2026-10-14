@@ -329,7 +329,7 @@ struct MyQRView: View {
         if !e.qr.ready {
             VStack(spacing: 8) {
                 Image(systemName: "qrcode").font(.system(size: 34, weight: .semibold)).foregroundStyle(ink)
-                Text(L("Mở Pay > Cài đặt để thêm tài khoản nhận tiền"))
+                Text(L("Mở Payso > Cài đặt để thêm tài khoản nhận tiền"))
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(soft)
                     .multilineTextAlignment(.center).minimumScaleFactor(0.8)
             }

@@ -433,7 +433,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     func start() {
         AVCaptureDevice.requestAccess(for: .video) { ok in
             Task { @MainActor in
-                guard ok else { self.error = L("Hãy cho phép Pay dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh\"."); return }
+                guard ok else { self.error = L("Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh\"."); return }
                 self.configure()
             }
         }

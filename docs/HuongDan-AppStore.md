@@ -1,4 +1,4 @@
-# Hướng dẫn đưa Pay lên App Store
+# Hướng dẫn đưa Payso lên App Store
 
 Làm theo thứ tự. Nội dung để chép (mô tả, từ khoá…) nằm trong [AppStore.md](AppStore.md).
 Tên menu dưới đây theo giao diện tiếng Anh của App Store Connect (appstoreconnect.apple.com); giao diện tiếng Việt có tên tương ứng.
@@ -33,13 +33,13 @@ Không có bước này thì gói Pro không bán được, TestFlight cũng kh�
 
 ## Bước 3 — Tạo hai gói Pro
 
-Vào **Apps** → chọn **Pay** → cột trái mục **Monetization**.
+Vào **Apps** → chọn **Payso** → cột trái mục **Monetization**.
 
 ### 3a. Pro trọn đời (mua một lần)
 
 1. **In-App Purchases** → nút **+**.
 2. Type: **Non-Consumable**.
-   - Reference Name: `Pay Pro Lifetime` (chỉ mình thấy).
+   - Reference Name: `Payso Pro Lifetime` (chỉ mình thấy).
    - Product ID: `com.hnaht95.sochipay.pro.lifetime` — **gõ đúng từng ký tự**, app tìm gói bằng mã này. Đặt rồi không đổi được.
 3. Trong trang gói vừa tạo:
    - **Availability**: chọn tất cả quốc gia (hoặc chỉ Việt Nam).
@@ -47,8 +47,8 @@ Vào **Apps** → chọn **Pay** → cột trái mục **Monetization**.
    - Giá ra mắt: trong Price Schedule → **Add Temporary Price** (hoặc "Schedule Price Change"): **149.000 ₫**, ngày bắt đầu = ngày app lên store, ngày kết thúc = 30 ngày sau. Hết hạn tự về 299.000 ₫.
      (Chưa biết ngày lên store thì để sau, khi app được duyệt mới thêm.)
    - **App Store Localization** → **+**:
-     - Tiếng Việt: Display Name `Pay Pro trọn đời`, Description `Mở mọi tính năng Pro, trả một lần.`
-     - English (U.S.): `Pay Pro Lifetime`, `Unlock every Pro feature with one payment.`
+     - Tiếng Việt: Display Name `Payso Pro trọn đời`, Description `Mở mọi tính năng Pro, trả một lần.`
+     - English (U.S.): `Payso Pro Lifetime`, `Unlock every Pro feature with one payment.`
    - **Review Information**:
      - Screenshot: ảnh chụp màn mua Pro trong app (Claude chụp được, xem Bước 5).
      - Review Notes: `Mở Cài đặt › Nâng cấp Pro, hoặc chạm vào tính năng có chữ Pro.`
@@ -57,17 +57,17 @@ Vào **Apps** → chọn **Pay** → cột trái mục **Monetization**.
 ### 3b. Pro gói năm (tự gia hạn)
 
 1. **Subscriptions** → **Create** (Subscription Group):
-   - Reference Name: `Pay Pro`.
+   - Reference Name: `Payso Pro`.
 2. Trong nhóm vừa tạo → **+** (Create Subscription):
-   - Reference Name: `Pay Pro Yearly`.
+   - Reference Name: `Payso Pro Yearly`.
    - Product ID: `com.hnaht95.sochipay.pro.yearly` — gõ đúng.
 3. Trong trang gói:
    - **Subscription Duration**: **1 Year**.
    - **Availability**: như gói trọn đời.
    - **Subscription Prices** → **Add Subscription Price**: Vietnam **79.000 ₫**.
-   - **Localization**: Tiếng Việt `Pay Pro năm` / `Mở mọi tính năng Pro, gia hạn mỗi năm.`; English `Pay Pro Yearly` / `Unlock every Pro feature, renews yearly.`
+   - **Localization**: Tiếng Việt `Payso Pro năm` / `Mở mọi tính năng Pro, gia hạn mỗi năm.`; English `Payso Pro Yearly` / `Unlock every Pro feature, renews yearly.`
    - **Review Information**: cùng ảnh và ghi chú như gói trọn đời.
-4. Quay lại trang **nhóm** "Pay Pro" → **App Store Localization** → **+** Tiếng Việt và English: Subscription Group Display Name `Pay Pro`. (Thiếu cái này gói năm không chuyển được sang Ready to Submit.)
+4. Quay lại trang **nhóm** "Payso Pro" → **App Store Localization** → **+** Tiếng Việt và English: Subscription Group Display Name `Payso Pro`. (Thiếu cái này gói năm không chuyển được sang Ready to Submit.)
 5. **Save** → trạng thái **Ready to Submit**.
 
 ---
@@ -77,10 +77,10 @@ Vào **Apps** → chọn **Pay** → cột trái mục **Monetization**.
 Làm được khi hai gói đã **Ready to Submit** (chưa cần duyệt). Mua trong TestFlight **không trừ tiền thật**.
 
 1. Mở TestFlight trên iPhone → cài bản mới nhất (**202610120101** trở về sau).
-2. Mở Pay → **Cài đặt › Nâng cấp Pro**.
+2. Mở Payso → **Cài đặt › Nâng cấp Pro**.
    - Phải thấy hai gói với giá **299.000 ₫** và **79.000 ₫/năm**. Còn vòng xoay mãi: gói chưa Ready to Submit, hoặc Product ID gõ sai, hoặc thoả thuận Paid Apps chưa Active.
 3. Chọn **Trọn đời** → **Mua** → hộp xác nhận của Apple (ghi là TestFlight / không tính phí) → xác nhận.
-   - Sau khi mua: màn đóng lại, Cài đặt hiện **Đã có Pay Pro**, các nhãn Pro biến mất, dải Thống kê xem được tháng cũ, bật được đồng bộ iCloud.
+   - Sau khi mua: màn đóng lại, Cài đặt hiện **Đã có Payso Pro**, các nhãn Pro biến mất, dải Thống kê xem được tháng cũ, bật được đồng bộ iCloud.
 4. Thử **Khôi phục giao dịch**: xoá app → cài lại từ TestFlight → Cài đặt › Khôi phục giao dịch → phải về lại trạng thái Pro.
 5. Thử **gói năm** bằng một Apple ID khác (vì trọn đời đã mua rồi thì luôn là Pro): gói năm trên TestFlight gia hạn nhanh hơn nhiều so với thật, nên để một lúc sẽ thấy tự hết hạn / gia hạn.
 
@@ -101,7 +101,7 @@ Claude chụp được trên máy ảo iPhone 17 Pro Max (đúng cỡ 6,9") vớ
 
 ## Bước 6 — Điền thông tin app và gửi duyệt
 
-Vào **Apps → Pay**.
+Vào **Apps → Payso**.
 
 ### 6a. Trang phiên bản (cột trái, mục **iOS App → 1.0 Prepare for Submission**)
 
@@ -118,7 +118,7 @@ Vào **Apps → Pay**.
 
 ### 6b. Trang thông tin chung (cột trái **General → App Information**)
 
-- Name: `Pay – Ghi chi tiêu` (chưa ai dùng tên này mới được; trùng thì thêm chữ khác).
+- Name: `Payso – Ghi chi tiêu` (chưa ai dùng tên này mới được; trùng thì thêm chữ khác).
 - Subtitle: `Quét QR, nói một câu là ghi`.
 - Category: Primary **Finance**, Secondary **Productivity**.
 - **Age Rating** → Edit → trả lời "None"/"No" hết → ra **4+**.

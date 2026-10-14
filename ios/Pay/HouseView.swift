@@ -132,7 +132,7 @@ struct HouseView: View {
                 if !n.isEmpty { Task { if let id = await house.addMember(n), claim, house.me == nil { await house.claim(id) } } }
             }
         } message: {
-            Text(L("Thêm được cả người không dùng Pay; bạn ghi giúp phần của họ."))
+            Text(L("Thêm được cả người không dùng Payso; bạn ghi giúp phần của họ."))
         }
         .confirmationDialog(house.isOwner ? L("Xoá nhóm cho cả nhà?") : L("Rời nhóm?"), isPresented: $confirmLeave, titleVisibility: .visible) {
             Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), role: .destructive) { Task { await house.leave() } }
@@ -353,7 +353,7 @@ struct HouseView: View {
                 }
             }
             Text(L("Sổ chi tiêu chung")).font(.system(size: 21, weight: .bold))
-            Text(L("Cho nhà chung, phòng trọ, chuyến đi… Ai ứng tiền thì ghi vào đây, Pay tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất."))
+            Text(L("Cho nhà chung, phòng trọ, chuyến đi… Ai ứng tiền thì ghi vào đây, Payso tính ai chuyển cho ai bao nhiêu, ít lần chuyển nhất."))
                 .font(.system(size: 15)).foregroundStyle(.secondary)
         }
         .padding(22)
@@ -380,7 +380,7 @@ struct HouseView: View {
         .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty || house.busy ? 0.35 : 1)
         .padding(.top, 20)
 
-        Text(L("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Pay và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi."))
+        Text(L("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Payso và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi."))
             .font(.system(size: 13)).foregroundStyle(.secondary)
             .padding(.top, 12).padding(.horizontal, 4)
     }
@@ -664,10 +664,10 @@ struct HouseView: View {
                 if film != nil { addMemberLabel } else {
                 Menu {
                     Button { invite() } label: {
-                        Text(L("Gửi lời mời")); Text(L("Người này có dùng Pay")); Image(systemName: "paperplane")
+                        Text(L("Gửi lời mời")); Text(L("Người này có dùng Payso")); Image(systemName: "paperplane")
                     }
                     Button { claimAfterAdd = false; addingMember = true } label: {
-                        Text(L("Chỉ thêm tên")); Text(L("Không dùng Pay, bạn ghi giúp")); Image(systemName: "person.text.rectangle")
+                        Text(L("Chỉ thêm tên")); Text(L("Không dùng Payso, bạn ghi giúp")); Image(systemName: "person.text.rectangle")
                     }
                 } label: { addMemberLabel }
                 .tint(.primary)

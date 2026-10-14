@@ -602,7 +602,7 @@ struct VoiceEntryView: View {
         if undone { return L("Bấm Nói lại để nói khoản khác.") }
         if notUnderstood { return mic.text.isEmpty ? L("Vui lòng nói số tiền để ghi, ví dụ: \"ba lăm nghìn cà phê\"") : L("Đã nghe: \"%@\"", mic.text) }
         if isListening { return heard.isEmpty ? L("Nói ví dụ: \"ba lăm nghìn cà phê\" hoặc \"nhận lương mười lăm triệu\"") : heard }
-        if mic.phase == .denied { return L("Vào Cài đặt › Pay để bật Micro và Nhận dạng giọng nói.") }
+        if mic.phase == .denied { return L("Vào Cài đặt › Payso để bật Micro và Nhận dạng giọng nói.") }
         return ""
     }
 

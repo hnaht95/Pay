@@ -64,7 +64,7 @@ struct VoiceWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "VoiceWidget", intent: WidgetLook.self, provider: SpendProvider()) { VoiceView(e: $0) }
             .configurationDisplayName(L("Nói để ghi"))
-            .description(L("Chạm là Pay nghe luôn, nói \"35k cafe\" là ghi."))
+            .description(L("Chạm là Payso nghe luôn, nói \"35k cafe\" là ghi."))
             .supportedFamilies([.systemSmall, .accessoryCircular])
     }
 }
@@ -112,8 +112,8 @@ struct VoiceControl: ControlWidget {
                 Label(L("Ghi bằng giọng nói"), systemImage: "mic.fill")
             }
         }
-        .displayName("\(L("Pay: Ghi bằng giọng nói"))")
-        .description("\(L("Mở Pay và nghe luôn, nói \"35k cafe\" là ghi."))")
+        .displayName("\(L("Payso: Ghi bằng giọng nói"))")
+        .description("\(L("Mở Payso và nghe luôn, nói \"35k cafe\" là ghi."))")
     }
 }
 
@@ -125,8 +125,8 @@ struct PhotoControl: ControlWidget {
                 Label(L("Chụp hoá đơn"), systemImage: "camera.fill")
             }
         }
-        .displayName("\(L("Pay: Chụp hoá đơn"))")
-        .description("\(L("Mở Pay và chụp ngay ảnh hoá đơn."))")
+        .displayName("\(L("Payso: Chụp hoá đơn"))")
+        .description("\(L("Mở Payso và chụp ngay ảnh hoá đơn."))")
     }
 }
 
@@ -138,7 +138,7 @@ struct ScanControl: ControlWidget {
                 Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
             }
         }
-        .displayName("\(L("Pay: Quét QR"))")
-        .description("\(L("Mở Pay và quét mã QR thanh toán."))")
+        .displayName("\(L("Payso: Quét QR"))")
+        .description("\(L("Mở Payso và quét mã QR thanh toán."))")
     }
 }

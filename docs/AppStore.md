@@ -1,10 +1,10 @@
-# Pay – nội dung điền App Store Connect
+# Payso – nội dung điền App Store Connect
 
 ## Thông tin app
 
 | Mục | Nội dung |
 |---|---|
-| Tên | Pay – Ghi chi tiêu |
+| Tên | Payso – Ghi chi tiêu |
 | Phụ đề (≤ 30 ký tự) | Quét QR, nói một câu là ghi |
 | Danh mục chính | Tài chính (Finance) |
 | Danh mục phụ | Năng suất (Productivity) |
@@ -20,10 +20,10 @@ Quét VietQR là ghi luôn khoản chi rồi mở app ngân hàng. Hoặc nói "
 
 ## Mô tả
 
-Pay giúp bạn ghi chi tiêu trong một giây, không cần mở bảng tính hay điền form dài.
+Payso giúp bạn ghi chi tiêu trong một giây, không cần mở bảng tính hay điền form dài.
 
 QUÉT QR LÀ GHI
-Quét mã VietQR ở quán: Pay ghi khoản chi, đoán danh mục theo tên quán, rồi mở app ngân hàng của bạn. Với ACB One, MB Bank, BIDV, VietinBank, OCB, người nhận và số tiền được điền sẵn, bạn chỉ cần xác nhận.
+Quét mã VietQR ở quán: Payso ghi khoản chi, đoán danh mục theo tên quán, rồi mở app ngân hàng của bạn. Với ACB One, MB Bank, BIDV, VietinBank, OCB, người nhận và số tiền được điền sẵn, bạn chỉ cần xác nhận.
 
 NÓI MỘT CÂU LÀ GHI
 Bấm nút Tác vụ hoặc gọi Siri, nói "ba lăm nghìn cà phê". Xong.
@@ -64,8 +64,8 @@ chi tiêu,sổ thu chi,quản lý tiền,ngân sách,vietqr,quét qr,tài chính
 
 | Loại | Product ID | Tên hiển thị | Giá |
 |---|---|---|---|
-| Non-Consumable | com.hnaht95.sochipay.pro.lifetime | Pay Pro trọn đời | 299.000đ (tháng đầu 149.000đ) |
-| Auto-Renewable (nhóm "Pay Pro") | com.hnaht95.sochipay.pro.yearly | Pay Pro năm | 79.000đ/năm |
+| Non-Consumable | com.hnaht95.sochipay.pro.lifetime | Payso Pro trọn đời | 299.000đ (tháng đầu 149.000đ) |
+| Auto-Renewable (nhóm "Payso Pro") | com.hnaht95.sochipay.pro.yearly | Payso Pro năm | 79.000đ/năm |
 
 Mỗi gói cần: tên + mô tả (tiếng Việt và tiếng Anh), ảnh chụp màn mua Pro (để Apple duyệt), ghi chú duyệt.
 Gói đầu tiên phải gửi duyệt cùng bản app.
@@ -77,10 +77,10 @@ iCloud là của người dùng, nhà phát triển không đọc được.
 
 ## Ghi chú cho người duyệt (App Review Notes)
 
-Pay ghi chi tiêu cá nhân, dữ liệu lưu trên máy và iCloud của người dùng, không cần đăng nhập.
+Payso ghi chi tiêu cá nhân, dữ liệu lưu trên máy và iCloud của người dùng, không cần đăng nhập.
 - Quét QR: dùng mã VietQR (chuẩn chuyển khoản Việt Nam). Có thể thử bằng "Chọn ảnh QR" với một ảnh mã VietQR.
 - Nói để ghi: nói "35k cafe" (tiếng Việt) hoặc chuyển sang English trong Cài đặt rồi nói "35k coffee".
-- Pay Pro: Cài đặt › Nâng cấp Pro, hoặc chạm vào một tính năng có nhãn Pro.
+- Payso Pro: Cài đặt › Nâng cấp Pro, hoặc chạm vào một tính năng có nhãn Pro.
 - "Lưu & mở Bank" mở app ngân hàng người dùng chọn; nếu máy không cài app đó thì không mở gì.
 
 ## Ảnh chụp màn hình

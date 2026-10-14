@@ -214,7 +214,7 @@ struct SettingsView: View {
                 }
             }
             if pro.active {
-                Label { Text(L("Đã có Pay Pro")) } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x61BE6E)) }
+                Label { Text(L("Đã có Payso Pro")) } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x61BE6E)) }
             } else {
                 Button { ProPaywall.present() } label: {
                     HStack(spacing: 10) {
@@ -306,7 +306,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Thanh toán"))
         } footer: {
-            Text(store.bankApp.fill ? L("Sau khi quét, Pay mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
+            Text(store.bankApp.fill ? L("Sau khi quét, Payso mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
         }
     }
 
@@ -331,7 +331,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Tự động"))
         } footer: {
-            Text(L("Tới giờ nhắc mà hôm ấy chưa ghi khoản nào, Pay báo một câu. Đã ghi rồi thì không báo."))
+            Text(L("Tới giờ nhắc mà hôm ấy chưa ghi khoản nào, Payso báo một câu. Đã ghi rồi thì không báo."))
         }
     }
 
@@ -415,7 +415,7 @@ struct SettingsView: View {
         } header: {
             Text(L("Dữ liệu"))
         } footer: {
-            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè. Nhập CSV: file của Pay, Money Lover, Wallet, YNAB hoặc bảng Excel có cột ngày và số tiền; khoản đã có thì bỏ qua."))
+            Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè. Nhập CSV: file của Payso, Money Lover, Wallet, YNAB hoặc bảng Excel có cột ngày và số tiền; khoản đã có thì bỏ qua."))
         }
     }
 
@@ -1173,7 +1173,7 @@ struct QuickAccessHelp: View {
         BlurForm {
             Section {
                 step(1, "Ở màn hình chính, chạm và giữ vào chỗ trống đến khi biểu tượng rung.")
-                step(2, "Bấm Sửa › Thêm tiện ích, tìm \"Pay\".")
+                step(2, "Bấm Sửa › Thêm tiện ích, tìm \"Payso\".")
                 step(3, "Chọn \"Chi tiêu hôm nay\" (cỡ vừa có nút Quét QR, Nói, Nhập) hoặc \"Nói để ghi\" (chạm là nghe luôn).")
             } header: {
                 Label(L("Widget màn hình chính"), systemImage: "square.grid.2x2.fill")
@@ -1181,18 +1181,18 @@ struct QuickAccessHelp: View {
 
             Section {
                 step(1, "Chạm và giữ màn hình khoá, bấm Tuỳ chỉnh › Màn hình khoá.")
-                step(2, "Bấm vùng widget dưới đồng hồ, chọn Pay › \"Nói để ghi\" (nút micro tròn).")
-                step(3, "iOS 18 trở lên: bấm nút ở góc dưới (đèn pin, camera), đổi thành \"Pay: Ghi bằng giọng nói\".")
+                step(2, "Bấm vùng widget dưới đồng hồ, chọn Payso › \"Nói để ghi\" (nút micro tròn).")
+                step(3, "iOS 18 trở lên: bấm nút ở góc dưới (đèn pin, camera), đổi thành \"Payso: Ghi bằng giọng nói\".")
             } header: {
                 Label(L("Màn hình khoá: nút micro"), systemImage: "lock.fill")
             } footer: {
-                Text(L("Chạm nút micro, mở khoá xong là Pay nghe luôn. Màn hình khoá cũng có nút quét QR và số đã chi hôm nay."))
+                Text(L("Chạm nút micro, mở khoá xong là Payso nghe luôn. Màn hình khoá cũng có nút quét QR và số đã chi hôm nay."))
             }
 
             Section {
                 step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Điều khiển.")
-                step(2, "Bấm Chọn điều khiển, tìm \"Pay: Ghi bằng giọng nói\".")
-                step(3, "Nhấn giữ nút Tác vụ: Pay mở và nghe luôn. Nói \"35k cafe\", ngừng nói là tự ghi.")
+                step(2, "Bấm Chọn điều khiển, tìm \"Payso: Ghi bằng giọng nói\".")
+                step(3, "Nhấn giữ nút Tác vụ: Payso mở và nghe luôn. Nói \"35k cafe\", ngừng nói là tự ghi.")
             } header: {
                 Label(L("Nút Tác vụ: ghi bằng giọng nói"), systemImage: "mic.fill")
             } footer: {
@@ -1201,27 +1201,27 @@ struct QuickAccessHelp: View {
 
             Section {
                 step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Điều khiển.")
-                step(2, "Bấm Chọn điều khiển, tìm \"Pay: Quét QR\".")
+                step(2, "Bấm Chọn điều khiển, tìm \"Payso: Quét QR\".")
                 step(3, "Nhấn giữ nút Tác vụ là mở camera quét ngay.")
             } header: {
                 Label(L("Nút Tác vụ: quét QR"), systemImage: "qrcode.viewfinder")
             } footer: {
-                Text(L("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói, quét QR hoặc chụp hoá đơn. Nút \"Pay: Quét QR\" cũng thêm được vào Trung tâm điều khiển."))
+                Text(L("Cần iOS 18 trở lên. Nút Tác vụ chỉ gán được một việc: chọn ghi bằng giọng nói, quét QR hoặc chụp hoá đơn. Nút \"Payso: Quét QR\" cũng thêm được vào Trung tâm điều khiển."))
             }
 
             Section {
                 step(1, "Mở Cài đặt › Nút Tác vụ, vuốt đến Điều khiển.")
-                step(2, "Bấm Chọn điều khiển, tìm \"Pay: Chụp hoá đơn\".")
+                step(2, "Bấm Chọn điều khiển, tìm \"Payso: Chụp hoá đơn\".")
                 step(3, "Nhấn giữ nút Tác vụ là mở camera chụp hoá đơn ngay, chụp xong nhập số tiền.")
             } header: {
                 Label(L("Nút Tác vụ: chụp hoá đơn"), systemImage: "camera.fill")
             } footer: {
-                Text(L("Cần iOS 18 trở lên. Nút \"Pay: Chụp hoá đơn\" cũng thêm được vào Trung tâm điều khiển hoặc màn hình khoá."))
+                Text(L("Cần iOS 18 trở lên. Nút \"Payso: Chụp hoá đơn\" cũng thêm được vào Trung tâm điều khiển hoặc màn hình khoá."))
             }
 
             Section {
-                step(1, "Nói \"Ghi chi tiêu bằng Pay\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Pay\", \"Chụp hoá đơn bằng Pay\".")
-                step(2, "Hoặc mở app Phím tắt, các lệnh này có sẵn trong mục Pay.")
+                step(1, "Nói \"Ghi chi tiêu bằng Payso\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Payso\", \"Chụp hoá đơn bằng Payso\".")
+                step(2, "Hoặc mở app Phím tắt, các lệnh này có sẵn trong mục Payso.")
             } header: {
                 Label(L("Siri và Phím tắt"), systemImage: "wand.and.stars")
             }
@@ -1274,9 +1274,9 @@ struct ApplePayHelp: View {
             Section {
                 step(1, L("Mở app Phím tắt, chọn thẻ Tự động hoá, bấm + rồi chọn Giao dịch."))
                 step(2, L("Chọn thẻ trong Ví muốn theo dõi, đặt Chạy ngay (không cần xác nhận), bấm Tiếp."))
-                step(3, L("Chọn Tác vụ mới, tìm Pay, chọn Ghi giao dịch thẻ."))
+                step(3, L("Chọn Tác vụ mới, tìm Payso, chọn Ghi giao dịch thẻ."))
                 step(4, L("Chạm ô Số tiền, chọn biến Giao dịch rồi chọn Số tiền. Chạm ô Người bán, chọn Giao dịch rồi chọn Người bán."))
-                step(5, L("Bấm Xong. Từ giờ mỗi lần quẹt thẻ, Pay tự ghi khoản chi, danh mục đoán theo tên cửa hàng."))
+                step(5, L("Bấm Xong. Từ giờ mỗi lần quẹt thẻ, Payso tự ghi khoản chi, danh mục đoán theo tên cửa hàng."))
             } footer: {
                 Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }

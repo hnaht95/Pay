@@ -27,7 +27,7 @@ final class QuickAction: ObservableObject {
 /// File này nằm ở cả app lẫn widget: hệ thống cần thấy intent ở cả hai thì nút trong Trung tâm điều khiển mới mở được app.
 struct ScanIntent: AppIntent {
     static let title: LocalizedStringResource = "Quét QR"
-    static let description = IntentDescription("Mở Pay và quét mã QR thanh toán ngay.")
+    static let description = IntentDescription("Mở Payso và quét mã QR thanh toán ngay.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -37,10 +37,10 @@ struct ScanIntent: AppIntent {
     }
 }
 
-/// Mở Pay và nghe luôn: nói "35k cafe" là ghi. Gán cho nút Tác vụ qua nút điều khiển "Pay: Ghi bằng giọng nói".
+/// Mở Pay và nghe luôn: nói "35k cafe" là ghi. Gán cho nút Tác vụ qua nút điều khiển "Payso: Ghi bằng giọng nói".
 struct VoiceIntent: AppIntent {
     static let title: LocalizedStringResource = "Ghi bằng giọng nói"
-    static let description = IntentDescription("Mở Pay, nghe bạn nói khoản chi (ví dụ \"35k cafe\") rồi tự ghi.")
+    static let description = IntentDescription("Mở Payso, nghe bạn nói khoản chi (ví dụ \"35k cafe\") rồi tự ghi.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -50,10 +50,10 @@ struct VoiceIntent: AppIntent {
     }
 }
 
-/// Mở Pay và vào thẳng màn chụp hoá đơn (như vuốt lên ở nút Nhập). Gán cho nút Tác vụ qua nút điều khiển "Pay: Chụp hoá đơn"
+/// Mở Pay và vào thẳng màn chụp hoá đơn (như vuốt lên ở nút Nhập). Gán cho nút Tác vụ qua nút điều khiển "Payso: Chụp hoá đơn"
 struct PhotoIntent: AppIntent {
     static let title: LocalizedStringResource = "Chụp hoá đơn"
-    static let description = IntentDescription("Mở Pay và chụp ngay ảnh hoá đơn, chụp xong nhập số tiền.")
+    static let description = IntentDescription("Mở Payso và chụp ngay ảnh hoá đơn, chụp xong nhập số tiền.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -65,7 +65,7 @@ struct PhotoIntent: AppIntent {
 
 struct AddIntent: AppIntent {
     static let title: LocalizedStringResource = "Nhập khoản chi"
-    static let description = IntentDescription("Mở Pay và nhập ngay một khoản chi.")
+    static let description = IntentDescription("Mở Payso và nhập ngay một khoản chi.")
     static let openAppWhenRun = true
 
     @MainActor

@@ -40,16 +40,16 @@ targets:
     info:
       path: Pay/Info.plist
       properties:
-        CFBundleDisplayName: Pay
+        CFBundleDisplayName: Payso
         CKSharingSupported: true
         UIBackgroundModes: [remote-notification]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        NSCameraUsageDescription: Pay dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.
-        NSMicrophoneUsageDescription: Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
-        NSSpeechRecognitionUsageDescription: Pay chuyển giọng nói thành chữ để ghi khoản chi.
-        NSPhotoLibraryAddUsageDescription: Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.
-        NSPhotoLibraryUsageDescription: Pay hiện ảnh mới nhất trong app Ảnh ở màn chụp để bạn chọn nhanh ảnh hoá đơn có sẵn.
+        NSCameraUsageDescription: Payso dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.
+        NSMicrophoneUsageDescription: Payso dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
+        NSSpeechRecognitionUsageDescription: Payso chuyển giọng nói thành chữ để ghi khoản chi.
+        NSPhotoLibraryAddUsageDescription: Payso lưu ảnh bạn chụp trong Payso vào app Ảnh.
+        NSPhotoLibraryUsageDescription: Payso hiện ảnh mới nhất trong app Ảnh ở màn chụp để bạn chọn nhanh ảnh hoá đơn có sẵn.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
@@ -116,7 +116,7 @@ targets:
     info:
       path: PayWidget/Info.plist
       properties:
-        CFBundleDisplayName: Pay
+        CFBundleDisplayName: Payso
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Pay</string>
+	<string>Payso</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -76,15 +76,15 @@
 		<string>wvbs</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Pay dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.</string>
+	<string>Payso dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Pay dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".</string>
+	<string>Payso dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Pay lưu ảnh bạn chụp trong Pay vào app Ảnh.</string>
+	<string>Payso lưu ảnh bạn chụp trong Payso vào app Ảnh.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Pay hiện ảnh mới nhất trong app Ảnh ở màn chụp để bạn chọn nhanh ảnh hoá đơn có sẵn.</string>
+	<string>Payso hiện ảnh mới nhất trong app Ảnh ở màn chụp để bạn chọn nhanh ảnh hoá đơn có sẵn.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Pay chuyển giọng nói thành chữ để ghi khoản chi.</string>
+	<string>Payso chuyển giọng nói thành chữ để ghi khoản chi.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

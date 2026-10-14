@@ -5,7 +5,7 @@ import WidgetKit
 
 /// Phim "Widget": màn hình chính thật của máy ảo iOS, tách thành từng mảnh (web/film/vector/widget-assets.py:
 /// hình nền sạch, từng biểu tượng / widget nền trong suốt) để dựng lại có chuyển động: nhấn giữ khoảng trống cho các
-/// biểu tượng rung, Edit > Add Widget, gõ "Pay", lướt qua các widget của Pay, thêm widget cỡ vừa (widget bật vào,
+/// biểu tượng rung, Edit > Add Widget, gõ "Payso", lướt qua các widget của Pay, thêm widget cỡ vừa (widget bật vào,
 /// các biểu tượng lùi xuống), bấm Done. Toạ độ ghi theo ảnh chụp rộng 920px (`p` đổi sang điểm).
 extension FilmExport {
     private static let size = FilmScreen<EmptyView>.size
@@ -131,7 +131,7 @@ extension FilmExport {
                             }
                             .frame(width: p(798), height: p(374))
                             .overlay(alignment: .topLeading) { minus(editing).offset(x: -8, y: -8) }
-                            Text("Pay").font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white)
+                            Text("Payso").font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white)
                         }
                         .rotationEffect(.degrees(Double(editing) * 0.5 * sin(t * 27 + 1)))
                         .scaleEffect(0.6 + 0.4 * pop).opacity(Double(min(1, pop * 2)))
@@ -487,10 +487,10 @@ private struct FilmBankChooser: View {
                 .frame(maxWidth: .infinity).frame(height: 56)
             VStack(alignment: .leading, spacing: 8) {
                 header(L("Mở sẵn người nhận + số tiền"),
-                       L("Quét xong, Pay mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận."))
+                       L("Quét xong, Payso mở thẳng màn chuyển tiền trong app ngân hàng, đã điền sẵn người nhận và số tiền. Bạn chỉ cần xác nhận."))
                 group(fill, first: true)
                 header(L("Chỉ mở app (quét lại QR)"),
-                       L("Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Pay ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả."))
+                       L("Các ngân hàng này chưa cho app khác điền sẵn thông tin chuyển tiền. Payso ghi khoản chi rồi mở app ngân hàng, bạn quét lại mã QR trong đó để trả."))
                     .padding(.top, 14)
                 group(Array(rest.prefix(6)), first: false)
             }
@@ -549,14 +549,14 @@ private struct FilmBankApp: View {
                     field(en ? "To" : "Người nhận", name)
                     field(en ? "Account" : "Số tài khoản", "\(acct) · \(bank)")
                     field(en ? "Amount" : "Số tiền", fmt(amount), big: true)
-                    field(en ? "Note" : "Nội dung", en ? "Paid via Pay" : "Thanh toán qua Pay")
+                    field(en ? "Note" : "Nội dung", en ? "Paid via Payso" : "Thanh toán qua Payso")
                 }
                 .padding(20)
                 .background(.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .padding(.top, 20)
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x7BE495))
-                    Text(en ? "Filled in by Pay" : "Pay đã điền sẵn").foregroundStyle(.white.opacity(0.85))
+                    Text(en ? "Filled in by Payso" : "Payso đã điền sẵn").foregroundStyle(.white.opacity(0.85))
                 }
                 .font(.system(size: 15, weight: .medium)).padding(.top, 14)
                 Spacer()

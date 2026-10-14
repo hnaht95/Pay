@@ -142,8 +142,8 @@ struct ReceiptCamera: View {
         .accessibilityLabel(L("Đổi camera"))
     }
 
-    /// Tiêu cự quy đổi ra mm (như máy ảnh), chữ đơn cách, không nền. Chạm: đổi nấc (30 · 12 · 24 · 48 mm); vuốt trái / phải: thu
-    /// phóng liền, hiện vòng tiêu cự
+    /// Mức thu phóng như app Camera (1× · 2× · 0,5×), chữ đơn cách, không nền. Chạm: đổi nấc; vuốt trái / phải: thu phóng liền,
+    /// hiện vòng tiêu cự (có thêm số mm)
     private var zoomControl: some View {
         Text(zoomText(cam.zoom))
             .font(.system(size: dialShown ? 17 : 15, weight: .semibold, design: .monospaced))
@@ -175,7 +175,7 @@ struct ReceiptCamera: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    private func zoomText(_ z: CGFloat) -> String { "\(ReceiptCam.mm(z))mm" }
+    private func zoomText(_ z: CGFloat) -> String { ReceiptCam.times(z) }
 
     // MARK: Hàng dưới: chọn ảnh, chụp, bộ lọc
 
@@ -344,15 +344,20 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     @Published var exposure: Float = 0
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     /// Tiêu cự đang dùng, tính theo camera chính = 1x
-    @Published private(set) var zoom: CGFloat = 30.0 / 24   // 30 mm, xem startZoom
+    @Published private(set) var zoom: CGFloat = 1
     @Published private(set) var minZoom: CGFloat = 1
     @Published private(set) var maxZoom: CGFloat = 10
     private var zoomSteps: [CGFloat] = [1, 2]
-    /// Tiêu cự camera chính quy đổi ra phim 35 mm (iPhone đời mới: 24 mm); mở camera ở 30 mm
-    static let mainMM: CGFloat = 24
-    static let startZoom: CGFloat = 30 / mainMM
-    /// Tiêu cự (mm) ứng với mức thu phóng
+    /// Như app Camera: mở ở 1× (camera chính, 24 mm)
+    static let startZoom: CGFloat = 1
+    /// Tiêu cự quy đổi ra phim 35 mm ứng với mức thu phóng (camera chính iPhone đời mới: 24 mm)
     nonisolated static func mm(_ zoom: CGFloat) -> Int { Int((24 * zoom).rounded()) }
+    /// Mức thu phóng dạng app Camera: "1×", "2×", "0,5×", "1,3×" (dấu phẩy thập phân kiểu Việt)
+    nonisolated static func times(_ zoom: CGFloat) -> String {
+        let z = (zoom * 10).rounded() / 10
+        let s = z == z.rounded() ? "\(Int(z))" : String(format: "%.1f", z).replacingOccurrences(of: ".", with: ",")
+        return s + "×"
+    }
     private var zoomIndex = 0
     /// Hệ số thu phóng của máy ứng với "1x" (camera ảo có góc siêu rộng: 1x là camera chính, nằm ở mốc chuyển thứ nhất)
     private var zoomBase: CGFloat = 1
@@ -394,7 +399,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             input = inp
             orientVideo()
             // Đặt lại tiêu cự sau khi cấu hình xong: đổi sessionPreset / gắn camera làm camera về định dạng mới, tiêu cự đặt trước
-            // đó bị trả về mặc định (góc siêu rộng) trong khi số vẫn hiện 30mm. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
+            // đó bị trả về mặc định (góc siêu rộng) trong khi số vẫn hiện mức cũ. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
             setZoom(zoom)
             configured = true
         }
@@ -409,7 +414,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     }
 
     /// Tiêu cự camera sau lúc chuyển sang camera trước: quay lại camera sau thì về đúng tiêu cự này (như app Camera), không
-    /// đặt lại 30 mm
+    /// đặt lại 1×
     private var backZoom: CGFloat = ReceiptCam.startZoom
 
     /// Đặt các nấc thu phóng cho camera `d` và đặt sẵn tiêu cự `target` lên camera đó. Gọi trước khi gắn camera vào phiên chụp:
@@ -417,8 +422,8 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     private func prepareZoom(_ d: AVCaptureDevice, to target: CGFloat) {
         let wide = d.deviceType == .builtInTripleCamera || d.deviceType == .builtInDualWideCamera
         zoomBase = wide ? CGFloat(d.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue ?? 2) : 1
-        // Camera sau mở ở 30 mm (1,25× camera chính 24 mm), chạm lần lượt 12 · 24 · 48 mm rồi về 30
-        zoomSteps = d.position == .front ? [1] : wide ? [Self.startZoom, 0.5, 1, 2] : [Self.startZoom, 1, 2]
+        // Như app Camera: camera sau mở ở 1×, chạm lần lượt 2× · 0,5× rồi về 1× (máy không có góc siêu rộng: 1× · 2×)
+        zoomSteps = d.position == .front ? [1] : wide ? [1, 2, 0.5] : [1, 2]
         minZoom = d.minAvailableVideoZoomFactor / zoomBase
         maxZoom = max(minZoom, min(d.maxAvailableVideoZoomFactor / zoomBase, 15))
         zoom = min(max(target, minZoom), maxZoom)
@@ -607,7 +612,7 @@ struct ZoomDial: View {
             for m in Self.majors where m >= min - 0.01 && m <= max + 0.01 {
                 let deg = angle(m)
                 guard abs(deg) < edge - 6, abs(deg) > 9 else { continue }
-                let s = "\(ReceiptCam.mm(m))"
+                let s = m < 1 ? "0,5" : "\(Int(m))"
                 ctx.draw(Text(s).font(.system(size: 15, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(fade(deg))),
                          at: point(deg, r - 38))
             }
@@ -616,8 +621,11 @@ struct ZoomDial: View {
             tri.move(to: CGPoint(x: c.x - 5, y: c.y - r - 4)); tri.addLine(to: CGPoint(x: c.x + 5, y: c.y - r - 4))
             tri.addLine(to: CGPoint(x: c.x, y: c.y - r + 6)); tri.closeSubpath()
             ctx.fill(tri, with: .color(Color(hex: 0xFFD43B)))
-            ctx.draw(Text("\(ReceiptCam.mm(zoom))mm").font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(Color(hex: 0xFFD43B)),
+            ctx.draw(Text(ReceiptCam.times(zoom)).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(Color(hex: 0xFFD43B)),
                      at: CGPoint(x: c.x, y: c.y - r + 40))
+            ctx.draw(Text("\(ReceiptCam.mm(zoom)) MM").font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color(hex: 0xFFD43B)),
+                     at: CGPoint(x: c.x, y: c.y - r + 64))
         }
     }
 }

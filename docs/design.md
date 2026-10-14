@@ -111,7 +111,7 @@ Nút đổi kiểu ở mục Gần đây và ở Lịch sử, chung một lựa 
 
 ## 10. Màn chụp hoá đơn (`ReceiptScan.swift`)
 
-- Khung xem 3:4 cố định, bo 32, có lưới chia ba (vạch trắng mờ, không có trong ảnh). Trong khung chỉ có tiêu cự tính bằng mm (chữ đơn cách, không nền), mở ở 30mm; chạm đổi nấc 30 · 12 · 24 · 48mm, vuốt ngang hiện vòng tiêu cự (vạch số cũng bằng mm).
+- Khung xem 3:4 cố định, bo 32, có lưới chia ba (vạch trắng mờ, không có trong ảnh). Thu phóng theo mặc định của app Camera: mở ở 1× (24mm), số hiện dạng × (chữ đơn cách, không nền), chạm đổi nấc 1× · 2× · 0,5×; vuốt ngang hiện vòng tiêu cự, giữa vòng có thêm số mm. Đổi camera: camera trước 1×, quay lại camera sau giữ tiêu cự đang dùng.
 - Thanh trên chỉ có nút quay lại. Nút đổi camera trước / sau nằm ngang hàng số mm, sát mép phải khung xem, biểu tượng trắng cùng cỡ với số, trên nền tròn kính mờ 40.
 - Hàng dưới, cao hơn vạch Home 28: ô ảnh bên trái, nút chụp ở giữa, nút nhà bên phải. Ô ảnh và nút nhà đứng **giữa khoảng từ mép màn tới mép nút chụp**.
   - Ô ảnh: hai ảnh mới nhất trong app Ảnh, khung 3:4 bo 6, xếp chồng lệch nhau, viền trắng mảnh.

@@ -55,6 +55,7 @@ extension English {
         "Bây giờ": "Now",
         "Đặt hoá đơn vào khung rồi bấm chụp": "Fit the receipt in the frame, then tap capture",
         "Chọn ảnh": "Choose photo",
+        "Về trang chủ": "Back to Home",
         "Chụp": "Capture",
         "Ảnh đã chụp": "Photos taken",
         "Chưa có ảnh nào chụp bằng Pay.": "No photos taken with Pay yet.",

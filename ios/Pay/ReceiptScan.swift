@@ -9,6 +9,8 @@ import SwiftUI
 /// chọn ảnh có sẵn bên trái. Không có bộ lọc, lưới, tỉ lệ, hẹn giờ, đèn, đổi camera, nhiệt độ màu / độ sáng.
 /// Không dùng máy quét tài liệu của iOS: nó có sẵn bộ lọc / chế độ chụp không ẩn được
 struct ReceiptCamera: View {
+    /// Nút về trang chủ bên phải nút chụp (chụp hoá đơn mở từ trang chủ). Không có thì chỗ đó để trống
+    var home: (() -> Void)? = nil
     var done: (UIImage?) -> Void
     @StateObject private var cam = ReceiptCam()
     @State private var photo: PhotosPickerItem?
@@ -171,8 +173,21 @@ struct ReceiptCamera: View {
             .buttonStyle(Pressable())
             .accessibilityLabel(L("Chụp"))
             Spacer()
-            // Chỗ trống cùng cỡ ô ảnh bên trái, để nút chụp nằm giữa
-            Color.clear.frame(width: 58, height: 58)
+            // Về trang chủ (cùng cỡ ô ảnh bên trái, để nút chụp nằm giữa)
+            if let home {
+                Button(action: home) {
+                    Image(systemName: "house.fill").font(.system(size: 20, weight: .medium)).foregroundStyle(.white)
+                        .frame(width: 44, height: 62)
+                        .background(Capsule().fill(.white.opacity(0.14)))
+                        .padding(3)
+                        .background(Capsule().fill(.white.opacity(0.08)))
+                }
+                .buttonStyle(Pressable())
+                .frame(width: 58, height: 68)
+                .accessibilityLabel(L("Về trang chủ"))
+            } else {
+                Color.clear.frame(width: 58, height: 68)
+            }
         }
     }
 

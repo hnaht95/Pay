@@ -1090,17 +1090,27 @@ extension Font {
 }
 
 
-/// Màn chụp hoá đơn mở từ trang chủ (vuốt lên từ nút Nhập). Chụp xong, màn nhập kèm ảnh mở chồng ngay lên màn chụp; lưu hoặc
-/// huỷ ở màn nhập thì đóng luôn màn chụp, cả hai cùng trượt xuống một lượt về trang chủ
+/// Màn chụp hoá đơn mở từ trang chủ (vuốt lên từ nút Nhập). Chụp xong, màn nhập kèm ảnh mở chồng ngay lên màn chụp. Lưu ở
+/// màn nhập thì đóng luôn màn chụp, cả hai cùng trượt xuống về trang chủ; Huỷ (hoặc vuốt tấm xuống) thì quay lại màn chụp để
+/// chụp lại. Về trang chủ bằng nút nhà cạnh nút chụp
 private struct ReceiptFlow: View {
     let store: Store
     var close: () -> Void
     @State private var shot: EntryMode?
+    /// Số khoản lúc mở màn nhập: lúc đóng nhiều hơn là đã lưu
+    @State private var countAtShot = 0
+    /// Đổi để dựng lại màn chụp từ đầu (bật lại camera) khi quay lại chụp
+    @State private var round = 0
 
     var body: some View {
-        ReceiptCamera { img in
-            if let img { shot = .receipt(img) } else { close() }
+        ReceiptCamera(home: close) { img in
+            guard let img else { close(); return }
+            countAtShot = store.all.count
+            shot = .receipt(img)
         }
-        .sheet(item: $shot, onDismiss: close) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
+        .id(round)
+        .sheet(item: $shot, onDismiss: {
+            if store.all.count > countAtShot { close() } else { round += 1 }
+        }) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
     }
 }

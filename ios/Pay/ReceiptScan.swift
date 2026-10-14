@@ -147,14 +147,16 @@ struct ReceiptCamera: View {
 
     // MARK: Hàng dưới: chọn ảnh, chụp, bộ lọc
 
+    /// Ô ảnh và nút về trang chủ đứng giữa khoảng trống hai bên nút chụp (giữa mép màn và mép nút chụp)
     private var bottomRow: some View {
-        HStack {
-            // Ảnh mới nhất trong app Ảnh (khung dọc bo góc); chạm: chọn ảnh từ thư viện máy, xong qua bước căn lại như ảnh chụp
-            PhotosPicker(selection: $photo, matching: .images) { LatestPhotoTile() }
-                .buttonStyle(Pressable())
-                .frame(width: 58, height: 68)
-                .accessibilityLabel(L("Chọn ảnh"))
-            Spacer()
+        HStack(spacing: 0) {
+            // Hai ảnh mới nhất trong app Ảnh; chạm: chọn ảnh từ thư viện máy, xong căn vào khung 3:4 như ảnh chụp
+            PhotosPicker(selection: $photo, matching: .images) {
+                LatestPhotoTile().frame(width: 60, height: 68).contentShape(Rectangle())
+            }
+            .buttonStyle(Pressable())
+            .accessibilityLabel(L("Chọn ảnh"))
+            .frame(maxWidth: .infinity)
             Button(action: shoot) {
                 Capsule().fill(Color(hex: 0xE8EBDD))
                     // Chấm trang trí: 2 hàng × 3 chấm, cách đều, căn giữa nút
@@ -172,22 +174,24 @@ struct ReceiptCamera: View {
             }
             .buttonStyle(Pressable())
             .accessibilityLabel(L("Chụp"))
-            Spacer()
-            // Về trang chủ (cùng cỡ ô ảnh bên trái, để nút chụp nằm giữa)
-            if let home {
-                Button(action: home) {
-                    // Biểu tượng nhà nét mảnh của SF Symbols, không khung nền
-                    Image(systemName: "house").font(.system(size: 24, weight: .regular)).foregroundStyle(.white.opacity(0.85))
-                        .frame(width: 58, height: 68)
-                        .contentShape(Rectangle())
+            Group {
+                if let home {
+                    Button(action: home) {
+                        // Biểu tượng nhà của SF Symbols, nét dày vừa, không khung nền
+                        Image(systemName: "house").font(.system(size: 25, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                            .frame(width: 60, height: 68)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(Pressable())
+                    .accessibilityLabel(L("Về trang chủ"))
+                } else {
+                    Color.clear.frame(width: 60, height: 68)
                 }
-                .buttonStyle(Pressable())
-                .frame(width: 58, height: 68)
-                .accessibilityLabel(L("Về trang chủ"))
-            } else {
-                Color.clear.frame(width: 58, height: 68)
             }
+            .frame(maxWidth: .infinity)
         }
+        // Tràn ra hai mép màn (bỏ lề 16 của màn chụp) để "giữa khoảng trống" tính từ mép màn
+        .padding(.horizontal, -16)
     }
 
     // MARK: Chụp

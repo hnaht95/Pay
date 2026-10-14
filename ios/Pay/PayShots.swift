@@ -5,9 +5,19 @@ import SwiftUI
 /// (vd vừa chụp xong, ảnh được lưu vào app Ảnh). Chưa cho phép đọc thư viện thì không có ảnh
 @MainActor
 final class LatestPhoto: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
-    @Published private(set) var image: UIImage?
+    /// Hai ảnh mới nhất (mới nhất trước)
+    @Published private(set) var images: [UIImage?] = []
 
     func start() {
+        #if DEBUG
+        // Ảnh so sánh (máy ảo không cấp được quyền đọc thư viện): -shotPhotos YES dùng hai ảnh mẫu
+        if UserDefaults.standard.bool(forKey: "shotPhotos") {
+            images = [UIColor(red: 0.95, green: 0.6, blue: 0.2, alpha: 1), UIColor(red: 0.3, green: 0.6, blue: 0.95, alpha: 1)].map { c in
+                UIGraphicsImageRenderer(size: CGSize(width: 90, height: 120)).image { ctx in c.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 90, height: 120)) }
+            }
+            return
+        }
+        #endif
         switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
         case .authorized, .limited: begin()
         case .notDetermined:
@@ -32,35 +42,48 @@ final class LatestPhoto: NSObject, ObservableObject, PHPhotoLibraryChangeObserve
     private func load() {
         let o = PHFetchOptions()
         o.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        o.fetchLimit = 1
-        guard let a = PHAsset.fetchAssets(with: .image, options: o).firstObject else { image = nil; return }
+        o.fetchLimit = 2
+        let found = PHAsset.fetchAssets(with: .image, options: o)
+        guard found.count > 0 else { images = []; return }
+        if images.count != found.count { images = Array(repeating: nil, count: found.count) }
         let r = PHImageRequestOptions()
         r.deliveryMode = .opportunistic
         r.isNetworkAccessAllowed = true
-        PHImageManager.default().requestImage(for: a, targetSize: CGSize(width: 160, height: 220), contentMode: .aspectFill, options: r) { img, _ in
-            Task { @MainActor in if let img { self.image = img } }
+        for i in 0..<found.count {
+            PHImageManager.default().requestImage(for: found[i], targetSize: CGSize(width: 180, height: 240), contentMode: .aspectFill, options: r) { img, _ in
+                Task { @MainActor in if let img, i < self.images.count { self.images[i] = img } }
+            }
         }
     }
 }
 
-/// Ô ảnh ở màn chụp: ảnh mới nhất trong app Ảnh, khung dọc hẹp bo tròn hai đầu (chưa có quyền / chưa có ảnh thì biểu tượng ảnh)
+/// Ô ảnh ở màn chụp: hai ảnh mới nhất trong app Ảnh, khung 3:4 bo góc nhẹ, xếp chồng lệch nhau (ảnh mới nhất nằm trên, ảnh
+/// trước đó nghiêng ló ra phía sau). Chưa có quyền / chưa có ảnh thì khung trống có biểu tượng ảnh
 struct LatestPhotoTile: View {
     @StateObject private var latest = LatestPhoto()
-    static let size = CGSize(width: 38, height: 62)
+    static let size = CGSize(width: 39, height: 52)
 
     var body: some View {
-        let shape = Capsule()
         ZStack {
-            if let img = latest.image { Image(uiImage: img).resizable().scaledToFill() }
-            else { Image(systemName: "photo").font(.system(size: 20)).foregroundStyle(.white) }
+            if latest.images.count > 1 {
+                card(latest.images[1]).rotationEffect(.degrees(-10)).offset(x: -4, y: -1).opacity(0.85)
+            }
+            card(latest.images.first ?? nil).rotationEffect(.degrees(4))
         }
-        .frame(width: Self.size.width, height: Self.size.height)
-        .background(.white.opacity(0.14))
-        .clipShape(shape)
-        // Viền như nút chụp bên cạnh (vòng trắng mờ quanh nút), mảnh hơn: 3 điểm
-        .padding(3)
-        .background(shape.fill(.white.opacity(0.08)))
         .onAppear { latest.start() }
         .onDisappear { latest.stop() }
+    }
+
+    /// Một ảnh: khung 3:4 bo góc nhẹ, viền trắng mảnh để hai ảnh chồng nhau vẫn tách bạch
+    private func card(_ img: UIImage?) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+        return ZStack {
+            Color(hex: 0x2C2C2E)
+            if let img { Image(uiImage: img).resizable().scaledToFill() }
+            else { Image(systemName: "photo").font(.system(size: 15)).foregroundStyle(.white.opacity(0.85)) }
+        }
+        .frame(width: Self.size.width, height: Self.size.height)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(.white.opacity(0.85), lineWidth: 1.5))
     }
 }

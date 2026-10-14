@@ -108,8 +108,10 @@ struct HistoryView: View {
                     // Cạnh ô tìm: đổi kiểu xem danh sách / lưới ảnh (cùng nút ở mục Gần đây)
                     .safeAreaInset(edge: .trailing, spacing: 10) {
                         Button { withAnimation(.snappy(duration: 0.3)) { grid.toggle() } } label: {
+                            // Cùng cỡ chữ thì hình ba vạch nhỏ hơn hẳn hình hai tấm ảnh (đo: 85×81 so với 109×126): tăng cỡ ba vạch, giảm cỡ hai tấm
+                            // cho hai biểu tượng trông to bằng nhau (~18×17 và ~17×20 điểm)
                             Image(systemName: grid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: grid ? 21 : 16, weight: .semibold))
                                 .frame(width: 58, height: 58)
                                 .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 .contentShape(Rectangle())

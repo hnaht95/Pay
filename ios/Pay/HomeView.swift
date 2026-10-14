@@ -92,8 +92,10 @@ struct HomeView: View {
                         // Đổi kiểu xem: danh sách / lưới ảnh
                         if film == nil {
                             Button { withAnimation(.snappy(duration: 0.3)) { recentGrid.toggle() } } label: {
+                                // Cùng cỡ chữ thì hình ba vạch nhỏ hơn hẳn hình hai tấm ảnh (đo: 85×81 so với 109×126): tăng cỡ ba vạch, giảm cỡ hai tấm
+                                // cho hai biểu tượng trông to bằng nhau (~18×17 và ~17×20 điểm)
                                 Image(systemName: recentGrid ? "lineweight" : "rectangle.portrait.on.rectangle.portrait.angled.fill")
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .font(.system(size: recentGrid ? 21 : 16, weight: .semibold))
                                     .frame(width: 37, height: 37)   // vùng chạm cao bằng viên "Xem tất cả" bên cạnh; không nền
                                     .contentShape(Rectangle())
                             }

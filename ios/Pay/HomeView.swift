@@ -891,7 +891,7 @@ struct ExpenseRow: View {
             .fixedSize().layoutPriority(1)
         }
         .foregroundStyle(.primary)
-        .padding(.leading, e.isAdjust ? 18 : Self.rowInset).padding(.trailing, 14).padding(.vertical, Self.rowInset)
+        .padding(.leading, e.isAdjust ? 16 : Self.rowInset).padding(.trailing, e.isAdjust ? 16 : 14).padding(.vertical, Self.rowInset)   // thẻ không ô biểu tượng: chữ cách đều hai bên 16
         .frame(minHeight: Self.rowHeight - 10)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: Self.rowRadius, style: .continuous))
     }

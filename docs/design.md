@@ -56,6 +56,9 @@ Ngoại lệ có chủ đích:
 - Khe giữa các thẻ / ô: 10 (danh sách), 8 (lưới ảnh).
 - Bo góc đồng tâm: bo thẻ = bo phần tử bên trong + khoảng cách tới mép. Ví dụ hàng khoản chi: ô 56 bo 13, cách mép 10 → thẻ bo 23.
 - Bo: thẻ Hôm nay đã chi 32, thẻ danh mục 28, thẻ hàng khoản chi 23, ô lưới ảnh 18, khung xem camera 32, tấm 38.
+- Phần tử nằm trong một viên / thẻ bo tròn (vd vòng tròn số đếm trong viên "Các lần điều chỉnh"): cách mép viên **đều** trên, dưới và phía sát mép (vd 5), để hai đường cong đồng tâm.
+- Thẻ chỉ có chữ (không có ô biểu tượng): chữ cách đều hai bên 16.
+- Ô danh mục trang chủ: nửa hàng cao 140, biểu tượng 52; **kéo dài cả hàng thì cao 180, biểu tượng 72**.
 
 ## 4. Thanh tiêu đề (`screenTitle`, `softTopEdge`, `softTitleBar`)
 
@@ -91,9 +94,10 @@ Hiệu ứng mép cuộn của hệ thống (iOS 26+) bị **tắt ở mọi nơ
 
 - Một hàng là một thẻ `Palette.card`, cao 76 + khe 10, bo 23.
 - Trái: ô 56 bo 13, cách mép thẻ 10. **Ảnh hoá đơn nếu có**, không thì biểu tượng / ảnh danh mục trên nền trắng.
-- Giữa: tên (tối đa 2 dòng), dưới là tên danh mục. Phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh ngăn giữa).
+- Giữa: tên (tối đa 2 dòng), dưới là tên danh mục (hoặc dòng phụ riêng, vd "Số dư sau: …"). Phải: số tiền, dưới là ngày | giờ (vạch dọc mảnh ngăn giữa).
 - **Vuốt xoá:** dùng vuốt có sẵn của iOS. iOS 26+ nút tròn đỏ của hệ thống; iOS 18 vẽ lại nút tròn đỏ 50 cho giống. Nút cách thẻ và cách mép màn bằng nhau (~18). Có rung khi lộ nút, xoá xong hiện "Đã xoá · Hoàn tác".
-- Danh sách tràn ra mép trái màn để hàng vuốt đi không bị cắt.
+- Danh sách tràn ra mép trái màn để hàng vuốt đi không bị cắt. Thẻ đầu cách vạch dưới tiêu đề 16.
+- **Điều chỉnh số dư không phải khoản chi:** không hiện ở Gần đây, Lịch sử, lưới ảnh. Chỉ xem ở bảng Số dư › Các lần điều chỉnh: thẻ không có ô biểu tượng, dòng phụ là số dư sau lần đó, vuốt để xoá.
 
 ## 8. Lưới ảnh (`ExpenseTile`)
 
@@ -112,12 +116,13 @@ Nút đổi kiểu ở mục Gần đây và ở Lịch sử, chung một lựa 
 ## 10. Màn chụp hoá đơn (`ReceiptScan.swift`)
 
 - Khung xem 3:4 cố định, bo 32, có lưới chia ba (vạch trắng mờ, không có trong ảnh). Thu phóng theo mặc định của app Camera: mở ở 1× (24mm), số hiện dạng × (chữ đơn cách, không nền), chạm đổi nấc 1× · 2× · 0,5×; vuốt ngang hiện vòng tiêu cự, giữa vòng có thêm số mm. Đổi camera: camera trước 1×, quay lại camera sau giữ tiêu cự đang dùng.
-- Thanh trên chỉ có nút quay lại. Nút đổi camera trước / sau nằm ngang hàng số mm, sát mép phải khung xem, biểu tượng trắng cùng cỡ với số, trên nền tròn kính mờ 40.
+- Thanh trên chỉ có nút quay lại. Nút đổi camera trước / sau nằm ngang hàng số thu phóng, sát mép phải khung xem, biểu tượng trắng cùng cỡ với số, trên nền tròn kính mờ 40. Chạm: rung ngay, khung xem lật quanh trục dọc dưới lớp kính mờ, đổi camera chạy song song.
+- Camera dùng **ống vật lý** (camera trước, ống chính, ống góc siêu rộng), không dùng camera ghép nhiều ống của iOS (chậm khi đổi trước ↔ sau). Dưới 1× tự đổi sang ống góc siêu rộng. Ảnh camera trước lật gương giống khung xem.
 - Hàng dưới, cao hơn vạch Home 28: ô ảnh bên trái, nút chụp ở giữa, nút nhà bên phải. Ô ảnh và nút nhà đứng **giữa khoảng từ mép màn tới mép nút chụp**.
   - Ô ảnh: hai ảnh mới nhất trong app Ảnh, khung 3:4 bo 6, xếp chồng lệch nhau, viền trắng mảnh.
   - Nút nhà: SF Symbols `house`, nét đậm, không nền. Chỉ có khi mở từ trang chủ.
 - Chụp: chỉ khung xem tối sầm thoáng qua (không loé cả màn), ảnh cắt đúng 3:4 rồi dùng luôn, không qua bước sửa. Ảnh chọn từ thư viện căn vào khung 3:4.
-- Chụp xong: màn nhập mở ngay **trên** màn chụp. Lưu: cả hai trượt xuống về trang chủ. Huỷ: quay lại màn chụp để chụp lại.
+- Chụp xong: màn nhập mở ngay **trên** màn chụp, camera vẫn chạy phía dưới. Lưu: cả hai trượt xuống về trang chủ. Huỷ: quay lại màn chụp, chụp tiếp ngay (không bật lại camera, không nháy đen).
 
 ## 11. Chỗ vẫn để hệ thống vẽ
 
@@ -135,5 +140,5 @@ scripts/shots.sh -n home stats   # không dựng lại, chỉ chụp các màn c
 
 - Tự tạo máy ảo "Pay iOS 18 / 26 / 27" (iPhone 16 Pro), chụp sáng và tối, ghép mỗi màn một ảnh 6 cột vào `ios/build/shots/<màn>.png`.
 - Màn có sẵn: `home`, `home-mid`, `home-end`, `stats`, `settings`, `history`, `house`, `entry`.
-- Cờ chỉ có ở bản thử (DEBUG): `-shotOpen stats|settings|history|house|entry|voice|camera`, `-shotScroll 0…1`, `-shotSystemEdge YES` (để mép cuộn của hệ thống, làm mẫu so sánh), `-shotPhotos YES` (hai ảnh mẫu cho ô ảnh ở màn chụp), `-recentGrid YES|NO`.
+- Cờ chỉ có ở bản thử (DEBUG): `-shotOpen stats|settings|history|house|entry|voice|camera|balance|balancelog`, `-shotWide an,cafe` (ô danh mục dài cả hàng), `-shotAdjust YES` (tạo hai lần điều chỉnh số dư), `-shotScroll 0…1`, `-shotSystemEdge YES` (để mép cuộn của hệ thống, làm mẫu so sánh), `-shotPhotos YES` (hai ảnh mẫu cho ô ảnh ở màn chụp), `-recentGrid YES|NO`.
 - Máy ảo không có camera, không cấp được quyền thư viện ảnh và không bấm được nút; những phần đó phải thử trên máy thật.

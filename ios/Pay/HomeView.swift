@@ -173,6 +173,8 @@ struct HomeView: View {
             case "voice": voiceFrom = CGRect(x: 181, y: 780, width: 205, height: 78)   // khung nút Quét QR trên iPhone 16 Pro
             default: break
             }
+            // -shotWide an,cafe: kéo các ô danh mục đó dài cả hàng
+            for k in (UserDefaults.standard.string(forKey: "shotWide") ?? "").split(separator: ",") { store.setWide(String(k), true) }
         }
         #endif
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
@@ -456,11 +458,13 @@ struct HomeView: View {
 
     private static let tileRadius: CGFloat = 28
 
-    /// Ô danh mục: biểu tượng, tên, số tiền tháng này. Dấu + ở góc nhập khoản mới cho danh mục đó
+    /// Ô danh mục: biểu tượng, tên, số tiền tháng này. Dấu + ở góc nhập khoản mới cho danh mục đó.
+    /// Ô dài cả hàng thì cao hơn và biểu tượng to hơn (180 / 72 thay vì 140 / 52), để không thành một dải dẹt
     private func tile(_ c: Category, total: Int) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let wide = store.isWide(c.k)
+        return VStack(alignment: .leading, spacing: 0) {
             // Ô vuông nền trắng (bo đồng tâm với ô: 28 − 16), ảnh riêng hoặc biểu tượng
-            CategoryBadge(c: c, side: 52, radius: 12)
+            CategoryBadge(c: c, side: wide ? 72 : 52, radius: wide ? 16 : 12, iconSize: wide ? 42 : 30)
             Spacer(minLength: 14)
             // Tên mờ 70% (pha màu nền); số tiền giữ đậm rõ cho dễ đọc
             Text(c.name).font(.system(size: 15, weight: .medium)).opacity(0.7)
@@ -468,7 +472,7 @@ struct HomeView: View {
         }
         .foregroundStyle(c.ink)
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: wide ? 180 : 140, alignment: .leading)
         .background(c.color, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
     }
 

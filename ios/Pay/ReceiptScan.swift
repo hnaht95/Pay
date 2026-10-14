@@ -377,6 +377,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
                   session.canAddInput(inp), session.canAddOutput(output) else {
                 error = L("Không mở được camera. Bấm \"Chọn ảnh\" để dùng ảnh có sẵn."); return
             }
+            prepareZoom(d, to: Self.startZoom)
             session.beginConfiguration()
             session.sessionPreset = .photo
             session.addInput(inp)
@@ -387,7 +388,6 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             session.commitConfiguration()
             input = inp
             orientVideo()
-            setupZoom()
             configured = true
         }
         let s = session
@@ -400,16 +400,25 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         if c.isVideoMirroringSupported { c.isVideoMirrored = device?.position == .front }
     }
 
-    private func setupZoom() {
-        guard let d = device else { return }
+    /// Tiêu cự camera sau lúc chuyển sang camera trước: quay lại camera sau thì về đúng tiêu cự này (như app Camera), không
+    /// đặt lại 30 mm
+    private var backZoom: CGFloat = ReceiptCam.startZoom
+
+    /// Đặt các nấc thu phóng cho camera `d` và đặt sẵn tiêu cự `target` lên camera đó. Gọi trước khi gắn camera vào phiên chụp:
+    /// gắn xong mới đặt thì vài khung hình đầu ra ở tiêu cự mặc định của camera (góc siêu rộng) rồi mới nhảy về tiêu cự đúng
+    private func prepareZoom(_ d: AVCaptureDevice, to target: CGFloat) {
         let wide = d.deviceType == .builtInTripleCamera || d.deviceType == .builtInDualWideCamera
         zoomBase = wide ? CGFloat(d.virtualDeviceSwitchOverVideoZoomFactors.first?.doubleValue ?? 2) : 1
         // Camera sau mở ở 30 mm (1,25× camera chính 24 mm), chạm lần lượt 12 · 24 · 48 mm rồi về 30
         zoomSteps = d.position == .front ? [1] : wide ? [Self.startZoom, 0.5, 1, 2] : [Self.startZoom, 1, 2]
         minZoom = d.minAvailableVideoZoomFactor / zoomBase
         maxZoom = max(minZoom, min(d.maxAvailableVideoZoomFactor / zoomBase, 15))
-        zoomIndex = 0
-        setZoom(zoomSteps[0])
+        zoom = min(max(target, minZoom), maxZoom)
+        // Nấc gần nhất với tiêu cự đặt lại, để chạm tiếp đi sang nấc kế tiếp như thường
+        zoomIndex = zoomSteps.indices.min { abs(zoomSteps[$0] - zoom) < abs(zoomSteps[$1] - zoom) } ?? 0
+        guard (try? d.lockForConfiguration()) != nil else { return }
+        d.videoZoomFactor = min(max(zoom * zoomBase, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
+        d.unlockForConfiguration()
     }
 
     func nextZoom() {
@@ -455,15 +464,17 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         flashMode = flashMode == .off ? .auto : flashMode == .auto ? .on : .off
     }
 
+    /// Đổi camera trước / sau như app Camera: camera trước luôn 1×; quay lại camera sau thì giữ tiêu cự đang dùng trước khi đổi
     func flip() {
         guard configured, let cur = input, let d = Self.camera(cur.device.position == .back ? .front : .back),
               let inp = try? AVCaptureDeviceInput(device: d) else { return }
+        if cur.device.position == .back { backZoom = zoom }
+        prepareZoom(d, to: d.position == .back ? backZoom : 1)
         session.beginConfiguration()
         session.removeInput(cur)
         if session.canAddInput(inp) { session.addInput(inp); input = inp } else { session.addInput(cur) }
         session.commitConfiguration()
         orientVideo()
-        setupZoom()
         let w = warmth, e = exposure
         setWarmth(w); setExposure(e)
     }

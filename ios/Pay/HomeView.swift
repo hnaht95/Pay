@@ -160,6 +160,8 @@ struct HomeView: View {
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store).sheetCorners() }
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store).sheetCorners() }
         .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
+        // Khởi động trước camera trong nền sau khi trang chủ hiện ra, để lần vuốt Nhập đầu tiên mở camera nhanh như các lần sau
+        .task { try? await Task.sleep(for: .seconds(1)); ReceiptCam.prewarm() }
         #if DEBUG
         // Ảnh so sánh giữa các bản iOS (scripts/shots.sh): -shotOpen stats|settings|history|house|entry|voice|camera|balance|balancelog mở sẵn một màn
         .task {

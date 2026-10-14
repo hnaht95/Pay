@@ -390,6 +390,24 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     nonisolated(unsafe) private var liveFilter: CamFilter = .none
     nonisolated(unsafe) private var lastFrame = Date.distantPast
 
+    /// Khởi động trước phần nặng của camera lúc app vừa mở (đã có quyền camera): tìm các ống kính, tạo đầu vào, dựng thử một phiên
+    /// chụp rồi bỏ. Lần đầu mở camera sau khi mở app, iOS phải làm mấy việc này (kết nối dịch vụ camera, nạp thông tin ống kính)
+    /// nên chậm hẳn; làm sẵn trong nền thì lần vuốt đầu cũng mở nhanh như các lần sau. Không bật camera (không có chấm xanh)
+    static func prewarm() {
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        let devices = [wide, ultra, front].compactMap { $0 }
+        sessionQueue.async {
+            let s = AVCaptureSession()
+            s.beginConfiguration()
+            s.sessionPreset = .photo
+            if let d = devices.first, let inp = try? AVCaptureDeviceInput(device: d), s.canAddInput(inp) { s.addInput(inp) }
+            let out = AVCapturePhotoOutput()
+            if s.canAddOutput(out) { s.addOutput(out) }
+            s.commitConfiguration()
+            for d in devices.dropFirst() { _ = try? AVCaptureDeviceInput(device: d) }
+        }
+    }
+
     func start() {
         AVCaptureDevice.requestAccess(for: .video) { ok in
             Task { @MainActor in

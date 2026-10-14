@@ -6,6 +6,7 @@ extension English {
         "iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR.": "Speech recognition isn't available right now. Try again later, or scan a QR code.",
         "Không dùng được micro lúc này. Thử lại, hoặc quét QR.": "The microphone isn't available right now. Try again, or scan a QR code.",
         "Không bật được micro.": "Couldn't turn on the microphone.",
+        "Không bật được micro (mã %@). Bấm Nói lại để thử lần nữa.": "Couldn't turn on the mic (code %@). Tap Try again.",
         "Đã ghi": "Logged",
         "Đang nghe": "Listening",
         "Đã hoàn tác, chưa ghi gì": "Undone. Nothing logged.",

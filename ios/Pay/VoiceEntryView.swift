@@ -19,7 +19,8 @@ final class VoiceListener: ObservableObject {
     let meter = MicLevel()
     var onFinish: ((String) -> Void)?
 
-    private let engine = AVAudioEngine()
+    /// Tạo lại khi bật micro hỏng (xem start): engine cũ có thể giữ định dạng của lần trước (đổi tai nghe, có cuộc gọi…)
+    private var engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var silence: Task<Void, Never>?
@@ -68,6 +69,41 @@ final class VoiceListener: ObservableObject {
             phase = .failed(L("iPhone chưa nhận được giọng tiếng Việt lúc này. Thử lại sau, hoặc quét QR."))
             return
         }
+        // Mở app bằng nút Tác vụ / quay lại app: thẻ bật micro khi app có thể chưa lên hẳn màn hình. iOS không cho app chưa ở
+        // trước mặt giành micro (báo lỗi, thẻ hiện "Không bật được micro"). Đợi app lên hẳn (tối đa 2 giây) rồi mới bật
+        for _ in 0..<20 where UIApplication.shared.applicationState != .active {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        guard !cancelled else { return }
+        // Bật micro, hỏng thì thử lại tối đa 3 lần với engine mới: lần đầu sau khi app vừa quay lại, iOS hay chưa trả micro kịp
+        // (app khác vừa nhả âm thanh, phiên âm thanh cũ chưa tắt hẳn)
+        var lastError: Error?
+        for attempt in 0..<3 {
+            if attempt > 0 {
+                try? await Task.sleep(for: .milliseconds(350))
+                guard !cancelled else { return }
+                engine = AVAudioEngine()
+            }
+            do {
+                try boot(recognizer)
+                lastError = nil
+                break
+            } catch {
+                lastError = error
+                stop()
+            }
+        }
+        if let lastError {
+            let code = (lastError as NSError).code
+            phase = .failed(L("Không bật được micro (mã %@). Bấm Nói lại để thử lần nữa.", String(code)))
+            return
+        }
+        guard phase == .listening else { return }
+        waitForSilence()
+    }
+
+    /// Bật phiên âm thanh, gắn micro vào nhận dạng giọng nói và bắt đầu nghe. Ném lỗi nếu iOS không cho bật micro
+    private func boot(_ recognizer: SFSpeechRecognizer) throws {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -89,9 +125,7 @@ final class VoiceListener: ObservableObject {
             let format = input.outputFormat(forBus: 0)
             // Không có micro dùng được (vd máy ảo, micro đang bị app khác chiếm): báo lỗi thay vì để app văng
             guard format.sampleRate > 0, format.channelCount > 0 else {
-                stop()
-                phase = .failed(L("Không dùng được micro lúc này. Thử lại, hoặc quét QR."))
-                return
+                throw NSError(domain: "Pay.mic", code: -1)
             }
             input.removeTap(onBus: 0)   // phòng còn tap cũ
             let meter = meter
@@ -123,10 +157,6 @@ final class VoiceListener: ObservableObject {
                     }
                 }
             }
-            waitForSilence()
-        } catch {
-            stop()
-            phase = .failed(L("Không bật được micro."))
         }
     }
 

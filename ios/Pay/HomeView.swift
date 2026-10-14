@@ -206,7 +206,16 @@ struct HomeView: View {
             // Mỗi lượt một thẻ mới hẳn (micro, trạng thái nghe riêng), kể cả khi thẻ cũ còn đang hiện
             .id(voiceRound)
         }
-        .onChange(of: scenePhase) { _, p in if p == .active { wake() } else { balanceShown = false } }
+        .onChange(of: scenePhase) { _, p in
+            if p == .active { wake() } else { balanceShown = false }
+            // Chuyển sang app khác: đóng luôn thẻ nói để ghi (tắt micro). Quay lại không còn thẻ cũ treo ở "Không bật được micro";
+            // muốn nói thì bấm nút Tác vụ / vuốt lên từ Quét QR để mở thẻ mới
+            if p == .background {
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { voiceFrom = nil; listening = false }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in wake() }
         .onChange(of: quick.pending, initial: true) { _, k in
             guard let k else { return }

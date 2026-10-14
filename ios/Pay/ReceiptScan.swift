@@ -16,6 +16,8 @@ struct ReceiptCamera: View {
     @State private var photo: PhotosPickerItem?
     @State private var finished = false
     @State private var flash = false
+    /// Số lần đổi camera trước / sau (để xoay biểu tượng)
+    @State private var flips = 0
     /// Ảnh vừa chụp / vừa chọn từ thư viện, đang chờ căn lại (dời, phóng to) trước khi dùng
     @State private var review: CropItem?
     /// Ảnh đang căn là ảnh vừa chụp (căn xong mới lưu vào ảnh Pay đã chụp / Ảnh của máy); ảnh chọn từ thư viện thì không lưu lại
@@ -69,6 +71,17 @@ struct ReceiptCamera: View {
             }
             .accessibilityLabel(L("Đóng"))
             Spacer()
+            // Đổi camera trước / sau (như nút của app Camera); biểu tượng xoay nửa vòng mỗi lần chạm
+            Button {
+                Haptic.tap(.light)
+                withAnimation(.snappy(duration: 0.35)) { flips += 1 }
+                cam.flip()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 22, weight: .medium))
+                    .rotationEffect(.degrees(Double(flips) * 180))
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(L("Đổi camera"))
         }
         .foregroundStyle(.white)
         .buttonStyle(Pressable())

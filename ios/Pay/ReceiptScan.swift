@@ -20,6 +20,11 @@ struct ReceiptCamera: View {
     @State private var flash = false
     /// Số lần đổi camera trước / sau (để xoay biểu tượng)
     @State private var flips = 0
+    /// Lật khung xem lúc đổi camera (như app Camera): góc quay quanh trục dọc, và lớp mờ phủ hình trong lúc lật
+    @State private var flipAngle: Double = 0
+    @State private var flipVeil = false
+    @State private var flipping = false
+    private let flipHaptic = UIImpactFeedbackGenerator(style: .medium)
     /// Ảnh vừa chụp / vừa chọn từ thư viện, đang chờ căn lại (dời, phóng to) trước khi dùng
     @State private var review: CropItem?
     /// Ảnh đang căn là ảnh vừa chụp (căn xong mới lưu vào ảnh Pay đã chụp / Ảnh của máy); ảnh chọn từ thư viện thì không lưu lại
@@ -45,7 +50,7 @@ struct ReceiptCamera: View {
         }
         .preferredColorScheme(.dark)
         // Ảnh chọn từ thư viện máy qua bước căn vào khung 3:4; chờ bảng chọn đóng hẳn rồi mới mở
-        .onAppear { cam.filter = .none; cam.start() }
+        .onAppear { cam.filter = .none; cam.start(); flipHaptic.prepare() }
         .onChange(of: resume) { finished = false }
         .onDisappear { cam.stop() }
         .task(id: photo) {
@@ -86,6 +91,9 @@ struct ReceiptCamera: View {
         return ZStack {
             Color(hex: 0x1C1C1E)
             CameraPreview(session: cam.session)
+                // Lớp kính mờ che hình trong lúc lật: nửa đầu hình cũ mờ đi, nửa sau hình camera mới hiện dần ra
+                .overlay { Rectangle().fill(.ultraThinMaterial).environment(\.colorScheme, .dark).opacity(flipVeil ? 1 : 0) }
+                .rotation3DEffect(.degrees(flipAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             // Chụp: khung xem tối sầm thoáng qua (như màn trập của Camera), chỉ trong khung, phần còn lại của màn để nguyên
             Color.black.opacity(flash ? 0.85 : 0).allowsHitTesting(false)
             // Lưới chia ba (như lưới của Camera iOS): giúp đặt hoá đơn thẳng và giữa khung. Không có trong ảnh chụp
@@ -116,13 +124,29 @@ struct ReceiptCamera: View {
         .animation(.easeOut(duration: 0.2), value: dialShown)
     }
 
+    /// Đổi camera như app Camera: rung ngay khi chạm, khung xem lật nửa vòng quanh trục dọc và mờ đi; giữa chừng (lúc khung đang
+    /// nghiêng 90°, không nhìn thấy hình) mới đổi camera, rồi lật nốt về và hiện hình camera mới
+    private func flipCamera() {
+        guard !flipping else { return }
+        flipping = true
+        flipHaptic.impactOccurred()
+        withAnimation(.snappy(duration: 0.35)) { flips += 1 }
+        withAnimation(.easeIn(duration: 0.2)) { flipAngle = 90; flipVeil = true }
+        Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            await cam.flip()
+            flipAngle = -90
+            withAnimation(.easeOut(duration: 0.25)) { flipAngle = 0 }
+            // Đợi camera mới ra vài khung hình rồi mới bỏ lớp mờ
+            try? await Task.sleep(for: .milliseconds(120))
+            withAnimation(.easeOut(duration: 0.25)) { flipVeil = false }
+            flipping = false
+        }
+    }
+
     /// Đổi camera trước / sau; biểu tượng xoay nửa vòng mỗi lần chạm
     private var flipButton: some View {
-        Button {
-            Haptic.tap(.light)
-            withAnimation(.snappy(duration: 0.35)) { flips += 1 }
-            cam.flip()
-        } label: {
+        Button { flipCamera() } label: {
             Group {
                 if #available(iOS 18.0, *) { Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90") }
                 else { Image(systemName: "arrow.triangle.2.circlepath") }   // biểu tượng trên chưa có ở iOS 17
@@ -477,19 +501,32 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         flashMode = flashMode == .off ? .auto : flashMode == .auto ? .on : .off
     }
 
-    /// Đổi camera trước / sau như app Camera: camera trước luôn 1×; quay lại camera sau thì giữ tiêu cự đang dùng trước khi đổi
-    func flip() {
+    /// Đổi camera trước / sau như app Camera: camera trước luôn 1×; quay lại camera sau thì giữ tiêu cự đang dùng trước khi đổi.
+    /// Cấu hình lại phiên chụp chạy ngoài luồng chính (mất vài trăm mili giây): chạy trên luồng chính thì hiệu ứng lật khựng lại
+    func flip() async {
         guard configured, let cur = input, let d = Self.camera(cur.device.position == .back ? .front : .back),
               let inp = try? AVCaptureDeviceInput(device: d) else { return }
         if cur.device.position == .back { backZoom = zoom }
         prepareZoom(d, to: d.position == .back ? backZoom : 1)
-        session.beginConfiguration()
-        session.removeInput(cur)
-        if session.canAddInput(inp) { session.addInput(inp); input = inp } else { session.addInput(cur) }
-        setZoom(zoom)   // đặt cả trong lúc cấu hình, để khung đầu tiên của camera mới đã đúng tiêu cự
-        session.commitConfiguration()
+        let s = session, factor = zoom * zoomBase
+        let added: Bool = await withCheckedContinuation { done in
+            DispatchQueue.global(qos: .userInitiated).async {
+                s.beginConfiguration()
+                s.removeInput(cur)
+                let ok = s.canAddInput(inp)
+                if ok { s.addInput(inp) } else { s.addInput(cur) }
+                s.commitConfiguration()
+                // Gắn camera xong tiêu cự có thể bị trả về mặc định: đặt lại
+                if ok, (try? d.lockForConfiguration()) != nil {
+                    d.videoZoomFactor = min(max(factor, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
+                    d.unlockForConfiguration()
+                }
+                done.resume(returning: ok)
+            }
+        }
+        guard added else { return }
+        input = inp
         orientVideo()
-        setZoom(zoom)   // như lúc mở: gắn camera xong tiêu cự có thể bị trả về mặc định
         let w = warmth, e = exposure
         setWarmth(w); setExposure(e)
     }

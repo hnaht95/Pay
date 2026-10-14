@@ -57,6 +57,9 @@ struct LatestPhotoTile: View {
         .frame(width: Self.size.width, height: Self.size.height)
         .background(.white.opacity(0.14))
         .clipShape(shape)
+        // Viền như nút chụp bên cạnh (vòng trắng mờ quanh nút), mảnh hơn: 3 điểm
+        .padding(3)
+        .background(shape.fill(.white.opacity(0.08)))
         .onAppear { latest.start() }
         .onDisappear { latest.stop() }
     }

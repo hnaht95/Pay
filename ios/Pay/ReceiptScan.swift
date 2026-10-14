@@ -149,7 +149,7 @@ struct ReceiptCamera: View {
             // Ảnh mới nhất trong app Ảnh (khung dọc bo góc); chạm: chọn ảnh từ thư viện máy, xong qua bước căn lại như ảnh chụp
             PhotosPicker(selection: $photo, matching: .images) { LatestPhotoTile() }
                 .buttonStyle(Pressable())
-                .frame(width: 58, height: 58)
+                .frame(width: 58, height: 68)
                 .accessibilityLabel(L("Chọn ảnh"))
             Spacer()
             Button(action: shoot) {

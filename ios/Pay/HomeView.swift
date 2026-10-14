@@ -51,6 +51,8 @@ struct HomeView: View {
     @AppStorage(HeroColor.key) private var heroTone = -1
     /// Mục Gần đây xem dạng lưới ảnh (3 cột, ảnh hoá đơn và số tiền) thay cho danh sách
     @AppStorage("recentGrid") private var recentGrid = false
+    /// Lưới so le: chiều cao từng cột khi chưa tính ô cuối (đo được), để ô cuối mỗi cột co giãn cho ba cột cùng một đáy
+    @State private var gridCols: [Int: CGFloat] = [:]
     @AppStorage(HeroColor.barKey) private var heroBarTone = -1
     @State private var pickingHero = false
     /// Đang đặt / điều chỉnh số dư hiện có
@@ -109,7 +111,9 @@ struct HomeView: View {
                     recent
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 120)
+                // Cuộn hết: đáy nội dung cách mép trên hai nút đúng 16 (bằng lề hai bên). Nút cao 78, đáy nút cách mép màn 16, vùng
+                // an toàn dưới 34: 16 + 78 + 16 − 34 = 76. Danh sách giữ 120 (hàng cuối đã có sẵn khoảng 10 dưới thẻ)
+                .padding(.bottom, recentGrid && film == nil && !store.sorted.isEmpty ? 76 : 120)
                 .padding(.top, film == nil ? 0 : FilmScreen<EmptyView>.insets.top)
             }
             .statusBarEdge(on: film == nil)
@@ -351,6 +355,14 @@ struct HomeView: View {
         .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
     }
 
+    /// Một ô của lưới so le ở mục Gần đây (height: ô cuối cột, cao theo đường đáy chung thay vì theo tỉ lệ ảnh)
+    private func gridTile(_ e: Expense, height: CGFloat? = nil) -> some View {
+        TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+                hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
+            ExpenseTile(e: e, free: true, height: height)
+        }
+    }
+
     /// accessory: nút tròn riêng đứng trước viên bên phải (vd đổi kiểu xem ở mục Gần đây)
     private func sectionTitle<T: View, A: View>(_ title: String, @ViewBuilder accessory: () -> A = { EmptyView() },
                                                 @ViewBuilder trailing: () -> T) -> some View {
@@ -484,15 +496,23 @@ struct HomeView: View {
         } else if recentGrid {
             // Lưới so le 3 cột (kiểu Pinterest): 12 khoản gần nhất xếp lần lượt từ trái sang phải; mỗi ô cao theo tỉ lệ ảnh hoá
             // đơn (không có ảnh thì màu và biểu tượng danh mục, cao thấp xen kẽ), số tiền ở góc
+            // Ba cột dài ngắn khác nhau: ô cuối của mỗi cột co giãn chiều cao để cả ba cột cùng dừng ở một đường (không cột nào
+            // hụt để lại khoảng trống lởm chởm, không ô nào bị cắt). Đường đáy: ngang đáy cột ngắn nhất, nhưng ô cuối của cột nào
+            // cũng cao ít nhất 90
             let items = Array(store.sorted.prefix(12))
+            let cols = (0..<3).map { c in items.enumerated().filter { $0.offset % 3 == c }.map(\.element) }
+            let line: CGFloat? = gridCols.count == 3 ? gridCols.values.max().map { $0 + 8 + 90 } : nil
             HStack(alignment: .top, spacing: 8) {
                 ForEach(0..<3, id: \.self) { col in
-                    LazyVStack(spacing: 8) {
-                        ForEach(Array(items.enumerated()).filter { $0.offset % 3 == col }, id: \.element.id) { _, e in
-                            TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
-                                    hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
-                                ExpenseTile(e: e, free: true)
-                            }
+                    VStack(spacing: 8) {
+                        // Các ô trừ ô cuối: cao theo tỉ lệ ảnh, đo tổng chiều cao
+                        VStack(spacing: 8) {
+                            ForEach(cols[col].dropLast()) { e in gridTile(e) }
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { gridCols[col] = $0 }
+                        if let last = cols[col].last {
+                            gridTile(last, height: line.map { max(90, $0 - (gridCols[col] ?? 0) - (cols[col].count > 1 ? 8 : 0)) })
                         }
                     }
                 }
@@ -1157,10 +1177,12 @@ struct ExpenseTile: View {
     let e: Expense
     /// Ô cao theo tỉ lệ ảnh (lưới so le ở trang chủ) thay vì ô vuông
     var free = false
+    /// Cao cố định (ô cuối một cột của lưới so le): ảnh phủ kín, cắt bớt phần thừa
+    var height: CGFloat? = nil
     private let c: Category
     @State private var photo: UIImage?
 
-    init(e: Expense, free: Bool = false) { self.e = e; self.free = free; c = Category.get(e.c) }
+    init(e: Expense, free: Bool = false, height: CGFloat? = nil) { self.e = e; self.free = free; self.height = height; c = Category.get(e.c) }
 
     /// Rộng / cao của ô: ô vuông; lưới so le thì theo ảnh (giới hạn 0,6…1,3 cho ảnh quá dài / quá dẹt), chưa có ảnh thì một trong
     /// ba dáng cố định theo mã khoản để các ô cao thấp xen kẽ
@@ -1173,8 +1195,10 @@ struct ExpenseTile: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
-        Color.clear
-            .aspectRatio(aspect, contentMode: .fit)
+        Group {
+            if let height { Color.clear.frame(maxWidth: .infinity).frame(height: height) }
+            else { Color.clear.aspectRatio(aspect, contentMode: .fit) }
+        }
             .overlay {
                 if let photo {
                     Image(uiImage: photo).resizable().scaledToFill()

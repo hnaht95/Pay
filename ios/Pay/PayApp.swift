@@ -86,13 +86,14 @@ struct PayShortcuts: AppShortcutsProvider {
 
 /// Tự ghi khi trả bằng Apple Pay: trong app Phím tắt > Tự động hoá > Giao dịch (Ví), chọn thẻ, thêm tác vụ "Ghi giao dịch thẻ"
 /// của Pay rồi gán Số tiền và Người bán của giao dịch vào hai ô. Mỗi lần quẹt thẻ là có một khoản chi, không phải mở app.
+/// Số tiền âm / có chữ hoàn tiền thì ghi khoản thu "Được chuyển". Tự động hoá chạy hai lần cho một giao dịch thì chỉ ghi một.
 struct CardPaymentIntent: AppIntent {
     static let title: LocalizedStringResource = "Ghi giao dịch thẻ"
-    static let description = IntentDescription("Ghi một khoản chi từ giao dịch thẻ trong Ví. Dùng trong Tự động hoá > Giao dịch: gán Số tiền và Người bán của giao dịch.")
+    static let description = IntentDescription("Ghi một khoản chi từ giao dịch thẻ trong Ví; số tiền âm hoặc hoàn tiền thì ghi khoản thu. Dùng trong Tự động hoá > Giao dịch: gán Số tiền và Người bán của giao dịch.")
     static let openAppWhenRun = false
     // Lưu ý: mô tả của App Intent không được chứa chữ "Apple" (App Store Connect trả về ITMS-90626)
 
-    /// Nhận dạng chữ để chịu được mọi kiểu Phím tắt đưa vào: "₫35.000", "35,000.00 VND", "35000"
+    /// Nhận dạng chữ để chịu được mọi kiểu Phím tắt đưa vào: "₫35.000", "35,000.00 VND", "35000", "-35.000", "(35.000 ₫)"
     @Parameter(title: "Số tiền")
     var amount: String
 
@@ -103,30 +104,65 @@ struct CardPaymentIntent: AppIntent {
     @Parameter(title: "Thẻ tín dụng", default: false)
     var credit: Bool
 
+    /// Không bắt buộc: gán tên / loại giao dịch nếu có, chứa "Refund" / "Hoàn tiền" thì ghi là hoàn tiền
+    @Parameter(title: "Loại giao dịch")
+    var kind: String?
+
+    /// Mã khoản tự ghi bắt đầu bằng chữ này để nhận ra khi chống ghi trùng
+    static let idPrefix = "wallet-"
+    /// Tự động hoá chạy lại cho cùng giao dịch trong khoảng này (ms) thì bỏ qua
+    static let dupWindow: Double = 3 * 60 * 1000
+    /// Danh mục khoản thu cho tiền hoàn (từ khoá "hoan tien", "refund" nằm ở đây)
+    static let refundCat = "in-nhan"
+
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // Tính năng Pro (đọc cờ đã lưu: intent chạy nền, không chờ App Store)
         guard UserDefaults.standard.bool(forKey: "proActive") else {
             return .result(dialog: IntentDialog(stringLiteral: L("Tự ghi giao dịch thẻ cần Payso Pro. Mở Payso để nâng cấp.")))
         }
-        guard let a = Self.parse(amount), a > 0 else {
+        guard let signed = Self.parse(amount), signed != 0 else {
             return .result(dialog: IntentDialog(stringLiteral: L("Không đọc được số tiền của giao dịch.")))
         }
+        let a = abs(signed)
         let store = Store.shared
-        let note = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        // Giao dịch thẻ luôn là khoản chi: không đoán theo từ khoá tiền vào (tên cửa hàng "Phở Lương Sơn", "Gift Shop" từng
+        let shop = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let refund = signed < 0 || Self.isRefund(shop) || Self.isRefund(kind ?? "")
+        let name = shop.isEmpty ? L("giao dịch thẻ") : shop
+        // Hoàn tiền: khoản thu, ghi chú "Hoàn tiền · <người bán>"; tên người bán đã có chữ hoàn tiền thì giữ nguyên
+        let note = refund ? (shop.isEmpty ? L("Hoàn tiền") : Self.isRefund(shop) ? shop : L("Hoàn tiền") + " · " + shop) : shop
+        // Giao dịch thẻ thường luôn là khoản chi: không đoán theo từ khoá tiền vào (tên cửa hàng "Phở Lương Sơn", "Gift Shop" từng
         // thành khoản thu, số dư tăng thay vì giảm)
-        store.add(amount: a, note: note, cat: store.guessCategory(note), credit: credit, toast: false)
-        return .result(dialog: IntentDialog(stringLiteral: L("Đã ghi %@ %@.", fmt(a), note.isEmpty ? L("giao dịch thẻ") : note)))
+        let cat = refund ? Self.refundCat : store.guessCategory(shop)
+        let now = Date().timeIntervalSince1970 * 1000
+        let key = note.lowercased()
+        if store.all.contains(where: { $0.id.hasPrefix(Self.idPrefix) && $0.a == a && $0.isIncome == refund
+            && ($0.n ?? "").lowercased() == key && abs(now - $0.t) < Self.dupWindow }) {
+            return .result(dialog: IntentDialog(stringLiteral: refund ? L("Đã ghi hoàn tiền %@ %@ rồi, không ghi lại.", fmt(a), name)
+                                                                      : L("Đã ghi %@ %@ rồi, không ghi lại.", fmt(a), name)))
+        }
+        store.add(amount: a, note: note, cat: cat, credit: credit && !refund, toast: false, idPrefix: Self.idPrefix)
+        return .result(dialog: IntentDialog(stringLiteral: refund ? L("Đã ghi hoàn tiền %@ từ %@.", fmt(a), name)
+                                                                  : L("Đã ghi %@ %@.", fmt(a), name)))
     }
 
-    /// Bỏ ký hiệu tiền và chữ; phần lẻ sau dấu thập phân (",00" / ".50" ở cuối) bỏ đi; còn lại ghép các chữ số
+    /// Chữ cho biết giao dịch là hoàn tiền: "Refund", "Hoàn tiền", "Hoàn trả", hoặc chỉ "Hoàn". "Hoàn Kiếm Coffee" không tính
+    static func isRefund(_ s: String) -> Bool {
+        let t = s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "vi"))
+            .replacingOccurrences(of: "đ", with: "d").trimmingCharacters(in: .whitespacesAndNewlines)
+        if t == "hoan" || t == "refund" || t == "return" { return true }
+        return ["refund", "hoan tien", "hoan tra", "tien hoan"].contains { t.contains($0) }
+    }
+
+    /// Số tiền có dấu (âm là tiền trả lại). Dấu "-" / "−" hoặc cặp ngoặc "(…)" là số âm. Bỏ ký hiệu tiền và chữ ("₫", "VND"),
+    /// khoảng trắng; phần lẻ sau dấu thập phân (",00" / ".50" ở cuối) bỏ đi; còn lại ghép các chữ số (dấu nghìn . , đều bỏ)
     static func parse(_ s: String) -> Int? {
-        var t = s.filter { $0.isNumber || $0 == "." || $0 == "," }
+        let negative = s.contains("-") || s.contains("\u{2212}") || (s.contains("(") && s.contains(")"))
+        var t = s.filter { $0.isASCII && ($0.isNumber || $0 == "." || $0 == ",") }
         if let r = t.range(of: #"[.,]\d{1,2}$"#, options: .regularExpression) { t.removeSubrange(r) }
         let digits = t.filter(\.isNumber)
-        guard !digits.isEmpty, digits.count <= 12 else { return nil }
-        return Int(digits)
+        guard !digits.isEmpty, digits.count <= 12, let v = Int(digits) else { return nil }
+        return negative ? -v : v
     }
 }
 

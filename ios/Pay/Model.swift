@@ -354,8 +354,9 @@ final class Store: ObservableObject {
     }
 
     /// toast: false khi màn hình tự có nút Hoàn tác (thẻ giọng nói)
-    func add(amount: Int, note: String, cat: String, acct: String? = nil, credit: Bool = false, toast: Bool = true) {
-        let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct,
+    /// idPrefix: đánh dấu nguồn ghi trong mã khoản (vd "wallet-" cho khoản tự ghi từ giao dịch thẻ), không thêm trường mới
+    func add(amount: Int, note: String, cat: String, acct: String? = nil, credit: Bool = false, toast: Bool = true, idPrefix: String = "") {
+        let e = Expense(id: idPrefix + UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct,
                         cr: credit && !Category.isIncome(cat) ? true : nil)
         all.append(e)
         persist()

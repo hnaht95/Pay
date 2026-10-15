@@ -64,7 +64,7 @@ Vào **Apps** → chọn **Payso** → cột trái mục **Monetization**.
 3. Trong trang gói:
    - **Subscription Duration**: **1 Year**.
    - **Availability**: như gói trọn đời.
-   - **Subscription Prices** → **Add Subscription Price**: Vietnam **79.000 ₫**.
+   - **Subscription Prices** → **Add Subscription Price**: Vietnam **99.000 ₫**.
    - **Localization**: Tiếng Việt `Payso Pro năm` / `Mở mọi tính năng Pro, gia hạn mỗi năm.`; English `Payso Pro Yearly` / `Unlock every Pro feature, renews yearly.`
    - **Review Information**: cùng ảnh và ghi chú như gói trọn đời.
 4. Quay lại trang **nhóm** "Payso Pro" → **App Store Localization** → **+** Tiếng Việt và English: Subscription Group Display Name `Payso Pro`. (Thiếu cái này gói năm không chuyển được sang Ready to Submit.)
@@ -78,7 +78,7 @@ Làm được khi hai gói đã **Ready to Submit** (chưa cần duyệt). Mua t
 
 1. Mở TestFlight trên iPhone → cài bản mới nhất (**202610120101** trở về sau).
 2. Mở Payso → **Cài đặt › Nâng cấp Pro**.
-   - Phải thấy hai gói với giá **299.000 ₫** và **79.000 ₫/năm**. Còn vòng xoay mãi: gói chưa Ready to Submit, hoặc Product ID gõ sai, hoặc thoả thuận Paid Apps chưa Active.
+   - Phải thấy hai gói với giá **299.000 ₫** và **99.000 ₫/năm**. Còn vòng xoay mãi: gói chưa Ready to Submit, hoặc Product ID gõ sai, hoặc thoả thuận Paid Apps chưa Active.
 3. Chọn **Trọn đời** → **Mua** → hộp xác nhận của Apple (ghi là TestFlight / không tính phí) → xác nhận.
    - Sau khi mua: màn đóng lại, Cài đặt hiện **Đã có Payso Pro**, các nhãn Pro biến mất, dải Thống kê xem được tháng cũ, bật được đồng bộ iCloud.
 4. Thử **Khôi phục giao dịch**: xoá app → cài lại từ TestFlight → Cài đặt › Khôi phục giao dịch → phải về lại trạng thái Pro.

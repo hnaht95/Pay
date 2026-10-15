@@ -6,7 +6,7 @@ import UIKit
 ///
 /// Ghi chép (quét QR, nhập, nói để ghi) luôn miễn phí. Pro mở những thứ người dùng lâu mới cần: xem lịch sử xa hơn hai tháng,
 /// đồng bộ iCloud, khoản định kỳ, ảnh hoá đơn / ảnh danh mục, danh mục tự tạo không giới hạn, tự ghi khi trả
-/// Apple Pay, xuất CSV. Giá đặt trong App Store Connect (trọn đời 299.000đ, giá ra mắt 149.000đ; gói năm 79.000đ).
+/// Apple Pay, xuất CSV. Giá đặt trong App Store Connect (trọn đời 299.000đ, giá ra mắt 149.000đ; gói năm 99.000đ).
 @MainActor
 final class Pro: ObservableObject {
     static let shared = Pro()

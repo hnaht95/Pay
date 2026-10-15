@@ -85,6 +85,7 @@ struct Rule: Codable, Hashable, Identifiable {
     var src: String?      // khoản chi gốc đã chọn "Lặp hằng tháng"
     var on: Bool          // false = đã bỏ lặp
     var u: Double         // lần sửa cuối (ms), để gộp giữa các máy
+    var cr: Bool? = nil   // khoản gốc trả bằng thẻ tín dụng: các bản tự ghi cũng vậy (xem Expense.cr)
 }
 
 struct Backup: Codable {
@@ -469,11 +470,13 @@ final class Store: ObservableObject {
     }
 
     /// Nợ thẻ tín dụng: các khoản quẹt thẻ trừ các lần trả thẻ (không âm: trả cả nợ có từ trước khi dùng app thì về 0)
-    var cardDebt: Int { max(0, items.filter(\.isCredit).reduce(0) { $0 + $1.a } - cardPays.reduce(0) { $0 + $1.a }) }
+    var cardDebt: Int { cardDebt(before: .infinity) }
 
-    /// Nợ thẻ ngay trước thời điểm `t` (ms)
+    /// Nợ thẻ ngay trước thời điểm `t` (ms). Tính lần lượt theo thời gian, mỗi lần trả thẻ chỉ trừ tới 0: trả dư (trả cả nợ có từ
+    /// trước khi dùng app) không được bù trừ cho các lần quẹt thẻ sau đó
     func cardDebt(before t: Double) -> Int {
-        max(0, items.filter { $0.isCredit && $0.t < t }.reduce(0) { $0 + $1.a } - cardPays.filter { $0.t < t }.reduce(0) { $0 + $1.a })
+        let events = (items.filter { $0.isCredit && $0.t < t } + cardPays.filter { $0.t < t }).sorted { $0.t < $1.t }
+        return events.reduce(0) { debt, e in e.isCardPay ? max(0, debt - e.a) : debt + e.a }
     }
 
     /// Trả thẻ tín dụng: tiền ra khỏi số dư, nợ thẻ giảm; không tính là chi (đã tính lúc quẹt thẻ)
@@ -615,8 +618,12 @@ final class Store: ObservableObject {
     }
 
     /// Câu ghi nhanh (giọng nói, Siri, "35k cafe"): có từ khoá tiền vào ("nhận lương 15tr") thì là tiền vào, không thì khoản chi
+    /// Danh mục đã tự chọn cho đúng ghi chú này (chi hay thu đều được) thắng mọi phỏng đoán: sửa "trả lương giúp việc" sang Hoá
+    /// đơn, "mẹ cho" sang Được chuyển thì lần sau nói lại câu đó app chọn đúng như vậy
     func guessEntry(_ note: String) -> String {
-        Category.guessIncome(note) != nil ? guessIncome(note) : guessCategory(note)
+        let k = Self.noteKey(note)
+        if !k.isEmpty, let c = memo["note:" + k]?.c, (Category.all + Category.income).contains(where: { $0.k == c }) { return c }
+        return Category.guessIncome(note) != nil && !Category.spendIntent(note) ? guessIncome(note) : guessCategory(note)
     }
 
     /// Nhớ danh mục đã tự chọn cho ghi chú này, chỉ khi khác với cách app đang đoán (đồng bộ iCloud cùng ghi nhớ người nhận).
@@ -696,7 +703,7 @@ final class Store: ObservableObject {
         let cal = Calendar.current
         let c = cal.dateComponents([.day, .hour, .minute], from: e.date)
         var r = Rule(id: UUID().uuidString, a: e.a, n: e.n, c: e.c, day: c.day!, minute: c.hour! * 60 + c.minute!,
-                     start: "", src: e.id, on: true, u: now)
+                     start: "", src: e.id, on: true, u: now, cr: e.isCredit ? true : nil)
         let thisMonth = cal.dateInterval(of: .month, for: Date())!.start
         let first = due(r, in: thisMonth) > Date() ? thisMonth : cal.date(byAdding: .month, value: 1, to: thisMonth)!
         r.start = Self.monthKey(first)
@@ -749,7 +756,7 @@ final class Store: ObservableObject {
                         // không xoá khoản của kỳ này mà máy khác đã ghi (khi gộp, khoản đó thắng dấu này)
                         deleted[id] = 0
                     } else {
-                        all.append(Expense(id: id, t: at.timeIntervalSince1970 * 1000, a: r.a, n: r.n, c: r.c, acct: nil))
+                        all.append(Expense(id: id, t: at.timeIntervalSince1970 * 1000, a: r.a, n: r.n, c: r.c, acct: nil, cr: r.cr))
                         ids.insert(id)
                         autoWritten.insert(id)
                     }

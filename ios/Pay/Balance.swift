@@ -104,9 +104,15 @@ struct BalanceLog: View {
                 }
                 ForEach(log) { e in
                     // Dòng phụ bên trái (ngang hàng ngày giờ bên phải): số dư ngay sau lần này
-                    ExpenseRow(e: e, showDay: true, sub: card ? L("Chi tiêu thẻ còn lại: %@", fmt(store.cardDebt(before: e.t + 1)))
-                                                                    : store.balance(before: e.t + 1).map { L("Số dư sau: %@", fmt($0)) })
-                    .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
+                    let row = ExpenseRow(e: e, showDay: true, sub: card ? L("Chi tiêu thẻ còn lại: %@", fmt(store.cardDebt(before: e.t + 1)))
+                                                                        : store.balance(before: e.t + 1).map { L("Số dư sau: %@", fmt($0)) })
+                    // Số dư ban đầu (lần đặt đầu tiên) là mốc của mọi lần điều chỉnh sau (chúng chỉ ghi phần chênh): còn lần sau thì
+                    // không cho xoá nó, xoá thì mốc nhảy sang một lần chênh và số dư sai hẳn. Xoá các lần sau trước, hoặc điều chỉnh lại
+                    if !card && e.id == log.last?.id && log.count > 1 {
+                        row
+                    } else {
+                        row.expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
+                    }
                 }
             }
             .listStyle(.plain)

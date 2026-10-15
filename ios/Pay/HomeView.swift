@@ -162,7 +162,22 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(store).sheetCorners() }
         .sheet(isPresented: $showStats) { StatsView().environmentObject(store).sheetCorners() }
         .sheet(isPresented: $showHouse) { HouseView().environmentObject(store).sheetCorners() }
-        .onChange(of: quick.openHouse) { _, v in if v { quick.openHouse = false; showHouse = true } }
+        // initial: mở app từ thông báo Nhóm chung khi app đang tắt, cờ đã bật trước khi màn này kịp theo dõi. Đang mở màn khác thì
+        // đóng hết trước (tấm mới không hiện được đè lên tấm đang mở)
+        .onChange(of: quick.openHouse, initial: true) { _, v in
+            guard v else { return }
+            quick.openHouse = false
+            Task {
+                let busy = entry != nil || scanning || receiptScan || showHistory || showSettings || showStats || listening || listing != nil
+                    || addingCat || editingCat != nil || balanceOpen || cardOpen || pickingHero || voiceFrom != nil
+                guard !showHouse else { return }
+                entry = nil; scanning = false; receiptScan = false; showHistory = false; showSettings = false; showStats = false
+                listening = false; listing = nil; voiceFrom = nil; addingCat = false; editingCat = nil; menu = nil
+                balanceOpen = false; cardOpen = false; pickingHero = false
+                if busy { try? await Task.sleep(for: .milliseconds(450)) }
+                showHouse = true
+            }
+        }
         // Khởi động trước camera trong nền sau khi trang chủ hiện ra, để lần vuốt Nhập đầu tiên mở camera nhanh như các lần sau
         .task { try? await Task.sleep(for: .seconds(1)); ReceiptCam.prewarm() }
         #if DEBUG
@@ -266,14 +281,14 @@ struct HomeView: View {
         // kẹt ở "Đang bật micro…"
         let renew = k == .voice && listening
         let busy = entry != nil || scanning || receiptScan || showHistory || showSettings || showStats || showHouse || (listening && !renew) || listing != nil
-            || addingCat || editingCat != nil
+            || addingCat || editingCat != nil || balanceOpen || cardOpen || pickingHero
         // Thẻ nói còn mở thì không bỏ qua lệnh nói: thẻ có thể đã ngừng nghe từ lâu (đã ghi, chưa nghe rõ, thiếu quyền micro),
         // ở đây không biết được, nên đóng rồi mở lại để nghe ngay
         if k == .scan && scanning { return }
         if k == .photo && receiptScan { return }
         entry = nil; scanning = false; receiptScan = false; showHistory = false; showSettings = false; showStats = false; showHouse = false; listing = nil; voiceFrom = nil
         if !renew { listening = false }
-        addingCat = false; editingCat = nil; menu = nil
+        addingCat = false; editingCat = nil; menu = nil; balanceOpen = false; cardOpen = false; pickingHero = false
         if busy { try? await Task.sleep(for: .milliseconds(450)) }
         switch k {
         case .scan: scanning = true

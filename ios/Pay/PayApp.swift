@@ -10,6 +10,7 @@ struct PayApp: App {
     @UIApplicationDelegateAdaptor(PayAppDelegate.self) private var appDelegate
     /// Đổi ngôn ngữ trong Cài đặt: dựng lại toàn bộ giao diện bằng ngôn ngữ mới, widget vẽ lại theo
     @State private var lang = Lang.current
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // Lệnh Chụp hoá đơn (nút Tác vụ, Phím tắt): bật camera ngay lúc lệnh tới, song song với lúc dựng giao diện
@@ -29,6 +30,8 @@ struct PayApp: App {
                 .environmentObject(quick)
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app
                 .onOpenURL { url in if let k = QuickKind(url: url) { quick.pending = k } }
+                // Quay lại app: đọc lại quyền Pro (gói năm hết hạn khi app nằm nền nhiều ngày không chắc có Transaction.updates)
+                .onChange(of: scenePhase) { _, p in if p == .active { Task { await Pro.shared.refresh() } } }
                 .task {
                     Appearance.apply()
                     #if DEBUG
@@ -99,7 +102,9 @@ struct CardPaymentIntent: AppIntent {
         }
         let store = Store.shared
         let note = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        store.add(amount: a, note: note, cat: store.guessEntry(note), credit: credit, toast: false)
+        // Giao dịch thẻ luôn là khoản chi: không đoán theo từ khoá tiền vào (tên cửa hàng "Phở Lương Sơn", "Gift Shop" từng
+        // thành khoản thu, số dư tăng thay vì giảm)
+        store.add(amount: a, note: note, cat: store.guessCategory(note), credit: credit, toast: false)
         return .result(dialog: IntentDialog(stringLiteral: L("Đã ghi %@ %@.", fmt(a), note.isEmpty ? L("giao dịch thẻ") : note)))
     }
 

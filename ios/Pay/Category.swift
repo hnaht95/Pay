@@ -90,6 +90,17 @@ struct Category: Identifiable, Hashable {
     static func isIncome(_ k: String?) -> Bool { k?.hasPrefix("in-") == true }
 
     /// Đoán danh mục tiền vào theo ghi chú (từ khoá dài nhất); không khớp từ nào thì nil
+    /// Câu có ý chi tiền đi dù chứa từ khoá tiền vào: "trả lương giúp việc", "lì xì cho cháu", "gift for mom", "pay loan
+    /// interest" là khoản chi. "mẹ cho 500k", "nhận lương" vẫn là tiền vào ("cho" chỉ tính khi đứng sau từ khoá tiền vào)
+    static func spendIntent(_ text: String?) -> Bool {
+        let s = " " + strip(text ?? "").map { $0.isLetter || $0.isNumber || $0 == " " ? String($0) : " " }.joined() + " "
+        let verbs = ["tra", "dong", "gui", "bieu", "mua", "tang", "pay", "paid", "paying", "buy", "bought", "for"]
+        if verbs.contains(where: { s.contains(" \($0) ") }) { return true }
+        // Từ khoá tiền vào rồi mới tới "cho": "lì xì cho cháu", "thưởng cho nhân viên"
+        guard let cho = s.range(of: " cho ", options: .backwards) else { return false }
+        return income.flatMap(\.kw).contains { w in s.range(of: " \(w) ").map { $0.upperBound <= cho.upperBound } ?? false }
+    }
+
     static func guessIncome(_ text: String?) -> String? {
         let s = " " + strip(text ?? "").map { $0.isLetter || $0.isNumber || $0 == " " ? String($0) : " " }.joined() + " "
         // Danh mục tự tạo ưu tiên trước, như guess()

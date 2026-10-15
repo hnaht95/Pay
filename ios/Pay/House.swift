@@ -166,7 +166,16 @@ struct HouseGroup: Identifiable {
     var myNet: Int { me.map { Settle.balances(spends, settles)[$0] ?? 0 } ?? 0 }
     /// Lần trả cần mình để ý (xác nhận, chờ, bị báo chưa nhận)
     var pending: [HouseSettle] {
-        settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok" && !($0.status == "wait" && !usesApp($0.to))) }
+        let net = me.map { Settle.balances(spends, settles)[$0] ?? 0 } ?? 0
+        return settles.filter { s in
+            if s.to == me { return s.status == "wait" }
+            guard s.from == me, s.status != "ok" else { return false }
+            if s.status == "wait" { return usesApp(s.to) }
+            // "Chưa nhận được": chỉ còn là việc của mình khi mình vẫn còn nợ, và chưa có lần trả nào sau đó cho cùng người đó.
+            // Người nhận có thể bấm "Chưa nhận được" lúc tiền chưa về rồi sau đó tự "Báo đã nhận" (một lần trả mới): lúc ấy
+            // phần mình đã xong, thẻ "chưa nhận được" cũ không được treo mãi
+            return net < 0 && !settles.contains { $0.from == s.from && $0.to == s.to && $0.status != "no" && $0.date > s.date }
+        }
     }
     /// Thành viên có dùng Payso (đã nhận mình là ai bằng Apple ID). Chỉ thêm tên thì không ai xác nhận hộ được: lần trả cho người
     /// đó ghi là xong luôn, không chờ
@@ -324,6 +333,18 @@ final class House: ObservableObject {
                        HouseSpend(id: "t2", amount: 450_000, note: L("Lẩu gà lá é"), payer: "x", shares: ["c", "x", "y"], date: ago(11), cat: "an")]
         trip.me = "c"
         groups = [home, trip]
+        // -houseDemoNo YES: mình trả Hạnh, Hạnh báo "chưa nhận được" rồi sau đó tự "báo đã nhận" (một lần trả mới) — thẻ
+        // "chưa nhận được" cũ không được còn treo
+        if UserDefaults.standard.bool(forKey: "houseDemoNo") {
+            var g = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo3"), scope: .shared, isOwner: false, name: "Tùng của")
+            g.members = [HouseMember(id: "c", name: "Minh", user: "u1"), HouseMember(id: "h", name: "Hạnh", user: "u2")]
+            g.spends = [HouseSpend(id: "h1", amount: 590_000, note: "", payer: "h", shares: ["c", "h"], date: ago(0.02), cat: "an",
+                                   fixed: ["c": 530_000])]
+            g.settles = [HouseSettle(id: "n2", from: "c", to: "h", amount: 530_000, date: ago(0.005), status: "ok"),
+                         HouseSettle(id: "n1", from: "c", to: "h", amount: 530_000, date: ago(0.01), status: "no")]
+            g.me = "c"
+            groups.insert(g, at: 0)
+        }
         phase = .ready
     }
 
@@ -738,6 +759,15 @@ final class House: ObservableObject {
             if (net[t.from] ?? 0) >= 0 || (net[t.to] ?? 0) <= 0 {
                 Store.shared.show(L("Lần trả này đã được ghi rồi")); return
             }
+        }
+        // Ghi nhận đã nhận (status ok) mà trước đó lần trả cùng người, cùng số tiền đã bị báo "chưa nhận được": tiền về muộn, sửa
+        // lại chính lần trả đó thành đã nhận thay vì ghi thêm một lần mới (không để lại lần "chưa nhận được" treo ở máy người trả)
+        if status == "ok", let g = groups.first(where: { $0.id == zone.zoneName }),
+           let old = g.settles.first(where: { $0.from == t.from && $0.to == t.to && $0.status == "no" && $0.amount == t.amount }),
+           let r = record(old.id, in: g.id) {
+            r["status"] = "ok"
+            _ = await run([r], strict: true)
+            return
         }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date(); r["status"] = status

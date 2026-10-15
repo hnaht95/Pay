@@ -45,6 +45,7 @@ targets:
         UIBackgroundModes: [remote-notification]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleLocalizations: [vi, en]   # hộp xin quyền theo ngôn ngữ máy: vi.lproj / en.lproj InfoPlist.strings
         NSCameraUsageDescription: Payso dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.
         NSMicrophoneUsageDescription: Payso dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
         NSSpeechRecognitionUsageDescription: Payso chuyển giọng nói thành chữ để ghi khoản chi.

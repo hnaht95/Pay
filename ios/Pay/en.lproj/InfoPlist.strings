@@ -1,0 +1,7 @@
+/* iOS permission prompts in English (device not set to Vietnamese) */
+"CFBundleDisplayName" = "Payso";
+"NSCameraUsageDescription" = "Payso uses the camera to scan payment QR codes and take photos of receipts.";
+"NSMicrophoneUsageDescription" = "Payso uses the microphone to hear you say an expense, for example \"35k coffee\".";
+"NSSpeechRecognitionUsageDescription" = "Payso turns your speech into text to log the expense.";
+"NSPhotoLibraryAddUsageDescription" = "Payso saves the photos you take in Payso to your Photos app.";
+"NSPhotoLibraryUsageDescription" = "Payso shows your latest photo on the capture screen so you can quickly pick a receipt you already have.";

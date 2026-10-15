@@ -72,6 +72,7 @@
 		E8280C85FCD69A3B8D622082 /* EN+House.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB180F812EB20CFCB3B8859 /* EN+House.swift */; };
 		EC5FD112F75591F103D214D6 /* EN+Voice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6F8D423DB7710149F52728 /* EN+Voice.swift */; };
 		F2B4ED2467012050BDC7E090 /* QuickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44363C52BE264A2C9A5D3E8D /* QuickAction.swift */; };
+		F36E67DE8E71981459D21069 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 81044278B3C483694AF1BDC3 /* InfoPlist.strings */; };
 		F46263D2A70AF19D5FC69B3A /* HouseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9A02E66795259132018E66 /* HouseView.swift */; };
 		F52A29E47055AFBD0BFA0E98 /* BlurForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1018A84F51049171809C4917 /* BlurForm.swift */; };
 		F63C248E1044A7810022B363 /* MyQR.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5E3A393AEE6AD86555B7B3 /* MyQR.swift */; };
@@ -111,6 +112,7 @@
 		1018A84F51049171809C4917 /* BlurForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurForm.swift; sourceTree = "<group>"; };
 		12194354B3B9408BEBA73165 /* FilmTouches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmTouches.swift; sourceTree = "<group>"; };
 		12AB5AFA5A99EE9F7A62F93F /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
+		16959082673E0FF5A0009236 /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		1A44344E8096362017AC591B /* QuickParse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickParse.swift; sourceTree = "<group>"; };
 		1ED94C024A1339E982144376 /* SelfTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfTest.swift; sourceTree = "<group>"; };
 		22504626552B809AA7E3BD49 /* PayShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayShots.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 		8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
 		91B3666354A2198F18B94A57 /* Lang.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lang.swift; sourceTree = "<group>"; };
 		92009F79708552562ABFB7E1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		94AC663CE28AE9FCA94EDD50 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9C5F00314D0B8638AAA8CF56 /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
 		9D009139059C851E5FE78B10 /* EN+Stats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EN+Stats.swift"; sourceTree = "<group>"; };
 		A0DE5AB7A1379185BA286D6A /* AppMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMenu.swift; sourceTree = "<group>"; };
@@ -215,6 +218,7 @@
 				87C224F3A230B5343B816E02 /* TriangleShape.swift */,
 				6710F63C94C742F268FE2D19 /* VietQR.swift */,
 				7B5CA4F555B1A7AA850B8C6F /* VoiceEntryView.swift */,
+				81044278B3C483694AF1BDC3 /* InfoPlist.strings */,
 			);
 			path = Pay;
 			sourceTree = "<group>";
@@ -344,6 +348,7 @@
 			knownRegions = (
 				Base,
 				en,
+				vi,
 			);
 			mainGroup = F6AC3809C2A5670DC75ED1E2;
 			minimizedProjectReferenceProxies = 1;
@@ -364,6 +369,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D3878BCCA2CC86BC5EFB507 /* Assets.xcassets in Resources */,
+				F36E67DE8E71981459D21069 /* InfoPlist.strings in Resources */,
 				A8555FD55F85608523EC852F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -467,6 +473,18 @@
 			targetProxy = 3C9EA293471A37A99D75AF74 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		81044278B3C483694AF1BDC3 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				94AC663CE28AE9FCA94EDD50 /* en */,
+				16959082673E0FF5A0009236 /* vi */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		35C87F2B4FD56DE13067E915 /* Debug */ = {

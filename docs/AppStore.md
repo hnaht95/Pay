@@ -40,7 +40,7 @@ Chia tiền với gia đình, bạn bè: ai trả, chia mấy người, ai còn 
 RIÊNG TƯ
 Không quảng cáo, không tài khoản, không theo dõi. Dữ liệu nằm trên iPhone và iCloud của chính bạn.
 
-PAY PRO
+PAYSO PRO
 Ghi chép luôn miễn phí. Pro mở thêm:
 • Xem toàn bộ lịch sử thống kê (bản miễn phí xem 3 tháng gần nhất)
 • Đồng bộ iCloud giữa iPhone, iPad

@@ -629,7 +629,7 @@ final class House: ObservableObject {
     func payNow(_ t: HouseTransfer, app: BankApp) async {
         guard let to = members.first(where: { $0.id == t.to }), let bin = to.bin, let acct = to.acct else { return }
         let qr = VietQR(raw: "", bin: bin, acct: acct, amount: t.amount, name: strip(to.name).uppercased(),
-                        purpose: "Pay " + strip(name.isEmpty ? "Nhom chung" : name))
+                        purpose: "Payso " + strip(name.isEmpty ? "Nhom chung" : name))
         // App chỉ mở được (không điền sẵn): chép số tài khoản để dán
         if !app.fill { UIPasteboard.general.string = acct }
         pendingPay = t

@@ -20,6 +20,7 @@
 		28A08F8F33AA2B1AF007A682 /* Budget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED480E454B97B65E2A4153C /* Budget.swift */; };
 		3521B0FBA62679FC23377283 /* Pro.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D089C49DAB9DD5CD6BE0CF /* Pro.swift */; };
 		353DD484D4B5BAD4AC365650 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24AA5434B7C4F15242E106C2 /* WidgetViews.swift */; };
+		3981D002DA3D2F6B4C2B3E4E /* SelfTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94C024A1339E982144376 /* SelfTest.swift */; };
 		3B5B0E6A0C5E55A60D345A70 /* ReceiptPhotos.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE3F2358FF0A2540E730066 /* ReceiptPhotos.swift */; };
 		3EE977B055A9EAE5B6D69472 /* PayShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22504626552B809AA7E3BD49 /* PayShots.swift */; };
 		40405BB47395FF979965CD24 /* PayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC9417995E09D8907ED785B /* PayApp.swift */; };
@@ -111,6 +112,7 @@
 		12194354B3B9408BEBA73165 /* FilmTouches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmTouches.swift; sourceTree = "<group>"; };
 		12AB5AFA5A99EE9F7A62F93F /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		1A44344E8096362017AC591B /* QuickParse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickParse.swift; sourceTree = "<group>"; };
+		1ED94C024A1339E982144376 /* SelfTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfTest.swift; sourceTree = "<group>"; };
 		22504626552B809AA7E3BD49 /* PayShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayShots.swift; sourceTree = "<group>"; };
 		24AA5434B7C4F15242E106C2 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
 		2570B6E3237FC8FCF77F722D /* ImageCropper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCropper.swift; sourceTree = "<group>"; };
@@ -206,6 +208,7 @@
 				319F68A71118585C6599859C /* ReceiptScan.swift */,
 				0AD67DA0004B7BA5772A2896 /* Reminder.swift */,
 				8EF9094D5EFBC6086034E3A2 /* ScannerView.swift */,
+				1ED94C024A1339E982144376 /* SelfTest.swift */,
 				E141264B0193BD7C93AC85D7 /* SettingsView.swift */,
 				D89B234044050006AE979177 /* StatsView.swift */,
 				B6AB32059939F825265F69CB /* Swipe.swift */,
@@ -423,6 +426,7 @@
 				97291C0D4BCDF7D1D1F8E58C /* ReceiptScan.swift in Sources */,
 				C1653DBE55CA4305CDD29DA0 /* Reminder.swift in Sources */,
 				9BD4CFD673FB37D16FE17DC1 /* ScannerView.swift in Sources */,
+				3981D002DA3D2F6B4C2B3E4E /* SelfTest.swift in Sources */,
 				9942361BF449F8B3AFC2798A /* SettingsView.swift in Sources */,
 				1AFBB0F2AE927BF31349E700 /* StatsView.swift in Sources */,
 				E1C3818D189576DA486E6398 /* Summary.swift in Sources */,

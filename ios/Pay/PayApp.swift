@@ -37,6 +37,7 @@ struct PayApp: App {
                     #if DEBUG
                     FilmTouches.install()
                     await FilmExport.runIfAsked(store: store, quick: quick)
+                    SelfTest.runIfAsked(store: store)
                     #endif
                     // Kiểm tra quyền Pro và lắng nghe giao dịch (mua trên máy khác, gia hạn, hoàn tiền)
                     await Pro.shared.refresh()

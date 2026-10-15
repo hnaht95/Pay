@@ -355,6 +355,19 @@ struct HomeView: View {
                             (Text(fmt(month)).foregroundStyle(bs?.level == .over ? Palette.danger : Color.primary)
                              + Text(bs.map { "/" + fmt($0.budget) } ?? "").foregroundStyle(.secondary))
                                 .font(.system(size: size, weight: .semibold))
+                            // Cột Số dư có thêm dòng Nợ thẻ thì cột này cũng có dòng thứ ba cùng cỡ (còn / vượt ngân sách, chưa đặt
+                            // ngân sách thì số khoản trong tháng), để hai cột cao bằng nhau, góc dưới trái không bị trống
+                            if film == nil && store.cardDebt > 0 {
+                                Group {
+                                    if let bs {
+                                        if bs.spent > bs.budget { Text(L("Vượt %@", fmt(bs.spent - bs.budget))).foregroundStyle(Palette.danger) }
+                                        else { Text(L("Còn %@", fmt(bs.budget - bs.spent))).foregroundStyle(.secondary) }
+                                    } else {
+                                        Text(L("%d khoản", store.monthItems(now).count)).foregroundStyle(.secondary)
+                                    }
+                                }
+                                .font(.system(size: 13))
+                            }
                         }
                         .lineLimit(1).fixedSize()
                         Spacer(minLength: 0)

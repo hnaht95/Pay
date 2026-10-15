@@ -66,19 +66,50 @@ final class Pro: ObservableObject {
         products = list.sorted { a, _ in a.id == Self.yearlyID }
     }
 
+    /// Gói đang dùng (hiện trong Cài đặt): trọn đời, hoặc gói năm kèm ngày gia hạn / hết hạn
+    struct Plan: Equatable {
+        var lifetime: Bool
+        var expires: Date?
+        /// Gói năm còn tự gia hạn không (nil: chưa đọc được)
+        var renews: Bool?
+    }
+    /// nil: chưa mua (hoặc chỉ mở bằng công tắc bản thử)
+    @Published private(set) var plan: Plan?
+
     /// Đọc lại quyền Pro từ các giao dịch còn hiệu lực
     func refresh() async {
         var on = false
+        var plan: Plan?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let t) = result, t.revocationDate == nil,
                   t.productID == Self.lifetimeID || t.productID == Self.yearlyID else { continue }
             on = true
+            if t.productID == Self.lifetimeID { plan = Plan(lifetime: true) }
+            else if plan?.lifetime != true { plan = Plan(lifetime: false, expires: t.expirationDate, renews: await Self.renews(t)) }
         }
+        self.plan = plan
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "proOn") { on = true }
         #endif
         if isTestBuild && testerUnlock { on = true }
         set(on)
+    }
+
+    /// Gói năm còn tự gia hạn không: đọc trạng thái gói đăng ký của nhóm gói
+    private static func renews(_ t: StoreKit.Transaction) async -> Bool? {
+        guard let group = t.subscriptionGroupID,
+              let statuses = try? await Product.SubscriptionInfo.status(for: group) else { return nil }
+        for s in statuses {
+            if case .verified(let r) = s.renewalInfo, r.currentProductID == yearlyID { return r.willAutoRenew }
+        }
+        return nil
+    }
+
+    /// Mở màn quản lý gói đăng ký của iOS (huỷ, đổi gói) ngay trong app
+    func manage() async {
+        guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
+        try? await AppStore.showManageSubscriptions(in: scene)
+        await refresh()
     }
 
     private func set(_ on: Bool) {

@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 /// Mở màn hình nhập số tiền theo từng tình huống
@@ -73,6 +74,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// Đang dựng phim giới thiệu (xem Film.swift): vẽ theo trạng thái phim đưa vào
     @Environment(\.film) private var film
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         let now = self.now
@@ -136,6 +138,12 @@ struct HomeView: View {
         .appMenu($menu)
         // Đổi kiểu xem: kiểu cũ mờ đi, kiểu mới mờ vào và nở nhẹ từ trên xuống (xem swapStyle)
         .onChange(of: recentGrid) { _, v in withAnimation(.snappy(duration: 0.35)) { gridShown = v } }
+        // Xin đánh giá một lần mỗi phiên bản, khi đã ghi đủ nhiều (xem ReviewAsk)
+        .onChange(of: store.items.count) { old, new in
+            guard film == nil, new > old, ReviewAsk.due(store.items) else { return }
+            ReviewAsk.mark()
+            Task { try? await Task.sleep(for: .seconds(1.5)); requestReview() }
+        }
         .sheet(isPresented: $pickingHero) { HeroColorSheet() }
         .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
         .sheet(isPresented: $cardOpen) { CardPaySheet().environmentObject(store).sheetGrabber() }
@@ -1293,6 +1301,25 @@ struct ToastView: View {
             }
         }
     }
+}
+
+/// Xin đánh giá trên App Store, nhẹ nhàng: chỉ khi đã ghi từ 20 khoản chi trong ít nhất 7 ngày, mỗi phiên bản tối đa một lần
+/// (iOS còn tự giới hạn số lần hiện trong năm)
+enum ReviewAsk {
+    private static let key = "reviewAskedVersion"
+    private static var version: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
+
+    static func due(_ items: [Expense]) -> Bool {
+        #if DEBUG
+        // Bản chạy từ Xcode luôn hiện bảng đánh giá: chỉ thử khi có "-reviewTest YES"
+        guard UserDefaults.standard.bool(forKey: "reviewTest") else { return false }
+        #endif
+        guard UserDefaults.standard.string(forKey: key) != version, items.count >= 20,
+              let first = items.map(\.t).min() else { return false }
+        return Date().timeIntervalSince1970 - first / 1000 >= 7 * 86400
+    }
+
+    static func mark() { UserDefaults.standard.set(version, forKey: key) }
 }
 
 /// Rung phản hồi dùng chung: chọn (nấc bánh xe, đổi lựa chọn) và chạm (hành động)

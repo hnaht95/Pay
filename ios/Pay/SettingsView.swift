@@ -1,4 +1,5 @@
 import PhotosUI
+import StoreKit
 import SwiftUI
 import WidgetKit
 
@@ -8,6 +9,9 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     /// Tài khoản nhận tiền của mình, cho widget mã QR
     @State private var myQR = MyQR.load()
+    /// Bảng "Nhận tiền" (mã có số tiền)
+    @State private var requesting = false
+    @Environment(\.requestReview) private var requestReview
     @State private var importing = false
     /// Đang chọn file CSV (nhập từ app khác / Excel) thay vì file sao lưu
     @State private var importingCSV = false
@@ -61,6 +65,7 @@ struct SettingsView: View {
                 }
 
                 dataSection
+                supportSection
 
                 Section {
                     LabeledContent { Text(version).foregroundStyle(.secondary) } label: {
@@ -95,6 +100,7 @@ struct SettingsView: View {
             Text((store.cloudOn ? L("Các máy khác đang đồng bộ iCloud cũng sẽ bị xoá.") : L("Không hoàn tác được."))
                  + (store.rules.values.contains(where: \.on) ? " " + L("Khoản định kỳ cũng dừng tự ghi.") : "") + " " + L("Nên sao lưu trước."))
         }
+        .sheet(isPresented: $requesting) { RequestQRSheet().sheetGrabber() }
         .sheet(item: $csvResult) { CSVImportSheet(result: $0).environmentObject(store).sheetGrabber() }
         .alert(L("Ngân sách tháng"), isPresented: $typingBudget) {
             TextField(L("Ví dụ 8.000.000"), text: $budgetText).keyboardType(.numberPad)
@@ -216,6 +222,17 @@ struct SettingsView: View {
             }
             if pro.active {
                 Label { Text(L("Đã có Payso Pro")) } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color(hex: 0x61BE6E)) }
+                if let plan = pro.plan {
+                    LabeledContent { Text(plan.lifetime ? L("Trọn đời") : L("Gói năm")).foregroundStyle(.secondary) } label: { row(L("Gói")) }
+                    if !plan.lifetime {
+                        if let d = plan.expires {
+                            LabeledContent {
+                                Text(d.formatted(.dateTime.day().month(.twoDigits).year().locale(Lang.locale))).foregroundStyle(.secondary)
+                            } label: { row(plan.renews == false ? L("Hết hạn") : L("Gia hạn")) }
+                        }
+                        Button { Task { await pro.manage() } } label: { row(L("Quản lý gói")) }
+                    }
+                }
             } else {
                 Button { ProPaywall.present() } label: {
                     HStack(spacing: 10) {
@@ -353,6 +370,7 @@ struct SettingsView: View {
                     .frame(width: 180, height: 180).padding(10)
                     .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .frame(maxWidth: .infinity).padding(.vertical, 6)
+                Button { requesting = true } label: { row(L("Tạo QR có số tiền")) }
             }
         } header: {
             Text(L("Mã QR nhận tiền"))
@@ -434,6 +452,44 @@ struct SettingsView: View {
         } footer: {
             Text(L("File sao lưu của bản web cũng khôi phục được ở đây. Khôi phục chỉ thêm khoản còn thiếu, không ghi đè. Nhập CSV: file của Payso, Money Lover, Wallet, YNAB hoặc bảng Excel có cột ngày và số tiền; khoản đã có thì bỏ qua."))
         }
+    }
+
+    // MARK: Hỗ trợ
+
+    static let supportMail = "support@peakapp.vn"
+    static let supportPage = URL(string: "https://peakapp.vn/pay/support.html")!
+
+    private var supportSection: some View {
+        Section {
+            Button { feedback() } label: { row(L("Góp ý / báo lỗi")) }
+            Button { requestReview() } label: { row(L("Đánh giá Payso")) }
+            Link(destination: Self.supportPage) { row(L("Trang hỗ trợ")) }
+        } header: {
+            Text(L("Hỗ trợ"))
+        }
+    }
+
+    /// Mở thư soạn sẵn tới hộp thư hỗ trợ (kèm phiên bản app, iOS, máy); máy không có app thư thì chép địa chỉ
+    private func feedback() {
+        let body = "\n\n—\nPayso \(version)\niOS \(UIDevice.current.systemVersion)\n\(Self.deviceModel)"
+        var c = URLComponents()
+        c.scheme = "mailto"
+        c.path = Self.supportMail
+        c.queryItems = [URLQueryItem(name: "subject", value: "Payso \(version)"), URLQueryItem(name: "body", value: body)]
+        guard let url = c.url else { return }
+        UIApplication.shared.open(url) { ok in
+            guard !ok else { return }
+            UIPasteboard.general.string = Self.supportMail
+            store.show(L("Đã chép %@", Self.supportMail))
+        }
+    }
+
+    /// Mã máy (vd "iPhone17,1"); máy ảo thì lấy mã máy đang giả lập
+    private static var deviceModel: String {
+        if let sim = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] { return sim }
+        var info = utsname()
+        uname(&info)
+        return withUnsafeBytes(of: &info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
     }
 
     // MARK: Phụ

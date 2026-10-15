@@ -182,6 +182,10 @@ struct HomeView: View {
             }
             // -shotAdjust YES: đặt số dư rồi điều chỉnh một lần, để có các lần điều chỉnh
             if UserDefaults.standard.bool(forKey: "shotAdjust"), store.adjusts.isEmpty { store.setBalance(5_000_000); store.setBalance(4_820_000) }
+            // -shotBudget N: đặt ngân sách tháng (0: bỏ ngân sách). -shotBalance N: đặt số dư
+            let d = UserDefaults.standard
+            if d.object(forKey: "shotBudget") != nil { store.budget = d.integer(forKey: "shotBudget") }
+            if d.object(forKey: "shotBalance") != nil, store.adjusts.isEmpty { store.setBalance(d.integer(forKey: "shotBalance")) }
             // -shotCredit YES: số dư, ba khoản quẹt thẻ tín dụng, một lần trả thẻ; số dư hiện sẵn (không che)
             if UserDefaults.standard.bool(forKey: "shotCredit"), store.cardPays.isEmpty {
                 if store.balance == nil { store.setBalance(12_500_000) }
@@ -190,7 +194,8 @@ struct HomeView: View {
                 store.add(amount: 420_000, note: "Grab", cat: "dilai", credit: true, toast: false)
                 store.payCard(500_000)
             }
-            if UserDefaults.standard.bool(forKey: "shotCredit") { balanceShown = true }
+            // -shotReveal YES / NO: số dư hiện sẵn / để che (mặc định: hiện khi có -shotCredit)
+            if d.object(forKey: "shotReveal") != nil ? d.bool(forKey: "shotReveal") : d.bool(forKey: "shotCredit") { balanceShown = true }
             // Mở sẵn khoản quẹt thẻ mới nhất: -shotOpen creditedit (màn sửa) / creditmenu (bảng nhấn giữ)
             if let e = store.items.filter(\.isCredit).max(by: { $0.t < $1.t }) {
                 switch UserDefaults.standard.string(forKey: "shotOpen") {
@@ -419,12 +424,10 @@ struct HomeView: View {
             // Không nợ thì không có dòng này
             if debt > 0 {
                 Button { cardOpen = true } label: {
-                    HStack(spacing: 4) {
-                        Text(L("Nợ thẻ"))
-                        ZStack(alignment: .trailing) {
-                            Text(fmt(debt)).opacity(balanceShown ? 1 : 0)
-                            Text("••••").opacity(balanceShown ? 0 : 1)
-                        }
+                    // Cả dòng chồng lên nhau, căn phải: lúc che chữ "Nợ thẻ" đứng sát dãy chấm (không cách một khoảng bằng số tiền)
+                    ZStack(alignment: .trailing) {
+                        Text(L("Nợ thẻ") + " " + fmt(debt)).opacity(balanceShown ? 1 : 0)
+                        Text(L("Nợ thẻ") + " ••••").opacity(balanceShown ? 0 : 1)
                     }
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                     .lineLimit(1).fixedSize()

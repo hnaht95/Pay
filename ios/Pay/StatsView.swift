@@ -989,7 +989,7 @@ struct StatsView: View {
                     Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5)
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(L("Nợ thẻ tín dụng")).font(.system(size: 13)).foregroundStyle(.secondary)
+                            Text(L("Chi tiêu thẻ chưa trả")).font(.system(size: 13)).foregroundStyle(.secondary)
                             Text(fmt(debt)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
                         }
                         Spacer(minLength: 12)

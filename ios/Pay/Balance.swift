@@ -19,7 +19,7 @@ struct BalanceSheet: View {
             Text(card ? L("Trả thẻ tín dụng") : current == nil ? L("Số dư hiện có") : L("Điều chỉnh số dư")).font(.system(size: 21, weight: .bold))
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .padding(.top, 8)
-            Text(card ? L("Đang nợ thẻ %@. Nhập số tiền bạn đã trả cho thẻ: số dư giảm theo, không tính là chi tiêu (đã tính lúc quẹt thẻ).", fmt(store.cardDebt))
+            Text(card ? L("Chi tiêu thẻ chưa trả: %@. Nhập số tiền bạn đã trả cho thẻ: số dư giảm theo, không tính là chi tiêu lần nữa (đã tính lúc quẹt thẻ).", fmt(store.cardDebt))
                  : current.map { L("App đang tính: %@. Nhập số bạn đang có thật, phần chênh được ghi vào Các lần điều chỉnh.", fmt($0)) }
                  ?? L("Tổng tiền bạn đang có (tiền mặt, tài khoản…). Từ giờ app tự cộng khoản thu, trừ khoản chi."))
                 .font(.system(size: 15)).foregroundStyle(.secondary)
@@ -104,7 +104,7 @@ struct BalanceLog: View {
                 }
                 ForEach(log) { e in
                     // Dòng phụ bên trái (ngang hàng ngày giờ bên phải): số dư ngay sau lần này
-                    ExpenseRow(e: e, showDay: true, sub: card ? L("Còn nợ thẻ: %@", fmt(store.cardDebt(before: e.t + 1)))
+                    ExpenseRow(e: e, showDay: true, sub: card ? L("Chi tiêu thẻ còn lại: %@", fmt(store.cardDebt(before: e.t + 1)))
                                                                     : store.balance(before: e.t + 1).map { L("Số dư sau: %@", fmt($0)) })
                     .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                 }

@@ -424,17 +424,17 @@ struct HomeView: View {
             // Không nợ thì không có dòng này
             if debt > 0 {
                 Button { cardOpen = true } label: {
-                    // Cả dòng chồng lên nhau, căn phải: lúc che chữ "Nợ thẻ" đứng sát dãy chấm (không cách một khoảng bằng số tiền)
+                    // Cả dòng chồng lên nhau, căn phải: lúc che chữ "Chi tiêu thẻ" đứng sát dãy chấm (không cách một khoảng bằng số tiền)
                     ZStack(alignment: .trailing) {
-                        Text(L("Nợ thẻ") + " " + fmt(debt)).opacity(balanceShown ? 1 : 0)
-                        Text(L("Nợ thẻ") + " ••••").opacity(balanceShown ? 0 : 1)
+                        Text(L("Chi tiêu thẻ") + " " + fmt(debt)).opacity(balanceShown ? 1 : 0)
+                        Text(L("Chi tiêu thẻ") + " ••••").opacity(balanceShown ? 0 : 1)
                     }
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                     .lineLimit(1).fixedSize()
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(Pressable())
-                .accessibilityLabel(balanceShown ? L("Nợ thẻ %@, chạm để trả thẻ", fmt(debt)) : L("Nợ thẻ, chạm để trả thẻ"))
+                .accessibilityLabel(balanceShown ? L("Chi tiêu thẻ %@, chạm để trả thẻ", fmt(debt)) : L("Chi tiêu thẻ, chạm để trả thẻ"))
             }
         }
     }

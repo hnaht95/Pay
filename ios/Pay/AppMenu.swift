@@ -180,7 +180,7 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
     if !e.isIncome && !e.isAdjust {
         items.append(e.isCredit
             ? AppMenuItem(icon: "creditcard", title: L("Bỏ đánh dấu thẻ tín dụng"), subtitle: L("Trừ vào số dư như khoản thường")) { store.setCredit(e, false) }
-            : AppMenuItem(icon: "creditcard.fill", title: L("Trả bằng thẻ tín dụng"), subtitle: L("Chưa trừ số dư, cộng vào nợ thẻ")) { store.setCredit(e, true) })
+            : AppMenuItem(icon: "creditcard.fill", title: L("Trả bằng thẻ tín dụng"), subtitle: L("Chưa trừ số dư, cộng vào chi tiêu thẻ")) { store.setCredit(e, true) })
     }
     items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
     return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),

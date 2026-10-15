@@ -98,6 +98,12 @@ extension View {
 
 /// Vùng cuộn: ScrollView thật khi dùng app; khi dựng phim là nội dung dịch đi theo `film.scroll` và cắt theo khung.
 struct FilmScroll<Content: View>: View {
+    #if DEBUG
+    /// Ảnh so sánh (scripts/shots.sh): -shotScroll 0.5 mở sẵn vùng cuộn dọc ở giữa, 1 ở cuối
+    static var shotAnchor: UnitPoint? {
+        UserDefaults.standard.object(forKey: "shotScroll").map { UnitPoint(x: 0.5, y: CGFloat(($0 as? NSNumber)?.doubleValue ?? Double("\($0)") ?? 0)) }
+    }
+    #endif
     @Environment(\.film) private var film
     var axes: Axis.Set = .vertical
     @ViewBuilder let content: Content
@@ -116,7 +122,7 @@ struct FilmScroll<Content: View>: View {
             ScrollView(axes, showsIndicators: axes == .vertical) { content }
                 #if DEBUG
                 // Ảnh so sánh (scripts/shots.sh): -shotScroll 0.5 mở sẵn vùng cuộn dọc ở giữa, 1 ở cuối
-                .defaultScrollAnchor(axes == .vertical ? UserDefaults.standard.object(forKey: "shotScroll").map { UnitPoint(x: 0.5, y: CGFloat(($0 as? NSNumber)?.doubleValue ?? Double("\($0)") ?? 0)) } : nil)
+                .defaultScrollAnchor(axes == .vertical ? Self.shotAnchor : nil)
                 #endif
         }
     }

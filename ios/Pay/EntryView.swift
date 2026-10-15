@@ -41,6 +41,8 @@ struct EntryView: View {
     @State private var viewingPhoto = false
     /// Đang ghi tiền vào (công tắc Chi / Vào): hàng chip là danh mục tiền vào
     @State private var income = false
+    /// Khoản chi trả bằng thẻ tín dụng (xem Expense.cr): không trừ số dư ngay, cộng vào nợ thẻ
+    @State private var credit = false
 
     private var amount: Int { Int(film?.entry?.digits ?? digits) ?? 0 }
     private var shownNote: String { film?.entry?.note ?? note }
@@ -52,7 +54,10 @@ struct EntryView: View {
             HStack {
                 Text(L("Số tiền")).font(.system(size: 15)).foregroundStyle(.secondary)
                 Spacer()
-                if canIncome && film == nil { kindSwitch }
+                if canIncome && film == nil {
+                    if !income { creditToggle }
+                    kindSwitch
+                }
             }
             .frame(minHeight: 34)
             .padding(.top, 18)
@@ -329,6 +334,25 @@ struct EntryView: View {
         .accessibilityLabel(L("Loại khoản"))
     }
 
+    /// Trả bằng thẻ tín dụng: viên bật / tắt cạnh công tắc Chi / Thu, cùng cao
+    private var creditToggle: some View {
+        Button {
+            Haptic.select()
+            withAnimation(.snappy(duration: 0.2)) { credit.toggle(); editing = true }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "creditcard.fill").font(.system(size: 13, weight: .semibold))
+                Text(L("Thẻ tín dụng")).font(.system(size: 15, weight: .semibold))
+            }
+            .padding(.horizontal, 12).frame(height: 34)
+            .foregroundStyle(credit ? Palette.ctaInk : Color.secondary)
+            .background(credit ? Palette.cta : Palette.pill, in: Capsule())
+        }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(L("Trả bằng thẻ tín dụng"))
+        .accessibilityAddTraits(credit ? .isSelected : [])
+    }
+
     /// Nhập mới (tay hoặc từ hoá đơn)
     private var isNewEntry: Bool {
         switch mode { case .new, .receipt: return true; default: return false }
@@ -456,7 +480,7 @@ struct EntryView: View {
                     BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
                     BigButton(title: L("Lưu"), icon: "", primary: true) {
                         guard amount > 0 else { return }
-                        learn(); store.add(amount: amount, note: trimmed, cat: finalCat)
+                        learn(); store.add(amount: amount, note: trimmed, cat: finalCat, credit: credit && !income)
                         if let photo, let id = store.all.last?.id { ReceiptPhotos.save(photo, id: id) }
                         dismiss()
                     }
@@ -492,7 +516,7 @@ struct EntryView: View {
                         if editing {
                             BigButton(title: L("Lưu"), icon: "", primary: true) {
                                 guard amount > 0 else { return }
-                                e.a = amount; e.n = trimmed; e.c = finalCat
+                                e.a = amount; e.n = trimmed; e.c = finalCat; e.cr = credit && !income ? true : nil
                                 // Chỉ ghi lại thời điểm khi người dùng thật sự đổi (so theo phút), kẻo lệch mili giây làm xáo thứ tự
                                 if abs(when.timeIntervalSince(e.date)) >= 60 { e.t = when.timeIntervalSince1970 * 1000 }
                                 learn(); store.update(e)
@@ -576,7 +600,7 @@ struct EntryView: View {
             catPicked = m?.c != nil
             baseCat = cat
         case .edit(let e), .editNow(let e):
-            digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date; income = e.isIncome
+            digits = String(e.a); note = e.n ?? ""; cat = e.c; catPicked = true; when = e.date; income = e.isIncome; credit = e.isCredit
             let id = e.id
             Task { if let img = await ReceiptPhotos.load(id), !photoChanged { photo = img } }
             // Chạm vào một khoản thì ban đầu chỉ xem; đã bấm hẳn "Sửa" (thẻ nói, bảng nhấn giữ) thì vào sửa luôn

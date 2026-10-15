@@ -66,7 +66,10 @@ struct Category: Identifiable, Hashable {
     static let adjust: [Category] = [
         Category(k: "adj+", icon: "⚖️", name: "Điều chỉnh số dư", color: Color(hex: 0xE4E4E8), kw: []),
         Category(k: "adj-", icon: "⚖️", name: "Điều chỉnh số dư", color: Color(hex: 0xE4E4E8), kw: []),
+        Category(k: cardPay, icon: "💳", name: "Trả thẻ tín dụng", color: Color(hex: 0xE4E4E8), kw: []),
     ]
+    /// Mã khoản trả thẻ tín dụng (xem Expense.isCardPay)
+    static let cardPay = "adj-card"
 
     /// Mã khoản điều chỉnh số dư
     static func isAdjust(_ k: String?) -> Bool { k?.hasPrefix("adj") == true }

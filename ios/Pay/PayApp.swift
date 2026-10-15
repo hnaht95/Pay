@@ -84,6 +84,10 @@ struct CardPaymentIntent: AppIntent {
     @Parameter(title: "Người bán")
     var merchant: String?
 
+    /// Mỗi tự động hoá Giao dịch gắn với một thẻ trong Ví: thẻ tín dụng thì bật để khoản tự ghi chưa trừ vào số dư
+    @Parameter(title: "Thẻ tín dụng", default: false)
+    var credit: Bool
+
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // Tính năng Pro (đọc cờ đã lưu: intent chạy nền, không chờ App Store)
@@ -95,7 +99,7 @@ struct CardPaymentIntent: AppIntent {
         }
         let store = Store.shared
         let note = (merchant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        store.add(amount: a, note: note, cat: store.guessEntry(note), toast: false)
+        store.add(amount: a, note: note, cat: store.guessEntry(note), credit: credit, toast: false)
         return .result(dialog: IntentDialog(stringLiteral: L("Đã ghi %@ %@.", fmt(a), note.isEmpty ? L("giao dịch thẻ") : note)))
     }
 

@@ -1276,7 +1276,8 @@ struct ApplePayHelp: View {
                 step(2, L("Chọn thẻ trong Ví muốn theo dõi, đặt Chạy ngay (không cần xác nhận), bấm Tiếp."))
                 step(3, L("Chọn Tác vụ mới, tìm Payso, chọn Ghi giao dịch thẻ."))
                 step(4, L("Chạm ô Số tiền, chọn biến Giao dịch rồi chọn Số tiền. Chạm ô Người bán, chọn Giao dịch rồi chọn Người bán."))
-                step(5, L("Bấm Xong. Từ giờ mỗi lần quẹt thẻ, Payso tự ghi khoản chi, danh mục đoán theo tên cửa hàng."))
+                step(5, L("Thẻ tín dụng: bật ô Thẻ tín dụng, để khoản tự ghi chưa trừ vào số dư mà cộng vào nợ thẻ (trả thẻ thì chạm dòng Nợ thẻ dưới số dư)."))
+                step(6, L("Bấm Xong. Từ giờ mỗi lần quẹt thẻ, Payso tự ghi khoản chi, danh mục đoán theo tên cửa hàng."))
             } footer: {
                 Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }

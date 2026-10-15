@@ -11,6 +11,9 @@ struct Expense: Codable, Identifiable, Hashable {
     var c: String
     var acct: String?
     var u: Double?   // lần sửa cuối (ms), để gộp dữ liệu giữa các máy qua iCloud
+    /// Khoản chi trả bằng thẻ tín dụng: vẫn là chi tiêu (ngân sách, thống kê), nhưng chưa trừ vào số dư — cộng vào nợ thẻ,
+    /// tới lúc trả thẻ (khoản "adj-card") mới trừ. nil / false: trả bằng tiền đang có
+    var cr: Bool? = nil
 
     var date: Date { Date(timeIntervalSince1970: t / 1000) }
     var stamp: Double { u ?? t }
@@ -18,8 +21,15 @@ struct Expense: Codable, Identifiable, Hashable {
     var isIncome: Bool { Category.isIncome(c) }
     /// Điều chỉnh số dư: không phải thu cũng không phải chi
     var isAdjust: Bool { Category.isAdjust(c) }
+    /// Trả nợ thẻ tín dụng: trừ số dư và nợ thẻ, không phải chi tiêu (đã tính lúc quẹt thẻ). Cùng nhóm với điều chỉnh số dư
+    /// (mã bắt đầu bằng "adj") nên mọi chỗ đã bỏ qua điều chỉnh cũng bỏ qua khoản này
+    var isCardPay: Bool { c == Category.cardPay }
+    /// Trả bằng thẻ tín dụng
+    var isCredit: Bool { cr == true && !isIncome && !isAdjust }
     /// Ảnh hưởng tới số dư: khoản thu và điều chỉnh cộng thêm cộng, khoản chi và điều chỉnh trừ thì trừ
     var signed: Int { isIncome || c == "adj+" ? a : -a }
+    /// Phần làm đổi số dư: khoản quẹt thẻ tín dụng chưa đụng tới tiền đang có (trừ lúc trả thẻ)
+    var balanceEffect: Int { isCredit ? 0 : signed }
 }
 
 /// Ghi nhớ theo số tài khoản để lần sau quét lại tự điền tên + danh mục.
@@ -174,7 +184,8 @@ final class Store: ObservableObject {
         didSet {
             items = all.filter { !$0.isIncome && !$0.isAdjust }
             incomes = all.filter(\.isIncome)
-            adjusts = all.filter(\.isAdjust)
+            adjusts = all.filter { $0.isAdjust && !$0.isCardPay }
+            cardPays = all.filter(\.isCardPay)
         }
     }
     /// Chỉ khoản chi: mọi tổng chi, ngân sách, thống kê tính trên đây
@@ -183,6 +194,8 @@ final class Store: ObservableObject {
     @Published private(set) var incomes: [Expense] = []
     /// Các lần đặt / điều chỉnh số dư
     @Published private(set) var adjusts: [Expense] = []
+    /// Các lần trả thẻ tín dụng
+    @Published private(set) var cardPays: [Expense] = []
     @Published var memo: [String: Memo] = [:]
     @Published var appId: String = UserDefaults.standard.string(forKey: "bankApp") ?? "acb" {
         didSet { UserDefaults.standard.set(appId, forKey: "bankApp") }
@@ -338,8 +351,9 @@ final class Store: ObservableObject {
     }
 
     /// toast: false khi màn hình tự có nút Hoàn tác (thẻ giọng nói)
-    func add(amount: Int, note: String, cat: String, acct: String? = nil, toast: Bool = true) {
-        let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct)
+    func add(amount: Int, note: String, cat: String, acct: String? = nil, credit: Bool = false, toast: Bool = true) {
+        let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct,
+                        cr: credit && !Category.isIncome(cat) ? true : nil)
         all.append(e)
         persist()
         if toast { show(L("Đã lưu %@", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
@@ -451,7 +465,31 @@ final class Store: ObservableObject {
     /// Chưa đặt số dư lần nào thì nil (app không biết lúc bắt đầu dùng bạn có bao nhiêu)
     var balance: Int? {
         guard let start = balanceStart else { return nil }
-        return all.filter { $0.t >= start }.reduce(0) { $0 + $1.signed }
+        return all.filter { $0.t >= start }.reduce(0) { $0 + $1.balanceEffect }
+    }
+
+    /// Nợ thẻ tín dụng: các khoản quẹt thẻ trừ các lần trả thẻ (không âm: trả cả nợ có từ trước khi dùng app thì về 0)
+    var cardDebt: Int { max(0, items.filter(\.isCredit).reduce(0) { $0 + $1.a } - cardPays.reduce(0) { $0 + $1.a }) }
+
+    /// Nợ thẻ ngay trước thời điểm `t` (ms)
+    func cardDebt(before t: Double) -> Int {
+        max(0, items.filter { $0.isCredit && $0.t < t }.reduce(0) { $0 + $1.a } - cardPays.filter { $0.t < t }.reduce(0) { $0 + $1.a })
+    }
+
+    /// Trả thẻ tín dụng: tiền ra khỏi số dư, nợ thẻ giảm; không tính là chi (đã tính lúc quẹt thẻ)
+    func payCard(_ amount: Int) {
+        guard amount > 0 else { return }
+        let e = Expense(id: UUID().uuidString, t: now, a: amount, n: nil, c: Category.cardPay, acct: nil)
+        all.append(e)
+        persist()
+        show(L("Đã trả thẻ %@", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) }
+    }
+
+    /// Đánh dấu / bỏ đánh dấu một khoản chi là trả bằng thẻ tín dụng
+    func setCredit(_ e: Expense, _ on: Bool) {
+        var e = e
+        e.cr = on ? true : nil
+        update(e)
     }
 
     /// Lúc đặt số dư lần đầu (ms): mốc tính số dư
@@ -460,7 +498,7 @@ final class Store: ObservableObject {
     /// Số dư ngay trước thời điểm `t` (ms); trước lúc đặt số dư lần đầu thì nil
     func balance(before t: Double) -> Int? {
         guard let start = balanceStart, t > start else { return nil }
-        return all.filter { $0.t >= start && $0.t < t }.reduce(0) { $0 + $1.signed }
+        return all.filter { $0.t >= start && $0.t < t }.reduce(0) { $0 + $1.balanceEffect }
     }
 
     /// Đặt số dư hiện có: ghi một khoản "Điều chỉnh số dư" bằng phần chênh với số app đang tính (lần đầu là cả số dư),
@@ -489,7 +527,7 @@ final class Store: ObservableObject {
         let q = { (s: String) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         var rows = [[L("Ngày"), L("Giờ"), L("Loại"), L("Số tiền"), L("Danh mục"), L("Ghi chú")].map(q).joined(separator: ",")]
         for e in all.sorted(by: { $0.t < $1.t }) {
-            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isAdjust ? L("Điều chỉnh") : e.isIncome ? L("Thu") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
+            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isCardPay ? L("Trả thẻ") : e.isAdjust ? L("Điều chỉnh") : e.isIncome ? L("Thu") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
         }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).csv")
         guard (try? ("\u{FEFF}" + rows.joined(separator: "\n")).write(to: url, atomically: true, encoding: .utf8)) != nil else { return nil }

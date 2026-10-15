@@ -70,6 +70,9 @@ struct StatsView: View {
         } else {
         NavigationStack {
             ScrollView { content(items, prev) }
+                #if DEBUG
+                .defaultScrollAnchor(FilmScroll<EmptyView>.shotAnchor)
+                #endif
             .coordinateSpace(name: "navScroll")
             .softTopEdge(fade: Self.page)
             .background(Self.page.ignoresSafeArea())
@@ -976,6 +979,26 @@ struct StatsView: View {
                     flowColumn(L("Thu"), fmt(got), "arrow.up", Palette.goodInk, alignment: .leading)
                     Spacer(minLength: 12)
                     flowColumn(L("Chi"), fmt(spent), "arrow.down", Palette.danger, alignment: .trailing)
+                }
+                // Thẻ tín dụng: khoản quẹt thẻ là chi nhưng chưa trừ số dư (cộng vào nợ thẻ), trả thẻ mới trừ. Có dòng này thì
+                // chênh lệch số dư không còn bằng Thu − Chi mà vẫn đọc ra được vì sao
+                let charged = store.items.filter { $0.isCredit && $0.t >= s && $0.t < e }.reduce(0) { $0 + $1.a }
+                let paid = store.cardPays.filter { $0.t >= s && $0.t < e }.reduce(0) { $0 + $1.a }
+                let debt = store.cardDebt(before: e)
+                if charged > 0 || paid > 0 || debt > 0 {
+                    Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5)
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(L("Nợ thẻ tín dụng")).font(.system(size: 13)).foregroundStyle(.secondary)
+                            Text(fmt(debt)).font(.system(size: 15, weight: .semibold)).monospacedDigit()
+                        }
+                        Spacer(minLength: 12)
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(L("Quẹt thẻ %@", fmt(charged))).font(.system(size: 13)).foregroundStyle(.secondary)
+                            Text(L("Đã trả thẻ %@", fmt(paid))).font(.system(size: 13)).foregroundStyle(.secondary)
+                        }
+                    }
+                    .lineLimit(1).minimumScaleFactor(0.7)
                 }
             }
             .padding(18)

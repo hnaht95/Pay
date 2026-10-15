@@ -60,6 +60,8 @@ struct HomeView: View {
     @State private var pickingHero = false
     /// Đang đặt / điều chỉnh số dư hiện có
     @State private var balanceOpen = false
+    /// Bảng trả thẻ tín dụng (chạm dòng Nợ thẻ dưới số dư)
+    @State private var cardOpen = false
     /// Số dư đang hiện (mặc định che bằng chấm); tự che lại sau ít giây hoặc khi rời app
     @State private var balanceShown = false
     @State private var hideBalance: Task<Void, Never>?
@@ -133,6 +135,7 @@ struct HomeView: View {
         .onChange(of: recentGrid) { _, v in withAnimation(.snappy(duration: 0.35)) { gridShown = v } }
         .sheet(isPresented: $pickingHero) { HeroColorSheet() }
         .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
+        .sheet(isPresented: $cardOpen) { CardPaySheet().environmentObject(store).sheetGrabber() }
         .overlay {
             // Phim: bảng nhấn giữ theo trạng thái phim đưa vào
             if let m = film?.menu, m.shown > 0 {
@@ -173,11 +176,21 @@ struct HomeView: View {
             case "entry": entry = .new(cat: nil)
             case "camera": receiptScan = true
             case "balance", "balancelog": balanceOpen = true
+            case "card": cardOpen = true
             case "voice": voiceFrom = CGRect(x: 181, y: 780, width: 205, height: 78)   // khung nút Quét QR trên iPhone 16 Pro
             default: break
             }
             // -shotAdjust YES: đặt số dư rồi điều chỉnh một lần, để có các lần điều chỉnh
             if UserDefaults.standard.bool(forKey: "shotAdjust"), store.adjusts.isEmpty { store.setBalance(5_000_000); store.setBalance(4_820_000) }
+            // -shotCredit YES: số dư, ba khoản quẹt thẻ tín dụng, một lần trả thẻ; số dư hiện sẵn (không che)
+            if UserDefaults.standard.bool(forKey: "shotCredit"), store.cardPays.isEmpty {
+                if store.balance == nil { store.setBalance(12_500_000) }
+                store.add(amount: 1_250_000, note: "Uniqlo", cat: "muasam", credit: true, toast: false)
+                store.add(amount: 680_000, note: "Pizza 4P's", cat: "an", credit: true, toast: false)
+                store.add(amount: 420_000, note: "Grab", cat: "dilai", credit: true, toast: false)
+                store.payCard(500_000)
+            }
+            if UserDefaults.standard.bool(forKey: "shotCredit") { balanceShown = true }
             // -shotWide an,cafe: kéo các ô danh mục đó dài cả hàng
             for k in (UserDefaults.standard.string(forKey: "shotWide") ?? "").split(separator: ",") { store.setWide(String(k), true) }
         }
@@ -353,8 +366,9 @@ struct HomeView: View {
     /// Cột số dư hiện có: chưa đặt thì mời nhập; chạm để đặt / chỉnh
     /// Số dư che bằng chấm, chạm để hiện (8 giây rồi tự che lại); đang hiện thì chạm để đặt / chỉnh. Chưa đặt thì mời nhập
     private func balanceColumn(_ size: CGFloat) -> some View {
-        let b = store.balance
-        return Button {
+        let b = store.balance, debt = store.cardDebt
+        return VStack(alignment: .trailing, spacing: 4) {
+        Button {
             guard b != nil, !balanceShown else { balanceOpen = true; return }
             withAnimation(.snappy(duration: 0.2)) { balanceShown = true }
             hideBalance?.cancel()
@@ -380,6 +394,25 @@ struct HomeView: View {
         }
         .buttonStyle(Pressable())
         .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
+            // Nợ thẻ tín dụng (khoản quẹt thẻ chưa trả): dòng nhỏ dưới số dư, che / hiện cùng số dư; chạm để trả thẻ.
+            // Không nợ thì không có dòng này
+            if debt > 0 {
+                Button { cardOpen = true } label: {
+                    HStack(spacing: 4) {
+                        Text(L("Nợ thẻ"))
+                        ZStack(alignment: .trailing) {
+                            Text(fmt(debt)).opacity(balanceShown ? 1 : 0)
+                            Text("••••").opacity(balanceShown ? 0 : 1)
+                        }
+                    }
+                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .lineLimit(1).fixedSize()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(Pressable())
+                .accessibilityLabel(balanceShown ? L("Nợ thẻ %@, chạm để trả thẻ", fmt(debt)) : L("Nợ thẻ, chạm để trả thẻ"))
+            }
+        }
     }
 
     /// Một ô của lưới so le ở mục Gần đây (height: ô cuối cột, cao theo đường đáy chung thay vì theo tỉ lệ ảnh)
@@ -874,6 +907,10 @@ struct ExpenseRow: View {
                     if repeats {
                         Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                             .accessibilityLabel(L("Hằng tháng"))
+                    }
+                    if e.isCredit {
+                        Image(systemName: "creditcard.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                            .accessibilityLabel(L("Thẻ tín dụng"))
                     }
                 }
                 // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục)

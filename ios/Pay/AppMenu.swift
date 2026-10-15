@@ -177,6 +177,11 @@ func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppM
         items.append(AppMenuItem(icon: "repeat", title: L("Lặp hằng tháng"),
                                  subtitle: L("Tự ghi vào ngày %@ mỗi tháng", String(Calendar.current.component(.day, from: e.date)))) { if Pro.shared.allow(.recurring) { store.repeatMonthly(e) } })
     }
+    if !e.isIncome && !e.isAdjust {
+        items.append(e.isCredit
+            ? AppMenuItem(icon: "creditcard", title: L("Bỏ đánh dấu thẻ tín dụng"), subtitle: L("Trừ vào số dư như khoản thường")) { store.setCredit(e, false) }
+            : AppMenuItem(icon: "creditcard.fill", title: L("Trả bằng thẻ tín dụng"), subtitle: L("Chưa trừ số dư, cộng vào nợ thẻ")) { store.setCredit(e, true) })
+    }
     items.append(AppMenuItem(icon: "trash.fill", title: L("Xoá"), danger: true) { store.remove(id: e.id) })
     return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
                        title: "\(e.n?.isEmpty == false ? e.n!.capFirst : c.name) · \(e.isIncome || e.c == "adj+" ? "↑ " : e.isAdjust ? "↓ " : "")\(fmt(e.a))",

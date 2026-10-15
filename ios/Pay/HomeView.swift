@@ -192,6 +192,7 @@ struct HomeView: View {
             case "camera": receiptScan = true
             case "balance", "balancelog": balanceOpen = true
             case "card", "cardlog": cardOpen = true
+            case "pro": ProPaywall.present()
             case "voice": voiceFrom = CGRect(x: 181, y: 780, width: 205, height: 78)   // khung nút Quét QR trên iPhone 16 Pro
             default: break
             }

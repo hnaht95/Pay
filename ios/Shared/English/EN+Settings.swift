@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let settings: [String: String] = [
+        "Chưa tải được giá từ App Store": "Couldn't load prices from the App Store",
         "Nhập từ CSV (app khác, Excel)": "Import CSV (other apps, Excel)",
         "Nhập từ CSV": "Import CSV",
         "Không tìm thấy cột ngày và số tiền trong file": "No date and amount columns found in the file",

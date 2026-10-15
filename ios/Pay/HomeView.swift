@@ -272,6 +272,7 @@ struct HomeView: View {
         now = Date()
         store.catchUpRecurring()
         ReceiptPhotos.refreshCloudIndex()
+        store.pruneReceiptPhotos()
     }
 
     /// Mở thẳng màn hình quét / nhập. Đang mở màn hình khác thì đóng hết trước rồi mới mở.
@@ -1271,8 +1272,9 @@ private struct ReceiptFlow: View {
     let store: Store
     var close: () -> Void
     @State private var shot: EntryMode?
-    /// Số khoản lúc mở màn nhập: lúc đóng nhiều hơn là đã lưu
-    @State private var countAtShot = 0
+    /// Các khoản lúc mở màn nhập: lúc đóng có khoản mới (không phải khoản tự ghi hằng tháng) là đã lưu. Không so số lượng: khoản
+    /// tự ghi khi quay lại app, giao dịch thẻ ghi nền, iCloud gộp về đều làm số lượng đổi
+    @State private var idsAtShot = Set<String>()
     /// Đổi để màn chụp nhận chụp tiếp khi quay lại từ màn nhập (camera vẫn chạy suốt, không dựng lại: dựng lại thì khung xem đen
     /// một nhịp lúc bật lại camera)
     @State private var round = 0
@@ -1280,11 +1282,11 @@ private struct ReceiptFlow: View {
     var body: some View {
         ReceiptCamera(resume: round, home: close) { img in
             guard let img else { close(); return }
-            countAtShot = store.all.count
+            idsAtShot = Set(store.all.map(\.id))
             shot = .receipt(img)
         }
         .sheet(item: $shot, onDismiss: {
-            if store.all.count > countAtShot { close() } else { round += 1 }
+            if store.all.contains(where: { !idsAtShot.contains($0.id) && !$0.id.hasPrefix("r-") && !$0.isAdjust }) { close() } else { round += 1 }
         }) { EntryView(mode: $0).environmentObject(store).sheetGrabber() }
     }
 }

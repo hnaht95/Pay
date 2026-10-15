@@ -577,7 +577,10 @@ struct EntryView: View {
         let key = q.memoKey
         let old = key.flatMap { store.memo[$0] }
         let name = !trimmed.isEmpty ? trimmed : (!q.name.isEmpty ? q.name : "\(q.bank) \(q.acct ?? "")")
-        if let key { store.remember(key, Memo(c: finalCat, n: trimmed.isEmpty ? old?.n : trimmed)) }
+        // Tên nhớ cho tài khoản này: chỉ khi người dùng tự gõ. Nội dung chuyển khoản của mã QR ("DH 12345") là của riêng lần trả
+        // này, nhớ thì lần sau quét cùng tài khoản lại hiện sẵn nội dung cũ
+        let typed = !trimmed.isEmpty && trimmed != q.purpose.trimmingCharacters(in: .whitespaces)
+        if let key { store.remember(key, Memo(c: finalCat, n: typed ? trimmed : old?.n)) }
         store.add(amount: amount, note: name, cat: finalCat, acct: key)
     }
 

@@ -94,13 +94,13 @@ enum ReceiptPhotos {
     /// Khoản này có ảnh không (trong máy, hoặc bản trên iCloud kể cả khi chưa tải về)
     static func has(_ id: String) -> Bool {
         if fm.fileExists(atPath: localDir.appendingPathComponent(name(id)).path) { return true }
-        return cloudIndex.contains(id)
+        return lock.withLock { cloudIndex.contains(id) }
     }
 
     static func remove(_ id: String) {
         for k in ["168", "360", "w400"] { thumbs.removeObject(forKey: "\(id)@\(k)" as NSString) }
         try? fm.removeItem(at: localDir.appendingPathComponent(name(id)))
-        cloudIndex.remove(id)
+        _ = lock.withLock { cloudIndex.remove(id) }
         DispatchQueue.global(qos: .utility).async {
             guard let dir = cloudDir() else { return }
             let url = dir.appendingPathComponent(name(id))
@@ -109,7 +109,9 @@ enum ReceiptPhotos {
     }
 
     /// Mã các khoản có ảnh trên iCloud (đọc tên tệp, kể cả tệp chưa tải về dạng ".<tên>.icloud"); làm mới khi mở app
+    /// Đọc từ nhiều luồng (ảnh thu nhỏ dựng ngoài luồng chính), ghi ở luồng chính: đi qua khoá
     nonisolated(unsafe) private static var cloudIndex = Set<String>()
+    private static let lock = NSLock()
 
     static func refreshCloudIndex() {
         DispatchQueue.global(qos: .utility).async {
@@ -119,7 +121,7 @@ enum ReceiptPhotos {
                 if s.hasPrefix("."), s.hasSuffix(".icloud") { s = String(s.dropFirst().dropLast(7)) }
                 return s.hasSuffix(".jpg") ? String(s.dropLast(4)) : nil
             })
-            DispatchQueue.main.async { cloudIndex = ids }
+            lock.withLock { cloudIndex = ids }
         }
     }
 }

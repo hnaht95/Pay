@@ -25,6 +25,8 @@ let cases: [(String, Int?, String)] = [
   ("1.000.002 tiền nhà", 1200000, "tiền nhà"), ("mười triệu 2", 10200000, ""), ("10 triệu 2", 10200000, ""), ("1.002", 1200, ""),
   ("45.000", 45000, ""), ("1.250.000", 1250000, ""), ("1.000.005", 1500000, ""),
   // lỗi vừa tìm ra
+  ("50k 2 ly cafe", 50000, "2 ly cafe"), ("cafe 35k 2 ly", 35000, "cafe 2 ly"), ("₫35.000 cafe", 35000, "cafe"),
+  ("ba trăm nghìn hai chục", 320000, ""),
   ("tiền nhà tháng sau 3 triệu", 3000000, "tiền nhà tháng sau"), ("tiền điện tháng tư 500 nghìn", 500000, "tiền điện tháng tư"),
   ("học phí năm 2 triệu", 2000000, "học phí năm"), ("mua quà cho ba 200 nghìn", 200000, "mua quà cho ba"),
   ("ba ly cà phê 35.000đ", 35000, "ba ly cà phê"), ("cà phê 35.000₫", 35000, "cà phê"),

@@ -19,6 +19,8 @@ final class Pro: ObservableObject {
     @Published private(set) var active: Bool
     /// Gói bán: gói năm trước, trọn đời sau
     @Published private(set) var products: [Product] = []
+    /// Không tải được giá từ App Store (mất mạng…): màn mua hiện nút Thử lại thay vì vòng xoay mãi
+    @Published private(set) var loadFailed = false
     @Published private(set) var buying = false
 
     private var updates: Task<Void, Never>?
@@ -58,7 +60,9 @@ final class Pro: ObservableObject {
     }
 
     func load() async {
-        guard products.isEmpty, let list = try? await Product.products(for: [Self.yearlyID, Self.lifetimeID]) else { return }
+        guard products.isEmpty else { return }
+        loadFailed = false
+        guard let list = try? await Product.products(for: [Self.yearlyID, Self.lifetimeID]), !list.isEmpty else { loadFailed = true; return }
         products = list.sorted { a, _ in a.id == Self.yearlyID }
     }
 
@@ -227,7 +231,16 @@ struct ProPaywall: View {
                     }
                     .padding(.horizontal, 16)
 
-                    if pro.products.isEmpty {
+                    if pro.products.isEmpty && pro.loadFailed {
+                        Button { Task { await pro.load() } } label: {
+                            VStack(spacing: 6) {
+                                Text(L("Chưa tải được giá từ App Store")).font(.system(size: 15)).foregroundStyle(.secondary)
+                                Text(L("Thử lại")).font(.system(size: 17, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity).frame(height: 96).contentShape(Rectangle())
+                        }
+                        .buttonStyle(Pressable()).foregroundStyle(.primary)
+                    } else if pro.products.isEmpty {
                         ProgressView().frame(height: 96)
                     } else {
                         HStack(spacing: 10) {

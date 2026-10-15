@@ -346,7 +346,9 @@ final class Store: ObservableObject {
     private func refreshWidget() {
         let now = Date()
         // Nhắc ghi buổi tối: hôm nay đã có khoản thì bỏ lời nhắc của hôm nay
-        DailyReminder.reschedule(loggedToday: count(on: now) > 0)
+        // Nhắc buổi tối: hôm nay người dùng đã tự ghi gì chưa — khoản thu cũng tính; khoản tự ghi hằng tháng ("r-…") thì không
+        let cal = Calendar.current
+        DailyReminder.reschedule(loggedToday: all.contains { !$0.isAdjust && !$0.id.hasPrefix("r-") && cal.isDateInToday($0.date) })
         Summary(today: total(on: now), month: monthItems(now).reduce(0) { $0 + $1.a }, count: count(on: now), day: now, budget: budget).save()
         WidgetCenter.shared.reloadAllTimelines()
     }
@@ -419,6 +421,12 @@ final class Store: ObservableObject {
     }
 
     /// Xoá mọi khoản chi (có dấu xoá nên các máy đồng bộ iCloud cũng xoá theo). Giữ ghi nhớ người nhận.
+    /// Xoá ảnh hoá đơn của các khoản đã xoá quá một ngày (đã qua lúc còn Hoàn tác được), kẻo ảnh nằm lại mãi trên máy và iCloud
+    func pruneReceiptPhotos() {
+        let cutoff = now - 86_400_000
+        for (id, at) in deleted where at > 0 && at < cutoff && ReceiptPhotos.has(id) { ReceiptPhotos.remove(id) }
+    }
+
     func eraseAll() {
         let t = now
         for e in all { deleted[e.id] = t }

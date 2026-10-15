@@ -35,6 +35,9 @@ final class VoiceListener: ObservableObject {
         defer { starting = false }
         cancelled = false   // lần bật mới: bỏ dấu "đã huỷ" của lần trước (xem isCancelled)
         text = ""
+        // Bỏ trạng thái lỗi của lần trước: lần này lại thiếu quyền / lỗi thì phase đổi lần nữa, nơi theo dõi (nút micro ở màn
+        // Nhập) mới biết mà thôi nghe. Không đổi thì nút kẹt ở trạng thái đang nghe, bấm gì cũng không được
+        if phase != .idle { phase = .idle }
         #if DEBUG
         // Chỉ bản Debug: chạy với "-voiceDemo <câu>" để xem giao diện đang nghe trên máy ảo (không có micro)
         if let demo = UserDefaults.standard.string(forKey: "voiceDemo") {
@@ -719,7 +722,7 @@ struct VoiceEntryView: View {
         autoClose?.cancel()
         store.remove(id: e.id, toast: false)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation(.snappy) { saved = nil; undone = true }
+        withAnimation(.snappy) { saved = nil; undone = true; attached = false }   // ảnh thuộc khoản vừa bỏ
     }
 
     /// Chọn danh mục khác trong số được nhắc tới: đổi luôn khoản vừa ghi (hoặc khoản đang nghe) và nhớ cho lần sau.
@@ -742,6 +745,7 @@ struct VoiceEntryView: View {
     /// vừa trượt lên theo thẻ, sóng âm hiện dần.
     private func retry() {
         closeAfterSave = false
+        attached = false
         withAnimation(Self.settle) {
             notUnderstood = false
             undone = false

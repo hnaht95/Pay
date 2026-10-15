@@ -139,7 +139,7 @@ enum QuickParse {
         if let (v, tail) = (accented ? digitWords : plainDigitWords)[w] { return .num(v, word: true, tail: tail) }
         if let t = (accented ? numberWords : plainNumberWords)[w] { return t }
         // Số viết bằng chữ số, có thể dính ký hiệu tiền: "35.000", "35.000đ", "35.000₫", "1,5"
-        let n = w.replacing(#/(đ|₫|vnđ|vnd)$/#, with: "")
+        let n = w.replacing(#/(đ|₫|vnđ|vnd)$/#, with: "").replacing(#/^(₫|vnđ|vnd)(?=[0-9])/#, with: "")   // cả "₫35.000"
         if n.wholeMatch(of: #/[0-9]{1,3}(?:[.,][0-9]{3})+/#) != nil {
             return .num(siriShorthand(Double(n.filter { $0.isASCII && $0.isNumber })!), word: false, tail: false)
         }
@@ -160,6 +160,7 @@ enum QuickParse {
             if !aWord && x >= 1000 && y < 10 && x.truncatingRemainder(dividingBy: impliedScale(x)) == 0 { return false }   // Siri: "1.000.000 2"
             return true
         case (.num, .full): return true                        // "ba 35k"
+        case (.full, .num): return true                        // "50k 2 ly cafe": số lượng sau số tiền không cộng vào số tiền
         default: return false
         }
     }
@@ -256,6 +257,8 @@ enum QuickParse {
         if lastScale > 0 {
             if let p = pending, pendingAfter == .scale, group == 0, p < 10 { return total + p * lastScale / 10 }
             let rem = flush()
+            // "ba trăm nghìn hai chục": phần chục tròn sau "nghìn" là hai chục nghìn (320.000), không phải 20 đồng
+            if lastScale == 1e3, rem >= 10, rem < 100, rem.truncatingRemainder(dividingBy: 10) == 0 { return total + rem * 1e3 }
             if rem > 0 && rem < 1000 { return total + rem * max(lastScale / 1000, 1) }
             return total + rem
         }

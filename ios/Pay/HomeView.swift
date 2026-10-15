@@ -387,7 +387,11 @@ struct HomeView: View {
                                         Text(L("%d khoản", store.monthItems(now).count)).foregroundStyle(.secondary)
                                     }
                                 }
-                                .font(.system(size: 13))
+                                // Cùng kiểu viên với viên chi tiêu thẻ bên phải (cao bằng, cùng hàng), để hai cột cân nhau
+                                .font(.system(size: 13, weight: .medium))
+                                .padding(.horizontal, 9).padding(.vertical, 5)
+                                .background(Palette.pill, in: Capsule())
+                                .padding(.top, 7)   // = khoảng 4 + 6 phía cột số dư, trừ khoảng 3 của cột này
                             }
                         }
                         .lineLimit(1).fixedSize()

@@ -176,7 +176,7 @@ struct HomeView: View {
             case "entry": entry = .new(cat: nil)
             case "camera": receiptScan = true
             case "balance", "balancelog": balanceOpen = true
-            case "card": cardOpen = true
+            case "card", "cardlog": cardOpen = true
             case "voice": voiceFrom = CGRect(x: 181, y: 780, width: 205, height: 78)   // khung nút Quét QR trên iPhone 16 Pro
             default: break
             }
@@ -191,6 +191,14 @@ struct HomeView: View {
                 store.payCard(500_000)
             }
             if UserDefaults.standard.bool(forKey: "shotCredit") { balanceShown = true }
+            // Mở sẵn khoản quẹt thẻ mới nhất: -shotOpen creditedit (màn sửa) / creditmenu (bảng nhấn giữ)
+            if let e = store.items.filter(\.isCredit).max(by: { $0.t < $1.t }) {
+                switch UserDefaults.standard.string(forKey: "shotOpen") {
+                case "creditedit": entry = .editNow(e)
+                case "creditmenu": menu = expenseMenu(e, store: store) { entry = .editNow(e) }
+                default: break
+                }
+            }
             // -shotWide an,cafe: kéo các ô danh mục đó dài cả hàng
             for k in (UserDefaults.standard.string(forKey: "shotWide") ?? "").split(separator: ",") { store.setWide(String(k), true) }
         }

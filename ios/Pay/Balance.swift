@@ -75,7 +75,7 @@ struct BalanceSheet: View {
             if card { if store.cardDebt > 0 { digits = String(store.cardDebt) } }
             else if let current, current > 0 { digits = String(current) }
             #if DEBUG
-            if UserDefaults.standard.string(forKey: "shotOpen") == "balancelog" { showLog = true }
+            if UserDefaults.standard.string(forKey: "shotOpen") == (card ? "cardlog" : "balancelog") { showLog = true }
             #endif
         }
         .sheet(isPresented: $showLog) { BalanceLog(card: card).environmentObject(store).sheetGrabber() }

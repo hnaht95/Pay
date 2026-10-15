@@ -2,6 +2,15 @@ import Foundation
 
 extension English {
     static let settings: [String: String] = [
+        "Bảo mật": "Security",
+        "Khoá bằng %@": "Lock with %@",
+        "mật mã": "passcode",
+        "Mở khoá Payso": "Unlock Payso",
+        "Bật khoá Payso": "Turn on Payso lock",
+        "Payso đang khoá": "Payso is locked",
+        "Mở khoá bằng %@": "Unlock with %@",
+        "Máy chưa đặt mật mã nên chưa khoá được.": "Set a device passcode first to lock Payso.",
+        "Mỗi lần mở Payso phải mở khoá. Ở màn đa nhiệm, nội dung được che.": "Unlock each time you open Payso. Content is hidden in the app switcher.",
         "Chưa tải được giá từ App Store": "Couldn't load prices from the App Store",
         "Nhập từ CSV (app khác, Excel)": "Import CSV (other apps, Excel)",
         "Nhập từ CSV": "Import CSV",

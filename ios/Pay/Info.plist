@@ -82,6 +82,8 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Payso dùng camera để quét mã QR thanh toán và chụp ảnh hoá đơn.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Payso dùng Face ID để khoá app, chỉ bạn mở được sổ chi tiêu.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Payso dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

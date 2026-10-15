@@ -15,6 +15,8 @@ struct PayApp: App {
     init() {
         // Lệnh Chụp hoá đơn (nút Tác vụ, Phím tắt): bật camera ngay lúc lệnh tới, song song với lúc dựng giao diện
         QuickAction.onPhoto = { if Pro.shared.active { ReceiptCam.warmStart() } }
+        // Khoá Face ID: mở app là khoá luôn (cửa sổ khoá dựng sau khi có màn hình)
+        DispatchQueue.main.async { AppLock.shared.launch() }
     }
 
     var body: some Scene {
@@ -33,6 +35,7 @@ struct PayApp: App {
                 // Quay lại app: đọc lại quyền Pro (gói năm hết hạn khi app nằm nền nhiều ngày không chắc có Transaction.updates)
                 // Chỉ khi đang có Pro (để biết gói năm vừa hết hạn), mỗi giờ nhiều nhất một lần: đọc quyền mua mỗi lần quay lại app thì
                 // trên TestFlight iOS hay hỏi mật khẩu Tài khoản Apple. Chưa có Pro thì không cần: mua xong Transaction.updates báo về
+                .onChange(of: scenePhase) { _, p in AppLock.shared.phaseChanged(p) }
                 .onChange(of: scenePhase) { _, p in
                     guard p == .active, Pro.shared.active else { return }
                     let last = UserDefaults.standard.double(forKey: "proChecked"), now = Date().timeIntervalSince1970

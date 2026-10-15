@@ -49,6 +49,7 @@ struct SettingsView: View {
                 bankSection
                 myQRSection
                 appearanceSection
+                securitySection
                 languageSection
 
                 Section {
@@ -380,6 +381,22 @@ struct SettingsView: View {
                      sections: [(nil, Appearance.allCases.map { ($0, $0.title) })]) { row(L("Chế độ")) }
         } header: {
             Text(L("Giao diện"))
+        }
+    }
+
+    @State private var lockOn = AppLock.shared.enabled
+
+    /// Khoá app bằng Face ID: bật thì hỏi Face ID một lần; máy chưa đặt mật mã thì không bật được
+    private var securitySection: some View {
+        Section {
+            Toggle(isOn: Binding(get: { lockOn }, set: { on in
+                if on { Task { lockOn = await AppLock.shared.enable(); if !lockOn && !AppLock.available { store.showError(L("Máy chưa đặt mật mã nên chưa khoá được.")) } } }
+                else { AppLock.shared.disable(); lockOn = false }
+            })) { row(L("Khoá bằng %@", AppLock.methodName)) }
+        } header: {
+            Text(L("Bảo mật"))
+        } footer: {
+            Text(L("Mỗi lần mở Payso phải mở khoá. Ở màn đa nhiệm, nội dung được che."))
         }
     }
 

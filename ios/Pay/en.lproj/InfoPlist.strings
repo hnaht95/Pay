@@ -5,3 +5,4 @@
 "NSSpeechRecognitionUsageDescription" = "Payso turns your speech into text to log the expense.";
 "NSPhotoLibraryAddUsageDescription" = "Payso saves the photos you take in Payso to your Photos app.";
 "NSPhotoLibraryUsageDescription" = "Payso shows your latest photo on the capture screen so you can quickly pick a receipt you already have.";
+"NSFaceIDUsageDescription" = "Payso uses Face ID to lock the app so only you can open your spending log.";

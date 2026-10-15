@@ -50,6 +50,7 @@ targets:
         NSMicrophoneUsageDescription: Payso dùng micro để nghe bạn đọc khoản chi, ví dụ "35k cafe".
         NSSpeechRecognitionUsageDescription: Payso chuyển giọng nói thành chữ để ghi khoản chi.
         NSPhotoLibraryAddUsageDescription: Payso lưu ảnh bạn chụp trong Payso vào app Ảnh.
+        NSFaceIDUsageDescription: Payso dùng Face ID để khoá app, chỉ bạn mở được sổ chi tiêu.
         NSPhotoLibraryUsageDescription: Payso hiện ảnh mới nhất trong app Ảnh ở màn chụp để bạn chọn nhanh ảnh hoá đơn có sẵn.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]

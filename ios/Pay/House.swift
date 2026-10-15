@@ -165,7 +165,14 @@ struct HouseGroup: Identifiable {
     /// > 0: nhóm còn nợ mình; < 0: mình còn phải trả
     var myNet: Int { me.map { Settle.balances(spends, settles)[$0] ?? 0 } ?? 0 }
     /// Lần trả cần mình để ý (xác nhận, chờ, bị báo chưa nhận)
-    var pending: [HouseSettle] { settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok") } }
+    var pending: [HouseSettle] {
+        settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok" && !($0.status == "wait" && !usesApp($0.to))) }
+    }
+    /// Thành viên có dùng Payso (đã nhận mình là ai bằng Apple ID). Chỉ thêm tên thì không ai xác nhận hộ được: lần trả cho người
+    /// đó ghi là xong luôn, không chờ
+    func usesApp(_ id: String) -> Bool { members.first { $0.id == id }?.user != nil }
+    /// Lần trả còn chờ người nhận xác nhận (người nhận chỉ là tên thì không tính là chờ)
+    var waiting: [HouseSettle] { settles.filter { $0.status == "wait" && usesApp($0.to) } }
     var lastActivity: Date { max(spends.first?.date ?? .distantPast, settles.first?.date ?? .distantPast) }
 }
 
@@ -293,7 +300,8 @@ final class House: ObservableObject {
     }
 
     /// Tổng việc cần xác nhận ở mọi nhóm (số trên nút nhóm ở màn hình chính)
-    var pendingTotal: Int { groups.reduce(0) { $0 + $1.pending.count } }
+    /// Số việc cần để ý ở các nhóm đang hiện (nhóm đã cất đi không tính: huy hiệu không được đếm thứ người dùng không tìm thấy)
+    var pendingTotal: Int { groups.filter { !archived.contains($0.id) }.reduce(0) { $0 + $1.pending.count } }
 
     private func loadDemo() {
         let now = Date()
@@ -566,7 +574,7 @@ final class House: ObservableObject {
                 r["photo"] = CKAsset(fileURL: url)
             }
         }
-        _ = await run([r])
+        _ = await run([r], strict: true)
     }
 
     /// Đổi tên và ảnh đại diện của một nhóm (nhóm bất kỳ, không cần đang mở). Cả nhóm cùng thấy.
@@ -660,14 +668,15 @@ final class House: ObservableObject {
     }
 
     /// Ghi nhanh một khoản chung vào nhóm `g` (từ giọng nói): mình trả, chia đều cả nhóm. Trả về phần của mình nếu lưu được.
-    func quickSpend(in g: HouseGroup, amount: Int, note: String, cat: String) async -> Int? {
+    func quickSpend(in g: HouseGroup, amount: Int, note: String, cat: String) async -> (id: String, mine: Int)? {
         guard let me = g.me else { return nil }
         let shares = g.members.map(\.id)
         let back = currentID
         currentID = g.id
         defer { currentID = back }
-        guard await addSpend(amount: amount, note: note, payer: me, shares: shares, cat: cat) else { return nil }
-        return Settle.split(amount, shares, seed: "")[me]
+        let id = UUID().uuidString
+        guard await addSpend(id: id, amount: amount, note: note, payer: me, shares: shares, cat: cat) else { return nil }
+        return Settle.split(amount, shares, seed: id)[me].map { (id, $0) }
     }
 
     /// Sửa một khoản chung (số tiền, ghi chú, ai trả, chia cho ai, danh mục); giữ nguyên ngày.
@@ -679,18 +688,20 @@ final class House: ObservableObject {
         // Chỉ đụng tới trường `fixed` khi khoản có số riêng, hoặc trước đó có mà nay bỏ: khoản chia đều không cần trường này
         let f = e.fixedField
         if !f.isEmpty { r["fixed"] = f } else if r["fixed"] != nil { r["fixed"] = nil }
-        return await run([r])
+        return await run([r], strict: true)
     }
 
-    func addSpend(amount: Int, note: String, payer: String, shares: [String], cat: String, fixed: [String: Int] = [:]) async -> Bool {
+    /// id: mã của khoản mới, cũng là "hạt" chia số lẻ (ai chịu 1đ dư): bảng nhập tạo sẵn để phần của mình hiện trên bảng và phần
+    /// ghi vào chi tiêu cá nhân đúng bằng phần trong nhóm
+    func addSpend(id: String = UUID().uuidString, amount: Int, note: String, payer: String, shares: [String], cat: String, fixed: [String: Int] = [:]) async -> Bool {
         if demo, let i = cur {
-            groups[i].spends.insert(HouseSpend(id: UUID().uuidString, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat, fixed: fixed), at: 0)
+            groups[i].spends.insert(HouseSpend(id: id, amount: amount, note: note, payer: payer, shares: shares, date: Date(), cat: cat, fixed: fixed), at: 0)
             return true
         }
         guard let zone, !addingSpend else { return false }
         guard knows(shares + [payer]) else { stale(); return false }
         addingSpend = true; defer { addingSpend = false }
-        let r = CKRecord(recordType: "Spend", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
+        let r = CKRecord(recordType: "Spend", recordID: CKRecord.ID(recordName: id, zoneID: zone))
         r["amount"] = Int64(amount); r["note"] = note; r["payer"] = payer; r["shares"] = shares; r["date"] = Date(); r["cat"] = cat
         let f = HouseSpend(id: "", amount: amount, note: "", payer: payer, shares: shares, date: Date(), cat: cat, fixed: fixed).fixedField
         if !f.isEmpty { r["fixed"] = f }
@@ -712,13 +723,22 @@ final class House: ObservableObject {
 
     /// Ghi một lần trả. Người trả báo thì chờ người nhận xác nhận; người nhận tự bấm "Đã nhận" thì xong luôn.
     func settle(_ t: HouseTransfer) async {
-        let status = t.from == me && t.to != me ? "wait" : "ok"
+        let status = t.from == me && t.to != me && (current?.usesApp(t.to) ?? true) ? "wait" : "ok"
         if demo, let i = cur {
             groups[i].settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date(), status: status), at: 0)
             return
         }
         guard let zone else { return }
         guard knows([t.from, t.to]) else { stale(); return }
+        // Tải lại trước khi ghi: người kia có thể vừa ghi chính lần trả này (người nhận bấm "Báo đã nhận" trong lúc người trả còn
+        // ở app ngân hàng). Ghi thêm thì một lần trả bị tính hai lần, thành ra người nhận lại nợ người trả
+        await load(prompt: false)
+        if let g = groups.first(where: { $0.id == zone.zoneName }) {
+            let net = Settle.balances(g.spends, g.settles)
+            if (net[t.from] ?? 0) >= 0 || (net[t.to] ?? 0) <= 0 {
+                Store.shared.show(L("Lần trả này đã được ghi rồi")); return
+            }
+        }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
         r["from"] = t.from; r["to"] = t.to; r["amount"] = Int64(t.amount); r["date"] = Date(); r["status"] = status
         guard await run([r]), status == "wait", let i = groups.firstIndex(where: { $0.id == zone.zoneName }) else { return }
@@ -731,13 +751,23 @@ final class House: ObservableObject {
     /// Chỉ chốt khi cả nhóm đã trả xong (xem HouseView), nên không có khoản nợ nào bị khoá lại trong đợt cũ
     func closeBook() async {
         let who = me ?? ""
+        // Tải lại rồi xem lại: trong lúc hỏi "Chốt sổ?" có thể vừa có khoản mới / lần trả mới từ máy khác. Còn nợ thì không chốt,
+        // kẻo khoản đó bị xếp vào đợt đã chốt mà vẫn còn nợ
+        if !demo {
+            await load(prompt: false)
+            guard let g = current, Settle.balances(g.spends, g.settles).values.allSatisfy({ $0 == 0 }), g.waiting.isEmpty else {
+                Store.shared.showError(L("Nhóm vừa có thay đổi, chưa chốt được. Xem lại rồi chốt sau.")); return
+            }
+        }
         if demo, let i = cur {
             groups[i].closes.insert(HouseSettle(id: UUID().uuidString, from: who, to: who, amount: 0, date: Date(), status: HouseSettle.close), at: 0)
             return
         }
         guard let zone else { return }
         let r = CKRecord(recordType: "Settle", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
-        r["from"] = who; r["to"] = who; r["amount"] = Int64(0); r["date"] = Date(); r["status"] = HouseSettle.close
+        // Mốc chốt sau mọi khoản đang có (đồng hồ các máy có thể lệch nhau): khoản đã có không lọt sang đợt mới
+        let latest = current?.spends.map(\.date).max() ?? .distantPast
+        r["from"] = who; r["to"] = who; r["amount"] = Int64(0); r["date"] = max(Date(), latest.addingTimeInterval(1)); r["status"] = HouseSettle.close
         _ = await run([r])
     }
 
@@ -747,7 +777,7 @@ final class House: ObservableObject {
         if demo, let g = cur { if let i = groups[g].settles.firstIndex(where: { $0.id == id }) { groups[g].settles[i].status = status }; return }
         guard let r = record(id) else { return }
         r["status"] = status
-        _ = await run([r])
+        _ = await run([r], strict: true)   // lần trả vừa bị xoá / sửa ở máy khác thì không dựng lại nó
     }
 
     /// Bấm nút trên thông báo: app có thể vừa được mở lại ở nền với bản lưu cũ hơn thông báo, nên thiếu nhóm hoặc thiếu
@@ -757,7 +787,7 @@ final class House: ObservableObject {
         if record(id, in: group) == nil { await load(prompt: false) }
         if let r = record(id, in: group) {
             r["status"] = received ? "ok" : "no"
-            _ = await run([r])
+            _ = await run([r], strict: true)
         }
         flushCache()
     }
@@ -824,7 +854,10 @@ final class House: ObservableObject {
             } else if s.from == me && s.to != me && s.status == "no" {
                 c.title = L("%@ chưa nhận được %@", name(s.to), fmt(s.amount))
                 c.body = L("Kiểm tra lại giao dịch trong app ngân hàng hoặc chuyển lại.")
-            } else if s.from == me && s.to != me && s.status == "ok" && seen.contains("\(s.id).wait") {
+            } else if s.from == me && s.to != me && s.status == "ok"
+                        && (seen.contains("\(s.id).wait") || g.usesApp(s.to) && s.date > Date().addingTimeInterval(-7 * 86_400)) {
+                // Máy này có thể chưa từng thấy lần trả ở trạng thái chờ (báo trả từ máy khác / trang web của mình): người nhận
+                // dùng Payso thì lần trả "xong" luôn do chính họ xác nhận, vẫn báo
                 c.title = L("%@ đã nhận %@", name(s.to), fmt(s.amount))
                 c.body = L("Khoản trả đã được xác nhận.")
             } else { continue }
@@ -903,16 +936,24 @@ final class House: ObservableObject {
         return g.records[CKRecord.ID(recordName: id, zoneID: g.zone)]?.copy() as? CKRecord
     }
 
-    private func run(_ rs: [CKRecord]) async -> Bool {
+    /// strict: sửa bản ghi đã có (khoản chi, thành viên) chỉ khi trên iCloud nó chưa bị ai sửa kể từ lúc tải về. Ghi đè thì phần
+    /// người kia vừa sửa (số tiền, tài khoản…) mất mà không ai biết
+    private func run(_ rs: [CKRecord], strict: Bool = false) async -> Bool {
         busy = true; defer { busy = false }
-        do { try await save(rs); return true } catch { fail(error); return false }
+        do { try await save(rs, policy: strict ? .ifServerRecordUnchanged : .changedKeys); return true }
+        catch let e as CKError where e.code == .serverRecordChanged || (e.partialErrorsByItemID?.values.contains { ($0 as? CKError)?.code == .serverRecordChanged } ?? false) {
+            await load(prompt: false)
+            Store.shared.showError(L("Vừa có người khác sửa mục này. Đã tải bản mới, bạn sửa lại nhé."))
+            return false
+        }
+        catch { fail(error); return false }
     }
 
-    private func save(_ rs: [CKRecord]) async throws {
+    private func save(_ rs: [CKRecord], policy: CKModifyRecordsOperation.RecordSavePolicy = .changedKeys) async throws {
         // Nhóm đích lấy từ chính bản ghi, không theo nhóm đang mở: trong lúc chờ iCloud người dùng có thể đã lùi ra danh sách
         // hoặc sang nhóm khác, khi đó bản ghi vừa lưu bị bỏ khỏi máy hoặc gắn nhầm nhóm
         guard let gid = rs.first?.recordID.zoneID.zoneName, let g = groups.first(where: { $0.id == gid }) else { throw CKError(.zoneNotFound) }
-        let r = try await container.database(with: g.scope).modifyRecords(saving: rs, deleting: [], savePolicy: .changedKeys)
+        let r = try await container.database(with: g.scope).modifyRecords(saving: rs, deleting: [], savePolicy: policy)
         edits += 1
         guard let i = groups.firstIndex(where: { $0.id == gid }) else { return }
         for (id, res) in r.saveResults {

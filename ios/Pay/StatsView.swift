@@ -558,7 +558,9 @@ struct StatsView: View {
         let prevDays = usedDays(prevSpan, until: isRunning ? min(prevSpan.end, cal.date(byAdding: .day, value: elapsedDays + 1, to: prevSpan.start)!) : prevSpan.end)
         let avg = sum(items) / max(days, 1), prevAvg = sum(prev) / max(prevDays, 1)
         let biggest = items.max { $0.a < $1.a }
-        let today = store.total(on: Date()), yesterday = store.total(on: cal.date(byAdding: .day, value: -1, to: Date())!)
+        // Hôm nay tới giờ này so với hôm qua tới cùng giờ
+        let dayAgo = Date().addingTimeInterval(-86_400)
+        let today = store.total(on: Date()), yesterday = store.items.filter { cal.isDate($0.date, inSameDayAs: dayAgo) && $0.date <= dayAgo }.reduce(0) { $0 + $1.a }
         // Grid: hai ô cùng hàng cao bằng nhau, chiều cao theo nội dung (không chừa chỗ trống)
         return Grid(horizontalSpacing: 14, verticalSpacing: 14) {
             // Xem một ngày: bỏ hàng "Hôm nay / TB mỗi ngày" (không có nghĩa với một ngày)
@@ -939,10 +941,16 @@ struct StatsView: View {
 
     /// Số dư hiện tại / cuối kỳ (số lớn), dưới là đầu kỳ và chênh lệch; rồi hai cột Thu / Chi của kỳ.
     /// Chưa đặt số dư thì mời nhập; kỳ nằm trước lúc đặt số dư thì chỉ có Thu / Chi
-    private func balanceCard(spent: Int, got: Int) -> some View {
+    private func balanceCard(spent allSpent: Int, got allGot: Int) -> some View {
         let start = store.balanceStart
         let s = span.start.timeIntervalSince1970 * 1000
         let e = min(span.end.timeIntervalSince1970 * 1000, Date().timeIntervalSince1970 * 1000 + 1)
+        // Đặt số dư giữa kỳ: Thu / Chi của thẻ này chỉ tính từ lúc đặt, cùng khoảng với phần chênh lệch số dư ở trên
+        let from = max(s, start ?? s)
+        let spent = from > s ? store.items.filter { $0.t >= from && $0.t < e }.reduce(0) { $0 + $1.a } : allSpent
+        let got = from > s ? store.incomes.filter { $0.t >= from && $0.t < e }.reduce(0) { $0 + $1.a } : allGot
+        // Các lần điều chỉnh số dư trong kỳ (trừ lần đặt đầu tiên): cũng làm số dư đổi, ghi ra để chênh lệch đọc được
+        let adjusted = store.adjusts.filter { $0.t > (start ?? .infinity) && $0.t >= s && $0.t < e }.reduce(0) { $0 + $1.signed }
         // Kỳ bắt đầu trước lúc đặt số dư: đầu kỳ tính từ ngay sau lần đặt (đã gồm số dư ban đầu)
         let opening = start.flatMap { st in s > st ? store.balance(before: s) : (e > st ? store.balance(before: st + 1) : nil) }
         let closing = store.balance(before: e)
@@ -988,6 +996,15 @@ struct StatsView: View {
                     flowColumn(L("Thu"), fmt(got), "arrow.up", Palette.goodInk, alignment: .leading)
                     Spacer(minLength: 12)
                     flowColumn(L("Chi"), fmt(spent), "arrow.down", Palette.danger, alignment: .trailing)
+                }
+                if adjusted != 0 {
+                    HStack(spacing: 4) {
+                        Text(L("Điều chỉnh số dư"))
+                        Spacer()
+                        AmountArrow(up: adjusted > 0)
+                        Text(fmt(abs(adjusted))).monospacedDigit()
+                    }
+                    .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
                 // Thẻ tín dụng: khoản quẹt thẻ là chi nhưng chưa trừ số dư (cộng vào nợ thẻ), trả thẻ mới trừ. Có dòng này thì
                 // chênh lệch số dư không còn bằng Thu − Chi mà vẫn đọc ra được vì sao
@@ -1183,11 +1200,12 @@ struct StatsView: View {
     /// Tuần / tháng / năm đang chạy (một ngày lẻ thì so cả ngày trước, không tính là đang chạy)
     private var isRunning: Bool { unit != .day && span.contains(Date()) }
 
-    /// Khoảng đang chạy thì so với cùng kỳ của khoảng trước (từ đầu đến cùng số ngày), không so với cả khoảng trước.
+    /// Khoảng đang chạy (kể cả hôm nay khi xem một ngày) thì so với cùng kỳ của khoảng trước, tính tới đúng giờ này: 10 giờ sáng
+    /// hôm nay so với hôm qua tới 10 giờ sáng, không so với cả ngày hôm qua (sáng nào cũng thành "giảm")
     private func comparable(_ prev: [Expense]) -> [Expense] {
-        guard isRunning else { return prev }
-        let start = prevSpan.start, n = elapsedDays
-        return prev.filter { (cal.dateComponents([.day], from: start, to: $0.date).day ?? 0) <= n }
+        guard span.contains(Date()) else { return prev }
+        let cutoff = min(prevSpan.end, prevSpan.start.addingTimeInterval(Date().timeIntervalSince(span.start)))
+        return prev.filter { $0.date < cutoff }
     }
 
     private var heroTitle: String {

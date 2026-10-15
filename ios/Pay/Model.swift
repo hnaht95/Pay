@@ -140,7 +140,7 @@ struct Backup: Codable {
 
     private static func wins(_ x: Expense, over y: Expense) -> Bool {
         if x.stamp != y.stamp { return x.stamp > y.stamp }
-        return "\(x.a)|\(x.c)|\(x.n ?? "")|\(x.acct ?? "")|\(x.t)" > "\(y.a)|\(y.c)|\(y.n ?? "")|\(y.acct ?? "")|\(y.t)"
+        return "\(x.a)|\(x.c)|\(x.n ?? "")|\(x.acct ?? "")|\(x.t)|\(x.cr == true)" > "\(y.a)|\(y.c)|\(y.n ?? "")|\(y.acct ?? "")|\(y.t)|\(y.cr == true)"
     }
 
     private static func wins(_ x: Rule, over y: Rule) -> Bool {
@@ -496,6 +496,22 @@ final class Store: ObservableObject {
         show(L("Đã trả thẻ %@", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) }
     }
 
+    /// Khoản chi cá nhân ghi từ một khoản chung ("Ghi phần của tôi vào chi tiêu"): nối bằng trường acct = "h:<mã khoản chung>",
+    /// để sửa / xoá khoản chung thì phần của mình đổi theo
+    static func groupLink(_ spendID: String) -> String { "h:" + spendID }
+
+    /// Khoản chung vừa đổi phần của mình (mine: phần mới; nil hoặc 0 khi xoá khoản / mình không còn chịu): sửa hoặc xoá khoản chi
+    /// cá nhân đã ghi từ nó
+    func syncGroupShare(_ spendID: String, mine: Int?) {
+        guard let e = all.first(where: { $0.acct == Self.groupLink(spendID) }) else { return }
+        if let mine, mine > 0 {
+            guard e.a != mine else { return }
+            var e = e; e.a = mine; update(e)
+        } else {
+            remove(id: e.id, toast: false)
+        }
+    }
+
     /// Đánh dấu / bỏ đánh dấu một khoản chi là trả bằng thẻ tín dụng
     func setCredit(_ e: Expense, _ on: Bool) {
         var e = e
@@ -579,7 +595,16 @@ final class Store: ObservableObject {
             r.u = t
             rules[k] = r
         }
-        for (k, c) in b.cats ?? [:] where c.on && cats[k]?.on != true { var c = c; c.touch(t); cats[k] = c }
+        // Danh mục tự tạo là tính năng Pro (miễn phí được Pro.freeCategories cái mỗi loại): khôi phục cũng không vượt giới hạn đó
+        var room = (expense: Pro.shared.active ? Int.max : max(0, Pro.freeCategories - Category.custom.count),
+                    income: Pro.shared.active ? Int.max : max(0, Pro.freeCategories - Category.incomeCustom.count))
+        for (k, c) in (b.cats ?? [:]).sorted(by: { ($0.value.made ?? $0.value.u) < ($1.value.made ?? $1.value.u) }) where c.on && cats[k]?.on != true {
+            let builtin = Category.isBuiltin(k), inc = Category.isIncome(k)
+            if !builtin {
+                if inc { guard room.income > 0 else { continue }; room.income -= 1 } else { guard room.expense > 0 else { continue }; room.expense -= 1 }
+            }
+            var c = c; c.touch(t); cats[k] = c
+        }
         // Kỳ tự ghi đã xoá trong file: giữ là đã xoá (trừ khi máy này đang có khoản đó)
         let have = Set(all.map(\.id))
         for (k, v) in b.deleted ?? [:] where k.hasPrefix("r-") && !have.contains(k) && deleted[k] == nil { deleted[k] = v }
@@ -777,6 +802,13 @@ final class Store: ObservableObject {
                         autoWritten.insert(id)
                     }
                     changed = true
+                } else if ids.contains(id), deleted[id] == 0, hasSame(r, inMonthOf: m, except: id) {
+                    // Máy này đã thấy kỳ này có khoản ghi tay thay thế (dấu 0), nhưng máy khác lỡ tự ghi trước khi đồng bộ: gộp về
+                    // thì có cả hai, tháng đó tính hai lần. Bỏ khoản tự ghi, giữ khoản ghi tay
+                    all.removeAll { $0.id == id }
+                    ids.remove(id)
+                    deleted[id] = now
+                    changed = true
                 }
                 m = cal.date(byAdding: .month, value: 1, to: m)!
             }
@@ -789,10 +821,11 @@ final class Store: ObservableObject {
         if runRecurring() { persist() }
     }
 
-    private func hasSame(_ r: Rule, inMonthOf m: Date) -> Bool {
+    private func hasSame(_ r: Rule, inMonthOf m: Date, except: String? = nil) -> Bool {
         let k = Self.noteKey(r.n ?? ""), c = Category.get(r.c).k   // danh mục đã xoá tính là "Khác", như mọi chỗ gộp theo danh mục
         let cal = Calendar.current
-        return all.filter { cal.isDate($0.date, equalTo: m, toGranularity: .month) }.contains { $0.a == r.a && Category.get($0.c).k == c && Self.noteKey($0.n ?? "") == k }
+        return all.filter { $0.id != except && cal.isDate($0.date, equalTo: m, toGranularity: .month) }
+            .contains { $0.a == r.a && Category.get($0.c).k == c && Self.noteKey($0.n ?? "") == k }
     }
 
     private func stamp() -> String {

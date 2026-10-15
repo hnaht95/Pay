@@ -685,6 +685,14 @@ struct HouseView: View {
                             Text(L("%@ trả %@", house.memberName(t.from), house.memberName(t.to))).font(.system(size: 15)).lineLimit(1)
                             Spacer(minLength: 4)
                             Text(fmt(t.amount)).font(.system(size: 15, weight: .semibold))
+                            // Ai trong nhóm cũng ghi được lần trả giữa hai người khác (vd hai người chỉ có tên, không dùng Payso)
+                            Button { Task { await house.settle(t) } } label: {
+                                Text(L("Đã trả")).font(.system(size: 13, weight: .semibold))
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(Palette.pill, in: Capsule())
+                            }
+                            .buttonStyle(Pressable()).foregroundStyle(.primary)
+                            .accessibilityLabel(L("Ghi %@ đã trả %@ %@", house.memberName(t.from), house.memberName(t.to), fmt(t.amount)))
                         }
                         .padding(10)
                         .background(Palette.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -728,7 +736,7 @@ struct HouseView: View {
     /// Cả nhóm xong đợt này: đợt có khoản chi, không ai còn nợ ai, không còn lần trả chờ xác nhận (lần trả đang chờ của bất kỳ ai
     /// cũng chưa coi là xong). Lúc này hiện thẻ chốt sổ thay cho dòng "phần của bạn đã xong"
     private func groupDone(_ net: [String: Int]) -> Bool {
-        !openSpends.isEmpty && net.values.allSatisfy { $0 == 0 } && !house.settles.contains { $0.status == "wait" }
+        !openSpends.isEmpty && net.values.allSatisfy { $0 == 0 } && (house.current?.waiting.isEmpty ?? true)
     }
 
     /// Thẻ chốt sổ: chỉ hiện khi không ai còn nợ ai, không còn lần trả chờ xác nhận, và đợt này có khoản chi.
@@ -891,6 +899,7 @@ struct HouseView: View {
             guard hidden.contains(id) else { return }
             await house.delete(id)
             hidden.remove(id)
+            store.syncGroupShare(id, mine: nil)   // xoá khoản chung: bỏ luôn phần của mình đã ghi vào chi tiêu cá nhân (nếu có)
         }
     }
 
@@ -923,24 +932,29 @@ struct HouseView: View {
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         // Người khác báo đã chuyển cho mình, đang chờ: chạm để xác nhận đã nhận hay chưa
-        .expenseSwipe(delete: { softDelete(s.id) })
+        .modifier(SettleSwipe(on: canDelete(s)) { softDelete(s.id) })
+    }
+
+    /// Xoá được lần trả: người trả hoặc người nhận (hai người chỉ có tên thì ai cũng được), và lần trả chưa nằm trong đợt đã chốt.
+    /// Xoá thì khoản nợ quay lại, nên người ngoài không được lặng lẽ xoá lần trả đã xác nhận của người khác
+    private func canDelete(_ s: HouseSettle) -> Bool {
+        let me = house.me, g = house.current
+        let party = s.from == me || s.to == me || !(g?.usesApp(s.from) ?? true) && !(g?.usesApp(s.to) ?? true)
+        return party && s.date > (house.closes.first?.date ?? .distantPast)
     }
 
     private func settleMenu(_ s: HouseSettle, icon: String, tint: Color, note: String, from: String, to: String) {
             menu = AppMenuSpec(icon: AnyView(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(tint)
                                 .frame(width: 56, height: 56).background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 18, style: .continuous))),
                                title: L("%@ chuyển %@", from, to) + " · \(fmt(s.amount))", subtitle: "\(note) · \(day(s.date))",
-                               items: [AppMenuItem(icon: "trash.fill", title: L("Xoá lần trả này"), subtitle: L("Số nợ sẽ tính lại như chưa trả"), danger: true) {
+                               items: canDelete(s) ? [AppMenuItem(icon: "trash.fill", title: L("Xoá lần trả này"), subtitle: L("Số nợ sẽ tính lại như chưa trả"), danger: true) {
                                    softDelete(s.id)
-                               }])
+                               }] : [])
     }
 
     /// Lần trả cần mình làm gì: xác nhận đã nhận, chờ người kia xác nhận, hoặc bị báo chưa nhận được.
     /// Lần trả cần mình để ý: có người báo đã chuyển cho mình, hoặc mình chuyển mà đang chờ / bị báo chưa nhận.
-    private var pending: [HouseSettle] {
-        let me = house.me
-        return house.settles.filter { ($0.to == me && $0.status == "wait") || ($0.from == me && $0.status != "ok") }
-    }
+    private var pending: [HouseSettle] { house.current?.pending ?? [] }
 
     // MARK: Thông báo
 
@@ -1417,7 +1431,9 @@ struct HouseSpendEditor: View {
     private var ownSum: Int { own.values.reduce(0, +) }
     /// Số riêng khớp với tổng: không quá tổng, và nếu ai cũng có số riêng thì cộng lại phải đúng bằng tổng
     private var splitOK: Bool { own.isEmpty || (ownSum <= amount && !(own.count == shares.count && ownSum != amount)) }
-    private var parts: [String: Int] { Settle.parts(amount, Array(shares), fixed: own, seed: "") }
+    /// Mã của khoản mới, tạo sẵn: cũng là hạt chia số lẻ nên phần hiện trên bảng đúng bằng phần lưu trong nhóm
+    @State private var newID = UUID().uuidString
+    private var parts: [String: Int] { Settle.parts(amount, Array(shares), fixed: own, seed: editing?.id ?? newID) }
     /// Bàn phím số gõ vào đâu: tổng tiền, hoặc số riêng của người đang chọn
     private var padDigits: Binding<String> {
         Binding(get: { target.map { ownText[$0] ?? "" } ?? amountText },
@@ -1785,11 +1801,12 @@ struct HouseSpendEditor: View {
             if var e = editing {
                 e.amount = a; e.note = n; e.cat = c; e.payer = p; e.shares = s; e.fixed = f
                 guard await house.updateSpend(e) else { saving = false; failed = true; return }
+                store.syncGroupShare(e.id, mine: mine)   // phần của mình đã ghi vào chi tiêu cá nhân đổi theo
                 dismiss(); return
             }
             // Không lưu được: ở lại bảng, mở lại nút Lưu, House đã đưa lỗi lên thanh báo
-            guard await house.addSpend(amount: a, note: n, payer: p, shares: s, cat: c, fixed: f) else { saving = false; failed = true; return }
-            if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c) }
+            guard await house.addSpend(id: newID, amount: a, note: n, payer: p, shares: s, cat: c, fixed: f) else { saving = false; failed = true; return }
+            if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c, acct: Store.groupLink(newID)) }
             dismiss()
         }
     }
@@ -1854,6 +1871,15 @@ private struct PinnedHeader<H: View>: ViewModifier {
 }
 
 
+
+/// Vuốt xoá một lần trả, chỉ khi được xoá (xem canDelete)
+private struct SettleSwipe: ViewModifier {
+    let on: Bool
+    let delete: () -> Void
+    func body(content: Content) -> some View {
+        if on { content.expenseSwipe(delete: delete) } else { content }
+    }
+}
 
 /// Danh sách thẻ vuốt xoá như Gần đây ở trang chủ: List (để có vuốt có sẵn của iOS), không tự cuộn, cao vừa đủ số hàng;
 /// tràn ra mép trái / phải như ở trang chủ (expenseSwipe tự lùi hàng vào lại)

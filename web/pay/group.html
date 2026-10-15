@@ -332,7 +332,9 @@ function parseGroup(g, records) {
       // bin, acct chỉ giữ chữ số (app và trang này cũng chỉ cho nhập số): người trong nhóm ghi thẳng lên iCloud được chuỗi bất kỳ, mà hai giá trị này đi vào địa chỉ ảnh QR
       case 'Member': g.members.push({ id: r.recordName, name: f('name') || '', bin: digits(f('bin')), acct: digits(f('acct')), user: f('user'), photo: f('photo')?.downloadURL }); break;
       case 'Spend': g.spends.push({ id: r.recordName, amount: f('amount') || 0, note: f('note') || '', payer: f('payer') || '', shares: f('shares') || [], fixed: parseFixed(f('fixed')), date: f('date') || r.created?.timestamp, cat: f('cat') || 'khac' }); break;
-      case 'Settle': g.settles.push({ id: r.recordName, from: f('from'), to: f('to'), amount: f('amount') || 0, date: f('date') || 0, status: f('status') || 'ok' }); break;
+      // Mốc chốt sổ (status "close", 0đ) lưu cùng loại bản ghi với lần trả nhưng không phải lần trả: bỏ qua, nếu không người chốt
+      // thấy "báo đã chuyển cho bạn 0đ" và bấm trả lời là ghi đè mốc, đợt đã chốt mở lại
+      case 'Settle': if (f('status') === 'close') break; g.settles.push({ id: r.recordName, from: f('from'), to: f('to'), amount: f('amount') || 0, date: f('date') || 0, status: f('status') || 'ok' }); break;
     }
   }
   g.members.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
@@ -410,7 +412,9 @@ function render() {
   const v = $('view'); v.className = 'fadein';
   if (!g) renderList(); else if (!g.meId) renderPickMe(g); else renderGroup(g);
 }
-const pending = g => g.settles.filter(s => (s.to === g.meId && s.status === 'wait') || (s.from === g.meId && s.status !== 'ok'));
+// Người nhận chỉ là tên (không dùng Payso, không có Apple ID trong nhóm): không ai xác nhận được, lần trả cho họ ghi là xong luôn
+const usesApp = (g, id) => !!g.members.find(m => m.id === id)?.user;
+const pending = g => g.settles.filter(s => (s.to === g.meId && s.status === 'wait') || (s.from === g.meId && s.status !== 'ok' && !(s.status === 'wait' && !usesApp(g, s.to))));
 
 function groupIcon(id, size = 56) {
   const bg = TONES[stableHash(id) % TONES.length];
@@ -596,13 +600,13 @@ function payFlow(g, t) {
       <div class="row" style="justify-content:space-between;margin-top:8px"><span class="sub">Số tiền</span><b>${fmt(t.amount)}đ</b></div></div>
     <button class="cta" style="margin-top:16px" id="paidBtn">Tôi đã chuyển</button>`, () => {
     $('acctCopy').onclick = () => { navigator.clipboard?.writeText(to.acct); toast('Đã chép số tài khoản'); };
-    $('paidBtn').onclick = () => saveInSheet($('paidBtn'), () => settle(g, t, 'wait'));
+    $('paidBtn').onclick = () => saveInSheet($('paidBtn'), () => settle(g, t, usesApp(g, t.to) ? 'wait' : 'ok'));
   });
 }
 async function askPaid(g, t) {
   const ok = await confirmMenu({ icon: avatar(member(g, t.to), 56), title: `Bạn trả ${memberName(g, t.to)} · ${fmt(t.amount)}`,
     sub: `${memberName(g, t.to)} sẽ nhận thông báo để xác nhận`, yes: { icon: I.check, title: 'Đã chuyển tiền' } });
-  if (ok) settle(g, t, 'wait').catch(() => {});   // lỗi đã có thông báo trong save
+  if (ok) settle(g, t, usesApp(g, t.to) ? 'wait' : 'ok').catch(() => {});   // lỗi đã có thông báo trong save
 }
 async function settle(g, t, status) {
   await save(g, [{ recordName: newName(), recordType: 'Settle', fields: { from: field(t.from), to: field(t.to), amount: field(t.amount), date: field(Date.now()), status: field(status) } }]);

@@ -367,7 +367,8 @@ struct VoiceEntryView: View {
             // Lần đầu dùng, iOS hiện hộp hỏi quyền micro / nhận dạng giọng nói đè lên thẻ: trên iOS 18 thẻ nhận onDisappear, micro bị
             // huỷ, cho phép xong thẻ quay lại thì đứng im ở "Đang bật micro…" không có nút nào. Thẻ vẫn còn đó mà micro bị huỷ
             // (không phải do người dùng đóng) thì bật lại
-            if mic.isCancelled, shown {
+            // Thẻ bị gỡ hẳn (bấm nút Tác vụ lần nữa, ra khỏi app…) thì việc này cũng bị huỷ: không bật lại micro cho thẻ đã gỡ
+            if mic.isCancelled, shown, !Task.isCancelled {
                 mic.onFinish = { said in handle(said) }
                 await mic.start()
             }
@@ -683,12 +684,12 @@ struct VoiceEntryView: View {
            let q = QuickParse.spoken(hit.rest) ?? QuickParse.expense(hit.rest) {
             let cat = store.guessCategory(q.note), note = q.note
             Task {
-                guard let mine = await House.shared.quickSpend(in: hit.group, amount: q.amount, note: note, cat: cat) else {
+                guard let (spend, mine) = await House.shared.quickSpend(in: hit.group, amount: q.amount, note: note, cat: cat) else {
                     notUnderstood = true
                     UINotificationFeedbackGenerator().notificationOccurred(.error)
                     return
                 }
-                if mine > 0 { store.add(amount: mine, note: note.isEmpty ? hit.group.name : note, cat: cat, toast: false) }
+                if mine > 0 { store.add(amount: mine, note: note.isEmpty ? hit.group.name : note, cat: cat, acct: Store.groupLink(spend), toast: false) }
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 store.show(L("Đã ghi %@ vào %@ · bạn %@", fmt(q.amount), hit.group.name, fmt(mine)))
                 leave()

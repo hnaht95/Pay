@@ -412,11 +412,14 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     /// Phiên chụp bật sớm (lệnh Chụp hoá đơn): camera chạy sẵn trong lúc app còn đang mở màn chụp. Màn chụp bật phiên của nó
     /// thì tắt phiên này; camera đã nóng nên phiên của màn chụp lên gần như ngay. Không ai dùng tới thì tự tắt sau 5 giây
     nonisolated(unsafe) private static var warm: AVCaptureSession?
+    /// Màn chụp đang mở (camera thật đang chạy): không dựng phiên khởi động trước nữa, hai phiên cùng một camera thì phiên đang
+    /// xem bị ngắt
+    nonisolated(unsafe) private static var live = false
 
     static func warmStart() {
         guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized, let d = back(for: startZoom) else { return }
         sessionQueue.async {
-            guard warm == nil else { return }
+            guard warm == nil, !live else { return }
             let s = AVCaptureSession()
             s.beginConfiguration()
             s.sessionPreset = .photo
@@ -431,6 +434,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     }
 
     func start() {
+        Self.sessionQueue.async { Self.live = true }
         AVCaptureDevice.requestAccess(for: .video) { ok in
             Task { @MainActor in
                 guard ok else { self.error = L("Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh\"."); return }
@@ -610,7 +614,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
 
     func stop() {
         let s = session
-        Self.sessionQueue.async { if s.isRunning { s.stopRunning() } }
+        Self.sessionQueue.async { if s.isRunning { s.stopRunning() }; Self.live = false }
     }
 
     func capture(_ done: @escaping (UIImage?) -> Void) {

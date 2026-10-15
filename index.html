@@ -714,7 +714,9 @@ $('importFile').onchange = async e => {
   try {
     const d = JSON.parse(await f.text());
     const ids = new Set(items.map(x => x.id));
-    const add = (d.items || []).filter(x => x && x.id && x.a && !ids.has(x.id));
+    // Bản sao lưu của app iOS có cả khoản thu ("in-…"), điều chỉnh số dư và trả thẻ ("adj…"): trang này chỉ tính chi tiêu, bỏ qua
+    // chúng, nếu không lương, số dư ban đầu bị cộng vào chi tiêu
+    const add = (d.items || []).filter(x => x && x.id && x.a && !ids.has(x.id) && !/^(in-|adj)/.test(x.c || ''));
     items = items.concat(add); memo = Object.assign({}, d.memo || {}, memo);
     save(); render(); toast('Đã khôi phục ' + add.length + ' khoản');
   } catch { toast('File sao lưu không hợp lệ'); }

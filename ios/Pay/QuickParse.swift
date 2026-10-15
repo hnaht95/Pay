@@ -470,3 +470,135 @@ enum QuickParse {
         return total + group
     }
 }
+
+// MARK: Ngày và quẹt thẻ
+
+extension QuickParse {
+    /// Ngày nói trong câu ("hôm qua", "tối qua", "thứ hai", "ngày 12") và "quẹt thẻ": bỏ các chữ đó ra khỏi câu, phần còn lại
+    /// mới đưa cho `spoken` / `expense` đọc số tiền, để "thứ hai" / "ngày 12" không thành số tiền hay nằm lại trong ghi chú.
+    /// date: nil = bây giờ. Không bao giờ ra giờ ở tương lai ("tối nay" lúc 10 giờ sáng = bây giờ).
+    static func when(_ text: String, now: Date = Date(), calendar cal: Calendar = .current) -> (rest: String, date: Date?, credit: Bool) {
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        let n = words.map { $0.lowercased().precomposedStringWithCanonicalMapping.trimmingCharacters(in: .punctuationCharacters) }
+        let accented = text.lowercased() != strip(text)
+        var drop = Set<Int>()
+
+        /// Câu gõ không dấu cũng nhận ("hom qua"); chữ có dấu thì phải đúng dấu ("tôi qua" không phải "tối qua")
+        func eq(_ i: Int, _ w: String) -> Bool {
+            n.indices.contains(i) && !drop.contains(i) && (n[i] == w || (!accented && n[i] == strip(w)))
+        }
+        /// Chữ ngay sau còn nối được vào số đứng trước ("thứ hai trăm", "ngày 5 nghìn") thì đó là số tiền, không phải ngày
+        func continuesNumber(_ i: Int, _ v: Double, word: Bool) -> Bool {
+            guard n.indices.contains(i), let t = tok(n[i], accented: accented) else { return false }
+            return !breaks(.num(v, word: word, tail: false), t)
+        }
+        func ago(_ k: Int, hour: Int? = nil) -> Date? {
+            guard let d = cal.date(byAdding: .day, value: -k, to: now) else { return nil }
+            return hour.flatMap { cal.date(bySettingHour: $0, minute: 0, second: 0, of: d) } ?? d
+        }
+        func today(hour: Int?) -> Date? {
+            guard let h = hour, let d = cal.date(bySettingHour: h, minute: 0, second: 0, of: now), d < now else { return nil }
+            return d
+        }
+        /// "thứ hai tuần trước" / "thứ hai tuần rồi"
+        func lastWeek(_ i: Int) -> Bool { eq(i, "tuần") && (eq(i + 1, "trước") || eq(i + 1, "rồi")) }
+        /// Thứ gần nhất đã qua (hôm nay đúng thứ đó thì là hôm nay), lùi thêm một tuần nếu sau đó nói "tuần trước".
+        /// wd theo Calendar: 1 = chủ nhật … 7 = thứ bảy
+        func weekday(_ wd: Int, after i: Int) -> Date? {
+            let k = (cal.component(.weekday, from: now) - wd + 7) % 7 + (lastWeek(i) ? 7 : 0)
+            return k == 0 ? nil : ago(k)
+        }
+        /// Ngày d của tháng này; d còn ở phía trước thì là tháng trước (tháng ngắn hơn thì lấy ngày cuối tháng)
+        func day(_ d: Int) -> Date? {
+            let cur = cal.component(.day, from: now)
+            if d == cur { return nil }
+            guard let base = d > cur ? cal.date(byAdding: .month, value: -1, to: now) : now,
+                  let days = cal.range(of: .day, in: .month, for: base) else { return nil }
+            return cal.date(byAdding: .day, value: min(d, days.count) - cal.component(.day, from: base), to: base)
+        }
+        func dayNumber(_ i: Int) -> Int? {
+            guard n.indices.contains(i), !drop.contains(i), n[i].allSatisfy({ $0.isASCII && $0.isNumber }), let d = Int(n[i]),
+                  (1...31).contains(d), !continuesNumber(i + 1, Double(d), word: false) else { return nil }
+            return d
+        }
+
+        // Quẹt thẻ: "quẹt thẻ", "bằng thẻ", "thẻ tín dụng", "trả bằng thẻ tín dụng"
+        var credit = false
+        for i in n.indices where !credit {
+            var lo = i, hi = i
+            if eq(i, "thẻ") {
+                let tinDung = eq(i + 1, "tín") && eq(i + 2, "dụng")
+                guard eq(i - 1, "quẹt") || eq(i - 1, "bằng") || tinDung else { continue }
+                if tinDung { hi = i + 2 }
+                while ["quẹt", "bằng", "dùng"].contains(where: { eq(lo - 1, $0) }) { lo -= 1 }
+                if eq(lo - 1, "trả") { lo -= 1 } else if eq(lo - 1, "toán") && eq(lo - 2, "thanh") { lo -= 2 }
+            } else if Lang.isEnglish, n[i] == "card" {
+                guard i > 0, ["credit", "by", "with", "on", "my"].contains(n[i - 1]) else { continue }
+                while lo > 0, ["credit", "my", "a", "the"].contains(n[lo - 1]) { lo -= 1 }
+                while lo > 0, ["by", "with", "on", "using", "paid"].contains(n[lo - 1]) { lo -= 1 }
+            } else { continue }
+            credit = true
+            drop.formUnion(lo...hi)
+        }
+
+        // Ngày: lấy cụm đầu tiên tìm thấy
+        let parts: [String: Int] = ["sáng": 8, "trưa": 12, "chiều": 16, "tối": 20, "đêm": 22]
+        let weekdays: [String: Int] = ["hai": 2, "ba": 3, "tư": 4, "năm": 5, "sáu": 6, "bảy": 7, "bẩy": 7]
+        let ordinals = ["lần", "người", "đứa", "con", "cái", "ly", "phần", "hạng", "tập", "đợt", "kỳ", "kì", "giải"]
+        var found: (lo: Int, hi: Int, date: Date?)?
+        for i in n.indices where found == nil && !drop.contains(i) {
+            // Buổi + qua / nay chỉ nhận khi có dấu: "toi qua", "sang qua" không dấu có thể là "tôi qua", "sang qua"
+            if accented, let h = parts[n[i]] {
+                if eq(i + 1, "hôm") && eq(i + 2, "qua") { found = (i, i + 2, ago(1, hour: h)) }
+                else if eq(i + 1, "qua") { found = (i, i + 1, ago(1, hour: h)) }
+                else if eq(i + 1, "hôm") && eq(i + 2, "kia") { found = (i, i + 2, ago(2, hour: h)) }
+                else if eq(i + 1, "nay") { found = (i, i + 1, today(hour: h)) }
+                else if eq(i + 1, "hôm") && eq(i + 2, "nay") { found = (i, i + 2, today(hour: h)) }
+            } else if eq(i, "hôm") {
+                if eq(i + 1, "qua") { found = (i, i + 1, ago(1)) }
+                else if eq(i + 1, "kia") { found = (i, i + 1, ago(2)) }
+                else if eq(i + 1, "nay") { found = (i, i + 1, nil) }
+                else if let d = dayNumber(i + 1) { found = (i, i + 1, day(d)) }
+            } else if eq(i, "ngày"), let d = dayNumber(i + 1) {
+                found = (i, i + 1, day(d))
+            } else if eq(i, "thứ"), n.indices.contains(i + 1), !drop.contains(i + 1), !ordinals.contains(where: { eq(i - 1, $0) }) {
+                // "thứ hai" chỉ khi có dấu ("thu hai trieu" là thu hai triệu); "thứ 2" / "thu 2" thì nhận cả
+                let w = n[i + 1]
+                if accented, let wd = weekdays[w], !continuesNumber(i + 2, Double(wd), word: true) {
+                    found = (i, i + 1, weekday(wd, after: i + 2))
+                } else if w.count == 1, let wd = Int(w), (2...7).contains(wd), !continuesNumber(i + 2, Double(wd), word: false) {
+                    found = (i, i + 1, weekday(wd, after: i + 2))
+                }
+            } else if eq(i, "chủ") && eq(i + 1, "nhật") {
+                found = (i, i + 1, weekday(1, after: i + 2))
+            } else if Lang.isEnglish {
+                let days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                let times = ["morning": 8, "afternoon": 16, "evening": 20]
+                let next = i + 1 < n.count ? n[i + 1] : ""
+                switch n[i] {
+                case "yesterday": found = (i, i, ago(1))
+                case "today": found = (i, i, nil)
+                case "tonight": found = (i, i, today(hour: 20))
+                case "last" where next == "night": found = (i, i + 1, ago(1, hour: 20))
+                case "this" where times[next] != nil: found = (i, i + 1, today(hour: times[next]))
+                default:
+                    // "on monday", "last monday" = thứ hai vừa qua
+                    if let k = days.firstIndex(of: n[i]) {
+                        found = (i > 0 && ["on", "last"].contains(n[i - 1]) ? i - 1 : i, i, weekday(k + 1, after: n.count))
+                    }
+                }
+            }
+        }
+
+        var date: Date?
+        if var f = found {
+            if n[f.lo] != "hôm" && eq(f.lo - 1, "hôm") { f.lo -= 1 }   // "hôm thứ hai"
+            if eq(f.lo - 1, "vào") { f.lo -= 1 }                       // "vào tối qua", "vào hôm thứ hai"
+            if lastWeek(f.hi + 1) { f.hi += 2 }
+            drop.formUnion(f.lo...f.hi)
+            date = f.date
+        }
+        let rest = words.enumerated().filter { !drop.contains($0.offset) }.map(\.element).joined(separator: " ")
+        return (rest, date, credit)
+    }
+}

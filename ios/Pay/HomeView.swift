@@ -196,7 +196,7 @@ struct HomeView: View {
         .task {
             switch UserDefaults.standard.string(forKey: "shotOpen") {
             case "stats": showStats = true
-            case "settings": showSettings = true
+            case "settings", "requestqr": showSettings = true
             case "history": showHistory = true
             case "house": showHouse = true
             case "entry": entry = .new(cat: nil)

@@ -101,6 +101,9 @@ struct SettingsView: View {
                  + (store.rules.values.contains(where: \.on) ? " " + L("Khoản định kỳ cũng dừng tự ghi.") : "") + " " + L("Nên sao lưu trước."))
         }
         .sheet(isPresented: $requesting) { RequestQRSheet().sheetGrabber() }
+        #if DEBUG
+        .task { if UserDefaults.standard.string(forKey: "shotOpen") == "requestqr" { requesting = true } }   // ảnh so sánh: mở sẵn QR có số tiền
+        #endif
         .sheet(item: $csvResult) { CSVImportSheet(result: $0).environmentObject(store).sheetGrabber() }
         .alert(L("Ngân sách tháng"), isPresented: $typingBudget) {
             TextField(L("Ví dụ 8.000.000"), text: $budgetText).keyboardType(.numberPad)

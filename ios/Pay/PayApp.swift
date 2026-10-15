@@ -31,7 +31,15 @@ struct PayApp: App {
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app
                 .onOpenURL { url in if let k = QuickKind(url: url) { quick.pending = k } }
                 // Quay lại app: đọc lại quyền Pro (gói năm hết hạn khi app nằm nền nhiều ngày không chắc có Transaction.updates)
-                .onChange(of: scenePhase) { _, p in if p == .active { Task { await Pro.shared.refresh() } } }
+                // Chỉ khi đang có Pro (để biết gói năm vừa hết hạn), mỗi giờ nhiều nhất một lần: đọc quyền mua mỗi lần quay lại app thì
+                // trên TestFlight iOS hay hỏi mật khẩu Tài khoản Apple. Chưa có Pro thì không cần: mua xong Transaction.updates báo về
+                .onChange(of: scenePhase) { _, p in
+                    guard p == .active, Pro.shared.active else { return }
+                    let last = UserDefaults.standard.double(forKey: "proChecked"), now = Date().timeIntervalSince1970
+                    guard now - last > 3600 else { return }
+                    UserDefaults.standard.set(now, forKey: "proChecked")
+                    Task { await Pro.shared.refresh() }
+                }
                 .task {
                     Appearance.apply()
                     #if DEBUG

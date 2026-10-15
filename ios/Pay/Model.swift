@@ -52,6 +52,8 @@ struct CustomCat: Codable, Hashable {
     /// Lúc tạo (ms), để xếp thứ tự ô. Tách khỏi `u` vì `u` đổi theo mỗi lần sửa (đổi tên, kéo dài ô là ô nhảy xuống cuối).
     /// nil: chưa sửa lần nào từ khi có trường này, lúc đó `u` vẫn là mốc xếp thứ tự
     var made: Double? = nil
+    /// Hạn mức chi mỗi tháng (đồng); nil: không đặt. Giữ cả khi `on` = false (danh mục có sẵn chưa sửa gì khác), như `wide`
+    var limit: Int? = nil
 
     /// Đánh dấu vừa sửa. Chốt mốc xếp thứ tự trước khi `u` đổi, để ô không đổi chỗ
     mutating func touch(_ t: Double) { made = made ?? u; u = t }
@@ -357,9 +359,14 @@ final class Store: ObservableObject {
     func add(amount: Int, note: String, cat: String, acct: String? = nil, credit: Bool = false, toast: Bool = true) {
         let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct,
                         cr: credit && !Category.isIncome(cat) ? true : nil)
+        let before = catSpent(cat)
         all.append(e)
         persist()
-        if toast { show(L("Đã lưu %@", fmt(amount))) { [weak self] in self?.remove(id: e.id, toast: false) } }
+        let undo: () -> Void = { [weak self] in self?.remove(id: e.id, toast: false) }
+        if let name = crossedLimit(cat, before: before) {
+            // Vừa vượt hạn mức của danh mục: báo thay cho "Đã lưu" (vẫn Hoàn tác được nếu chỗ gọi không tự có nút Hoàn tác)
+            self.toast = Toast(message: L("Vượt hạn mức %@", name), undo: toast ? undo : nil, error: true)
+        } else if toast { show(L("Đã lưu %@", fmt(amount)), undo: undo) }
         DailyReminder.askOnce(store: self)
     }
 
@@ -398,10 +405,49 @@ final class Store: ObservableObject {
 
     func update(_ e: Expense) {
         guard let i = all.firstIndex(where: { $0.id == e.id }) else { return }
+        let before = catSpent(e.c)
         var e = e
         e.u = now
         all[i] = e
         persist()
+        if let name = crossedLimit(e.c, before: before) { showError(L("Vượt hạn mức %@", name)) }
+    }
+
+    // MARK: Hạn mức theo danh mục
+
+    /// Hạn mức tháng của danh mục, nil nếu chưa đặt
+    func limit(_ k: String) -> Int? { cats[k]?.limit.flatMap { $0 > 0 ? $0 : nil } }
+
+    /// Đặt / bỏ hạn mức tháng (nil hoặc 0 = bỏ). Danh mục có sẵn chưa sửa thì thêm bản chỉnh `on` = false như `setWide`,
+    /// giữ nguyên tên, biểu tượng, màu gốc
+    func setLimit(_ k: String, _ v: Int?) {
+        let v = v.flatMap { $0 > 0 ? $0 : nil }
+        guard v != cats[k]?.limit else { return }
+        let base = Category.get(k)
+        var c = cats[k] ?? CustomCat(k: k, name: base.rawName, icon: base.icon, tone: -1, on: false, u: now)
+        c.limit = v; c.touch(now)
+        cats[k] = c
+        persist()
+    }
+
+    /// Đã chi trong tháng chứa `day` của một danh mục (danh mục đã xoá tính vào Khác, như ô ở màn hình chính)
+    func catSpent(_ k: String, _ day: Date = Date()) -> Int {
+        let k = Category.get(k).k
+        return monthItems(day).filter { Category.get($0.c).k == k }.reduce(0) { $0 + $1.a }
+    }
+
+    /// Tình hình hạn mức của danh mục trong tháng chứa `day`, nil nếu chưa đặt hạn mức.
+    /// Hạn mức không ghi nhớ theo tháng (khác ngân sách chung) nên chỉ so ở tháng hiện tại
+    func catStatus(_ k: String, _ day: Date = Date()) -> BudgetStatus? {
+        guard Calendar.current.isDate(day, equalTo: Date(), toGranularity: .month), let lim = limit(Category.get(k).k) else { return nil }
+        return BudgetStatus(budget: lim, spent: catSpent(k, day))
+    }
+
+    /// Tên danh mục nếu tổng chi tháng này của nó vừa vượt hạn mức (trước còn trong hạn mức, giờ đã quá)
+    private func crossedLimit(_ k: String, before: Int) -> String? {
+        let c = Category.get(k)
+        guard !Category.isIncome(c.k), let lim = limit(c.k), before <= lim, catSpent(c.k) > lim else { return nil }
+        return c.name
     }
 
     func remove(id: String, toast: Bool = true) {

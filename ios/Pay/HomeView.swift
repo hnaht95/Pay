@@ -67,6 +67,9 @@ struct HomeView: View {
     @State private var hideBalance: Task<Void, Never>?
     /// Danh mục đang mở danh sách khoản chi (chạm vào ô danh mục)
     @State private var listing: Category?
+    /// Danh mục đang nhập hạn mức tháng (từ bảng nhấn giữ) và số đang gõ
+    @State private var limitCat: Category?
+    @State private var limitText = ""
     @Environment(\.scenePhase) private var scenePhase
     /// Đang dựng phim giới thiệu (xem Film.swift): vẽ theo trạng thái phim đưa vào
     @Environment(\.film) private var film
@@ -226,6 +229,13 @@ struct HomeView: View {
         #endif
         .sheet(isPresented: $addingCat) { CategoryEditor().environmentObject(store).sheetGrabber() }
         .sheet(item: $editingCat) { CategoryEditor(editing: $0.cat).environmentObject(store).sheetGrabber() }
+        .alert(L("Hạn mức tháng"), isPresented: Binding(get: { limitCat != nil }, set: { if !$0 { limitCat = nil } }), presenting: limitCat) { c in
+            TextField(L("Ví dụ 2.000.000"), text: $limitText).keyboardType(.numberPad)
+            Button(L("Huỷ"), role: .cancel) {}
+            Button(L("Lưu")) { withAnimation(.snappy) { store.setLimit(c.k, Int(limitText.filter(\.isNumber).prefix(12))) } }
+        } message: { c in
+            Text(L("Số tiền tối đa cho %@ mỗi tháng. Để trống là bỏ hạn mức.", c.name))
+        }
         // Vuốt lên từ nút Quét QR: thẻ nói để ghi là một lớp ngay trên màn hình chính, biến hình từ nút ra.
         // (fullScreenCover của iOS luôn trượt cả lớp từ đáy lên, làm hỏng hiệu ứng biến hình.)
         .overlay {
@@ -564,6 +574,8 @@ struct HomeView: View {
     /// Ô dài cả hàng thì cao hơn và biểu tượng to hơn (180 / 72 thay vì 140 / 52), để không thành một dải dẹt
     private func tile(_ c: Category, total: Int) -> some View {
         let wide = store.isWide(c.k)
+        // Có hạn mức tháng: vạch mảnh đã dùng / hạn mức ở đáy ô, số tiền đỏ khi vượt; không đặt thì ô như cũ
+        let s = store.limit(c.k).map { BudgetStatus(budget: $0, spent: total) }
         return VStack(alignment: .leading, spacing: 0) {
             // Ô vuông nền trắng (bo đồng tâm với ô: 28 − 16), ảnh riêng hoặc biểu tượng
             CategoryBadge(c: c, side: wide ? 72 : 52, radius: wide ? 16 : 12, iconSize: wide ? 42 : 30)
@@ -571,10 +583,19 @@ struct HomeView: View {
             // Tên mờ 70% (pha màu nền); số tiền giữ đậm rõ cho dễ đọc
             Text(c.name).font(.system(size: 15, weight: .medium)).opacity(0.7)
             Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+                .foregroundStyle(s?.level == .over ? s!.color : c.ink)
         }
         .foregroundStyle(c.ink)
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: wide ? 180 : 140, alignment: .leading)
+        // Vạch nằm trong lề dưới của ô: không đổi chiều cao, ô cạnh bên không có hạn mức vẫn cao bằng
+        .overlay(alignment: .bottom) {
+            if let s {
+                BudgetBar(s: s, height: 4, track: c.ink.opacity(0.15), fill: c.ink.opacity(0.7))
+                    .padding(.horizontal, 16).padding(.bottom, 7)
+                    .accessibilityLabel(L("Hạn mức %@, %@", fmt(s.budget), s.label))
+            }
+        }
         .background(c.color, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
     }
 
@@ -587,6 +608,10 @@ struct HomeView: View {
                 ? AppMenuItem(icon: "arrow.down.right.and.arrow.up.left.circle", title: L("Thu ô về nửa hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, false) } }
                 : AppMenuItem(icon: "arrow.down.left.and.arrow.up.right.circle", title: L("Kéo ô dài cả hàng"), plain: true) { withAnimation(.snappy) { store.setWide(c.k, true) } },
         ]
+        items.append(AppMenuItem(icon: "flag.circle", title: L("Đặt hạn mức tháng"), plain: true) {
+            limitText = store.limit(c.k).map { fmt($0) } ?? ""
+            limitCat = c
+        })
         if Category.isBuiltin(c.k) {
             if store.cats[c.k]?.on == true { items.append(AppMenuItem(icon: "arrow.uturn.backward.circle", title: L("Về mặc định"), plain: true) { store.resetCategory(c.k) }) }
         } else {

@@ -162,5 +162,15 @@ extension English {
         "Nói \"Ghi chi tiêu bằng Payso\" với Siri, rồi nói khoản chi. Hoặc \"Quét QR bằng Payso\", \"Chụp hoá đơn bằng Payso\".": "Say \"Log expense with Payso\" to Siri, then say the expense. Or \"Scan QR with Payso\", \"Scan receipt with Payso\".",
         "Hoặc mở app Phím tắt, các lệnh này có sẵn trong mục Payso.": "Or open the Shortcuts app; these actions are listed under Payso.",
         "Tự chọn màu": "Custom color",
+
+        // Hạn mức theo danh mục
+        "Hạn mức tháng": "Monthly limit",
+        "Đặt hạn mức tháng": "Set monthly limit",
+        "Không đặt": "None",
+        "Ví dụ 2.000.000": "e.g. 2,000,000",
+        "Số tiền tối đa cho %@ mỗi tháng. Để trống là bỏ hạn mức.": "Most you want to spend on %@ each month. Leave empty for no limit.",
+        "Ô danh mục ở màn hình chính có vạch đã dùng / hạn mức, vượt thì số tiền chuyển đỏ. Để trống là không đặt.": "The category tile on Home shows a bar of spent / limit and turns the amount red when over. Leave empty for no limit.",
+        "Vượt hạn mức %@": "Over %@ limit",
+        "Hạn mức %@, %@": "Limit %@, %@",
     ]
 }

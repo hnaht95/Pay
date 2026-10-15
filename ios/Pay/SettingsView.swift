@@ -752,6 +752,8 @@ struct CategoryEditor: View {
     @State private var name = ""
     @State private var icon = "🐶"
     @State private var tone = 0
+    /// Hạn mức tháng đang gõ (để trống: không đặt)
+    @State private var limitText = ""
     @FocusState private var nameFocused: Bool
     @State private var pickingEmoji = false
     /// Ảnh riêng của danh mục (thay cho biểu tượng); đổi / xoá rồi thì lưu lúc bấm Lưu
@@ -1034,6 +1036,23 @@ struct CategoryEditor: View {
                     colorRows
                 }
 
+                // Hạn mức chi mỗi tháng (danh mục tiền vào không có)
+                if !isIncome {
+                    Section {
+                        HStack {
+                            Text(L("Hạn mức tháng"))
+                            Spacer()
+                            TextField(L("Không đặt"), text: Binding(get: { limitText }, set: { v in
+                                let d = String(v.filter(\.isNumber).prefix(12))
+                                limitText = Int(d).map { fmt($0) } ?? ""
+                            }))
+                            .keyboardType(.numberPad).multilineTextAlignment(.trailing).monospacedDigit()
+                        }
+                    } footer: {
+                        Text(L("Ô danh mục ở màn hình chính có vạch đã dùng / hạn mức, vượt thì số tiền chuyển đỏ. Để trống là không đặt."))
+                    }
+                }
+
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
             .screenTitle(editing == nil ? (income ? L("Danh mục thu mới") : L("Danh mục mới")) : L("Sửa danh mục"))
@@ -1066,7 +1085,8 @@ struct CategoryEditor: View {
                 }
             }
             .onAppear {
-                if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone; photo = CategoryPhotos.image(e.k) }
+                if let e = editing { name = L(e.name); icon = e.icon; tone = e.tone; photo = CategoryPhotos.image(e.k)
+                    limitText = store.limit(e.k).map { fmt($0) } ?? "" }
                 else { tone = CategoryTone.custom(0xCC7351); nameFocused = true }   // danh mục mới: màu đất nung + em chó
             }
         }
@@ -1123,14 +1143,18 @@ struct CategoryEditor: View {
         if let e = editing {
             // không đổi tên (đang xem bản dịch của tên gốc): giữ tên gốc, khỏi lưu chữ tiếng Anh
             store.updateCategory(e.k, name: trimmed == L(e.name) ? e.name : trimmed, icon: icon, tone: tone)
+            store.setLimit(e.k, limit)
             savePhoto(e.k)
         } else {
             let k = store.addCategory(name: trimmed, icon: icon, tone: tone, income: income)
+            store.setLimit(k, limit)
             savePhoto(k)
             onAdd(k)
         }
         dismiss()
     }
+
+    private var limit: Int? { isIncome ? nil : Int(limitText.filter(\.isNumber)) }
 
     private func savePhoto(_ k: String) {
         guard photoChanged else { return }

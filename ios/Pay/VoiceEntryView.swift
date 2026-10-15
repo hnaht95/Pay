@@ -143,14 +143,15 @@ final class VoiceListener: ObservableObject {
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 req.append(buffer)
                 // Độ to (RMS) đổi sang thang 0…1 cho sóng âm. Micro ở chế độ đo (không tự khuếch đại) nên giọng thường
-                // chỉ khoảng -40…-25 dB: lấy dải -55…-25 dB và nâng phần giữa (mũ 0,7) để nói nhỏ vẫn thấy rõ
+                // chỉ khoảng -45…-25 dB
                 guard let ch = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
                 let n = Int(buffer.frameLength)
                 var sum: Float = 0
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
-                // Dải -52…-30 dB: nói bình thường đã gần mức cao nhất (dải rộng hơn thì phải nói rất to mới lên cao)
-                let v = CGFloat(pow(min(max((db + 52) / 22, 0), 1), 0.6))
+                // Dải -56…-33 dB, mũ 0,55: nói nhỏ đã lên rõ, nói bình thường gần mức cao nhất, phòng yên tĩnh
+                // (khoảng -60 dB trở xuống) vẫn nằm im. Trước là -52…-30 dB, mũ 0,6: nói nhỏ sóng gần như không động
+                let v = CGFloat(pow(min(max((db + 56) / 23, 0), 1), 0.55))
                 Task { @MainActor in meter.value = v }   // làm mượt ở Waveform, theo từng khung hình
             }
             engine.prepare()
@@ -797,23 +798,54 @@ private struct Waveform: View {
     @State private var smooth = Smoother()
     /// Lúc dải sóng hiện ra (thẻ vừa mở, hoặc bấm Nói lại)
     @State private var born = Date()
+    /// Kiểu sóng chào lần này (mỗi lần mở một kiểu, không lặp lại kiểu vừa dùng)
+    @State private var hi = 0
 
     var body: some View {
         if let film, let v = film.voice { dots(level: v.level, time: film.time) }
         else {
             TimelineView(.animation) { t in
-                dots(level: max(smooth.step(to: meter.value, at: t.date), Self.hello(t.date.timeIntervalSince(born))),
+                dots(level: max(smooth.step(to: meter.value, at: t.date), Self.hello(hi, t.date.timeIntervalSince(born))),
                      time: t.date.timeIntervalSinceReferenceDate)
             }
+            // Chọn ở onAppear: giá trị đầu của @State tính lại mỗi lần view cha vẽ lại (chỉ lần đầu được giữ)
+            .onAppear { hi = Self.nextHello() }
         }
     }
 
-    /// Sóng nháy nhẹ một lần khi vừa hiện ra, để biết là app đang nghe (micro còn đang bật, chưa có tiếng thì sóng nằm im):
-    /// đợi thẻ lên xong (0,35 giây) rồi dâng lên khoảng nửa chiều cao và hạ xuống trong 0,7 giây
-    private static func hello(_ elapsed: TimeInterval) -> CGFloat {
-        let x = (elapsed - 0.35) / 0.7
-        guard x > 0, x < 1 else { return 0 }
-        return 0.5 * CGFloat(sin(.pi * x))
+    /// 10 kiểu sóng chào, xếp từ cao tới thấp: mỗi kiểu là vài tiếng ngắn liền nhau như một câu nói thật,
+    /// mỗi tiếng (độ cao 0…1, dài bao nhiêu giây). Dài ngắn khác nhau: từ một tiếng 0,4 giây tới bốn tiếng hơn 1 giây.
+    private static let hellos: [[(peak: Double, len: Double)]] = [
+        [(0.95, 0.30), (0.60, 0.20), (0.85, 0.35)],
+        [(0.90, 0.45), (0.70, 0.25)],
+        [(0.55, 0.20), (0.85, 0.30), (0.50, 0.20), (0.70, 0.30)],
+        [(0.80, 0.55)],
+        [(0.75, 0.25), (0.45, 0.15), (0.70, 0.25)],
+        [(0.40, 0.20), (0.70, 0.40)],
+        [(0.65, 0.30), (0.55, 0.30)],
+        [(0.60, 0.45)],
+        [(0.50, 0.20), (0.35, 0.15), (0.50, 0.20), (0.40, 0.25)],
+        [(0.40, 0.40)],
+    ]
+
+    private static func nextHello() -> Int {
+        let last = UserDefaults.standard.integer(forKey: "voiceHello")
+        var i = Int.random(in: 0..<hellos.count)
+        if i == last { i = (i + 1 + Int.random(in: 0..<(hellos.count - 1))) % hellos.count }
+        UserDefaults.standard.set(i, forKey: "voiceHello")
+        return i
+    }
+
+    /// Sóng nháy một lần khi vừa hiện ra, để biết là app đang nghe (micro còn đang bật, chưa có tiếng thì sóng nằm im):
+    /// đợi thẻ lên xong (0,35 giây) rồi chạy các tiếng của kiểu đã chọn, mỗi tiếng dâng lên rồi hạ xuống
+    private static func hello(_ kind: Int, _ elapsed: TimeInterval) -> CGFloat {
+        var t = elapsed - 0.35
+        guard t > 0 else { return 0 }
+        for s in hellos[kind] {
+            if t < s.len { return CGFloat(s.peak * sin(.pi * t / s.len)) }
+            t -= s.len
+        }
+        return 0
     }
 
     private static let barWidth: CGFloat = 2
@@ -877,7 +909,7 @@ private struct Waveform: View {
         func step(to target: CGFloat, at now: Date) -> CGFloat {
             let dt = last.map { min(now.timeIntervalSince($0), 0.1) } ?? 0
             last = now
-            let rate: Double = target > value ? 12 : 3.5   // lên nhanh, xuống chậm
+            let rate: Double = target > value ? 20 : 4.5   // lên nhanh, xuống chậm
             value += (target - value) * CGFloat(1 - exp(-dt * rate))
             return value
         }

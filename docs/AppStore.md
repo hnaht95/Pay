@@ -11,7 +11,7 @@
 | Độ tuổi | 4+ |
 | Giá app | Miễn phí (có mua trong app) |
 | URL quyền riêng tư | https://peakapp.vn/pay/privacy.html |
-| URL hỗ trợ | https://peakapp.vn |
+| URL hỗ trợ | https://peakapp.vn/pay/support.html |
 | Bản quyền | © 2026 Thanh Nguyen |
 
 ## Văn bản quảng bá (≤ 170 ký tự, đổi được bất cứ lúc nào)

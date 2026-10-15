@@ -382,7 +382,8 @@ struct HomeView: View {
                                 let over = bs.map { $0.spent > $0.budget } ?? false
                                 // Không nền, chỉ một vạch dọc mảnh phía trước; cao bằng và cùng hàng với viên chi tiêu thẻ bên phải
                                 HStack(spacing: 7) {
-                                    Capsule().fill(over ? Palette.danger : Color.primary.opacity(0.3)).frame(width: 2.5, height: 15)
+                                    // Màu theo tình hình ngân sách: đỏ khi vượt, xanh khi còn (và khi chưa đặt ngân sách)
+                                    Capsule().fill(over ? Palette.danger : Palette.goodInk).frame(width: 1.5, height: 14)
                                     Group {
                                         if let bs {
                                             if over { Text(L("Vượt %@", fmt(bs.spent - bs.budget))) }

@@ -268,7 +268,7 @@ struct ProPaywall: View {
                 Task { if await pro.buy(p) { Haptic.tap(.medium); dismiss() } }
             } label: {
                 Group {
-                    if pro.buying || (chosen == nil && !pro.active) {
+                    if pro.buying || (chosen == nil && !pro.active && !pro.loadFailed) {
                         ProgressView().tint(.white)
                     } else {
                         Text(pro.active ? L("Đã mở Pro, cảm ơn bạn!") : chosen.map { L("Mua %@", $0.displayPrice) } ?? L("Mua"))
@@ -282,6 +282,9 @@ struct ProPaywall: View {
                 .contentShape(Capsule())
             }
             .buttonStyle(Pressable())
+            // Không tải được giá: nút mờ, không bấm được (bấm Thử lại ở trên)
+            .disabled(chosen == nil && !pro.active)
+            .opacity(chosen == nil && !pro.active && pro.loadFailed ? 0.45 : 1)
             .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
         }
         .background(Palette.surface.ignoresSafeArea())

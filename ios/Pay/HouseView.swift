@@ -47,6 +47,8 @@ struct HouseView: View {
     @State private var inviteError: String?
     /// Thêm người từ màn "Bạn là ai": thêm xong nhận luôn là mình
     @State private var claimAfterAdd = false
+    /// Đang chọn lại "tôi là ai" (lúc trước chọn nhầm người): hiện lại màn "Bạn là ai trong nhóm?"
+    @State private var repicking = false
     @State private var editingMember: HouseMember?
     /// Nhóm đang sửa ảnh đại diện / tên
     @State private var editingGroup: HouseGroup?
@@ -129,7 +131,12 @@ struct HouseView: View {
                 let claim = claimAfterAdd
                 claimAfterAdd = false
                 // Chỉ nhận người vừa thêm là mình khi chưa chọn "tôi là ai": không bao giờ đè lên lựa chọn đã có
-                if !n.isEmpty { Task { if let id = await house.addMember(n), claim, house.me == nil { await house.claim(id) } } }
+                // Đang chọn lại "tôi là ai" thì người dùng đã chủ động muốn đổi: nhận người vừa thêm thay cho người cũ
+                if !n.isEmpty {
+                    Task {
+                        if let id = await house.addMember(n), claim, house.me == nil || repicking, await house.claim(id) { repicking = false }
+                    }
+                }
             }
         } message: {
             Text(L("Thêm được cả người không dùng Payso; bạn ghi giúp phần của họ."))
@@ -143,6 +150,7 @@ struct HouseView: View {
         .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: payAsked(!showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store).sheetGrabber() }
         .onDisappear { if film == nil { house.open(nil) } }   // (phim vẽ lại màn hình mỗi khung: không tính là đóng)
+        .onChange(of: house.currentID) { _, _ in repicking = false }   // sang nhóm khác: thôi chọn lại "tôi là ai"
         .appMenu($menu)   // mở lại thì về danh sách nhóm
         // Trả qua app ngân hàng xong quay lại Pay: hỏi đã chuyển xong chưa
         .onChange(of: scenePhase) { _, p in
@@ -186,7 +194,7 @@ struct HouseView: View {
     private var inGroup: Bool { house.phase == .ready && house.current != nil && !creating }
 
     @ViewBuilder private var dock: some View {
-        if inGroup && house.me != nil {
+        if inGroup && house.me != nil && !repicking {
             GlassGroup {
                 BigButton(title: L("Thêm khoản chung"), icon: "plus", primary: true) { adding = true }
             }
@@ -245,6 +253,10 @@ struct HouseView: View {
                     Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
                     Button(L("Thêm người"), systemImage: "plus") { claimAfterAdd = false; addingMember = true }
                     Button(L("Đổi ảnh, màu, tên nhóm"), systemImage: "paintpalette") { editingGroup = house.current }
+                    if house.me != nil {
+                        Button(L("Gửi tóm tắt ai trả ai"), systemImage: "square.and.arrow.up") { shareSummary(house.current) }
+                        Button(L("Đổi người là tôi"), systemImage: "person.crop.circle.badge.questionmark") { withAnimation(.snappy) { repicking = true } }
+                    }
                     Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
                 } label: {
                     Image(systemName: "ellipsis").font(.system(size: 15, weight: .bold))
@@ -308,7 +320,7 @@ struct HouseView: View {
         case .ready:
             if creating || house.groups.isEmpty { createForm }
             else if house.current == nil { groupList }
-            else if house.me == nil { pickMe } else { ready }
+            else if house.me == nil || repicking { pickMe } else { ready }
         }
     }
 
@@ -473,26 +485,46 @@ struct HouseView: View {
             AppMenuItem(icon: "arrow.right", title: L("Mở nhóm")) { house.open(g.id) },
             AppMenuItem(icon: "person.badge.plus", title: g.isOwner ? L("Mời thành viên") : L("Người trong nhóm")) { house.open(g.id); invite() },
             AppMenuItem(icon: "paintpalette.fill", title: L("Đổi ảnh, màu, tên nhóm")) { editingGroup = g },
+            AppMenuItem(icon: "square.and.arrow.up", title: L("Gửi tóm tắt ai trả ai"), subtitle: L("Qua Zalo, Messenger, Tin nhắn…")) { shareSummary(g) },
             archived ? AppMenuItem(icon: "tray.and.arrow.up", title: L("Bỏ lưu trữ")) { house.setArchived(g.id, false) }
                      : AppMenuItem(icon: "archivebox", title: L("Lưu trữ"), subtitle: L("Ẩn khỏi danh sách, chỉ trên máy này")) { house.setArchived(g.id, true) },
         ])
     }
 
+    /// Tóm tắt ai trả ai của nhóm, mở bảng chia sẻ của iOS (gửi vào nhóm Zalo / Messenger)
+    private func shareSummary(_ g: HouseGroup?) {
+        guard let g else { return }
+        ShareText.present(g.summary())
+    }
+
     // MARK: Chọn "tôi là ai"
 
     @ViewBuilder private var pickMe: some View {
-        Text(L("Bạn là ai trong nhóm?")).font(.system(size: 21, weight: .bold)).padding(.top, 10)
-        Text(L("Chỉ để biết phần nào là của bạn trên máy này.")).font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 4)
+        Text(repicking ? L("Đổi người là bạn") : L("Bạn là ai trong nhóm?")).font(.system(size: 21, weight: .bold)).padding(.top, 10)
+        Text(repicking ? L("Chọn đúng người là bạn. Người đang chọn sẽ trống lại cho chủ thật nhận.") : L("Chỉ để biết phần nào là của bạn trên máy này."))
+            .font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 4)
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(house.members) { m in
-                Button { Task { await house.claim(m.id) } } label: {
+                // Người đã được tài khoản iCloud khác nhận: mờ đi, bấm vào thì báo lý do (House.claim từ chối)
+                let taken = m.user != nil && house.userID != nil && m.user != house.userID && m.id != house.me
+                let current = repicking && m.id == house.me
+                Button {
+                    Task { if await house.claim(m.id) { withAnimation(.snappy) { repicking = false } } }
+                } label: {
                     VStack(spacing: 10) {
                         HouseAvatar(id: m.id, name: m.name, size: 56)
                         Text(m.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                        if current || taken {
+                            Text(current ? L("Đang chọn") : L("Đã có người nhận")).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity).padding(.vertical, 20)
                     .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay {
+                        if current { RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.goodInk, lineWidth: 2) }
+                    }
+                    .opacity(taken ? 0.5 : 1)
                 }
                 .buttonStyle(Pressable())
             }
@@ -507,6 +539,15 @@ struct HouseView: View {
             .accessibilityLabel(L("Thêm tôi vào nhóm"))
         }
         .padding(.top, 20)
+        .task { await house.knowUser() }   // để đánh dấu người đã được tài khoản iCloud khác nhận
+        if repicking {
+            Button(L("Huỷ")) { withAnimation(.snappy) { repicking = false } }
+                .font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .buttonStyle(Pressable())
+                .foregroundStyle(.primary)
+                .padding(.top, 12)
+        }
     }
 
     // MARK: Nhóm
@@ -1289,6 +1330,7 @@ struct HouseMemberEditor: View {
     @State private var loaded = false
     /// Đang lưu lên iCloud: nút Lưu mờ đi cho biết đã nhận (vòng xoay ở màn nhóm bị bảng này che)
     @State private var saving = false
+    @State private var confirmRemove = false
 
     private static let banks = BankData.names.sorted { $0.value.lowercased() < $1.value.lowercased() }
 
@@ -1328,6 +1370,25 @@ struct HouseMemberEditor: View {
                 } footer: {
                     Text(L("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung."))
                 }
+                // Chủ nhóm xoá người thêm nhầm / trùng tên. Người đã có trong sổ thì không xoá được: các khoản cũ và số dư sẽ sai
+                if house.isOwner && member.id != house.me {
+                    let used = house.current?.inUse(member.id) ?? true
+                    Section {
+                        Button(L("Xoá khỏi nhóm"), role: .destructive) { confirmRemove = true }
+                            .disabled(used || saving)
+                    } footer: {
+                        if used { Text(L("Người này đã có khoản chi hoặc lần trả trong sổ nên không xoá được: các khoản cũ và số dư sẽ không còn khớp.")) }
+                    }
+                }
+            }
+            .confirmationDialog(L("Xoá %@ khỏi nhóm?", member.name), isPresented: $confirmRemove, titleVisibility: .visible) {
+                Button(L("Xoá khỏi nhóm"), role: .destructive) {
+                    saving = true
+                    Task { await house.removeMember(member.id); dismiss() }
+                }
+                Button(L("Huỷ"), role: .cancel) {}
+            } message: {
+                Text(member.user != nil ? L("Người này đang dùng Payso: máy của họ sẽ phải chọn lại mình là ai.") : L("Cả nhóm sẽ không thấy người này nữa."))
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)

@@ -237,5 +237,26 @@ extension English {
         "Không dùng Payso, bạn ghi giúp": "Doesn't use Payso, you log for them",
         "%@ báo đã chuyển %@ cho bạn": "%@ says they sent you %@",
         "Kiểm tra tài khoản rồi xác nhận.": "Check your account, then confirm.",
+        // Gửi tóm tắt ai trả ai
+        "Gửi tóm tắt ai trả ai": "Share who owes whom",
+        "Qua Zalo, Messenger, Tin nhắn…": "Via Zalo, Messenger, Messages…",
+        "Tổng đợt này: %@ (%ld khoản)": "This round: %@ total (%ld items)",
+        "Phần mỗi người:": "Each person's share:",
+        "Cần chuyển:": "Transfers to make:",
+        "Không ai nợ ai, cả nhóm đã trả xong.": "Nobody owes anyone, the group is settled up.",
+        "Gửi từ Payso": "Sent from Payso",
+        // Đổi "tôi là ai", xoá thành viên
+        "Đổi người là tôi": "Change who I am",
+        "Đổi người là bạn": "Change who you are",
+        "Chọn đúng người là bạn. Người đang chọn sẽ trống lại cho chủ thật nhận.": "Pick the right person. The one you picked before becomes free for its real owner.",
+        "Đang chọn": "Current",
+        "Đã có người nhận": "Taken",
+        "%@ đã được một tài khoản iCloud khác nhận. Người đó đổi sang người khác thì bạn mới chọn được.": "%@ is already claimed by another iCloud account. They need to switch to someone else before you can pick it.",
+        "Xoá khỏi nhóm": "Remove from group",
+        "Xoá %@ khỏi nhóm?": "Remove %@ from the group?",
+        "Người này đã có khoản chi hoặc lần trả trong sổ nên không xoá được: các khoản cũ và số dư sẽ không còn khớp.": "This person already has expenses or payments in the group, so they can't be removed: past expenses and balances would no longer add up.",
+        "Người này vừa có khoản chi hoặc lần trả nên không xoá được.": "This person just got an expense or payment, so they can't be removed.",
+        "Người này đang dùng Payso: máy của họ sẽ phải chọn lại mình là ai.": "This person uses Payso: their phone will ask them who they are again.",
+        "Cả nhóm sẽ không thấy người này nữa.": "The group won't see this person anymore.",
     ]
 }

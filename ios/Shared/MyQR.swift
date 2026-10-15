@@ -9,6 +9,9 @@ struct MyQR: Equatable {
     var bank = ""       // tên ngân hàng để hiện (widget không có bảng tên ngân hàng)
     var acct = ""       // số tài khoản
     var name = ""       // tên chủ tài khoản, chỉ để hiện
+    /// Mã có số tiền (bảng "Nhận tiền"): số tiền (0 = người quét tự nhập) và nội dung chuyển khoản (chữ không dấu). Không lưu
+    var amount = 0
+    var note = ""
 
     var ready: Bool { !bin.isEmpty && !acct.isEmpty }
 
@@ -24,7 +27,8 @@ struct MyQR: Equatable {
         Self.store.set(acct, forKey: "myqr.acct"); Self.store.set(name, forKey: "myqr.name")
     }
 
-    /// Chuỗi VietQR (chuẩn EMVCo của NAPAS): chuyển nhanh tới tài khoản, người quét tự nhập số tiền
+    /// Chuỗi VietQR (chuẩn EMVCo của NAPAS): chuyển nhanh tới tài khoản. Không có số tiền thì là mã tĩnh, người quét tự nhập;
+    /// có số tiền thì là mã động (01 = 12) kèm trường 54 (số tiền) và 62.08 (nội dung)
     /// Phim giới thiệu: mã hiện ra mang nội dung này thay cho tài khoản thật (một mã vô hại, quét ra trang của Pay)
     static var filmPayload: String?
 
@@ -33,7 +37,11 @@ struct MyQR: Equatable {
         if let demo = Self.filmPayload { return demo }
         func f(_ id: String, _ v: String) -> String { id + String(format: "%02d", v.count) + v }
         let account = f("00", "A000000727") + f("01", f("00", bin) + f("01", acct)) + f("02", "QRIBFTTA")
-        let body = f("00", "01") + f("01", "11") + f("38", account) + f("53", "704") + f("58", "VN") + "6304"
+        var body = f("00", "01") + f("01", amount > 0 ? "12" : "11") + f("38", account) + f("53", "704")
+        if amount > 0 { body += f("54", String(amount)) }
+        body += f("58", "VN")
+        if !note.isEmpty { body += f("62", f("08", note)) }
+        body += "6304"
         return body + String(format: "%04X", Self.crc16(body))
     }
 

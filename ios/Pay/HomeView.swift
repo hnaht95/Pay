@@ -379,18 +379,22 @@ struct HomeView: View {
                             // Cột Số dư có thêm dòng Nợ thẻ thì cột này cũng có dòng thứ ba cùng cỡ (còn / vượt ngân sách, chưa đặt
                             // ngân sách thì số khoản trong tháng), để hai cột cao bằng nhau, góc dưới trái không bị trống
                             if film == nil && store.cardDebt > 0 {
-                                Group {
-                                    if let bs {
-                                        if bs.spent > bs.budget { Text(L("Vượt %@", fmt(bs.spent - bs.budget))).foregroundStyle(Palette.danger) }
-                                        else { Text(L("Còn %@", fmt(bs.budget - bs.spent))).foregroundStyle(.secondary) }
-                                    } else {
-                                        Text(L("%d khoản", store.monthItems(now).count)).foregroundStyle(.secondary)
+                                let over = bs.map { $0.spent > $0.budget } ?? false
+                                // Không nền, chỉ một vạch dọc mảnh phía trước; cao bằng và cùng hàng với viên chi tiêu thẻ bên phải
+                                HStack(spacing: 7) {
+                                    Capsule().fill(over ? Palette.danger : Color.primary.opacity(0.3)).frame(width: 2.5, height: 15)
+                                    Group {
+                                        if let bs {
+                                            if over { Text(L("Vượt %@", fmt(bs.spent - bs.budget))) }
+                                            else { Text(L("Còn %@", fmt(bs.budget - bs.spent))) }
+                                        } else {
+                                            Text(L("%d khoản", store.monthItems(now).count))
+                                        }
                                     }
+                                    .foregroundStyle(over ? AnyShapeStyle(Palette.danger) : AnyShapeStyle(.secondary))
                                 }
-                                // Cùng kiểu viên với viên chi tiêu thẻ bên phải (cao bằng, cùng hàng), để hai cột cân nhau
                                 .font(.system(size: 13, weight: .medium))
-                                .padding(.horizontal, 9).padding(.vertical, 5)
-                                .background(Palette.pill, in: Capsule())
+                                .padding(.vertical, 5)
                                 .padding(.top, 7)   // = khoảng 4 + 6 phía cột số dư, trừ khoảng 3 của cột này
                             }
                         }

@@ -10,6 +10,7 @@
 | Danh mục phụ | Năng suất (Productivity) |
 | Độ tuổi | 4+ |
 | Giá app | Miễn phí (có mua trong app) |
+| Nơi bán (Availability) | **Chỉ Việt Nam** — cho app và cả hai gói Pro. App chỉ ghi chi tiêu bằng tiền Việt (đồng, số nguyên, không có đô la / phần lẻ); bán nước khác để sau khi có chọn đơn vị tiền. Không bán ở EU nên chưa cần khai "trader" (DSA) |
 | URL quyền riêng tư | https://peakapp.vn/pay/privacy.html |
 | URL hỗ trợ | https://peakapp.vn/pay/support.html |
 | Bản quyền | © 2026 Thanh Nguyen |

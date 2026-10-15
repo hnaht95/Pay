@@ -63,5 +63,63 @@ for (t, a, n) in cases {
   // Câu không ra số tiền còn đi tiếp qua bộ đọc câu gõ (Store.quickAdd): ở đó cũng phải nil, không văng
   if a == nil, let e = QuickParse.expense(t) { bad += 1; print("SAI (gõ)", t, "->", e.amount, "'\(e.note)'", " (mong đợi nil)") }
 }
-print(bad == 0 ? "TẤT CẢ \(cases.count) CÂU ĐÚNG" : "\(bad)/\(cases.count) SAI")
+
+// Ngày và quẹt thẻ (QuickParse.when, rồi đọc số tiền như Store.quickAdd). "Bây giờ" cố định: thứ sáu 16/10/2026 10:30.
+// Ngày mong đợi "" = bây giờ (date nil)
+var cal = Calendar(identifier: .gregorian)
+cal.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")!
+let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 10, minute: 30))!
+let df = DateFormatter()
+df.calendar = cal; df.timeZone = cal.timeZone; df.dateFormat = "yyyy-MM-dd HH:mm"
+let dated: [(String, Int?, String, String, Bool)] = [
+  ("50k cafe thứ hai", 50000, "cafe", "2026-10-12 10:30", false), ("hai trăm nghìn hôm qua", 200000, "", "2026-10-15 10:30", false),
+  ("tối qua ăn lẩu 300k", 300000, "ăn lẩu", "2026-10-15 20:00", false), ("sáng qua cafe 30k", 30000, "cafe", "2026-10-15 08:00", false),
+  ("trưa qua cơm 40k", 40000, "cơm", "2026-10-15 12:00", false), ("chiều qua trà sữa 45k", 45000, "trà sữa", "2026-10-15 16:00", false),
+  ("tối hôm qua nhậu 500k", 500000, "nhậu", "2026-10-15 20:00", false), ("hôm kia đổ xăng 80k", 80000, "đổ xăng", "2026-10-14 10:30", false),
+  ("sáng nay phở 50k", 50000, "phở", "2026-10-16 08:00", false), ("tối nay ăn 50k", 50000, "ăn", "", false),
+  ("thứ sáu cafe 30k", 30000, "cafe", "", false), ("chủ nhật đi chợ 200k", 200000, "đi chợ", "2026-10-11 10:30", false),
+  ("thứ hai tuần trước tiền điện 500k", 500000, "tiền điện", "2026-10-05 10:30", false),
+  ("tiền điện 500k thứ hai tuần rồi", 500000, "tiền điện", "2026-10-05 10:30", false),
+  ("ngày 12 tiền nước 100k", 100000, "tiền nước", "2026-10-12 10:30", false), ("hôm 20 mua giày 1 triệu", 1000000, "mua giày", "2026-09-20 10:30", false),
+  ("ngày 31 cafe 50k", 50000, "cafe", "2026-09-30 10:30", false), ("ngày 16 cafe 50k", 50000, "cafe", "", false),
+  ("gửi xe ngày 5 nghìn", 5000, "gửi xe ngày", "", false), ("thứ ba 35 cafe", 35000, "cafe", "2026-10-13 10:30", false),
+  ("thứ tư hai trăm nghìn", 200000, "", "2026-10-14 10:30", false), ("năm mươi nghìn thứ năm", 50000, "", "2026-10-15 10:30", false),
+  ("lần thứ hai 50k", 50000, "lần thứ hai", "", false), ("vào hôm thứ hai mua sách 120k", 120000, "mua sách", "2026-10-12 10:30", false),
+  ("hôm nay cafe 30k", 30000, "cafe", "", false),
+  ("50k quẹt thẻ cafe", 50000, "cafe", "", true), ("mua giày 1 triệu trả bằng thẻ tín dụng", 1000000, "mua giày", "", true),
+  ("hôm qua quẹt thẻ ăn tối 400k", 400000, "ăn tối", "2026-10-15 10:30", true), ("siêu thị 800k thẻ tín dụng", 800000, "siêu thị", "", true),
+  ("nạp thẻ 50k", 50000, "nạp thẻ", "", false),
+  // gõ không dấu
+  ("hom qua cafe 30k", 30000, "cafe", "2026-10-15 10:30", false), ("toi qua 50k", 50000, "toi qua", "", false),
+  ("thu hai trieu", 2000000, "thu", "", false), ("thu 2 cafe 50k", 50000, "cafe", "2026-10-12 10:30", false),
+  ("quet the 200k sieu thi", 200000, "sieu thi", "", true),
+]
+for (t, a, n, d, cr) in dated {
+  let w = QuickParse.when(t, now: now, calendar: cal)
+  let r = QuickParse.spoken(w.rest) ?? QuickParse.expense(w.rest)
+  let got = w.date.map(df.string) ?? ""
+  if r?.amount != a || r?.note != n || got != d || w.credit != cr {
+    bad += 1
+    print("SAI (ngày)", t, "->", r.map { "\($0.amount) '\($0.note)'" } ?? "nil", "'\(got)'", w.credit ? "thẻ" : "", " (mong đợi \(a.map(String.init) ?? "nil") '\(n)' '\(d)'\(cr ? " thẻ" : ""))")
+  }
+}
+// Tiếng Anh: chỉ khi app ở tiếng Anh
+Lang.isEnglish = true
+let english: [(String, Int?, String, String, Bool)] = [
+  ("coffee 45k yesterday", 45000, "coffee", "2026-10-15 10:30", false), ("lunch 100k on monday by card", 100000, "lunch", "2026-10-12 10:30", true),
+  ("dinner last night 300k", 300000, "dinner", "2026-10-15 20:00", false), ("this morning coffee 30k", 30000, "coffee", "2026-10-16 08:00", false),
+  ("200k for gas with my credit card", 200000, "gas", "", true),
+]
+for (t, a, n, d, cr) in english {
+  let w = QuickParse.when(t, now: now, calendar: cal)
+  let r = QuickParse.spoken(w.rest) ?? QuickParse.expense(w.rest)
+  let got = w.date.map(df.string) ?? ""
+  if r?.amount != a || r?.note != n || got != d || w.credit != cr {
+    bad += 1
+    print("SAI (ngày)", t, "->", r.map { "\($0.amount) '\($0.note)'" } ?? "nil", "'\(got)'", w.credit ? "card" : "", " (mong đợi \(a.map(String.init) ?? "nil") '\(n)' '\(d)'\(cr ? " card" : ""))")
+  }
+}
+Lang.isEnglish = false
+let total = cases.count + dated.count + english.count
+print(bad == 0 ? "TẤT CẢ \(total) CÂU ĐÚNG" : "\(bad)/\(total) SAI")
 exit(bad == 0 ? 0 : 1)

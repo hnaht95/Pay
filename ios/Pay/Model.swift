@@ -353,9 +353,9 @@ final class Store: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// toast: false khi màn hình tự có nút Hoàn tác (thẻ giọng nói)
-    func add(amount: Int, note: String, cat: String, acct: String? = nil, credit: Bool = false, toast: Bool = true) {
-        let e = Expense(id: UUID().uuidString, t: Date().timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct,
+    /// toast: false khi màn hình tự có nút Hoàn tác (thẻ giọng nói). date: nil = bây giờ
+    func add(amount: Int, note: String, cat: String, acct: String? = nil, credit: Bool = false, date: Date? = nil, toast: Bool = true) {
+        let e = Expense(id: UUID().uuidString, t: (date ?? Date()).timeIntervalSince1970 * 1000, a: amount, n: note, c: cat, acct: acct,
                         cr: credit && !Category.isIncome(cat) ? true : nil)
         all.append(e)
         persist()
@@ -365,10 +365,12 @@ final class Store: ObservableObject {
 
     /// Ghi từ một câu "35k cafe": tự đoán danh mục theo ghi chú. Không đọc được số tiền thì nil.
     /// spoken: câu từ giọng nói, hiểu thêm số bằng chữ ("ba lăm nghìn") và số dưới 1.000 là nghìn.
+    /// Câu có ngày ("hôm qua", "thứ hai") / "quẹt thẻ" thì ghi vào ngày đó / trả bằng thẻ tín dụng (QuickParse.when).
     @discardableResult
     func quickAdd(_ text: String, spoken: Bool = false, toast: Bool = true) -> Expense? {
-        guard let q = spoken ? (QuickParse.spoken(text) ?? QuickParse.expense(text)) : QuickParse.expense(text) else { return nil }
-        add(amount: q.amount, note: q.note, cat: guessEntry(q.note), toast: toast)
+        let w = QuickParse.when(text)
+        guard let q = spoken ? (QuickParse.spoken(w.rest) ?? QuickParse.expense(w.rest)) : QuickParse.expense(w.rest) else { return nil }
+        add(amount: q.amount, note: q.note, cat: guessEntry(q.note), credit: w.credit, date: w.date, toast: toast)
         return all.last
     }
 

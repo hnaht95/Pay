@@ -528,8 +528,12 @@ struct VoiceEntryView: View {
     /// Số tiền to + danh mục đoán được + ghi chú, cập nhật ngay trong lúc nói.
     @ViewBuilder private var amountBlock: some View {
         // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
-        let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c) }
-            ?? (undone ? nil : QuickParse.spoken(heard)).map { (amount: $0.amount, note: $0.note, cat: store.guessEntry($0.note)) }
+        // Đọc như Store.quickAdd: bỏ chữ chỉ ngày / quẹt thẻ ra trước rồi mới đọc số tiền
+        let when = QuickParse.when(heard)
+        let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c, date: $0.date as Date?, credit: $0.isCredit) }
+            ?? (undone ? nil : QuickParse.spoken(when.rest)).map {
+                (amount: $0.amount, note: $0.note, cat: store.guessEntry($0.note), date: when.date, credit: when.credit)
+            }
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 // Số đổi: app dùng hiệu ứng số của iOS; phim tự vẽ số cũ trôi lên, số mới trồi lên
@@ -563,6 +567,14 @@ struct VoiceEntryView: View {
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(c.color, in: Capsule())
                         .foregroundStyle(c.ink)
+                        // Câu nói có ngày khác hôm nay / quẹt thẻ: hiện nhỏ để biết sẽ ghi vào đâu
+                        if let d = l.date, !Calendar.current.isDateInToday(d) {
+                            Text(dayLabel(d)).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        if l.credit {
+                            Image(systemName: "creditcard").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+                                .accessibilityLabel(L("Thẻ tín dụng"))
+                        }
                         if !l.note.isEmpty {
                             Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
                         }
@@ -594,6 +606,19 @@ struct VoiceEntryView: View {
                     .contentTransition(.opacity)
             }
         }
+    }
+
+    /// "Hôm qua · 20:00" / "T2, 12/10 · 08:00" (tiếng Anh "Yesterday · 8:00 PM", "Mon, Oct 12 · 8:00 AM")
+    private func dayLabel(_ d: Date) -> String {
+        let t = DateFormatter(); t.locale = Lang.locale; t.timeStyle = .short; t.dateStyle = .none
+        let day: String
+        if Calendar.current.isDateInYesterday(d) { day = L("Hôm qua") }
+        else if Lang.isEnglish { let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "EEE, MMM d"; day = f.string(from: d) }
+        else {
+            let c = Calendar.current.dateComponents([.weekday, .day, .month], from: d)
+            day = "\(["CN", "T2", "T3", "T4", "T5", "T6", "T7"][c.weekday! - 1]), \(c.day!)/\(c.month!)"
+        }
+        return day + " · " + t.string(from: d)
     }
 
     private func number(_ s: String, dim: Bool, income: Bool = false) -> some View {
@@ -752,7 +777,7 @@ struct VoiceEntryView: View {
             store.update(e)
             store.learnCategory(e.n ?? "", k)
             withAnimation(.snappy) { saved = e }
-        } else if let q = QuickParse.spoken(mic.text) {
+        } else if let q = QuickParse.spoken(QuickParse.when(mic.text).rest) {
             store.learnCategory(q.note, k)
         }
     }

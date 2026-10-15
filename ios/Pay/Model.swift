@@ -520,7 +520,10 @@ final class Store: ObservableObject {
 
     func exportJSON() -> URL? {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).json")
-        guard let data = try? JSONEncoder().encode(Backup(items: all, memo: memo, rules: rules, cats: cats)), (try? data.write(to: url)) != nil else { return nil }
+        // Kèm các kỳ tự ghi đã xoá ("r-…"): khôi phục ở máy khác thì không ghi lại những kỳ người dùng đã xoá
+        let skipped = deleted.filter { $0.key.hasPrefix("r-") }
+        guard let data = try? JSONEncoder().encode(Backup(items: all, memo: memo, deleted: skipped.isEmpty ? nil : skipped, rules: rules, cats: cats)),
+              (try? data.write(to: url)) != nil else { return nil }
         return url
     }
 
@@ -530,7 +533,7 @@ final class Store: ObservableObject {
         let q = { (s: String) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         var rows = [[L("Ngày"), L("Giờ"), L("Loại"), L("Số tiền"), L("Danh mục"), L("Ghi chú")].map(q).joined(separator: ",")]
         for e in all.sorted(by: { $0.t < $1.t }) {
-            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isCardPay ? L("Trả thẻ") : e.isAdjust ? L("Điều chỉnh") : e.isIncome ? L("Thu") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
+            rows.append([df.string(from: e.date), tf.string(from: e.date), e.isCardPay ? L("Trả thẻ") : e.isAdjust ? L("Điều chỉnh") : e.isIncome ? L("Thu") : e.isCredit ? L("Chi thẻ tín dụng") : L("Chi"), String(e.a), Category.get(e.c).name, e.n ?? ""].map(q).joined(separator: ","))
         }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pay-\(stamp()).csv")
         guard (try? ("\u{FEFF}" + rows.joined(separator: "\n")).write(to: url, atomically: true, encoding: .utf8)) != nil else { return nil }
@@ -569,6 +572,9 @@ final class Store: ObservableObject {
             rules[k] = r
         }
         for (k, c) in b.cats ?? [:] where c.on && cats[k]?.on != true { var c = c; c.touch(t); cats[k] = c }
+        // Kỳ tự ghi đã xoá trong file: giữ là đã xoá (trừ khi máy này đang có khoản đó)
+        let have = Set(all.map(\.id))
+        for (k, v) in b.deleted ?? [:] where k.hasPrefix("r-") && !have.contains(k) && deleted[k] == nil { deleted[k] = v }
         runRecurring()
         persist()
         show(L("Đã khôi phục %ld khoản", add.count))
@@ -740,6 +746,8 @@ final class Store: ObservableObject {
     /// Trả về true khi có gì cần lưu (khoản mới ghi, hoặc kỳ vừa được đánh dấu bỏ qua).
     @discardableResult
     private func runRecurring() -> Bool {
+        // Lặp hằng tháng là tính năng Pro: hết Pro (hết hạn, hoàn tiền) thì thôi tự ghi; khoản lặp vẫn giữ, có Pro lại thì ghi tiếp
+        guard Pro.shared.active else { return false }
         let cal = Calendar.current, today = Date()
         var ids = Set(all.map(\.id))
         var changed = false

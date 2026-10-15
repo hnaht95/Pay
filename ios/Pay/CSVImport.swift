@@ -44,13 +44,16 @@ struct CSVImport {
         func key(_ d: Date, _ a: Int, _ n: String, _ inc: Bool) -> String {
             "\(cal.startOfDay(for: d).timeIntervalSince1970)|\(a)|\(Store.noteKey(n))|\(inc)"
         }
-        var seen = Set(store.all.filter { !$0.isAdjust }.map { key($0.date, $0.a, $0.n ?? "", $0.isIncome) })
+        // Chỉ so với dữ liệu đang có trong app: hai dòng giống nhau trong cùng file (hai ly cà phê 35k cùng ngày) là hai khoản thật
+        let seen = Set(store.all.filter { !$0.isAdjust }.map { key($0.date, $0.a, $0.n ?? "", $0.isIncome) })
         var out: [Expense] = [], dup = 0, bad = 0
         let now = Date().timeIntervalSince1970 * 1000
         for row in body {
             guard let date = date(cols.value(row, cols.date), time: cols.value(row, cols.time)) else { bad += 1; continue }
             // Số tiền và thu / chi
             var value: Int?, income = false
+            // Khoản chi bằng thẻ tín dụng (file xuất từ Payso ghi ở cột Loại): giữ dấu thẻ tín dụng
+            let credit = isCredit(cols.value(row, cols.kind))
             if let raw = amount(cols.value(row, cols.amount)) {
                 value = abs(raw)
                 if let k = kind(cols.value(row, cols.kind)) {
@@ -69,12 +72,11 @@ struct CSVImport {
             let catName = cols.value(row, cols.category).trimmingCharacters(in: .whitespaces)
             let k = key(date, a, note, income)
             if seen.contains(k) { dup += 1; continue }
-            seen.insert(k)
             let c = category(catName, note: note, income: income, store: store)
             // Ghi chú trống: lấy tên danh mục trong file làm ghi chú (danh mục lạ không mất thông tin)
             let n = note.isEmpty && !catName.isEmpty && strip(Category.get(c).name) != strip(catName) ? catName : note
             let t = date.timeIntervalSince1970 * 1000
-            out.append(Expense(id: UUID().uuidString, t: t, a: a, n: n.isEmpty ? nil : n, c: c, acct: nil, u: now))
+            out.append(Expense(id: UUID().uuidString, t: t, a: a, n: n.isEmpty ? nil : n, c: c, acct: nil, u: now, cr: credit && !income ? true : nil))
         }
         out.sort { $0.t > $1.t }
         return .success(Result(name: url.deletingPathExtension().lastPathComponent, items: out, duplicates: dup, skipped: bad))
@@ -88,22 +90,24 @@ struct CSVImport {
 
         init(_ header: [String]) {
             let h = header.map { strip($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            func find(_ names: [String], exact: Bool = false) -> Int? {
+            // skip: cột đã nhận là cột khác (cột "Tiền vào" không được nhận nhầm là cột số tiền chỉ vì chứa chữ "tien")
+            func find(_ names: [String], exact: Bool = false, skip: [Int?] = []) -> Int? {
+                let taken = Set(skip.compactMap { $0 })
                 for n in names {
-                    if let i = h.firstIndex(where: { $0 == n }) { return i }
+                    if let i = h.indices.first(where: { h[$0] == n && !taken.contains($0) }) { return i }
                 }
                 guard !exact else { return nil }
                 for n in names {
-                    if let i = h.firstIndex(where: { $0.contains(n) }) { return i }
+                    if let i = h.indices.first(where: { h[$0].contains(n) && !taken.contains($0) }) { return i }
                 }
                 return nil
             }
             date = find(["ngay", "date", "ngay giao dich", "transaction date", "thoi gian", "datetime"])
             time = find(["gio", "time"], exact: true)
             if time == date { time = nil }
-            amount = find(["so tien", "amount", "gia tri", "money", "value", "tien", "sum"])
             inflow = find(["inflow", "tien vao", "income", "credit", "co"], exact: true)
             outflow = find(["outflow", "tien ra", "expense", "debit", "no"], exact: true)
+            amount = find(["so tien", "amount", "gia tri", "money", "value", "tien", "sum"], skip: [inflow, outflow])
             kind = find(["loai", "type", "thu chi", "thu/chi", "kind"], exact: true)
             category = find(["danh muc", "category", "nhom", "hang muc", "category name"])
             note = find(["ghi chu", "note", "mo ta", "description", "memo", "dien giai", "noi dung", "payee", "ten"])
@@ -126,8 +130,16 @@ struct CSVImport {
         guard !k.isEmpty else { return nil }
         if ["thu", "income", "vao", "in", "tien vao", "khoan thu", "credit"].contains(k) || k.hasPrefix("thu ") { return .income }
         if ["chi", "expense", "ra", "out", "tien ra", "khoan chi", "debit"].contains(k) || k.hasPrefix("chi ") { return .spend }
-        if k.contains("dieu chinh") || k.contains("transfer") || k.contains("chuyen vi") { return .skip }
+        if k.contains("dieu chinh") || k.contains("transfer") || k.contains("chuyen vi") || k.contains("adjustment")
+            || k.contains("tra the") || k.contains("card payment") { return .skip }
+        if isCredit(s) { return .spend }
         return nil
+    }
+
+    /// Loại "Chi thẻ tín dụng" / "Credit card" (file xuất từ Payso): khoản chi trả bằng thẻ tín dụng
+    static func isCredit(_ s: String) -> Bool {
+        let k = strip(s)
+        return k.contains("the tin dung") || k.contains("credit card")
     }
 
     /// Số tiền: "1.234.567", "1,234,567", "-50,000 ₫", "(50.000)", "50000.00", "35k", "1tr2"
@@ -162,7 +174,10 @@ struct CSVImport {
                   "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM-dd", "yyyy/MM/dd",
                   "dd/MM/yy", "d/M/yy", "MMM d, yyyy", "d MMM yyyy"] {
             f.dateFormat = p
-            if let r = f.date(from: full) ?? f.date(from: d) {
+            if var r = f.date(from: full) ?? f.date(from: d) {
+                // Năm hai chữ số ("15/07/26") khớp mẫu "yyyy" thành năm 0026: đổi thành 2026
+                let y = Calendar.current.component(.year, from: r)
+                if y < 100, let fixed = Calendar.current.date(byAdding: .year, value: 2000, to: r) { r = fixed }
                 // Chỉ có ngày: đặt 12:00 để đổi múi giờ không nhảy sang ngày bên cạnh
                 if !p.contains("HH") && full == d { return Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: r) }
                 return r

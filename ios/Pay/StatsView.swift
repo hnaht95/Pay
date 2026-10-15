@@ -29,6 +29,9 @@ struct StatsView: View {
     @State private var showAllBig = false
     @State private var showAllIncome = false
     @State private var balanceOpen = false
+    /// Đổi khi qua nửa đêm / quay lại app: vẽ lại "Hôm nay", kỳ đang chạy, số ngày theo ngày mới (màn có thể mở qua đêm)
+    @State private var dayTick = 0
+    @Environment(\.scenePhase) private var scenePhase
     /// Khoản thu đang mở để xem / sửa
     @State private var editing: EntryMode?
     /// Đang dựng phim giới thiệu (xem Film.swift)
@@ -58,6 +61,7 @@ struct StatsView: View {
     static let heroPill = Color(hex: 0xE8F0D2)
 
     var body: some View {
+        let _ = dayTick
         let items = spending(in: span)
         let prev = comparable(spending(in: prevSpan))
         if film != nil {
@@ -82,6 +86,8 @@ struct StatsView: View {
         }
         .sheet(item: $editing) { EntryView(mode: $0).id($0.id).environmentObject(store).sheetGrabber() }
         .sheet(isPresented: $balanceOpen) { BalanceSheet().environmentObject(store).sheetGrabber() }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in dayTick += 1 }
+        .onChange(of: scenePhase) { _, p in if p == .active { dayTick += 1 } }
         // Không có nút Xong: vạch ngang trên cùng cho biết kéo xuống là đóng
         .sheetGrabber()
         }
@@ -545,8 +551,11 @@ struct StatsView: View {
     }
 
     private func grid(_ items: [Expense], _ prev: [Expense]) -> some View {
-        let days = isRunning ? elapsedDays + 1 : dayCount(span)
-        let prevDays = isRunning ? days : dayCount(prevSpan)
+        // Số ngày để chia trung bình: chỉ tính từ ngày bắt đầu dùng app, và kỳ trước đang so cùng kỳ thì không dài hơn chính kỳ
+        // trước (ngày 31/3 so với cả tháng 2 là 28 ngày, không phải 31)
+        let today0 = cal.startOfDay(for: Date()), tomorrow = cal.date(byAdding: .day, value: 1, to: today0)!
+        let days = usedDays(span, until: isRunning ? tomorrow : span.end)
+        let prevDays = usedDays(prevSpan, until: isRunning ? min(prevSpan.end, cal.date(byAdding: .day, value: elapsedDays + 1, to: prevSpan.start)!) : prevSpan.end)
         let avg = sum(items) / max(days, 1), prevAvg = sum(prev) / max(prevDays, 1)
         let biggest = items.max { $0.a < $1.a }
         let today = store.total(on: Date()), yesterday = store.total(on: cal.date(byAdding: .day, value: -1, to: Date())!)
@@ -1158,7 +1167,15 @@ struct StatsView: View {
 
     private func spending(in i: DateInterval) -> [Expense] { store.items.filter { $0.date >= i.start && $0.date < i.end } }
 
-    private func dayCount(_ i: DateInterval) -> Int { max(cal.dateComponents([.day], from: i.start, to: i.end).day ?? 1, 1) }
+
+    /// Ngày bắt đầu dùng app: ngày của khoản chi / thu sớm nhất
+    private var firstUse: Date? { store.all.filter { !$0.isAdjust }.map(\.t).min().map { cal.startOfDay(for: Date(timeIntervalSince1970: $0 / 1000)) } }
+
+    /// Số ngày trong khoảng `i` tính tới `end` (không gồm `end`), bỏ những ngày trước khi bắt đầu dùng app; ít nhất 1
+    private func usedDays(_ i: DateInterval, until end: Date) -> Int {
+        let from = max(i.start, firstUse ?? i.start)
+        return max(cal.dateComponents([.day], from: from, to: end).day ?? 1, 1)
+    }
 
     /// Số ngày đã qua từ đầu khoảng đang xem tới hôm nay (hôm nay là ngày thứ elapsedDays + 1)
     private var elapsedDays: Int { cal.dateComponents([.day], from: span.start, to: cal.startOfDay(for: Date())).day ?? 0 }

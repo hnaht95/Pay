@@ -159,6 +159,7 @@ extension English {
         "Chưa trừ số dư, cộng vào chi tiêu thẻ": "Adds to card spending instead of your balance",
         "Thẻ tín dụng: bật ô Thẻ tín dụng, để khoản tự ghi chưa trừ vào số dư mà cộng vào chi tiêu thẻ (trả thẻ thì chạm dòng Chi tiêu thẻ dưới số dư).": "Credit card: turn on Credit card so logged purchases add to card spending instead of your balance (to pay the card, tap Card spending under your balance).",
         "Trả thẻ": "Card payment",
+        "Chi thẻ tín dụng": "Credit card expense",
         "Tổng tiền bạn đang có (tiền mặt, tài khoản…). Từ giờ app tự cộng khoản thu, trừ khoản chi.": "All the money you have now (cash, accounts…). From now on Payso adds income and subtracts spending.",
         "Mới": "New",
         "Lưu": "Save",

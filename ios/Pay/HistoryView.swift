@@ -27,7 +27,7 @@ struct HistoryView: View {
                     HStack {
                         Text(found.count == 1 ? L("1 khoản") : L("%ld khoản", found.count))
                         Spacer()
-                        Text(fmt(found.reduce(0) { $0 + $1.a })).fontWeight(.semibold)
+                        Text(fmt(found.filter { !$0.isIncome }.reduce(0) { $0 + $1.a })).fontWeight(.semibold)   // tổng chi, như dòng tổng mỗi ngày (không cộng khoản thu)
                     }
                     .font(.system(size: 15))
                     .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 12))
@@ -162,12 +162,15 @@ struct HistoryView: View {
         if cal.isDateInToday(d) { return L("Hôm nay") }
         if cal.isDateInYesterday(d) { return L("Hôm qua") }
         if Lang.isEnglish {
-            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = "EEEE, MMM d"
+            // Năm khác năm nay thì ghi cả năm, kẻo nhầm ngày của năm trước với năm nay
+            let other = !cal.isDate(d, equalTo: Date(), toGranularity: .year)
+            let f = DateFormatter(); f.locale = Lang.locale; f.dateFormat = other ? "EEEE, MMM d, yyyy" : "EEEE, MMM d"
             return f.string(from: d)
         }
         let dow = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][cal.component(.weekday, from: d) - 1]
-        let c = cal.dateComponents([.day, .month], from: d)
-        return "\(dow), \(c.day!)/\(c.month!)"
+        let c = cal.dateComponents([.day, .month, .year], from: d)
+        let other = !cal.isDate(d, equalTo: Date(), toGranularity: .year)
+        return "\(dow), \(c.day!)/\(c.month!)" + (other ? "/\(c.year!)" : "")
     }
 }
 

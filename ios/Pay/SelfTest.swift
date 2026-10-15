@@ -101,6 +101,14 @@ enum SelfTest {
         let y = r3?.items.first.map { Calendar.current.component(.year, from: $0.date) }
         check("CSV năm hai chữ số 15/07/26 → 2026", y == 2026, "\(y ?? -1)")
 
+        // MARK: Số tiền giao dịch thẻ (Phím tắt Ví)
+        let amounts: [(String, Int?)] = [("₫35.000", 35_000), ("35,000.00 VND", 35_000), ("35000", 35_000), ("1.234.567 ₫", 1_234_567),
+                                         ("VND 1,234,567.89", 1_234_567), ("35.000,00 ₫", 35_000), ("-35.000 ₫", -35_000),
+                                         ("−120,000 VND", -120_000), ("(50.000 ₫)", -50_000), ("₫ -1 000 000", -1_000_000), ("VND", nil), ("", nil)]
+        for (s, v) in amounts { check("số tiền thẻ \"\(s)\" → \(v.map(String.init) ?? "nil")", CardPaymentIntent.parse(s) == v, "\(CardPaymentIntent.parse(s) ?? -1)") }
+        for s in ["Refund", "Hoàn tiền", "hoàn", "Shopee - hoàn tiền", "REFUND Apple"] { check("hoàn tiền: \(s)", CardPaymentIntent.isRefund(s)) }
+        for s in ["Hoàn Kiếm Coffee", "Highlands", ""] { check("không phải hoàn tiền: \(s)", !CardPaymentIntent.isRefund(s)) }
+
         // MARK: Chia tiền nhóm
         for (amt, n) in [(100_000, 3), (1, 3), (999_999, 7), (50_000, 4)] {
             let ids = (0..<n).map { "m\($0)" }

@@ -1295,8 +1295,9 @@ struct ApplePayHelp: View {
                 step(4, L("Chạm ô Số tiền, chọn biến Giao dịch rồi chọn Số tiền. Chạm ô Người bán, chọn Giao dịch rồi chọn Người bán."))
                 step(5, L("Thẻ tín dụng: bật ô Thẻ tín dụng, để khoản tự ghi chưa trừ vào số dư mà cộng vào chi tiêu thẻ (trả thẻ thì chạm dòng Chi tiêu thẻ dưới số dư)."))
                 step(6, L("Bấm Xong. Từ giờ mỗi lần quẹt thẻ, Payso tự ghi khoản chi, danh mục đoán theo tên cửa hàng."))
+                step(7, L("Được hoàn tiền (số tiền âm hoặc người bán ghi Refund / Hoàn tiền): Payso ghi khoản thu Được chuyển, ghi chú \"Hoàn tiền · tên cửa hàng\"."))
             } footer: {
-                Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Khoản tự ghi sửa hoặc xoá như khoản thường."))
+                Text(L("Phím tắt chỉ chạy được với thẻ đã thêm vào Ví trên iPhone này. Tự động hoá lỡ chạy hai lần cho một giao dịch thì Payso chỉ ghi một lần. Khoản tự ghi sửa hoặc xoá như khoản thường."))
             }
         }
         .softTopEdge(fade: Color(.systemGroupedBackground), back: true)

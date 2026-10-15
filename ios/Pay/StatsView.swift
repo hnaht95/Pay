@@ -927,7 +927,14 @@ struct StatsView: View {
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Color.primary.opacity(0.07), in: Capsule())
                             Spacer(minLength: 8)
-                            Text("\(fmt(v))").font(.rowAmount).monospacedDigit().lineLimit(1)
+                            // Xem cả tháng hiện tại và danh mục có hạn mức: "đã chi / hạn mức", vượt thì đỏ
+                            if scope == .month && day == nil, let s = store.catStatus(c.k, month) {
+                                (Text(fmt(v)).foregroundStyle(s.level == .over ? Palette.danger : Color.primary)
+                                 + Text(" / " + fmt(s.budget)).foregroundStyle(.secondary))
+                                    .font(.rowAmount).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                            } else {
+                                Text("\(fmt(v))").font(.rowAmount).monospacedDigit().lineLimit(1)
+                            }
                         }
                     }
                 }

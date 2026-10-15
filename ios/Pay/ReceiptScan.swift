@@ -79,9 +79,26 @@ struct ReceiptCamera: View {
             }
             .accessibilityLabel(L("Đóng"))
             Spacer()
+            // Đèn flash: chạm đổi lần lượt tắt → tự động → bật. Camera không có đèn (thường là camera trước) thì ẩn
+            if cam.hasFlash { flashButton }
         }
         .foregroundStyle(.white)
         .buttonStyle(Pressable())
+    }
+
+    private var flashButton: some View {
+        let m = cam.flashMode
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            cam.nextFlash()
+        } label: {
+            Image(systemName: m == .on ? "bolt.fill" : m == .auto ? "bolt.badge.automatic" : "bolt.slash")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(m == .on ? .yellow : .white)
+                .frame(width: 44, height: 44)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .accessibilityLabel(m == .on ? L("Đèn flash: bật") : m == .auto ? L("Đèn flash: tự động") : L("Đèn flash: tắt"))
     }
 
     // MARK: Khung xem
@@ -369,7 +386,13 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     @Published var frame: CGImage?
     @Published var warmth: Float = 0
     @Published var exposure: Float = 0
-    @Published var flashMode: AVCaptureDevice.FlashMode = .off
+    /// Chế độ đèn flash, app nhớ cho lần sau
+    @Published var flashMode: AVCaptureDevice.FlashMode = AVCaptureDevice.FlashMode(rawValue: UserDefaults.standard.integer(forKey: ReceiptCam.flashKey)) ?? .off {
+        didSet { UserDefaults.standard.set(flashMode.rawValue, forKey: Self.flashKey) }
+    }
+    nonisolated static let flashKey = "receiptFlash"
+    /// Camera đang dùng có đèn flash (camera trước thường không có): không có thì ẩn nút
+    @Published private(set) var hasFlash = false
     /// Tiêu cự đang dùng, tính theo camera chính = 1x
     @Published private(set) var zoom: CGFloat = 1
     @Published private(set) var minZoom: CGFloat = 1
@@ -476,6 +499,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             // đổi camera phiên chụp phải dựng thêm một luồng khung hình, đổi camera chậm hẳn
             session.commitConfiguration()
             input = inp
+            hasFlash = d.hasFlash
             // Đặt lại tiêu cự sau khi cấu hình xong: đổi sessionPreset / gắn camera làm camera về định dạng mới, tiêu cự đặt trước
             // đó bị trả về mặc định trong khi số vẫn hiện mức cũ. Phiên chưa chạy nên khung đầu tiên đã đúng tiêu cự
             Self.apply(zoom, to: d)
@@ -535,6 +559,7 @@ final class ReceiptCam: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
         }
         guard let inp else { return false }
         input = inp
+        hasFlash = d.hasFlash
         let w = warmth, e = exposure
         setWarmth(w); setExposure(e)
         return true

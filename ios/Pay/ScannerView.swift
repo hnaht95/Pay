@@ -10,11 +10,14 @@ struct ScannerView: View {
     @State private var error: String?
     /// Lần mở này đã xong (đã có mã, hoặc đã bấm Đóng): camera và ảnh cùng đổ về `found`, mã tới sau đó bị bỏ qua
     @State private var done = false
+    /// Đèn pin: camera đang dùng có đèn thì mới hiện nút
+    @State private var hasTorch = false
+    @State private var torch = false
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            CameraView(onCode: found, onError: { error = $0 }).ignoresSafeArea()
+            CameraView(torch: torch, onCode: found, onError: { error = $0 }, onTorch: { hasTorch = $0 }).ignoresSafeArea()
 
             // Khung ngắm: chỉ trong khung thấy camera sáng, bên ngoài phủ tối để chữ và hai nút dễ đọc
             GeometryReader { g in
@@ -43,6 +46,8 @@ struct ScannerView: View {
                     Text(error).font(.system(size: 17)).foregroundStyle(.white).multilineTextAlignment(.center).padding(24)
                 }
                 Spacer()
+                // Nút đèn pin: tròn kính mờ, giữa màn, ngay trên hai nút dưới (không đè khung ngắm)
+                if hasTorch { torchButton.padding(.bottom, 20) }
                 HStack(spacing: 12) {
                     PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh QR")) }
                     Button { done = true; dismiss() } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
@@ -62,6 +67,23 @@ struct ScannerView: View {
             }
             found(code)
         }
+    }
+
+    private var torchButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            torch.toggle()
+        } label: {
+            Image(systemName: torch ? "flashlight.on.fill" : "flashlight.off.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(torch ? .yellow : .white)
+                .frame(width: 56, height: 56)
+                .background(.ultraThinMaterial, in: Circle())
+                .environment(\.colorScheme, .dark)
+                .contentShape(Circle())
+        }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(torch ? L("Tắt đèn pin") : L("Bật đèn pin"))
     }
 
     private func pill(_ s: String) -> some View {
@@ -87,22 +109,28 @@ struct ScannerView: View {
 }
 
 private struct CameraView: UIViewControllerRepresentable {
+    let torch: Bool
     let onCode: (String) -> Void
     let onError: (String) -> Void
+    let onTorch: (Bool) -> Void
 
     func makeUIViewController(context: Context) -> CameraController {
         let c = CameraController()
         c.onCode = onCode
         c.onError = onError
+        c.onTorch = onTorch
         return c
     }
 
-    func updateUIViewController(_ vc: CameraController, context: Context) {}
+    func updateUIViewController(_ vc: CameraController, context: Context) { vc.setTorch(torch) }
 }
 
 final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onCode: ((String) -> Void)?
     var onError: ((String) -> Void)?
+    /// Báo camera có đèn pin hay không (sau khi mở camera)
+    var onTorch: ((Bool) -> Void)?
+    private var device: AVCaptureDevice?
     private let session = AVCaptureSession()
     private var preview: AVCaptureVideoPreviewLayer?
     private var done = false
@@ -121,6 +149,8 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
             return
         }
         session.addInput(input)
+        self.device = device
+        onTorch?(device.hasTorch)
         let output = AVCaptureMetadataOutput()
         guard session.canAddOutput(output) else { return }
         session.addOutput(output)
@@ -142,7 +172,17 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        setTorch(false)
         if session.isRunning { DispatchQueue.global().async { self.session.stopRunning() } }
+    }
+
+    /// Bật / tắt đèn pin của camera đang quét. Phiên chụp phải đang chạy thì đèn mới sáng; bật lúc chưa chạy thì iOS tự bật khi chạy
+    func setTorch(_ on: Bool) {
+        guard let d = device, d.hasTorch, d.isTorchAvailable || !on else { return }
+        let mode: AVCaptureDevice.TorchMode = on ? .on : .off
+        guard d.torchMode != mode, (try? d.lockForConfiguration()) != nil else { return }
+        if d.isTorchModeSupported(mode) { d.torchMode = mode }
+        d.unlockForConfiguration()
     }
 
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from connection: AVCaptureConnection) {

@@ -117,13 +117,18 @@ Nút đổi kiểu ở mục Gần đây và ở Lịch sử, chung một lựa 
 ## 10. Màn chụp hoá đơn (`ReceiptScan.swift`)
 
 - Khung xem 3:4 cố định, bo 32, có lưới chia ba (vạch trắng mờ, không có trong ảnh). Thu phóng theo mặc định của app Camera: mở ở 1× (24mm), số hiện dạng × (chữ đơn cách, không nền), chạm đổi nấc 1× · 2× · 0,5×; vuốt ngang hiện vòng tiêu cự, giữa vòng có thêm số mm. Đổi camera: camera trước 1×, quay lại camera sau giữ tiêu cự đang dùng.
-- Thanh trên chỉ có nút quay lại. Nút đổi camera trước / sau nằm ngang hàng số thu phóng, sát mép phải khung xem, biểu tượng trắng cùng cỡ với số, trên nền tròn kính mờ 40. Chạm: rung ngay, khung xem lật quanh trục dọc dưới lớp kính mờ, đổi camera chạy song song.
+- Thanh trên: nút quay lại bên trái, nút đèn flash bên phải (biểu tượng trắng không nền, cỡ 44; chạm đổi tắt `bolt.slash` → tự động `bolt.badge.automatic` → bật `bolt.fill` màu vàng; app nhớ cho lần sau; camera không có đèn, thường là camera trước, thì ẩn). Nút đổi camera trước / sau nằm ngang hàng số thu phóng, sát mép phải khung xem, biểu tượng trắng cùng cỡ với số, trên nền tròn kính mờ 40. Chạm: rung ngay, khung xem lật quanh trục dọc dưới lớp kính mờ, đổi camera chạy song song.
 - Camera dùng **ống vật lý** (camera trước, ống chính, ống góc siêu rộng), không dùng camera ghép nhiều ống của iOS (chậm khi đổi trước ↔ sau). Dưới 1× tự đổi sang ống góc siêu rộng. Ảnh camera trước lật gương giống khung xem.
 - Hàng dưới, cao hơn vạch Home 28: ô ảnh bên trái, nút chụp ở giữa, nút nhà bên phải. Ô ảnh và nút nhà đứng **giữa khoảng từ mép màn tới mép nút chụp**.
   - Ô ảnh: hai ảnh mới nhất trong app Ảnh, khung 3:4 bo 6, xếp chồng lệch nhau, viền trắng mảnh.
   - Nút nhà: SF Symbols `house`, nét đậm, không nền. Chỉ có khi mở từ trang chủ.
 - Chụp: chỉ khung xem tối sầm thoáng qua (không loé cả màn), ảnh cắt đúng 3:4 rồi dùng luôn, không qua bước sửa. Ảnh chọn từ thư viện căn vào khung 3:4.
 - Chụp xong: màn nhập mở ngay **trên** màn chụp, camera vẫn chạy phía dưới. Lưu: cả hai trượt xuống về trang chủ. Huỷ: quay lại màn chụp, chụp tiếp ngay (không bật lại camera, không nháy đen).
+
+### Màn quét QR (`ScannerView.swift`)
+
+- Camera toàn màn, khung ngắm vuông bo 36, ngoài khung phủ tối. Đáy: hai nút dạng viên (Chọn ảnh QR · Đóng).
+- Nút đèn pin: tròn kính mờ 56, giữa màn, ngay trên hai nút đáy (không đè khung ngắm). `flashlight.off.fill` trắng / `flashlight.on.fill` vàng khi bật. Máy không có đèn thì ẩn; rời màn quét thì tắt đèn.
 
 ## 11. Chỗ vẫn để hệ thống vẽ
 

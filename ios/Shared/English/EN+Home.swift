@@ -173,6 +173,8 @@ extension English {
         // ScannerView
         "Đưa mã QR của quán vào khung": "Fit the shop's QR code in the frame",
         "Chọn ảnh QR": "Choose QR photo",
+        "Bật đèn pin": "Turn on flashlight",
+        "Tắt đèn pin": "Turn off flashlight",
         "Đóng": "Close",
         "Không đọc được mã QR trong ảnh": "Couldn't read a QR code in this photo",
         "Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".":

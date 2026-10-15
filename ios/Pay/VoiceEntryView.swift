@@ -812,56 +812,15 @@ private struct Waveform: View {
     /// Dựng phim: độ to và thời điểm lấy từ phim
     var film: FilmFrame? = nil
     @State private var smooth = Smoother()
-    /// Lúc dải sóng hiện ra (thẻ vừa mở, hoặc bấm Nói lại)
-    @State private var born = Date()
-    /// Kiểu sóng chào lần này (mỗi lần mở một kiểu, không lặp lại kiểu vừa dùng)
-    @State private var hi = 0
 
     var body: some View {
         if let film, let v = film.voice { dots(level: v.level, time: film.time) }
         else {
             TimelineView(.animation) { t in
-                dots(level: max(smooth.step(to: meter.value, at: t.date), Self.hello(hi, t.date.timeIntervalSince(born))),
+                dots(level: smooth.step(to: meter.value, at: t.date),
                      time: t.date.timeIntervalSinceReferenceDate)
             }
-            // Chọn ở onAppear: giá trị đầu của @State tính lại mỗi lần view cha vẽ lại (chỉ lần đầu được giữ)
-            .onAppear { hi = Self.nextHello() }
         }
-    }
-
-    /// 10 kiểu sóng chào, xếp từ cao tới thấp: mỗi kiểu là vài tiếng ngắn liền nhau như một câu nói thật,
-    /// mỗi tiếng (độ cao 0…1, dài bao nhiêu giây). Dài ngắn khác nhau: từ một tiếng 0,4 giây tới bốn tiếng hơn 1 giây.
-    private static let hellos: [[(peak: Double, len: Double)]] = [
-        [(0.95, 0.30), (0.60, 0.20), (0.85, 0.35)],
-        [(0.90, 0.45), (0.70, 0.25)],
-        [(0.55, 0.20), (0.85, 0.30), (0.50, 0.20), (0.70, 0.30)],
-        [(0.80, 0.55)],
-        [(0.75, 0.25), (0.45, 0.15), (0.70, 0.25)],
-        [(0.40, 0.20), (0.70, 0.40)],
-        [(0.65, 0.30), (0.55, 0.30)],
-        [(0.60, 0.45)],
-        [(0.50, 0.20), (0.35, 0.15), (0.50, 0.20), (0.40, 0.25)],
-        [(0.40, 0.40)],
-    ]
-
-    private static func nextHello() -> Int {
-        let last = UserDefaults.standard.integer(forKey: "voiceHello")
-        var i = Int.random(in: 0..<hellos.count)
-        if i == last { i = (i + 1 + Int.random(in: 0..<(hellos.count - 1))) % hellos.count }
-        UserDefaults.standard.set(i, forKey: "voiceHello")
-        return i
-    }
-
-    /// Sóng nháy một lần khi vừa hiện ra, để biết là app đang nghe (micro còn đang bật, chưa có tiếng thì sóng nằm im):
-    /// đợi thẻ lên xong (0,35 giây) rồi chạy các tiếng của kiểu đã chọn, mỗi tiếng dâng lên rồi hạ xuống
-    private static func hello(_ kind: Int, _ elapsed: TimeInterval) -> CGFloat {
-        var t = elapsed - 0.35
-        guard t > 0 else { return 0 }
-        for s in hellos[kind] {
-            if t < s.len { return CGFloat(s.peak * sin(.pi * t / s.len)) }
-            t -= s.len
-        }
-        return 0
     }
 
     private static let barWidth: CGFloat = 2

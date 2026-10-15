@@ -9,6 +9,19 @@ final class MicLevel: ObservableObject {
     @Published var value: CGFloat = 0
 }
 
+/// Ước lượng tiếng ồn xung quanh (dB) từ các lần đo micro: gặp mức thấp hơn thì hạ nhanh (vài lần đo), cao hơn thì chỉ nhích lên từ từ
+/// (khoảng 2 giây mới theo kịp). Lúc nói, các khoảng ngắt giữa các tiếng kéo nền về lại mức ồn thật nên giọng nói không
+/// bị tính thành tiếng ồn. Chỉ dùng trên luồng âm thanh của micro (mỗi lần một bộ đệm, không chạy song song).
+private final class NoiseFloor: @unchecked Sendable {
+    private var level: Float = -60
+
+    func update(_ db: Float) -> Float {
+        level += (db - level) * (db < level ? 0.3 : 0.01)
+        level = min(max(level, -70), -38)   // phòng quá ồn: nền không lên quá -38 dB, nói to vẫn thấy sóng
+        return level
+    }
+}
+
 /// Nghe giọng nói tiếng Việt, ngừng nói ~1,4 giây thì tự kết thúc và trả về câu đã nghe.
 @MainActor
 final class VoiceListener: ObservableObject {
@@ -140,6 +153,7 @@ final class VoiceListener: ObservableObject {
             }
             input.removeTap(onBus: 0)   // phòng còn tap cũ
             let meter = meter
+            let noise = NoiseFloor()
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 req.append(buffer)
                 // Độ to (RMS) đổi sang thang 0…1 cho sóng âm. Micro ở chế độ đo (không tự khuếch đại) nên giọng thường
@@ -149,9 +163,11 @@ final class VoiceListener: ObservableObject {
                 var sum: Float = 0
                 for i in 0..<n { sum += ch[i] * ch[i] }
                 let db = 20 * log10(max(sqrt(sum / Float(n)), 1e-6))
-                // Dải -56…-33 dB, mũ 0,55: nói nhỏ đã lên rõ, nói bình thường gần mức cao nhất, phòng yên tĩnh
-                // (khoảng -60 dB trở xuống) vẫn nằm im. Trước là -52…-30 dB, mũ 0,6: nói nhỏ sóng gần như không động
-                let v = CGFloat(pow(min(max((db + 56) / 23, 0), 1), 0.55))
+                // Tính theo độ to so với tiếng ồn xung quanh, không theo một ngưỡng cố định: ngưỡng cố định thấp thì chỗ ồn
+                // sóng đã lên 3–4 hàng khi chưa nói, ngưỡng cao thì nói nhỏ sóng không động. Cao hơn nền ồn 6 dB mới bắt đầu
+                // lên, hơn 26 dB là cao nhất (nói bình thường cách micro một gang tay khoảng 20–30 dB trên nền ồn)
+                let floor = noise.update(db)
+                let v = CGFloat(pow(min(max((db - floor - 6) / 20, 0), 1), 0.6))
                 Task { @MainActor in meter.value = v }   // làm mượt ở Waveform, theo từng khung hình
             }
             engine.prepare()

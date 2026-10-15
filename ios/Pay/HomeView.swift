@@ -436,21 +436,24 @@ struct HomeView: View {
         }
         .buttonStyle(Pressable())
         .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
-            // Nợ thẻ tín dụng (khoản quẹt thẻ chưa trả): dòng nhỏ dưới số dư, che / hiện cùng số dư; chạm để trả thẻ.
-            // Không nợ thì không có dòng này
+            // Chi tiêu thẻ tín dụng chưa trả: viên riêng dưới số dư, luôn hiện số (không che như số dư); chạm để trả thẻ. Là một viên
+            // có nền, cách số dư một khoảng, để không bấm nhầm sang số dư ngay trên. Không có thì không có viên này
             if debt > 0 {
                 Button { cardOpen = true } label: {
-                    // Cả dòng chồng lên nhau, căn phải: lúc che chữ "Chi tiêu thẻ" đứng sát dãy chấm (không cách một khoảng bằng số tiền)
-                    ZStack(alignment: .trailing) {
-                        Text(L("Chi tiêu thẻ") + " " + fmt(debt)).opacity(balanceShown ? 1 : 0)
-                        Text(L("Chi tiêu thẻ") + " ••••").opacity(balanceShown ? 0 : 1)
+                    HStack(spacing: 4) {
+                        Image(systemName: "creditcard.fill").font(.system(size: 11, weight: .semibold))
+                        Text(fmt(debt)).monospacedDigit()
+                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
                     }
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
                     .lineLimit(1).fixedSize()
-                    .contentShape(Rectangle())
+                    .padding(.leading, 9).padding(.trailing, 8).padding(.vertical, 5)
+                    .background(Palette.pill, in: Capsule())
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(Pressable())
-                .accessibilityLabel(balanceShown ? L("Chi tiêu thẻ %@, chạm để trả thẻ", fmt(debt)) : L("Chi tiêu thẻ, chạm để trả thẻ"))
+                .padding(.top, 6)
+                .accessibilityLabel(L("Chi tiêu thẻ %@, chạm để trả thẻ", fmt(debt)))
             }
         }
     }

@@ -183,6 +183,45 @@ struct HouseGroup: Identifiable {
     /// Lần trả còn chờ người nhận xác nhận (người nhận chỉ là tên thì không tính là chờ)
     var waiting: [HouseSettle] { settles.filter { $0.status == "wait" && usesApp($0.to) } }
     var lastActivity: Date { max(spends.first?.date ?? .distantPast, settles.first?.date ?? .distantPast) }
+
+    /// Người này đã có trong sổ (ứng tiền, được chia, chuyển / nhận tiền): xoá đi thì các khoản cũ và số dư thành "Người đã xoá"
+    func inUse(_ id: String) -> Bool {
+        spends.contains { $0.payer == id || $0.shares.contains(id) } || settles.contains { $0.from == id || $0.to == id }
+    }
+
+    /// Tóm tắt bằng chữ để gửi vào nhóm Zalo / Messenger: tổng đợt đang mở (sau lần chốt gần nhất), phần mỗi người trong đợt,
+    /// rồi ai chuyển ai bao nhiêu theo số dư hiện tại, kèm tài khoản người nhận (nếu có) để chuyển luôn
+    func summary() -> String {
+        let names = Dictionary(members.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+        let name = { (id: String) in names[id] ?? L("Người đã xoá") }
+        let money = { (n: Int) in fmt(n) + "đ" }
+        let open = spends.filter { e in closes.first.map { e.date > $0.date } ?? true }
+        var lines = [self.name.isEmpty ? L("Nhóm chung") : self.name]
+        lines.append(L("Tổng đợt này: %@ (%ld khoản)", money(open.reduce(0) { $0 + $1.amount }), open.count))
+        var share: [String: Int] = [:]
+        for e in open { for (id, p) in Settle.parts(e) { share[id, default: 0] += p } }
+        let rows = share.filter { $0.value > 0 }.sorted { $0.value != $1.value ? $0.value > $1.value : name($0.key) < name($1.key) }
+        if !rows.isEmpty {
+            lines += ["", L("Phần mỗi người:")]
+            for (id, v) in rows { lines.append("• \(name(id)): \(money(v))") }
+        }
+        lines.append("")
+        let ts = Settle.transfers(Settle.balances(spends, settles))
+        if ts.isEmpty {
+            lines.append(L("Không ai nợ ai, cả nhóm đã trả xong."))
+        } else {
+            lines.append(L("Cần chuyển:"))
+            for t in ts {
+                var line = "• \(name(t.from)) → \(name(t.to)): \(money(t.amount))"
+                if let m = members.first(where: { $0.id == t.to }), m.hasBank, let bin = m.bin, let acct = m.acct {
+                    line += " (\(BankData.names[bin] ?? bin) \(acct))"
+                }
+                lines.append(line)
+            }
+        }
+        lines += ["", L("Gửi từ Payso")]
+        return lines.joined(separator: "\n")
+    }
 }
 
 /// Người tạo nhóm có vùng dữ liệu trong iCloud của mình; người được mời thấy vùng đó trong cơ sở dữ liệu "được chia sẻ".
@@ -202,6 +241,8 @@ final class House: ObservableObject {
     @Published private(set) var archived: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "house.archived") ?? [])
 
     private let container = CKContainer(identifier: "iCloud.com.hnaht95.sochipay")
+    /// Mã người dùng iCloud của máy này (hỏi một lần): biết thành viên nào đã được Apple ID khác nhận
+    @Published private(set) var userID: String?
     private static let zonePrefix = "nha-"
 
     /// Bản Debug chạy với "-houseDemo YES": dữ liệu mẫu, không cần iCloud, sửa gì cũng chỉ trên máy (để xem giao diện trên máy ảo)
@@ -274,7 +315,7 @@ final class House: ObservableObject {
     /// Không còn đăng nhập iCloud: bỏ bản lưu để không hiện sổ của tài khoản cũ
     private func dropCache() {
         try? FileManager.default.removeItem(at: Self.cacheURL)
-        groups = []; currentID = nil
+        groups = []; currentID = nil; userID = nil
         subscribed = []   // tài khoản đăng nhập sau phải đăng ký nhận đẩy lại
     }
 
@@ -420,6 +461,7 @@ final class House: ObservableObject {
             if let id = currentID, !groups.contains(where: { $0.id == id }) { currentID = nil }
             phase = .ready
             for i in groups.indices { notifyChanges(i) }
+            syncPersonal(fresh: Set(loaded.compactMap { $0.1?.id }))
             // Nhóm chưa từng tải về máy mà lần này đọc lỗi thì tạm vắng trong danh sách: người dùng đang xem thì báo cho biết
             if missing, prompt, !Task.isCancelled, let failure { Store.shared.showError(Self.describe(failure)) }
             if !groups.isEmpty, prompt { await enableNotifications() }
@@ -447,7 +489,7 @@ final class House: ObservableObject {
         Self.rebuild(&g)
         g.me = UserDefaults.standard.string(forKey: "house.me.\(g.id)").flatMap { id in g.members.contains { $0.id == id } ? id : nil }
         // Máy mới / cài lại: nhận ra mình qua Apple ID đã gắn với thành viên
-        if g.me == nil, let u = try? await container.userRecordID().recordName {
+        if g.me == nil, let u = await myUser() {
             g.me = g.members.first { $0.user == u }?.id
         }
         return g
@@ -630,15 +672,60 @@ final class House: ObservableObject {
         } catch { fail(error) }
     }
 
+    private func myUser() async -> String? {
+        if userID == nil { userID = try? await container.userRecordID().recordName }
+        return userID
+    }
+
+    func knowUser() async { if !demo { _ = await myUser() } }
+
     /// "Tôi là người này": nhớ trên máy và gắn Apple ID vào thành viên, lần sau máy khác tự nhận ra.
-    func claim(_ id: String) async {
+    /// Đổi từ người khác sang (lúc trước chọn nhầm): gỡ Apple ID khỏi người cũ để người đó trống lại cho chủ thật nhận.
+    /// Người đã được một Apple ID khác nhận thì không nhận được (kẻo hai máy cùng là một người). Trả về false khi không nhận
+    @discardableResult
+    func claim(_ id: String) async -> Bool {
+        guard let gid = currentID else { return false }
+        let old = me
+        if old == id { return true }
+        // Đổi người: tải lại trước để biết đúng ai đang được Apple ID nào nhận (người kia có thể vừa nhận trên máy họ)
+        if old != nil, !demo { await load(prompt: false) }
         // Nhóm đang mở có thể vừa đổi trong lúc chờ (thêm mình xong mới nhận): không lấy mã thành viên của nhóm khác làm "tôi"
-        guard members.contains(where: { $0.id == id }) else { return }
+        guard currentID == gid, let m = members.first(where: { $0.id == id }) else { return false }
+        let u = demo ? nil : await myUser()
+        if let taken = m.user, taken != u {
+            Store.shared.showError(L("%@ đã được một tài khoản iCloud khác nhận. Người đó đổi sang người khác thì bạn mới chọn được.", m.name))
+            return false
+        }
+        guard currentID == gid else { return false }
+        // Các lần trả cũ của người mới nhận coi như đã thấy: không bật thông báo dồn cho chuyện đã qua
+        if old != nil, let g = current {
+            let key = "house.seen.\(gid)"
+            var seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+            for s in g.settles { seen.insert("\(s.id).\(s.status)") }
+            UserDefaults.standard.set(Array(seen), forKey: key)
+        }
         me = id
-        if demo { return }
-        guard let r = record(id), let u = try? await container.userRecordID().recordName, r["user"] as? String != u else { return }
-        r["user"] = u
-        _ = await run([r])
+        if !demo, let u {
+            var rs: [CKRecord] = []
+            if let r = record(id), r["user"] as? String != u { r["user"] = u; rs.append(r) }
+            if let old, let r = record(old), r["user"] as? String == u { r["user"] = nil; rs.append(r) }
+            if !rs.isEmpty { _ = await run(rs) }
+        }
+        // Phần của mình đã ghi vào chi tiêu cá nhân tính lại theo người mới
+        syncPersonal(fresh: [])
+        return true
+    }
+
+    /// Chủ nhóm xoá một người chưa có trong sổ (thêm nhầm, trùng tên). Người đã có khoản chi / lần trả thì không xoá: các khoản cũ
+    /// và số dư sẽ thành "Người đã xoá", cộng lại không còn khớp
+    func removeMember(_ id: String) async {
+        guard isOwner, id != me, let g = current, !g.inUse(id) else { return }
+        if !demo {
+            await load(prompt: false)   // máy khác có thể vừa ghi khoản cho người này
+            guard let g = current, g.members.contains(where: { $0.id == id }) else { return }
+            if g.inUse(id) { Store.shared.showError(L("Người này vừa có khoản chi hoặc lần trả nên không xoá được.")); return }
+        }
+        await delete(id)
     }
 
     // MARK: Trả ngay qua app ngân hàng
@@ -726,7 +813,63 @@ final class House: ObservableObject {
         r["amount"] = Int64(amount); r["note"] = note; r["payer"] = payer; r["shares"] = shares; r["date"] = Date(); r["cat"] = cat
         let f = HouseSpend(id: "", amount: amount, note: "", payer: payer, shares: shares, date: Date(), cat: cat, fixed: fixed).fixedField
         if !f.isEmpty { r["fixed"] = f }
-        return await run([r])
+        guard await run([r]) else { return false }
+        // Nhớ ngay khoản này thuộc nhóm nào: người khác xoá nó trước lần tải kế tiếp thì vẫn biết mà xoá phần đã ghi vào chi tiêu cá nhân
+        if let me = groups.first(where: { $0.id == zone.zoneName })?.me {
+            let part = shares.contains(me) ? Settle.parts(amount, shares, fixed: fixed, seed: id)[me] ?? 0 : 0
+            link(id, group: zone.zoneName, part: part)
+        }
+        return true
+    }
+
+    // MARK: Phần của mình trong chi tiêu cá nhân
+
+    /// Khoản chung đã gặp mà có thể đã ghi phần của mình vào chi tiêu cá nhân (acct = "h:<mã khoản>", xem Store.groupLink):
+    /// mã khoản → "mã nhóm|phần lần cuối đã khớp". Chỉ trên máy này. Biết khoản thuộc nhóm nào mới dám coi khoản vắng mặt là đã bị
+    /// xoá (nhóm đọc lỗi, đã rời hay chưa tải về thì không phải)
+    private var links: [String: String] = UserDefaults.standard.dictionary(forKey: "house.links") as? [String: String] ?? [:]
+
+    private func link(_ spend: String, group: String, part: Int) {
+        let v = "\(group)|\(part)"
+        guard links[spend] != v else { return }
+        links[spend] = v
+        UserDefaults.standard.set(links, forKey: "house.links")
+    }
+
+    /// Khớp các khoản chi cá nhân đã ghi từ khoản chung với sổ nhóm: ai đó (mình hay người khác, máy nào cũng vậy) sửa số tiền /
+    /// cách chia thì phần của mình đổi theo; khoản chung bị xoá hoặc mình không còn trong phần chia thì xoá khoản cá nhân đó.
+    /// Chỉ đụng khoản có nối (acct "h:…"), không bao giờ tạo khoản mới. fresh: các nhóm vừa tải đủ từ iCloud — chỉ ở đó khoản vắng
+    /// mặt mới chắc là đã bị xoá (bản lưu trên máy có thể chưa có khoản máy khác vừa thêm)
+    private func syncPersonal(fresh: Set<String>) {
+        guard !demo else { return }   // dữ liệu mẫu: không đụng chi tiêu thật của máy
+        let store = Store.shared
+        let mine = store.all.filter { $0.acct?.hasPrefix("h:") == true }
+        guard !mine.isEmpty else { return }
+        var at: [String: (group: HouseGroup, spend: HouseSpend)] = [:]
+        for g in groups { for e in g.spends { at[e.id] = (g, e) } }
+        var gone: [String] = []
+        for e in mine {
+            let sid = String(e.acct!.dropFirst(2))
+            let saved = links[sid]?.split(separator: "|", maxSplits: 1).map(String.init)
+            if let (g, s) = at[sid] {
+                guard let me = g.me else { continue }   // chưa chọn "tôi là ai" ở nhóm này: chưa biết phần nào là của mình
+                let part = s.shares.contains(me) ? Settle.parts(s)[me] ?? 0 : 0
+                let before = saved.flatMap { $0.count == 2 ? Int($0[1]) : nil }
+                link(sid, group: g.id, part: part)
+                if part <= 0 { store.remove(id: e.id, toast: false); continue }
+                // Phần trong nhóm không đổi từ lần khớp trước mà số tiền cá nhân khác: người dùng tự sửa khoản của mình, để nguyên
+                if before == part { continue }
+                if e.a != part { var e = e; e.a = part; store.update(e) }
+            } else if let gid = saved?.first, fresh.contains(gid) {
+                // Nhóm vừa tải đủ mà không còn khoản này: đã bị xoá
+                store.remove(id: e.id, toast: false)
+                gone.append(sid)
+            }
+        }
+        if !gone.isEmpty {
+            for sid in gone { links[sid] = nil }
+            UserDefaults.standard.set(links, forKey: "house.links")
+        }
     }
 
     /// Các mã này có thuộc nhóm đang mở không (thành viên, kể cả người đã xoá nhưng còn trong sổ). Nhóm đang mở có thể bị đổi
@@ -943,6 +1086,7 @@ final class House: ObservableObject {
     func delete(_ id: String) async {
         if demo, let i = cur {
             groups[i].spends.removeAll { $0.id == id }; groups[i].settles.removeAll { $0.id == id }; groups[i].closes.removeAll { $0.id == id }
+            groups[i].members.removeAll { $0.id == id }
             return
         }
         guard let g = current else { return }
@@ -1024,6 +1168,27 @@ enum HouseInvite {
         var top = root
         while let p = top.presentedViewController { top = p }
         top.present(c, animated: true)
+    }
+}
+
+// MARK: Gửi chữ qua bảng chia sẻ của iOS
+
+/// Bảng chia sẻ của iOS với một đoạn chữ (Zalo, Messenger, Tin nhắn đều nhận chữ thường)
+enum ShareText {
+    @MainActor static func present(_ text: String) {
+        // Chờ menu vừa bấm đóng hẳn: đang đóng mà mở bảng thì iOS bỏ qua
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            guard let root = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController else { return }
+            var top = root
+            while let p = top.presentedViewController { top = p }
+            let c = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+            if let pop = c.popoverPresentationController {   // iPad: bảng nổi cần chỗ neo
+                pop.sourceView = top.view
+                pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+                pop.permittedArrowDirections = []
+            }
+            top.present(c, animated: true)
+        }
     }
 }
 

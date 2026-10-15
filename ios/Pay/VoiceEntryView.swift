@@ -644,7 +644,7 @@ struct VoiceEntryView: View {
                         autoClose?.cancel()
                         if Pro.shared.allow(.photos) { shooting = true }
                     } label: {
-                        Image(systemName: attached ? "checkmark" : "camera.fill").font(.system(size: 20, weight: .semibold))
+                        Image(systemName: attached ? "photo.badge.checkmark" : "camera.fill").font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(attached ? Palette.goodInk : .primary)
                             .frame(width: 64, height: 64)
                             .background(Palette.pill, in: Circle())

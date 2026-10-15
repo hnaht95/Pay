@@ -1021,6 +1021,13 @@ struct BigButton: View {
     /// Ngón tay còn trên nút không; iOS tự đưa về false cả khi cử chỉ bị huỷ (vd màn hình khác vừa mở đè lên)
     @GestureState private var touching = false
 
+    /// Mép trên của dải thanh Home (toạ độ toàn màn): vuốt lên bắt đầu dưới đường này là của iOS
+    private static var homeZoneTop: CGFloat {
+        let w = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first
+        let h = w?.bounds.height ?? 874, bottom = w?.safeAreaInsets.bottom ?? 34
+        return h - max(bottom, 20)
+    }
+
     var body: some View {
         if let swipeUp {
             // Tự xử lý bằng một cử chỉ, mỗi lần nhấn chỉ ra đúng một việc: kéo lên quá 30pt là vuốt lên (làm ngay,
@@ -1029,13 +1036,15 @@ struct BigButton: View {
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
                 .scaleEffect(down ? 0.94 : 1).opacity(down ? 0.72 : 1)
                 .animation(down ? .easeOut(duration: 0.08) : .spring(duration: 0.3, bounce: 0.35), value: down)
-                .gesture(DragGesture(minimumDistance: 0)
+                .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .global)
                     .updating($touching) { _, on, _ in on = true }
                     .onChanged { v in
                         guard !fired else { return }
                         down = true
                         let up = -v.translation.height
-                        if up > 30, abs(v.translation.width) < 50 {
+                        // Vuốt bắt đầu trong dải thanh Home (vùng an toàn dưới đáy màn) là cử chỉ về màn hình chính của iOS, không
+                        // phải vuốt lên từ nút: nút nằm sát đáy nên ngón tay vuốt từ mép dưới hay chạm vào phần dưới của nút
+                        if up > 30, abs(v.translation.width) < 50, v.startLocation.y < Self.homeZoneTop {
                             fired = true; down = false
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             swipeUp(frame)

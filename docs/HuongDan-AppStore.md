@@ -40,7 +40,7 @@ Vào **Apps** → chọn **Payso** → cột trái mục **Monetization**.
 1. **In-App Purchases** → nút **+**.
 2. Type: **Non-Consumable**.
    - Reference Name: `Payso Pro Lifetime` (chỉ mình thấy).
-   - Product ID: `com.hnaht95.sochipay.pro.lifetime` — **gõ đúng từng ký tự**, app tìm gói bằng mã này. Đặt rồi không đổi được.
+   - Product ID: `com.hnaht95.sochipay.pro.forever` — **gõ đúng từng ký tự**, app tìm gói bằng mã này. Đặt rồi không đổi được.
 3. Trong trang gói vừa tạo:
    - **Availability**: chọn tất cả quốc gia (hoặc chỉ Việt Nam).
    - **Price Schedule** → **Add Pricing**: nước gốc **Vietnam**, chọn **299.000 ₫**. Apple tự quy đổi cho các nước khác.

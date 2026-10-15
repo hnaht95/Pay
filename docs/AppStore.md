@@ -65,7 +65,7 @@ chi tiêu,sổ thu chi,quản lý tiền,ngân sách,vietqr,quét qr,tài chính
 
 | Loại | Product ID | Tên hiển thị | Giá |
 |---|---|---|---|
-| Non-Consumable | com.hnaht95.sochipay.pro.lifetime | Payso Pro trọn đời | 299.000đ (tháng đầu 149.000đ) |
+| Non-Consumable | com.hnaht95.sochipay.pro.forever | Payso Pro trọn đời | 299.000đ (tháng đầu 149.000đ) |
 | Auto-Renewable (nhóm "Payso Pro") | com.hnaht95.sochipay.pro.yearly | Payso Pro năm | 79.000đ/năm |
 
 Mỗi gói cần: tên + mô tả (tiếng Việt và tiếng Anh), ảnh chụp màn mua Pro (để Apple duyệt), ghi chú duyệt.

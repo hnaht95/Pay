@@ -7,7 +7,7 @@
       "familyShareable" : true,
       "internalID" : "6700000001",
       "localizations" : [ { "description" : "Mở mọi tính năng Pro, trả một lần", "displayName" : "Payso Pro trọn đời", "locale" : "vi" } ],
-      "productID" : "com.hnaht95.sochipay.pro.lifetime",
+      "productID" : "com.hnaht95.sochipay.pro.forever",
       "referenceName" : "Payso Pro Lifetime",
       "type" : "NonConsumable"
     }

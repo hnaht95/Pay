@@ -10,7 +10,7 @@ import UIKit
 @MainActor
 final class Pro: ObservableObject {
     static let shared = Pro()
-    static let lifetimeID = "com.hnaht95.sochipay.pro.lifetime"
+    static let lifetimeID = "com.hnaht95.sochipay.pro.forever"
     static let yearlyID = "com.hnaht95.sochipay.pro.yearly"
     /// Số danh mục tự tạo được dùng miễn phí
     static let freeCategories = 2

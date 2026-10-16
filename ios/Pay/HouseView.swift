@@ -107,6 +107,7 @@ struct HouseView: View {
             await house.load()
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "houseDemoAdd") { adding = true }   // máy ảo không bấm được nút nổi
+            if UserDefaults.standard.bool(forKey: "houseDemoQR") { if house.current == nil { house.open(house.groups.first?.id) }; showGroupQR = true }
             // -houseDemoMember <tên>: mở sẵn màn thành viên đó (nhóm đang mở)
             if let n = UserDefaults.standard.string(forKey: "houseDemoMember") {
                 if house.current == nil { house.open(house.groups.first?.id) }
@@ -472,7 +473,7 @@ struct HouseView: View {
 
     private func groupCard(_ g: HouseGroup) -> some View {
         let net = g.myNet
-        let pend = g.pending.count
+        let pend = g.pending.count + (house.joinRequests[g.id]?.count ?? 0)
         return TapHold(tap: { withAnimation(.snappy) { house.open(g.id) } }, hold: { menu = groupMenu(g) }) {
             HStack(spacing: 14) {
                 groupIcon(g)
@@ -1154,12 +1155,37 @@ struct HouseView: View {
 
     @ViewBuilder private var pendingSection: some View {
         let mine = pending
-        if !mine.isEmpty {
+        let asks = house.current.flatMap { house.joinRequests[$0.id] } ?? []
+        if !mine.isEmpty || !asks.isEmpty {
             sectionTitle(L("Cần xác nhận"))
             VStack(spacing: 10) {
+                ForEach(asks) { q in joinCard(q) }
                 ForEach(mine) { s in pendingCard(s) }
             }
         }
+    }
+
+    /// Một người quét mã nhóm xin vào: chủ nhóm Duyệt / Từ chối ngay trên màn nhóm
+    private func joinCard(_ q: JoinRequest) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                HouseAvatar(id: q.nonce, name: q.name, size: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("%@ muốn vào nhóm", q.name)).font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    Text(L("Quét mã QR của nhóm · %@", ago(q.date))).font(.system(size: 13)).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            if #available(iOS 18.0, *), let g = house.current {
+                HStack(spacing: 8) {
+                    pill(L("Từ chối"), primary: false) { Task { await house.answer(q, in: g, accept: false) } }
+                    pill(L("Duyệt"), primary: true) { Task { await house.answer(q, in: g, accept: true) } }
+                }
+                .disabled(house.busy)
+            }
+        }
+        .padding(14)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     private func pendingCard(_ s: HouseSettle) -> some View {

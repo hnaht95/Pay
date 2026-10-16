@@ -31,7 +31,10 @@ struct PayApp: App {
                 .environmentObject(store)
                 .environmentObject(quick)
                 // sochipay://scan, sochipay://add từ widget; sochipay:// trơn là quay về từ app ngân hàng, chỉ cần mở app
-                .onOpenURL { url in if let k = QuickKind(url: url) { quick.pending = k } }
+                .onOpenURL { url in
+                    if let c = House.code(in: url.absoluteString) { quick.joinCode = c }   // camera iPhone quét mã nhóm
+                    else if let k = QuickKind(url: url) { quick.pending = k }
+                }
                 // Quay lại app: đọc lại quyền Pro (gói năm hết hạn khi app nằm nền nhiều ngày không chắc có Transaction.updates)
                 // Chỉ khi đang có Pro (để biết gói năm vừa hết hạn), mỗi giờ nhiều nhất một lần: đọc quyền mua mỗi lần quay lại app thì
                 // trên TestFlight iOS hay hỏi mật khẩu Tài khoản Apple. Chưa có Pro thì không cần: mua xong Transaction.updates báo về

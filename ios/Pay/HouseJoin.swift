@@ -114,67 +114,93 @@ private struct ScanPill: View {
 
 // MARK: Chủ nhóm: mã QR vào nhóm
 
+/// Mã nhóm dùng lâu dài (kiểu Telegram): ai quét cũng gửi được yêu cầu xin vào, chủ nhóm duyệt từng người. Gửi ảnh mã qua Zalo
+/// cũng được. Lộ mã thì Đặt lại mã: mã cũ hết dùng được
 @available(iOS 18.0, *)
 struct GroupQRSheet: View {
     @ObservedObject private var house = House.shared
     @Environment(\.dismiss) private var dismiss
-    @State private var url: URL?
-    @State private var pid: String?
-    /// Các link một lần đã tạo trong lần mở này: đóng thì gỡ những link chưa ai dùng
-    @State private var made: [String] = []
-    @State private var joined = 0
+    @State private var code: String?
     @State private var error: String?
     @State private var scanning = false
     @State private var scannedCode: String?
+    @State private var confirmReset = false
+
+    private var group: HouseGroup? { house.current }
+    private var requests: [JoinRequest] { group.flatMap { house.joinRequests[$0.id] } ?? [] }
 
     var body: some View {
         VStack(spacing: 0) {
             Text(L("Mã QR vào nhóm")).font(.system(size: 21, weight: .bold))
                 .frame(maxWidth: .infinity, minHeight: 46).padding(.top, 8)
-            Spacer(minLength: 8)
-            QRCard(text: url?.absoluteString) {
-                Text(house.name.isEmpty ? L("Nhóm chung") : house.name).font(.system(size: 19, weight: .bold)).lineLimit(1)
-                Text(L("Mỗi mã cho một người")).font(.system(size: 14)).foregroundStyle(.secondary)
+            ScrollView {
+                VStack(spacing: 0) {
+                    QRCard(text: code.map(House.joinLink)) {
+                        Text(house.name.isEmpty ? L("Nhóm chung") : house.name).font(.system(size: 19, weight: .bold)).lineLimit(1)
+                        Text(L("Quét mã là gửi yêu cầu, bạn duyệt mới vào được")).font(.system(size: 14)).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 8)
+                    if let error {
+                        Text(error).font(.system(size: 15)).foregroundStyle(Palette.danger).multilineTextAlignment(.center).padding(.top, 12)
+                        Button(L("Thử lại")) { Task { await load() } }.font(.system(size: 17, weight: .semibold)).padding(.top, 6)
+                    }
+                    if code != nil {
+                        HStack(spacing: 16) {
+                            if let code, let img = PlainQR.image(House.joinLink(code)) {
+                                ShareLink(item: Image(decorative: img, scale: 1).renderingMode(.original), preview: SharePreview(L("Mã QR vào nhóm"),
+                                          image: Image(decorative: img, scale: 1))) {
+                                    Label(L("Gửi mã"), systemImage: "square.and.arrow.up")
+                                }
+                            }
+                            Button { confirmReset = true } label: { Label(L("Đặt lại mã"), systemImage: "arrow.clockwise") }
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .padding(.top, 14)
+                    }
+                    if !requests.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(L("Đang xin vào")).font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+                            ForEach(requests) { q in requestRow(q) }
+                        }
+                        .padding(.top, 20)
+                    }
+                    Text(L("Người kia mở camera iPhone hoặc nút Quét QR của Payso, quét mã này rồi gửi yêu cầu. Bạn bấm Duyệt là họ vào nhóm."))
+                        .font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        .padding(.top, 16).padding(.horizontal, 8)
+                }
             }
-            if let error {
-                Text(error).font(.system(size: 15)).foregroundStyle(Palette.danger).multilineTextAlignment(.center).padding(.top, 12)
-                Button(L("Thử lại")) { Task { await next() } }.font(.system(size: 17, weight: .semibold)).padding(.top, 6)
-            } else if joined > 0 {
-                Label(joined == 1 ? L("1 người đã vào nhóm. Mã mới cho người tiếp theo") : L("%d người đã vào nhóm. Mã mới cho người tiếp theo", joined),
-                      systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.goodInk)
-                    .multilineTextAlignment(.center).padding(.top, 14)
-            }
-            Text(L("Người kia mở camera iPhone hoặc nút Quét QR của Payso, đưa vào mã này là vào nhóm. Cần cài Payso và đăng nhập iCloud."))
-                .font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                .padding(.top, 14).padding(.horizontal, 8)
-            Spacer(minLength: 8)
+            .scrollIndicators(.hidden)
             ScanPill(title: L("Quét mã của họ")) { scanning = true }
+                .padding(.top, 8)
             BigButton(title: L("Xong"), icon: "", primary: true) { dismiss() }
                 .padding(.top, 10).padding(.bottom, -18)
         }
         .padding(.horizontal, 16)
         .background(Palette.surface.ignoresSafeArea())
         .modifier(BrightWhileShown())
-        .task { await next() }
-        // Hỏi iCloud vài giây một lần: người đang giữ mã đã vào chưa; vào rồi thì đổi mã mới
-        .task(id: pid) {
-            guard let p = pid else { return }
+        .task { await load() }
+        // Hỏi iCloud vài giây một lần: có ai vừa quét mã xin vào không
+        .task(id: code) {
+            guard code != nil, let g = group else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3))
-                guard !Task.isCancelled else { return }
-                if await house.inviteAccepted(p) {
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    withAnimation(.snappy) { joined += 1 }
-                    await next()
-                    return
-                }
+                await house.refreshJoinRequests(g)
+                try? await Task.sleep(for: .seconds(4))
             }
         }
-        .onDisappear {
-            let unused = made
-            Task { await house.dropInvites(unused) }
-            if joined > 0 { Task { await house.load(prompt: false) } }
+        .onChange(of: requests.count) { old, new in
+            if new > old { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+        }
+        .confirmationDialog(L("Đặt lại mã?"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(L("Đặt lại mã"), role: .destructive) {
+                Task {
+                    guard let g = group else { return }
+                    do { code = try await house.resetCode(g) } catch { self.error = L("Không tạo được mã") + ". " + House.describe(error) }
+                }
+            }
+            Button(L("Huỷ"), role: .cancel) {}
+        } message: {
+            Text(L("Mã cũ và ảnh mã đã gửi đi sẽ không dùng được nữa. Người đã vào nhóm vẫn ở trong nhóm."))
         }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scannedCode else { return }
@@ -186,15 +212,103 @@ struct GroupQRSheet: View {
         }
     }
 
-    private func next() async {
+    private func requestRow(_ q: JoinRequest) -> some View {
+        HStack(spacing: 10) {
+            HouseAvatar(id: q.nonce, name: q.name, size: 40)
+            Text(q.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+            Spacer(minLength: 4)
+            Button(L("Từ chối")) { Task { if let g = group { await house.answer(q, in: g, accept: false) } } }
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(.secondary)
+                .padding(.horizontal, 12).frame(height: 38).background(Palette.surface, in: Capsule())
+            Button(L("Duyệt")) { Task { if let g = group { await house.answer(q, in: g, accept: true) } } }
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.ctaInk)
+                .padding(.horizontal, 14).frame(height: 38).background(Palette.cta, in: Capsule())
+        }
+        .buttonStyle(Pressable())
+        .disabled(house.busy)
+        .padding(10)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func load() async {
         error = nil
-        url = nil
-        do {
-            let r = try await house.oneTimeInvite()
-            made.append(r.pid)
-            url = r.url; pid = r.pid
-        } catch {
-            self.error = L("Không tạo được mã") + ". " + House.describe(error)
+        guard let g = group else { return }
+        do { code = try await house.groupCode(g) } catch { self.error = L("Không tạo được mã") + ". " + House.describe(error) }
+    }
+}
+
+// MARK: Người quét mã nhóm: xin vào
+
+struct JoinRequestSheet: View {
+    @ObservedObject private var house = House.shared
+    @Environment(\.dismiss) private var dismiss
+    let code: String
+    @State private var group: String?
+    @State private var missing = false
+    @State private var name = UserDefaults.standard.string(forKey: "house.myName") ?? ""
+    @State private var sending = false
+
+    /// Đã gửi, đang chờ chủ nhóm duyệt
+    private var waiting: MyJoinRequest? { house.myRequests.first { $0.code == code } }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(L("Xin vào nhóm")).font(.system(size: 21, weight: .bold))
+                .frame(maxWidth: .infinity, minHeight: 46).padding(.top, 8)
+            Spacer(minLength: 0)
+            if missing {
+                Image(systemName: "qrcode").font(.system(size: 40)).foregroundStyle(.secondary)
+                Text(L("Mã này không còn dùng được. Nhờ chủ nhóm gửi mã mới.")).multilineTextAlignment(.center).foregroundStyle(.secondary)
+            } else if let group {
+                Image(systemName: "person.3.fill").font(.system(size: 34)).foregroundStyle(.secondary)
+                Text(group).font(.system(size: 24, weight: .bold)).multilineTextAlignment(.center)
+                if let w = waiting {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(L("Đang chờ chủ nhóm duyệt…")).foregroundStyle(.secondary)
+                    }
+                    Text(L("Đóng màn này cũng được: chủ nhóm duyệt rồi thì lần mở Payso tới bạn sẽ tự vào nhóm."))
+                        .font(.system(size: 14)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Button(L("Huỷ yêu cầu"), role: .destructive) { Task { await house.cancelRequest(w); dismiss() } }
+                        .font(.system(size: 15, weight: .semibold))
+                } else {
+                    TextField(L("Tên của bạn"), text: $name)
+                        .font(.system(size: 17)).multilineTextAlignment(.center)
+                        .padding(.horizontal, 18).frame(height: 54)
+                        .background(Palette.card, in: Capsule())
+                    Text(L("Chủ nhóm sẽ thấy tên này khi duyệt.")).font(.system(size: 14)).foregroundStyle(.secondary)
+                }
+            } else {
+                ProgressView()
+            }
+            Spacer(minLength: 0)
+            if group != nil, waiting == nil, !missing {
+                let ok = !name.trimmingCharacters(in: .whitespaces).isEmpty && !sending
+                BigButton(title: L("Gửi yêu cầu"), icon: "", primary: true) {
+                    guard ok, let group else { return }
+                    sending = true
+                    Task { _ = await house.requestJoin(code: code, group: group, name: name.trimmingCharacters(in: .whitespaces)); sending = false }
+                }
+                .opacity(ok ? 1 : 0.4)
+                .padding(.bottom, -18)
+            } else {
+                BigButton(title: L("Đóng"), icon: "", primary: true) { dismiss() }.padding(.bottom, -18)
+            }
+        }
+        .padding(.horizontal, 16)
+        .background(Palette.surface.ignoresSafeArea())
+        .task {
+            group = await house.groupName(forCode: code)
+            missing = group == nil
+        }
+        // Đang chờ: hỏi vài giây một lần; được duyệt thì House tự vào nhóm và mở màn nhóm, màn này đóng lại
+        .task(id: waiting?.nonce) {
+            guard waiting != nil else { return }
+            while !Task.isCancelled, waiting != nil {
+                try? await Task.sleep(for: .seconds(3))
+                await house.checkMyRequests()
+            }
+            if !Task.isCancelled { dismiss() }
         }
     }
 }
@@ -253,6 +367,8 @@ struct JoinByCodeSheet: View {
             if let u = HouseJoinCode.shareURL(s) {
                 joining = true
                 Task { await house.join(u); dismiss() }
+            } else if let c = House.code(in: s) {
+                dismiss(); QuickAction.shared.joinCode = c
             } else {
                 Store.shared.showError(L("Đây không phải mã nhóm. Nhờ chủ nhóm mở nhóm, chọn Thêm người › Mã QR vào nhóm."))
             }

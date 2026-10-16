@@ -6,6 +6,30 @@ import UIKit
 // MARK: Dữ liệu nhóm "Nhà chung"
 
 /// Thành viên trong nhóm. Ai cũng thêm được, kể cả người chưa cài Pay (như sổ Tab).
+/// Một người đang xin vào nhóm (chủ nhóm thấy)
+struct JoinRequest: Identifiable, Hashable {
+    let code: String
+    let slot: Int
+    let nonce: String
+    let name: String
+    let date: Date
+    var id: String { nonce }
+}
+
+/// Một lần mình xin vào nhóm người khác, còn chờ duyệt (lưu trên máy)
+struct MyJoinRequest: Codable, Hashable, Identifiable {
+    let code: String
+    let slot: Int
+    let nonce: String
+    let group: String
+    var id: String { nonce }
+
+    static var saved: [MyJoinRequest] {
+        get { (UserDefaults.standard.data(forKey: "house.myRequests")).flatMap { try? JSONDecoder().decode([MyJoinRequest].self, from: $0) } ?? [] }
+        set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: "house.myRequests") }
+    }
+}
+
 struct HouseMember: Identifiable, Hashable {
     let id: String
     var name: String
@@ -378,7 +402,9 @@ final class House: ObservableObject {
 
     /// Tổng việc cần xác nhận ở mọi nhóm (số trên nút nhóm ở màn hình chính)
     /// Số việc cần để ý ở các nhóm đang hiện (nhóm đã cất đi không tính: huy hiệu không được đếm thứ người dùng không tìm thấy)
-    var pendingTotal: Int { groups.filter { !archived.contains($0.id) }.reduce(0) { $0 + $1.pending.count } }
+    var pendingTotal: Int {
+        groups.filter { !archived.contains($0.id) }.reduce(0) { $0 + $1.pending.count + (joinRequests[$1.id]?.count ?? 0) }
+    }
 
     private func loadDemo() {
         let now = Date()
@@ -402,6 +428,7 @@ final class House: ObservableObject {
                        HouseSpend(id: "t2", amount: 450_000, note: L("Lẩu gà lá é"), payer: "x", shares: ["c", "x", "y"], date: ago(11), cat: "an")]
         trip.me = "c"
         groups = [home, trip]
+        joinRequests[home.id] = [JoinRequest(code: "demo", slot: 0, nonce: "demo-tuan", name: "Tuấn", date: now.addingTimeInterval(-120))]
         // -houseDemoNo YES: mình trả Hạnh, Hạnh báo "chưa nhận được" rồi sau đó tự "báo đã nhận" (một lần trả mới) — thẻ
         // "chưa nhận được" cũ không được còn treo
         if UserDefaults.standard.bool(forKey: "houseDemoNo") {
@@ -493,6 +520,9 @@ final class House: ObservableObject {
             // Nhóm chưa từng tải về máy mà lần này đọc lỗi thì tạm vắng trong danh sách: người dùng đang xem thì báo cho biết
             if missing, prompt, !Task.isCancelled, let failure { Store.shared.showError(Self.describe(failure)) }
             if !groups.isEmpty, prompt { await enableNotifications() }
+            // Yêu cầu xin vào nhóm của mình đang chờ duyệt, và mình đang xin vào nhóm người khác: xem có gì mới
+            for g in groups where g.isOwner { await refreshJoinRequests(g) }
+            await checkMyRequests()
         } catch let e as CKError where e.code == .notAuthenticated {
             dropCache(); phase = .noAccount
         } catch {
@@ -772,6 +802,184 @@ final class House: ObservableObject {
         guard let r = try? await container.publicCloudDatabase.record(for: Self.relayID(nonce)),
               let s = r["name"] as? String else { return nil }
         return URL(string: s)
+    }
+
+    // MARK: Mã nhóm dùng lâu dài (kiểu Telegram): quét mã → xin vào → chủ nhóm duyệt
+
+    /// Các yêu cầu xin vào đang chờ chủ nhóm duyệt, theo mã nhóm (chỉ các nhóm mình là chủ)
+    @Published private(set) var joinRequests: [String: [JoinRequest]] = [:]
+    /// Các lần mình xin vào nhóm người khác còn chờ (lưu trên máy để mở lại app vẫn tiếp tục chờ)
+    @Published private(set) var myRequests: [MyJoinRequest] = MyJoinRequest.saved
+
+    /// Số chỗ cho yêu cầu xin vào của một mã nhóm. iCloud công khai không tìm bản ghi theo tên được (cần chỉ mục),
+    /// nên mỗi yêu cầu nằm ở một chỗ cố định "req-<mã>-<số>"; chủ nhóm đọc hết các chỗ theo tên. Đầy thì đặt lại mã
+    private static let slots = 30
+
+    /// Mã nhóm (chỉ chủ nhóm có): tạo lần đầu, lưu trên máy này và đăng lên iCloud công khai kèm tên nhóm
+    func groupCode(_ g: HouseGroup) async throws -> String {
+        let key = "house.code.\(g.id)"
+        if let c = UserDefaults.standard.string(forKey: key) { return c }
+        let c = Self.newCode()
+        if !demo { try await publishCode(c, name: g.name) }
+        UserDefaults.standard.set(c, forKey: key)
+        return c
+    }
+
+    /// Đặt lại mã: mã cũ (và link, ảnh mã QR đã gửi đi) hết dùng được, các yêu cầu đang chờ của mã cũ bỏ đi
+    func resetCode(_ g: HouseGroup) async throws -> String {
+        let key = "house.code.\(g.id)"
+        if let old = UserDefaults.standard.string(forKey: key), !demo {
+            _ = try? await container.publicCloudDatabase.modifyRecords(saving: [], deleting: [CKRecord.ID(recordName: "grp-" + old)])
+        }
+        UserDefaults.standard.removeObject(forKey: key)
+        joinRequests[g.id] = nil
+        return try await groupCode(g)
+    }
+
+    private static func newCode() -> String {
+        let chars = Array("abcdefghijkmnpqrstuvwxyz23456789")
+        return String((0..<12).map { _ in chars.randomElement()! })
+    }
+
+    /// Bản ghi công khai của mã nhóm: tên nhóm để người quét thấy mình đang xin vào đâu. Dùng loại bản ghi Member có sẵn
+    /// (name = tên nhóm, user = "group") để không phải thêm loại bản ghi mới vào iCloud bản chính thức
+    private func publishCode(_ c: String, name: String) async throws {
+        let r = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: "grp-" + c))
+        r["name"] = name.isEmpty ? L("Nhóm chung") : name
+        r["user"] = "group"
+        _ = try await container.publicCloudDatabase.modifyRecords(saving: [r], deleting: [], savePolicy: .allKeys)
+    }
+
+    /// Link của mã nhóm: camera iPhone quét là mở Payso (máy chưa cài thì không mở được, xem màn mã QR)
+    static func joinLink(_ code: String) -> String { "sochipay://join?c=" + code }
+
+    /// Mã nhóm trong một chuỗi quét được / link mở app, nil nếu không phải
+    static func code(in s: String) -> String? {
+        guard let u = URL(string: s.trimmingCharacters(in: .whitespacesAndNewlines)), u.scheme == "sochipay", u.host == "join",
+              let c = URLComponents(url: u, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "c" })?.value,
+              c.count >= 8, c.allSatisfy({ $0.isLetter || $0.isNumber }) else { return nil }
+        return c
+    }
+
+    /// Người quét: tên nhóm của mã (nil: mã không còn dùng được)
+    func groupName(forCode c: String) async -> String? {
+        if demo { return "Nhóm demo" }
+        guard let r = try? await container.publicCloudDatabase.record(for: CKRecord.ID(recordName: "grp-" + c)) else { return nil }
+        return r["name"] as? String
+    }
+
+    /// Người quét: gửi yêu cầu xin vào nhóm, kèm tên để chủ nhóm biết ai. Lấy chỗ trống đầu tiên
+    func requestJoin(code c: String, group: String, name: String) async -> Bool {
+        let nonce = UUID().uuidString
+        UserDefaults.standard.set(name, forKey: "house.myName")
+        if demo {
+            myRequests.append(MyJoinRequest(code: c, slot: 0, nonce: nonce, group: group)); MyJoinRequest.saved = myRequests
+            return true
+        }
+        let pub = container.publicCloudDatabase
+        for i in 0..<Self.slots {
+            let r = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: "req-\(c)-\(i)"))
+            r["name"] = name
+            r["user"] = nonce
+            do {
+                // Bản ghi mới mà tên đã có người dùng thì iCloud báo trùng: thử chỗ kế tiếp
+                _ = try await saveNew(r, in: pub)
+                myRequests.append(MyJoinRequest(code: c, slot: i, nonce: nonce, group: group))
+                MyJoinRequest.saved = myRequests
+                return true
+            } catch let e as CKError where e.code == .serverRecordChanged || e.code == .permissionFailure {
+                continue
+            } catch {
+                Store.shared.showError(L("Chưa gửi được yêu cầu") + ". " + Self.describe(error))
+                return false
+            }
+        }
+        Store.shared.showError(L("Nhóm này đang có nhiều yêu cầu chờ. Nhờ chủ nhóm đặt lại mã rồi quét lại."))
+        return false
+    }
+
+    /// Lưu một bản ghi mới, báo lỗi nếu tên bản ghi đã có (không ghi đè)
+    private func saveNew(_ r: CKRecord, in db: CKDatabase) async throws {
+        try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
+            let op = CKModifyRecordsOperation(recordsToSave: [r], recordIDsToDelete: nil)
+            op.savePolicy = .ifServerRecordUnchanged
+            var res: Result<CKRecord, Error>?
+            op.perRecordSaveBlock = { _, x in res = x }
+            op.modifyRecordsResultBlock = { x in
+                switch (res, x) {
+                case (.some(.success), _): c.resume()
+                case (.some(.failure(let e)), _), (nil, .failure(let e)): c.resume(throwing: e)
+                case (nil, .success): c.resume()
+                }
+            }
+            db.add(op)
+        }
+    }
+
+    /// Người xin vào: hỏi xem chủ nhóm đã duyệt chưa. Duyệt rồi thì vào nhóm; bị từ chối thì báo. Gọi khi mở app / tải nhóm
+    func checkMyRequests() async {
+        guard !demo, !myRequests.isEmpty else { return }
+        let pub = container.publicCloudDatabase
+        for q in myRequests {
+            guard let r = try? await pub.record(for: CKRecord.ID(recordName: "res-\(q.code)-\(q.slot)")),
+                  r["user"] as? String == q.nonce, let v = r["name"] as? String else { continue }
+            drop(q)
+            _ = try? await pub.modifyRecords(saving: [], deleting: [CKRecord.ID(recordName: "req-\(q.code)-\(q.slot)")])
+            if v == "no" { Store.shared.showError(L("Chủ nhóm %@ chưa đồng ý cho bạn vào.", q.group)); continue }
+            if let u = URL(string: v) { await join(u) }
+        }
+    }
+
+    /// Thôi chờ (bấm Huỷ yêu cầu): gỡ yêu cầu khỏi iCloud để chủ nhóm không thấy nữa
+    func cancelRequest(_ q: MyJoinRequest) async {
+        drop(q)
+        if !demo { _ = try? await container.publicCloudDatabase.modifyRecords(saving: [], deleting: [CKRecord.ID(recordName: "req-\(q.code)-\(q.slot)")]) }
+    }
+
+    private func drop(_ q: MyJoinRequest) {
+        myRequests.removeAll { $0.nonce == q.nonce }
+        MyJoinRequest.saved = myRequests
+    }
+
+    /// Chủ nhóm: đọc các yêu cầu đang chờ của mã nhóm (bỏ những cái đã trả lời)
+    func refreshJoinRequests(_ g: HouseGroup) async {
+        guard g.isOwner, let c = UserDefaults.standard.string(forKey: "house.code.\(g.id)") else { return }
+        if demo { return }
+        let ids = (0..<Self.slots).map { CKRecord.ID(recordName: "req-\(c)-\($0)") }
+        guard let found = try? await container.publicCloudDatabase.records(for: ids) else { return }
+        let handled = Set(UserDefaults.standard.stringArray(forKey: "house.handled.\(c)") ?? [])
+        var out: [JoinRequest] = []
+        for (i, id) in ids.enumerated() {
+            guard case .success(let r)? = found[id], let n = r["name"] as? String, let nonce = r["user"] as? String,
+                  !handled.contains(nonce) else { continue }
+            out.append(JoinRequest(code: c, slot: i, nonce: nonce, name: n, date: r.creationDate ?? Date()))
+        }
+        joinRequests[g.id] = out
+    }
+
+    /// Chủ nhóm: duyệt (tạo link mời một lần gửi cho đúng người đó) hoặc từ chối
+    @available(iOS 18.0, *)
+    func answer(_ q: JoinRequest, in g: HouseGroup, accept: Bool) async {
+        busy = true; defer { busy = false }
+        let back = currentID
+        currentID = g.id
+        defer { currentID = back }
+        do {
+            let value: String
+            if accept { value = try await oneTimeInvite().url.absoluteString } else { value = "no" }
+            if !demo {
+                let r = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: "res-\(q.code)-\(q.slot)"))
+                r["name"] = value
+                r["user"] = q.nonce
+                _ = try await container.publicCloudDatabase.modifyRecords(saving: [r], deleting: [], savePolicy: .allKeys)
+            }
+            let key = "house.handled.\(q.code)"
+            UserDefaults.standard.set((UserDefaults.standard.stringArray(forKey: key) ?? []) + [q.nonce], forKey: key)
+            joinRequests[g.id]?.removeAll { $0.nonce == q.nonce }
+            Store.shared.show(accept ? L("Đã duyệt %@. Máy họ sẽ tự vào nhóm", q.name) : L("Đã từ chối %@", q.name))
+        } catch {
+            fail(error)
+        }
     }
 
     // MARK: Sửa dữ liệu (nhóm đang mở)

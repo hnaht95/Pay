@@ -21,6 +21,8 @@ final class QuickAction: ObservableObject {
     @Published var pending: QuickKind? { didSet { if pending == .photo { Self.onPhoto?() } } }
     /// Vừa nhận lời mời vào Nhà chung: mở màn hình nhóm
     @Published var openHouse = false
+    /// Vừa quét / mở link mã nhóm (sochipay://join?c=…): mở màn xin vào nhóm
+    @Published var joinCode: String?
 }
 
 /// Mở app và vào thẳng màn hình quét QR. Dùng cho nút Tác vụ, Trung tâm điều khiển, Phím tắt và Siri.

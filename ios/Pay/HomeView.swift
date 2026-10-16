@@ -33,6 +33,8 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showStats = false
     @State private var showHouse = false
+    /// Màn xin vào nhóm (vừa quét mã nhóm)
+    @State private var joining: JoinTarget?
     @State private var listening = false
     /// Lượt mở thẻ nói qua fullScreenCover, mỗi lần mở là một lượt mới (xem listen()). Thẻ chỉ tự đóng được khi còn
     /// đúng lượt của nó: lệnh đóng còn treo của thẻ cũ (tự đóng 5 giây sau "Đã ghi") không đóng nhầm thẻ vừa mở lại
@@ -166,6 +168,7 @@ struct HomeView: View {
             scanned = nil
             // Mã QR nhóm chung (link mời của iCloud): vào nhóm luôn, không mở màn nhập khoản chi
             if let u = HouseJoinCode.shareURL(s) { Task { await House.shared.join(u) }; return }
+            if let c = House.code(in: s) { quick.joinCode = c; return }   // mã nhóm: xin vào nhóm
             if HouseJoinCode.nonce(s) != nil {
                 store.showError(L("Đây là mã vào nhóm. Mở nhóm chung, chọn Thêm người › Quét mã của họ."))
                 return
@@ -195,6 +198,21 @@ struct HomeView: View {
                 showHouse = true
             }
         }
+        // Mã nhóm (quét bằng camera iPhone hay máy quét của Payso): đóng các tấm đang mở rồi mở màn xin vào nhóm
+        .onChange(of: quick.joinCode, initial: true) { _, c in
+            guard let c else { return }
+            quick.joinCode = nil
+            Task {
+                let busy = entry != nil || scanning || receiptScan || showHistory || showSettings || showStats || showHouse || listening
+                    || listing != nil || addingCat || editingCat != nil || balanceOpen || cardOpen || pickingHero || voiceFrom != nil
+                entry = nil; scanning = false; receiptScan = false; showHistory = false; showSettings = false; showStats = false
+                showHouse = false; listening = false; listing = nil; voiceFrom = nil; addingCat = false; editingCat = nil; menu = nil
+                balanceOpen = false; cardOpen = false; pickingHero = false
+                if busy { try? await Task.sleep(for: .milliseconds(450)) }
+                joining = JoinTarget(code: c)
+            }
+        }
+        .sheet(item: $joining) { JoinRequestSheet(code: $0.code).presentationDetents([.medium, .large]).sheetGrabber() }
         // Khởi động trước camera trong nền sau khi trang chủ hiện ra, để lần vuốt Nhập đầu tiên mở camera nhanh như các lần sau
         .task { try? await Task.sleep(for: .seconds(1)); ReceiptCam.prewarm() }
         #if DEBUG
@@ -1442,3 +1460,6 @@ struct ExpenseTile: View {
             .accessibilityLabel("\(e.n?.isEmpty == false ? e.n! : c.name), \(fmt(e.a))")
     }
 }
+
+/// Mã nhóm đang xin vào (để mở tấm theo item)
+struct JoinTarget: Identifiable { let code: String; var id: String { code } }

@@ -136,8 +136,39 @@ private struct AppLockView: View {
     }
 }
 
-/// Lớp kính mờ đậm của hệ thống (đổi theo sáng / tối): chữ số to phía sau cũng không đọc được
+/// Lớp mờ vừa phải: vẫn thấy hình các khối phía sau (thẻ, ô danh mục, nút) nhưng chữ và số không đọc được.
+/// Độ mờ của UIBlurEffect cố định (rất đậm): chạy hiệu ứng làm mờ bằng UIViewPropertyAnimator rồi dừng ở `amount` để lấy mức nhẹ hơn
 private struct LockBlur: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIVisualEffectView { UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial)) }
-    func updateUIView(_ v: UIVisualEffectView, context: Context) {}
+    var amount: CGFloat = 0.3
+
+    func makeUIView(context: Context) -> BlurView { BlurView(amount: amount) }
+    func updateUIView(_ v: BlurView, context: Context) {}
+
+    final class BlurView: UIView {
+        private let effect = UIVisualEffectView(effect: nil)
+        private var animator: UIViewPropertyAnimator?
+        private let amount: CGFloat
+
+        init(amount: CGFloat) {
+            self.amount = amount
+            super.init(frame: .zero)
+            effect.frame = bounds
+            effect.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            addSubview(effect)
+        }
+        required init?(coder: NSCoder) { fatalError() }
+
+        // Dựng lại hiệu ứng mỗi khi vào cửa sổ (đổi sáng / tối, quay lại từ nền): animator đã dừng thì không tự áp lại
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            animator?.stopAnimation(true)
+            effect.effect = nil
+            guard window != nil else { return }
+            let a = UIViewPropertyAnimator(duration: 1, curve: .linear) { [effect] in effect.effect = UIBlurEffect(style: .regular) }
+            a.pausesOnCompletion = true
+            a.fractionComplete = amount
+            animator = a
+        }
+        deinit { animator?.stopAnimation(true) }
+    }
 }

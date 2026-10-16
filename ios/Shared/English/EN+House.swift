@@ -304,6 +304,8 @@ extension English {
         "Trong nhóm đã có người tên này. Đặt tên khác để khỏi nhầm.": "Someone in the group already has this name. Pick another to avoid mix-ups.",
         "Chỉ chính người này mới sửa được.": "Only this person can edit this.",
         "Người này dùng Payso: chỉ chính họ mới đổi được tên, ảnh và tài khoản.": "This person uses Payso: only they can change their name, photo and account.",
+        "Chưa có": "None",
+        "%@ dùng Payso nên tự đặt tên, ảnh và tài khoản nhận tiền của mình.": "%@ uses Payso and sets their own name, photo and receiving account.",
         "Đổi tên, ảnh hay tài khoản thì cả nhóm sẽ được báo.": "The group is notified when the name, photo or account changes.",
         "đổi tên thành %@": "changed their name to %@",
         "đổi ảnh đại diện": "changed their photo",

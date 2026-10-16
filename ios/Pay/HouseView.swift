@@ -107,6 +107,11 @@ struct HouseView: View {
             await house.load()
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "houseDemoAdd") { adding = true }   // máy ảo không bấm được nút nổi
+            // -houseDemoMember <tên>: mở sẵn màn thành viên đó (nhóm đang mở)
+            if let n = UserDefaults.standard.string(forKey: "houseDemoMember") {
+                if house.current == nil { house.open(house.groups.first?.id) }
+                editingMember = house.members.first { $0.name == n }
+            }
             #endif
         }
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
@@ -1409,36 +1414,53 @@ struct HouseMemberEditor: View {
                                 HouseAvatar(id: member.id, name: name.isEmpty ? member.name : name, size: 96, photo: .some(nil))
                             }
                         }
-                        HStack(spacing: 16) {
-                            PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")) }
-                            if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
+                        if canEdit {
+                            HStack(spacing: 16) {
+                                PhotosPicker(selection: $pick, matching: .images) { Text(photo == nil ? L("Chọn ảnh") : L("Đổi ảnh")) }
+                                if photo != nil { Button(L("Bỏ ảnh"), role: .destructive) { photo = nil; photoChanged = true } }
+                            }
+                            .font(.system(size: 17, weight: .semibold))
+                            .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng (thiếu thì chạm "Đổi ảnh" là "Bỏ ảnh" cũng chạy)
                         }
-                        .font(.system(size: 17, weight: .semibold))
-                        .buttonStyle(.borderless)   // trong Form: mỗi nút tự nhận chạm, không phải cả hàng (thiếu thì chạm "Đổi ảnh" là "Bỏ ảnh" cũng chạy)
                     }
                     .frame(maxWidth: .infinity)
                 }
                 // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
                 .listRowBackground(Color.clear)
                 .cardless()
-                Section {
-                    TextField(L("Tên"), text: $name)
-                } header: {
-                    Text(L("Tên"))
-                } footer: {
-                    if !canEdit { Text(L("Người này dùng Payso: chỉ chính họ mới đổi được tên, ảnh và tài khoản.")) }
-                    else if duplicate { Text(L("Trong nhóm đã có người tên này. Đặt tên khác để khỏi nhầm.")).foregroundStyle(Palette.danger) }
-                    else { Text(L("Đổi tên, ảnh hay tài khoản thì cả nhóm sẽ được báo.")) }
-                }
-                Section {
-                    // Danh sách dài: mở trang riêng để cuộn
-                    PickLink(title: L("Ngân hàng"), selection: $bin,
-                             sections: [(nil, [("", L("Chưa chọn"))] + Self.banks.map { ($0.key, $0.value) })]) { Text(L("Ngân hàng")) }
-                    TextField(L("Số tài khoản"), text: $acct).keyboardType(.numberPad)
-                } header: {
-                    Text(L("Tài khoản nhận tiền"))
-                } footer: {
-                    Text(L("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung."))
+                if canEdit {
+                    Section {
+                        TextField(L("Tên"), text: $name)
+                    } header: {
+                        Text(L("Tên"))
+                    } footer: {
+                        if duplicate { Text(L("Trong nhóm đã có người tên này. Đặt tên khác để khỏi nhầm.")).foregroundStyle(Palette.danger) }
+                        else { Text(L("Đổi tên, ảnh hay tài khoản thì cả nhóm sẽ được báo.")) }
+                    }
+                    Section {
+                        // Danh sách dài: mở trang riêng để cuộn
+                        PickLink(title: L("Ngân hàng"), selection: $bin,
+                                 sections: [(nil, [("", L("Chưa chọn"))] + Self.banks.map { ($0.key, $0.value) })]) { Text(L("Ngân hàng")) }
+                        TextField(L("Số tài khoản"), text: $acct).keyboardType(.numberPad)
+                    } header: {
+                        Text(L("Tài khoản nhận tiền"))
+                    } footer: {
+                        Text(L("Ai nợ người này bấm Trả ngay là mở app ngân hàng với sẵn số tài khoản, số tiền, nội dung."))
+                    }
+                } else {
+                    // Người dùng Payso khác: chỉ chính họ đổi được tên, ảnh, tài khoản — ở đây chỉ xem, không hiện ô sửa nào
+                    Section {
+                        LabeledContent(L("Ngân hàng")) {
+                            Text(member.bin.flatMap { BankData.names[$0] } ?? L("Chưa có")).foregroundStyle(.secondary)
+                        }
+                        if let a = member.acct, !a.isEmpty {
+                            LabeledContent(L("Số tài khoản")) { Text(a).foregroundStyle(.secondary).textSelection(.enabled) }
+                        }
+                    } header: {
+                        Text(L("Tài khoản nhận tiền"))
+                    } footer: {
+                        Text(L("%@ dùng Payso nên tự đặt tên, ảnh và tài khoản nhận tiền của mình.", member.name))
+                    }
                 }
                 // Chủ nhóm xoá người thêm nhầm / trùng tên. Người đã có trong sổ thì không xoá được: các khoản cũ và số dư sẽ sai
                 if house.isOwner && member.id != house.me {
@@ -1461,29 +1483,32 @@ struct HouseMemberEditor: View {
                 Text(member.user != nil ? L("Người này đang dùng Payso: máy của họ sẽ phải chọn lại mình là ai.") : L("Cả nhóm sẽ không thấy người này nữa."))
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
-            .disabled(!canEdit)
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
             .softTopEdge(fade: Color(.systemGroupedBackground))
             .bottomBar {
                 HStack(spacing: 12) {
-                    BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
-                    BigButton(title: L("Lưu"), icon: "", primary: true) {
-                        guard !saving else { return }
-                        let n = name.trimmingCharacters(in: .whitespaces)
-                        let a = acct.filter(\.isNumber)
-                        let p: Data? = photoChanged ? (photo ?? Data()) : nil
-                        saving = true
-                        Task {
-                            // Trùng tên / không có quyền: báo lỗi, giữ bảng mở để sửa lại
-                            if await house.updateMember(member.id, name: n.isEmpty ? member.name : n,
-                                                        bin: bin.isEmpty ? nil : bin, acct: a.isEmpty ? nil : a, photo: p) { dismiss() }
-                            saving = false
+                    if canEdit {
+                        BigButton(title: L("Huỷ"), icon: "", primary: false, tint: BigButton.cancelTint) { dismiss() }
+                        BigButton(title: L("Lưu"), icon: "", primary: true) {
+                            guard !saving else { return }
+                            let n = name.trimmingCharacters(in: .whitespaces)
+                            let a = acct.filter(\.isNumber)
+                            let p: Data? = photoChanged ? (photo ?? Data()) : nil
+                            saving = true
+                            Task {
+                                // Trùng tên / không có quyền: báo lỗi, giữ bảng mở để sửa lại
+                                if await house.updateMember(member.id, name: n.isEmpty ? member.name : n,
+                                                            bin: bin.isEmpty ? nil : bin, acct: a.isEmpty ? nil : a, photo: p) { dismiss() }
+                                saving = false
+                            }
                         }
+                        .disabled(!canEdit || duplicate)
+                        .opacity(saving || !canEdit || duplicate ? 0.5 : 1)
+                    } else {
+                        BigButton(title: L("Đóng"), icon: "", primary: true) { dismiss() }
                     }
-                    .disabled(!canEdit || duplicate)
-                    .opacity(saving || !canEdit || duplicate ? 0.5 : 1)
                 }
                 .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }

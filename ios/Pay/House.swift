@@ -384,8 +384,8 @@ final class House: ObservableObject {
         let now = Date()
         func ago(_ d: Double) -> Date { now.addingTimeInterval(-d * 86_400) }
         var home = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo1"), scope: .private, isOwner: true, name: L("Nhà mình"))
-        home.members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan", bin: "970416", acct: "123456789"),
-                        HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà")]
+        home.members = [HouseMember(id: "a", name: "Thành"), HouseMember(id: "b", name: "Lan", bin: "970416", acct: "123456789", user: "demo-lan"),
+                        HouseMember(id: "c", name: "Minh"), HouseMember(id: "d", name: "Hà", user: "demo-ha")]
         home.spends = [
             HouseSpend(id: "e1", amount: 420_000, note: L("Đi chợ cuối tuần"), payer: "a", shares: ["a", "b", "c", "d"], date: ago(0.2), cat: "an"),
             HouseSpend(id: "e2", amount: 860_000, note: L("Tiền điện tháng 9"), payer: "b", shares: ["a", "b", "c", "d"], date: ago(2), cat: "hd"),

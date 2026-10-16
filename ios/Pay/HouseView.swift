@@ -1019,7 +1019,8 @@ struct HouseView: View {
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         // Người khác báo đã chuyển cho mình, đang chờ: chạm để xác nhận đã nhận hay chưa
-        .modifier(SettleSwipe(on: canDelete(s)) { softDelete(s.id) })
+        // Không xoá được vẫn phải qua expenseSwipe: nó bỏ nền trắng, đường kẻ và lề mặc định của hàng List
+        .expenseSwipe(if: canDelete(s)) { softDelete(s.id) }
     }
 
     /// Xoá được lần trả: người trả hoặc người nhận (hai người chỉ có tên thì ai cũng được), và lần trả chưa nằm trong đợt đã chốt.
@@ -2026,17 +2027,6 @@ private struct PinnedHeader<H: View>: ViewModifier {
             }
             .background { Palette.bg.ignoresSafeArea(edges: .top).allowsHitTesting(false) }
         }
-    }
-}
-
-
-
-/// Vuốt xoá một lần trả, chỉ khi được xoá (xem canDelete)
-private struct SettleSwipe: ViewModifier {
-    let on: Bool
-    let delete: () -> Void
-    func body(content: Content) -> some View {
-        if on { content.expenseSwipe(delete: delete) } else { content }
     }
 }
 

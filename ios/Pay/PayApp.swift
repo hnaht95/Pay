@@ -184,9 +184,10 @@ struct LogExpenseIntent: AppIntent {
         // Câu có nhắc tên nhóm ("ăn lẩu nhóm Tùng của 500k, Hạnh trả"): ghi vào Nhóm chung như ở thẻ nói để ghi
         let house = House.shared
         if let hit = house.groupMentioned(in: text) {
-            let roles = House.speechRoles(hit.rest, in: hit.group)
+            let sale = House.speechDiscount(hit.rest)
+            let roles = House.speechRoles(sale.rest, in: hit.group)
             if let q = QuickParse.spoken(roles.rest) ?? QuickParse.expense(roles.rest) {
-                guard let msg = await house.voiceSpend(in: hit.group, amount: q.amount, note: q.note, payer: roles.payer, shares: roles.shares) else {
+                guard let msg = await house.voiceSpend(in: hit.group, amount: q.amount, note: q.note, payer: roles.payer, shares: roles.shares, discount: sale.discount) else {
                     return .result(dialog: IntentDialog(stringLiteral: L("Chưa ghi được vào %@. Mở Payso để thử lại.", hit.group.name)))
                 }
                 return .result(dialog: IntentDialog(stringLiteral: msg.text + "."))

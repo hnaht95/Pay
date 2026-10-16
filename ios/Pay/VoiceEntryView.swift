@@ -730,11 +730,12 @@ struct VoiceEntryView: View {
         // Câu có nhắc tên nhóm ("300k đi chợ nhà mình"): ghi vào nhóm đó, mình trả, chia đều cả nhóm; phần của mình ghi vào
         // chi tiêu cá nhân. Xong đóng thẻ, báo ở màn chính
         if !said.isEmpty, let hit = House.shared.groupMentioned(in: said) {
-            let roles = House.speechRoles(hit.rest, in: hit.group)
+            let sale = House.speechDiscount(hit.rest)
+            let roles = House.speechRoles(sale.rest, in: hit.group)
             if let q = QuickParse.spoken(roles.rest) ?? QuickParse.expense(roles.rest) {
                 Task {
                     guard let msg = await House.shared.voiceSpend(in: hit.group, amount: q.amount, note: q.note,
-                                                                  payer: roles.payer, shares: roles.shares) else {
+                                                                  payer: roles.payer, shares: roles.shares, discount: sale.discount) else {
                         notUnderstood = true
                         UINotificationFeedbackGenerator().notificationOccurred(.error)
                         return

@@ -1298,20 +1298,30 @@ struct ToastView: View {
                     Text(t.message).font(.system(size: 17, weight: .medium))
                         .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                     if let d = t.detail {
-                        Text(d).font(.system(size: 13)).opacity(0.6).lineLimit(1)
+                        Text(d).font(.system(size: 13)).opacity(0.6).lineLimit(2)
                     }
                 }
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     // Hoàn tác có hiệu ứng: hàng vừa xoá trượt / hiện lại vào chỗ cũ, các hàng dưới dịch xuống nhường chỗ
+                    // Thông báo dài (hai dòng, hoặc câu dài): nút chỉ còn biểu tượng tròn, nhường chỗ cho chữ khỏi bị cắt "…"
+                    let compact = t.detail != nil || t.message.count > 24
                     Button { Haptic.tap(); withAnimation(.snappy(duration: 0.35)) { undo(); store.toast = nil } } label: {
-                        Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
-                            .font(.system(size: 17, weight: .semibold))
-                            .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài
-                            .padding(.horizontal, 18).frame(height: 48)
-                            .background(Palette.ctaInk.opacity(0.14), in: Capsule())
-                            .contentShape(Capsule())
+                        Group {
+                            if compact {
+                                Image(systemName: "arrow.uturn.backward").font(.system(size: 18, weight: .semibold))
+                                    .frame(width: 48, height: 48)
+                            } else {
+                                Label(L("Hoàn tác"), systemImage: "arrow.uturn.backward")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .lineLimit(1).fixedSize()   // không xuống dòng "Hoàn / tác" khi câu thông báo dài
+                                    .padding(.horizontal, 18).frame(height: 48)
+                            }
+                        }
+                        .background(Palette.ctaInk.opacity(0.14), in: Capsule())
+                        .contentShape(Capsule())
                     }
+                    .accessibilityLabel(L("Hoàn tác"))
                     .buttonStyle(Pressable())
                 }
             }

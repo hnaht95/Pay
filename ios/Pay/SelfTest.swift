@@ -145,6 +145,12 @@ enum SelfTest {
                           ("ăn lẩu 500k", "ăn lẩu 500k|-|")] {
             check("nhóm, câu nói: \(t)", roles(t) == want, roles(t))
         }
+        for (t, want, off) in [("ăn trưa 315 nghìn, giảm giá 82 nghìn", "ăn trưa 315 nghìn", 82_000),
+                               ("cơm 200k mã giảm 30k", "cơm 200k", 30_000),
+                               ("ăn trưa 315 nghìn", "ăn trưa 315 nghìn", 0)] {
+            let d = House.speechDiscount(t)
+            check("giảm giá trong câu: \(t)", d.rest == want && d.discount == off, "\(d.rest) | \(d.discount)")
+        }
 
         store.eraseAll()
         let report = "SELFTEST \(failed == 0 ? "PASS" : "FAIL \(failed)")\n" + out.joined(separator: "\n")

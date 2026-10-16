@@ -1193,8 +1193,11 @@ final class House: ObservableObject {
     /// Ghi bằng giọng nói (thẻ voice, Siri) một khoản vào nhóm `g`, phần của mình ghi luôn vào chi tiêu cá nhân.
     /// Trả về câu báo và việc hoàn tác (xoá cả khoản chung lẫn phần cá nhân); nil nếu không lưu được
     /// text: câu đầy đủ (Siri đọc); short + detail: thanh báo có nút Hoàn tác ("Tùng của +500.000", dòng nhỏ "Hạnh trả")
-    func voiceSpend(in g: HouseGroup, amount: Int, note: String, payer: String?, shares: [String]?) async -> (text: String, short: String, detail: String?, undo: () -> Void)? {
+    func voiceSpend(in g: HouseGroup, amount total: Int, note: String, payer: String?, shares: [String]?, discount: Int = 0) async -> (text: String, short: String, detail: String?, undo: () -> Void)? {
         let store = Store.shared
+        // "Ăn trưa 315 nghìn, giảm giá 82 nghìn": số đã trả là 233 nghìn, chia đều (bằng chia đều 315 rồi trừ phần giảm chia đều)
+        let off = discount > 0 && discount < total ? discount : 0
+        let amount = total - off
         let cat = store.guessCategory(note)
         guard let (spend, mine) = await quickSpend(in: g, amount: amount, note: note, cat: cat, payer: payer, shares: shares) else { return nil }
         var personal: String?
@@ -1208,7 +1211,13 @@ final class House: ObservableObject {
         if let p = payer, p != g.me, let n = g.members.first(where: { $0.id == p })?.name {
             text += " · " + L("%@ trả", n); detail = L("%@ trả", n)
             if mine > 0 { detail! += " · " + L("bạn %@", fmt(mine)) }
-        } else if mine > 0 { detail = L("Bạn trả · phần bạn %@", fmt(mine)) }
+        } else if mine > 0 { detail = off > 0 ? L("bạn %@", fmt(mine)) : L("Bạn trả · phần bạn %@", fmt(mine)) }
+        if off > 0 {
+            // Dòng phụ viết hoa chữ đầu ("Giảm 82.000 · bạn 116.500"); câu Siri đọc ghép sau dấu chấm giữa nên giữ chữ thường
+            let d = L("giảm %@", fmt(off))
+            detail = detail.map { d.capFirst + " · " + $0 } ?? d.capFirst
+            text += " · " + d
+        }
         let gid = g.id
         return (text, short, detail, { [weak self] in
             if let personal { store.remove(id: personal, toast: false) }
@@ -1228,6 +1237,21 @@ final class House: ObservableObject {
     /// - "Hạnh trả", "Hạnh ứng", "do Hạnh trả", "tôi trả" -> người trả
     /// - "chia cho tôi với Hạnh", "chia Hạnh, Vy và mình", "chia đôi với Hạnh" (mình + Hạnh) -> phần chia
     /// Tên người so không dấu, không phân biệt hoa thường; "tôi / mình / tao / tớ" (đúng dấu) là chính mình. Không có thì nil.
+    /// Giảm giá trong câu nói: "giảm giá 82 nghìn", "giảm 82k", "mã giảm 82 nghìn", "voucher 50k", "được giảm 30k".
+    /// Trả về câu đã bỏ phần đó và số tiền giảm (0 nếu không có). Số giảm là cụm số ngay sau chữ khoá, tới hết câu hoặc dấu phẩy
+    static func speechDiscount(_ text: String) -> (rest: String, discount: Int) {
+        let pattern = #"(?i)(?:,\s*)?(?:được\s+|mã\s+)?(?:giảm\s+giá|giảm|voucher|khuyến\s+mãi)\s+([^,.;]+)"#
+        guard let re = try? NSRegularExpression(pattern: pattern),
+              let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let r = Range(m.range, in: text), let num = Range(m.range(at: 1), in: text) else { return (text, 0) }
+        let part = String(text[num])
+        // Chỉ lấy đúng cụm số: "82 nghìn" -> 82000; câu sau số (nếu có) trả lại cho ghi chú
+        guard let q = QuickParse.spoken(part) ?? QuickParse.expense(part), q.amount > 0 else { return (text, 0) }
+        let rest = (String(text[..<r.lowerBound]) + " " + q.note + " " + String(text[r.upperBound...]))
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return (rest, q.amount)
+    }
+
     static func speechRoles(_ text: String, in g: HouseGroup) -> (rest: String, payer: String?, shares: [String]?) {
         var words = text.split(whereSeparator: \.isWhitespace).map(String.init)
         func key(_ w: String) -> String { strip(w).trimmingCharacters(in: .punctuationCharacters) }

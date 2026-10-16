@@ -1606,6 +1606,8 @@ struct HouseSpendEditor: View {
     @State private var ownText: [String: String] = [:]
     /// Bàn phím số đang gõ cho ai: nil = tổng tiền, mã thành viên = số riêng của người đó (nhấn giữ viên tên để chọn)
     @State private var target: String?
+    /// Ô đang gõ là mã giảm giá (không phải mã thành viên)
+    private static let discountKey = "_discount"
     /// Nền tấm bàn phím số và hàng nút: lệch rất nhẹ so với nền bảng (nằm giữa màu nền app và màu nền bảng)
     private static let padBack = Color(light: 0xF9FAFC, dark: 0x121215)
     /// Lớp kính mờ sau hai nút Huỷ / Lưu nhô lên trên nút bấy nhiêu điểm
@@ -1622,15 +1624,32 @@ struct HouseSpendEditor: View {
         return out
     }
     private var ownSum: Int { own.values.reduce(0, +) }
-    /// Số riêng khớp với tổng: không quá tổng, và nếu ai cũng có số riêng thì cộng lại phải đúng bằng tổng
-    private var splitOK: Bool { own.isEmpty || (ownSum <= amount && !(own.count == shares.count && ownSum != amount)) }
+    /// Mã giảm giá của cả đơn (vd đặt cơm chung): chia đều cho những người trong phần chia, trừ vào tiền món của từng người
+    @State private var discountText = ""
+    private var discount: Int { Int(discountText.filter(\.isNumber).prefix(12)) ?? 0 }
+    /// Tổng trước giảm giá: số riêng (tiền món) của từng người tính trên tổng này
+    private var gross: Int { amount + discount }
+    /// Số riêng khớp với tổng: không quá tổng, và nếu ai cũng có số riêng thì cộng lại phải đúng bằng tổng; giảm giá không làm
+    /// ai phải trả âm
+    private var splitOK: Bool {
+        (own.isEmpty || (ownSum <= gross && !(own.count == shares.count && ownSum != gross))) && parts.values.allSatisfy { $0 >= 0 }
+    }
     /// Mã của khoản mới, tạo sẵn: cũng là hạt chia số lẻ nên phần hiện trên bảng đúng bằng phần lưu trong nhóm
     @State private var newID = UUID().uuidString
-    private var parts: [String: Int] { Settle.parts(amount, Array(shares), fixed: own, seed: editing?.id ?? newID) }
+    /// Phần mỗi người trước giảm giá (tiền món, hoặc chia đều phần còn lại)
+    private var grossParts: [String: Int] { Settle.parts(gross, Array(shares), fixed: own, seed: editing?.id ?? newID) }
+    /// Phần mỗi người phải trả: trước giảm giá trừ phần giảm giá chia đều (cộng lại đúng bằng tổng đã trả)
+    private var parts: [String: Int] {
+        guard discount > 0 else { return grossParts }
+        let off = Settle.parts(discount, Array(shares), fixed: [:], seed: (editing?.id ?? newID) + "-off")
+        return grossParts.reduce(into: [:]) { r, kv in r[kv.key] = kv.value - (off[kv.key] ?? 0) }
+    }
     /// Bàn phím số gõ vào đâu: tổng tiền, hoặc số riêng của người đang chọn
     private var padDigits: Binding<String> {
-        Binding(get: { target.map { ownText[$0] ?? "" } ?? amountText },
-                set: { v in if let t = target { ownText[t] = v } else { amountText = v } })
+        Binding(get: { target == Self.discountKey ? discountText : target.map { ownText[$0] ?? "" } ?? amountText },
+                set: { v in
+                    if target == Self.discountKey { discountText = v } else if let t = target { ownText[t] = v } else { amountText = v }
+                })
     }
     private var myShare: Int? { house.me.flatMap { shares.contains($0) ? parts[$0] : nil } }
 
@@ -1708,6 +1727,7 @@ struct HouseSpendEditor: View {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(spacing: 8) {
                             ForEach(house.members) { m in shareRow(m) }
+                            if !shares.isEmpty { discountRow }
                         }
                         splitNote
                     }
@@ -1853,6 +1873,10 @@ struct HouseSpendEditor: View {
         .padding(.horizontal, 18)
         .background(Palette.surface.ignoresSafeArea())
         .overlay(alignment: .bottom) { if failed { ToastView().padding(.bottom, 84) } }   // ngay trên nút Lưu
+        // Ai cũng đã nhập tiền món: tổng tự bằng tổng tiền món trừ giảm giá (không phải tự cộng rồi gõ tổng)
+        .onChange(of: [ownSum, discount, own.count, shares.count]) { _, _ in
+            if !own.isEmpty, own.count == shares.count, ownSum > discount { amountText = String(ownSum - discount) }
+        }
         .onAppear {
             if let e = editing {
                 amountText = String(e.amount); note = e.note; cat = e.cat; catPicked = true
@@ -1929,7 +1953,14 @@ struct HouseSpendEditor: View {
         let on = shares.contains(m.id), typing = target == m.id, mine = own[m.id]
         return HStack(spacing: 10) {
             HouseAvatar(id: m.id, name: m.name, size: 36)
-            Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 17, weight: .semibold)).lineLimit(1).padding(.leading, 2)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(m.id == house.me ? L("Bạn") : m.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                // Có giảm giá: số trên ô là tiền món, dòng nhỏ này là số thật phải trả
+                if on, discount > 0, let net = parts[m.id] {
+                    Text(L("trả %@", fmt(net))).font(.system(size: 13)).foregroundStyle(net < 0 ? Palette.danger : Palette.goodInk)
+                }
+            }
+            .padding(.leading, 2)
             Spacer(minLength: 8)
             if on {
                 // Ô số tiền: số riêng in đậm, số chia đều nhạt hơn; đang gõ thì viền xanh và có vạch nhấp nháy
@@ -1939,7 +1970,7 @@ struct HouseSpendEditor: View {
                     withAnimation(Self.padAnim) { padShown = true }
                 } label: {
                     HStack(spacing: 3) {
-                        Text(typing ? fmt(mine ?? 0) : amount > 0 || mine != nil ? fmt(mine ?? parts[m.id] ?? 0) : "0")
+                        Text(typing ? fmt(mine ?? 0) : gross > 0 || mine != nil ? fmt(mine ?? grossParts[m.id] ?? 0) : "0")
                             .font(.system(size: 17, weight: .medium))   // không in đậm: số riêng chỉ khác ở màu chữ đậm hơn
                             .foregroundStyle(typing || mine != nil ? Color.primary : Color.secondary)
                             .contentTransition(.numericText())
@@ -1972,16 +2003,58 @@ struct HouseSpendEditor: View {
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
     }
 
+    /// Dòng mã giảm giá: chữ "Mã giảm giá" bên trái, ô số ngắn nền xanh lá bên phải (chạm để gõ bằng bàn phím số của app),
+    /// chia đều cho người trong phần chia
+    private var discountRow: some View {
+        let typing = target == Self.discountKey
+        return HStack(spacing: 10) {
+            Image(systemName: "tag.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.goodInk)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(L("Mã giảm giá")).font(.system(size: 17, weight: .semibold))
+                if discount > 0, !shares.isEmpty {
+                    Text(L("chia đều %d người", shares.count)).font(.system(size: 13)).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            Button {
+                if typing { target = nil; return }
+                noteFocused = false; target = Self.discountKey
+                withAnimation(Self.padAnim) { padShown = true }
+            } label: {
+                HStack(spacing: 3) {
+                    Text(discount > 0 ? "−" + fmt(discount) : "0").font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(discount > 0 || typing ? Palette.goodInk : Palette.goodInk.opacity(0.5))
+                    if typing {
+                        TimelineView(.periodic(from: .now, by: 0.55)) { t in
+                            let lit = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
+                            Capsule().fill(Palette.goodInk).frame(width: 2, height: 18).opacity(lit ? 1 : 0)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14).frame(minWidth: 96, minHeight: 40)
+                .background(Color(hex: 0x61BE6E).opacity(typing ? 0.3 : 0.18), in: Capsule())
+                .overlay { if typing { Capsule().strokeBorder(Palette.goodInk.opacity(0.5), lineWidth: 1) } }
+                .contentShape(Capsule())
+            }
+            .buttonStyle(Pressable())
+            .accessibilityLabel(L("Mã giảm giá"))
+        }
+        .padding(.leading, 10).padding(.trailing, 8).frame(height: 54)
+    }
+
     /// Dòng dưới các viên tên: hướng dẫn nhấn giữ, hoặc báo số riêng chưa khớp tổng kèm nút đặt lại tổng
     @ViewBuilder private var splitNote: some View {
-        if !splitOK || (amount == 0 && ownSum > 0) {
+        if parts.values.contains(where: { $0 < 0 }) {
+            Text(L("Giảm giá chia đều lớn hơn tiền món của một người. Bớt giảm giá hoặc bỏ người đó khỏi phần chia."))
+                .font(.system(size: 13)).foregroundStyle(Palette.danger).padding(.top, 10)
+        } else if !splitOK || (amount == 0 && ownSum > 0) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(amount == 0 ? L("Số riêng cộng lại %@", fmt(ownSum))
-                     : ownSum > amount ? L("Số riêng cộng lại %@, nhiều hơn tổng", fmt(ownSum))
-                     : L("Còn %@ chưa chia cho ai", fmt(amount - ownSum)))
+                     : ownSum > gross ? L("Số riêng cộng lại %@, nhiều hơn tổng", fmt(ownSum))
+                     : L("Còn %@ chưa chia cho ai", fmt(gross - ownSum)))
                     .font(.system(size: 13)).foregroundStyle(amount == 0 ? Color.secondary : Palette.danger)
                 Spacer(minLength: 0)
-                Button(L("Đặt tổng %@", fmt(ownSum))) { withAnimation(.snappy(duration: 0.15)) { amountText = String(ownSum) } }
+                Button(L("Đặt tổng %@", fmt(max(0, ownSum - discount)))) { withAnimation(.snappy(duration: 0.15)) { amountText = String(max(0, ownSum - discount)) } }
                     .buttonStyle(Pressable())
                     .font(.system(size: 13, weight: .semibold))
             }
@@ -1997,7 +2070,9 @@ struct HouseSpendEditor: View {
     private func save() {
         guard !saving else { return }
         saving = true; failed = false
-        let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare, f = own
+        // Có giảm giá: lưu luôn số cuối của từng người (ai cũng có số riêng, cộng lại đúng tổng) — máy nào xem cũng ra đúng số đó
+        let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare
+        let f = discount > 0 ? parts : own
         let log = logMine
         Task {
             if var e = editing {

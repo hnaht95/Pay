@@ -164,6 +164,12 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $scanning, onDismiss: {
             guard let s = scanned else { return }
             scanned = nil
+            // Mã QR nhóm chung (link mời của iCloud): vào nhóm luôn, không mở màn nhập khoản chi
+            if let u = HouseJoinCode.shareURL(s) { Task { await House.shared.join(u) }; return }
+            if HouseJoinCode.nonce(s) != nil {
+                store.showError(L("Đây là mã vào nhóm. Mở nhóm chung, chọn Thêm người › Quét mã của họ."))
+                return
+            }
             entry = VietQR.parse(s).flatMap { $0.acct != nil ? EntryMode.scan($0) : nil } ?? .raw(s)
         }) {
             ScannerView { code in scanned = code; scanning = false }

@@ -4,6 +4,8 @@ import SwiftUI
 
 /// Camera quét mã QR toàn màn hình, kèm nút chọn ảnh QR từ thư viện.
 struct ScannerView: View {
+    /// Dòng nhắc trên cùng (quét mã nhóm chung thì khác quét mã của quán)
+    var hint = L("Đưa mã QR của quán vào khung")
     let onCode: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var photo: PhotosPickerItem?
@@ -38,7 +40,7 @@ struct ScannerView: View {
             .allowsHitTesting(false)
 
             VStack {
-                Text(L("Đưa mã QR của quán vào khung"))
+                Text(hint)
                     .font(.system(size: 17, weight: .medium)).foregroundStyle(.white)
                     .padding(.top, 20)
                 if let error {

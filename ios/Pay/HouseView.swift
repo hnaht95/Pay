@@ -45,6 +45,11 @@ struct HouseView: View {
     /// Đang chọn app ngân hàng để trả lần này (chưa chọn app bao giờ, hoặc muốn đổi app): chọn xong là mở app đó luôn
     @State private var bankFor: HouseTransfer?
     @State private var inviteError: String?
+    /// Mã QR vào nhóm (chủ nhóm) / vào nhóm bằng mã của mình (người muốn vào) / chủ nhóm quét mã người muốn vào
+    @State private var showGroupQR = false
+    @State private var showJoin = false
+    @State private var scanningJoin = false
+    @State private var scannedJoin: String?
     /// Thêm người từ màn "Bạn là ai": thêm xong nhận luôn là mình
     @State private var claimAfterAdd = false
     /// Đang chọn lại "tôi là ai" (lúc trước chọn nhầm người): hiện lại màn "Bạn là ai trong nhóm?"
@@ -105,6 +110,16 @@ struct HouseView: View {
             #endif
         }
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
+        .sheet(isPresented: $showGroupQR) { if #available(iOS 18.0, *) { GroupQRSheet().sheetGrabber() } }
+        .sheet(isPresented: $showJoin) { JoinByCodeSheet().sheetGrabber() }
+        .fullScreenCover(isPresented: $scanningJoin, onDismiss: {
+            guard let s = scannedJoin else { return }
+            scannedJoin = nil
+            if let n = HouseJoinCode.nonce(s), #available(iOS 18.0, *) { Task { await house.inviteByCode(n) } }
+            else { store.showError(L("Đây không phải mã vào nhóm của Payso. Người kia mở Nhóm chung › Vào nhóm bằng mã.")) }
+        }) {
+            ScannerView(hint: L("Đưa mã vào nhóm của người kia vào khung")) { code in scannedJoin = code; scanningJoin = false }
+        }
         .confirmationDialog(confirming.map { L("%@ báo đã chuyển %@ cho bạn", house.memberName($0.from), fmt($0.amount)) } ?? "",
                             isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible,
                             presenting: confirming) { c in
@@ -250,6 +265,9 @@ struct HouseView: View {
                     .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
             } else if inGroup {
                 Menu {
+                    if house.isOwner, qrInvite {
+                        Button(L("Mã QR vào nhóm"), systemImage: "qrcode") { showGroupQR = true }
+                    }
                     Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
                     Button(L("Thêm người"), systemImage: "plus") { claimAfterAdd = false; addingMember = true }
                     Button(L("Đổi ảnh, màu, tên nhóm"), systemImage: "paintpalette") { editingGroup = house.current }
@@ -392,9 +410,10 @@ struct HouseView: View {
         .opacity(groupName.trimmingCharacters(in: .whitespaces).isEmpty || myName.trimmingCharacters(in: .whitespaces).isEmpty || house.busy ? 0.35 : 1)
         .padding(.top, 20)
 
-        Text(L("Tạo xong, mời mọi người qua Tin nhắn hoặc Zalo. Người được mời cần cài Payso và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì bấm vào lời mời họ gửi."))
+        Text(L("Tạo xong, mời mọi người bằng mã QR hoặc qua Tin nhắn, Zalo. Người được mời cần cài Payso và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì quét mã nhóm hoặc bấm vào lời mời họ gửi."))
             .font(.system(size: 13)).foregroundStyle(.secondary)
             .padding(.top, 12).padding(.horizontal, 4)
+        joinButton.padding(.top, 16)
     }
 
     // MARK: Danh sách nhóm
@@ -417,6 +436,7 @@ struct HouseView: View {
             }
             .buttonStyle(Pressable())
             .accessibilityLabel(L("Tạo nhóm mới"))
+            joinButton
         }
         if !old.isEmpty {
             Button { withAnimation(.snappy) { showArchived.toggle() } } label: {
@@ -706,6 +726,15 @@ struct HouseView: View {
                 // Phim: chỉ vẽ nhãn nút (Menu là của UIKit, ảnh xuất ra chỉ thấy ô vàng có dấu cấm)
                 if film != nil { addMemberLabel } else {
                 Menu {
+                    // Mời bằng mã: chỉ chủ nhóm thêm được người (nhóm riêng tư), và link mời một lần cần iOS 18
+                    if house.isOwner, qrInvite {
+                        Button { showGroupQR = true } label: {
+                            Text(L("Mã QR vào nhóm")); Text(L("Người kia quét là vào")); Image(systemName: "qrcode")
+                        }
+                        Button { scanningJoin = true } label: {
+                            Text(L("Quét mã của họ")); Text(L("Họ mở Nhóm chung › Vào nhóm bằng mã")); Image(systemName: "qrcode.viewfinder")
+                        }
+                    }
                     Button { invite() } label: {
                         Text(L("Gửi lời mời")); Text(L("Người này có dùng Payso")); Image(systemName: "paperplane")
                     }
@@ -1157,6 +1186,24 @@ struct HouseView: View {
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .foregroundStyle(primary ? Palette.ctaInk : .primary)
                 .background(primary ? Palette.cta : Palette.surface, in: Capsule())   // nút phụ nền trắng trên thẻ xám
+        }
+        .buttonStyle(Pressable())
+    }
+
+    /// Link mời một lần (mã QR vào nhóm, quét mã của người muốn vào) có từ iOS 18
+    private var qrInvite: Bool { if #available(iOS 18.0, *) { true } else { false } }
+
+    /// Vào nhóm người khác đã tạo bằng mã QR (quét mã nhóm, hoặc hiện mã của mình cho chủ nhóm quét)
+    private var joinButton: some View {
+        Button { showJoin = true } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "qrcode.viewfinder").font(.system(size: 16, weight: .bold))
+                Text(L("Vào nhóm bằng mã")).font(.system(size: 17, weight: .semibold))
+            }
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
         .buttonStyle(Pressable())
     }

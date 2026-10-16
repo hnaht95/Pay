@@ -608,6 +608,123 @@ final class House: ObservableObject {
 
     var cloud: CKContainer { container }
 
+    // MARK: Mời bằng mã QR
+
+    /// Chủ nhóm: một link mời dùng một lần (iOS 18). Mỗi link chỉ một người vào được, nên nhóm vẫn riêng tư: không phải bật
+    /// "ai có link đều vào" (bật rồi tắt lại thì iCloud loại hết người đã vào bằng link).
+    /// Trả về link và mã người tham gia (để xem người đó đã vào chưa, hoặc gỡ link chưa dùng)
+    @available(iOS 18.0, *)
+    func oneTimeInvite() async throws -> (url: URL, pid: String) {
+        if demo { return (URL(string: "https://www.icloud.com/share/0DemoPaysoInvite#" + UUID().uuidString.prefix(8))!, UUID().uuidString) }
+        guard let zone else { throw CKError(.zoneNotFound) }
+        _ = try await share()   // nhóm chưa có lời mời nào thì tạo
+        // Lấy bản mới nhất ngay trước khi lưu; người khác vừa vào (hoặc bảng mời của iOS vừa sửa) thì lấy lại và thử lần nữa
+        for attempt in 0..<2 {
+            guard let s = try await db.record(for: CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zone)) as? CKShare else { throw CKError(.unknownItem) }
+            let p = CKShare.Participant.oneTimeURLParticipant()
+            p.permission = .readWrite
+            s.addParticipant(p)
+            do {
+                let r = try await db.modifyRecords(saving: [s], deleting: [], savePolicy: .ifServerRecordUnchanged)
+                // Hàm gốc của iOS 18; bản bọc Swift oneTimeURL(for:) chỉ có từ iOS 26
+                guard let saved = try r.saveResults[s.recordID]?.get() as? CKShare,
+                      let url = saved.__oneTimeURL(forParticipantID: p.participantID) else { throw CKError(.internalError) }
+                return (url, p.participantID)
+            } catch let e as CKError where e.code == .serverRecordChanged && attempt == 0 { continue }
+        }
+        throw CKError(.serverRecordChanged)
+    }
+
+    /// Người có link một lần này đã vào nhóm chưa
+    @available(iOS 18.0, *)
+    func inviteAccepted(_ pid: String) async -> Bool {
+        guard !demo, let zone else { return false }
+        guard let s = try? await db.record(for: CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zone)) as? CKShare else { return false }
+        return s.participants.contains { $0.participantID == pid && $0.acceptanceStatus == .accepted }
+    }
+
+    /// Gỡ các link một lần chưa ai dùng (đóng màn mã QR): không để lại người "đang chờ" trống tên trong danh sách mời
+    @available(iOS 18.0, *)
+    func dropInvites(_ pids: [String]) async {
+        guard !demo, !pids.isEmpty, let zone else { return }
+        guard let s = try? await db.record(for: CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zone)) as? CKShare else { return }
+        let unused = s.participants.filter { pids.contains($0.participantID) && $0.acceptanceStatus == .pending }
+        guard !unused.isEmpty else { return }
+        unused.forEach { s.removeParticipant($0) }
+        _ = try? await db.modifyRecords(saving: [s], deleting: [], savePolicy: .ifServerRecordUnchanged)
+    }
+
+    /// Vào nhóm từ link mời quét được (mã QR nhóm, hoặc link chủ nhóm gửi qua mã của mình)
+    func join(_ url: URL) async {
+        do {
+            let m = try await withCheckedThrowingContinuation { (c: CheckedContinuation<CKShare.Metadata, Error>) in
+                let op = CKFetchShareMetadataOperation(shareURLs: [url])
+                var got: Result<CKShare.Metadata, Error>?
+                op.perShareMetadataResultBlock = { _, r in got = r }
+                op.fetchShareMetadataResultBlock = { r in
+                    switch (got, r) {
+                    case (.some(let x), _): c.resume(with: x)
+                    case (nil, .failure(let e)): c.resume(throwing: e)
+                    case (nil, .success): c.resume(throwing: CKError(.unknownItem))
+                    }
+                }
+                container.add(op)
+            }
+            // Đã ở trong nhóm này rồi (chủ nhóm quét mã của chính nhóm mình, hoặc quét lại lần nữa): chỉ mở nhóm
+            if m.participantStatus == .accepted || m.share.recordID.zoneID.ownerName == CKCurrentUserDefaultName {
+                await load()
+                currentID = m.share.recordID.zoneID.zoneName
+                QuickAction.shared.openHouse = true
+                return
+            }
+            await accept(m)
+        } catch {
+            let ck = error as? CKError
+            Store.shared.showError(ck?.code == .unknownItem || ck?.code == .participantMayNeedVerification
+                ? L("Mã mời đã được dùng hoặc đã hết hạn. Nhờ chủ nhóm mở mã mới.")
+                : L("Không mở được lời mời") + ". " + Self.describe(error))
+        }
+    }
+
+    /// Bản ghi chuyển link mời qua iCloud công khai, đặt tên theo mã ngẫu nhiên của người chờ. Dùng loại bản ghi Member có sẵn
+    /// (trường name chứa link) để không phải thêm loại bản ghi mới vào iCloud bản chính thức
+    private static func relayID(_ nonce: String) -> CKRecord.ID { CKRecord.ID(recordName: "join-" + nonce) }
+
+    /// Chủ nhóm quét mã của người muốn vào: tạo link một lần rồi gửi cho máy kia qua iCloud công khai; máy kia đang mở
+    /// "Vào nhóm bằng mã" sẽ tự nhận và vào nhóm
+    @available(iOS 18.0, *)
+    func inviteByCode(_ nonce: String) async {
+        busy = true; defer { busy = false }
+        do {
+            let (url, pid) = try await oneTimeInvite()
+            if demo { Store.shared.show(L("Đã mời. Máy kia sẽ tự vào nhóm")); return }
+            let r = CKRecord(recordType: "Member", recordID: Self.relayID(nonce))
+            r["name"] = url.absoluteString
+            r["user"] = "invite"
+            let pub = container.publicCloudDatabase
+            _ = try await pub.modifyRecords(saving: [r], deleting: [], savePolicy: .allKeys)
+            Store.shared.show(L("Đã mời. Máy kia sẽ tự vào nhóm"))
+            // Máy kia vào xong (hoặc quá 3 phút) thì xoá bản ghi chuyển link; chỉ người tạo mới xoá được
+            Task {
+                for _ in 0..<60 {
+                    try? await Task.sleep(for: .seconds(3))
+                    if await inviteAccepted(pid) { await load(prompt: false); break }
+                }
+                _ = try? await pub.modifyRecords(saving: [], deleting: [r.recordID])
+            }
+        } catch {
+            fail(error)
+        }
+    }
+
+    /// Người muốn vào: hỏi xem chủ nhóm đã quét mã của mình chưa. Có link thì trả về (máy này sẽ dùng nó để vào nhóm)
+    func relayedInvite(_ nonce: String) async -> URL? {
+        if demo { return nil }
+        guard let r = try? await container.publicCloudDatabase.record(for: Self.relayID(nonce)),
+              let s = r["name"] as? String else { return nil }
+        return URL(string: s)
+    }
+
     // MARK: Sửa dữ liệu (nhóm đang mở)
 
     func addMember(_ n: String) async -> String? {

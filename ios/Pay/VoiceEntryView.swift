@@ -530,8 +530,10 @@ struct VoiceEntryView: View {
         // Vừa hoàn tác: không hiện lại số đã nghe, kẻo tưởng vẫn còn ghi
         // Đọc như Store.quickAdd: bỏ chữ chỉ ngày / quẹt thẻ ra trước rồi mới đọc số tiền
         let when = QuickParse.when(heard)
+        // "…, giảm giá 82 nghìn": bỏ phần giảm giá ra trước khi đọc số tiền (kẻo đọc nhầm 82 nghìn), hiện riêng cạnh số tiền
+        let sale = House.speechDiscount(when.rest)
         let live = savedNow.map { (amount: $0.a, note: $0.n ?? "", cat: $0.c, date: $0.date as Date?, credit: $0.isCredit) }
-            ?? (undone ? nil : QuickParse.spoken(when.rest)).map {
+            ?? (undone ? nil : QuickParse.spoken(sale.rest)).map {
                 (amount: $0.amount, note: $0.note, cat: store.guessEntry($0.note), date: when.date, credit: when.credit)
             }
         VStack(alignment: .leading, spacing: 10) {
@@ -553,6 +555,13 @@ struct VoiceEntryView: View {
                             number(now, dim: live == nil, income: inc)
                         }
                     }
+                }
+                // Giảm giá đã nghe: chữ nhỏ mờ, dưới cùng bên phải hàng số tiền
+                // Chỉ khi câu có nhắc nhóm: chỉ ghi vào nhóm mới trừ giảm giá (ghi cá nhân ghi đúng số đã nói)
+                if savedNow == nil, !undone, sale.discount > 0, let l = live, sale.discount < l.amount,
+                   House.shared.groupMentioned(in: heard) != nil {
+                    Spacer(minLength: 8)
+                    Text(L("Giảm giá %@", fmt(sale.discount))).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             .animation(.snappy, value: live?.amount)

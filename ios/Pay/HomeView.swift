@@ -1292,7 +1292,8 @@ struct ToastView: View {
         if let t = store.toast {
             HStack(spacing: 14) {
                 // Báo lỗi (vd lưu khoản chung thất bại) thì không vẽ dấu tích thành công
-                Image(systemName: t.error ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").font(.system(size: 18))
+                // Báo lỗi mới có biểu tượng cảnh báo; thông báo thường chỉ có chữ (bỏ dấu tích đầu thanh)
+                if t.error { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 18)) }
                 // Câu dài (vd "Sẽ tự ghi ngày 28 hằng tháng, lần tới 28/11", câu báo lỗi) xuống dòng thứ hai thay vì bị cắt "…"
                 VStack(alignment: .leading, spacing: 1) {
                     Text(t.message).font(.system(size: 17, weight: .medium))

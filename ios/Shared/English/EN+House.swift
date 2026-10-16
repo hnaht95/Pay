@@ -310,6 +310,7 @@ extension English {
         "Chỉ chính người này mới sửa được.": "Only this person can edit this.",
         "Người này dùng Payso: chỉ chính họ mới đổi được tên, ảnh và tài khoản.": "This person uses Payso: only they can change their name, photo and account.",
         "Chưa có": "None",
+        "Giảm giá %@": "%@ off",
         "giảm %@": "%@ off",
         "Mã giảm giá": "Discount",
         "chia đều %d người": "split across %d people",

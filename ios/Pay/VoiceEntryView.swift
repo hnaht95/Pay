@@ -722,21 +722,22 @@ struct VoiceEntryView: View {
     private func handle(_ said: String) {
         // Câu có nhắc tên nhóm ("300k đi chợ nhà mình"): ghi vào nhóm đó, mình trả, chia đều cả nhóm; phần của mình ghi vào
         // chi tiêu cá nhân. Xong đóng thẻ, báo ở màn chính
-        if !said.isEmpty, let hit = House.shared.groupMentioned(in: said),
-           let q = QuickParse.spoken(hit.rest) ?? QuickParse.expense(hit.rest) {
-            let cat = store.guessCategory(q.note), note = q.note
-            Task {
-                guard let (spend, mine) = await House.shared.quickSpend(in: hit.group, amount: q.amount, note: note, cat: cat) else {
-                    notUnderstood = true
-                    UINotificationFeedbackGenerator().notificationOccurred(.error)
-                    return
+        if !said.isEmpty, let hit = House.shared.groupMentioned(in: said) {
+            let roles = House.speechRoles(hit.rest, in: hit.group)
+            if let q = QuickParse.spoken(roles.rest) ?? QuickParse.expense(roles.rest) {
+                Task {
+                    guard let msg = await House.shared.voiceSpend(in: hit.group, amount: q.amount, note: q.note,
+                                                                  payer: roles.payer, shares: roles.shares) else {
+                        notUnderstood = true
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        return
+                    }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    store.show(msg.short, undo: msg.undo)
+                    leave()
                 }
-                if mine > 0 { store.add(amount: mine, note: note.isEmpty ? hit.group.name : note, cat: cat, acct: Store.groupLink(spend), toast: false) }
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                store.show(L("Đã ghi %@ vào %@ · bạn %@", fmt(q.amount), hit.group.name, fmt(mine)))
-                leave()
+                return
             }
-            return
         }
         guard !said.isEmpty, let e = store.quickAdd(said, spoken: true, toast: false) else {
             notUnderstood = true

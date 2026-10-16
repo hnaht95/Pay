@@ -1,4 +1,5 @@
 #if DEBUG
+import CloudKit
 import Foundation
 
 /// Bộ kiểm tra logic chạy ngay trong app (chỉ bản Debug): "-selfTest YES" khi mở app trên máy ảo. Dùng đúng Store, CSVImport,
@@ -125,6 +126,25 @@ enum SelfTest {
         check("số dư nhóm: a +100k, b 0, c −100k (lần trả bị báo chưa nhận không tính)", net["a"] == 100_000 && net["b"] == 0 && net["c"] == -100_000, "\(net)")
         let tr = Settle.transfers(net)
         check("gợi ý trả: c → a 100k", tr.count == 1 && tr[0].from == "c" && tr[0].to == "a" && tr[0].amount == 100_000, "\(tr)")
+
+        // MARK: Nói vào nhóm: ai trả, chia cho ai
+        var g = HouseGroup(zone: CKRecordZone.ID(zoneName: "selftest"), scope: .private, isOwner: true, name: "Tùng của")
+        g.members = [HouseMember(id: "c", name: "Minh"), HouseMember(id: "h", name: "Hạnh"), HouseMember(id: "v", name: "Vy"),
+                     HouseMember(id: "x", name: "Khoa")]
+        g.me = "c"
+        func roles(_ t: String) -> String {
+            let r = House.speechRoles(t, in: g)
+            return "\(r.rest)|\(r.payer ?? "-")|\((r.shares ?? []).joined(separator: ","))"
+        }
+        for (t, want) in [("ăn lẩu 500k Hạnh trả", "ăn lẩu 500k|h|"),
+                          ("500k lẩu chia cho tôi với Hạnh", "500k lẩu|-|c,h"),
+                          ("chia đôi với Vy 200k cafe", "200k cafe|-|c,v"),
+                          ("do khoa trả 300k taxi chia Khoa, Vy và mình", "300k taxi|x|x,v,c"),
+                          ("Minh trả 100k", "100k|c|"),
+                          ("chia đều 300k", "300k|-|"),
+                          ("ăn lẩu 500k", "ăn lẩu 500k|-|")] {
+            check("nhóm, câu nói: \(t)", roles(t) == want, roles(t))
+        }
 
         store.eraseAll()
         let report = "SELFTEST \(failed == 0 ? "PASS" : "FAIL \(failed)")\n" + out.joined(separator: "\n")

@@ -178,6 +178,17 @@ struct LogExpenseIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let store = Store.shared
+        // Câu có nhắc tên nhóm ("ăn lẩu nhóm Tùng của 500k, Hạnh trả"): ghi vào Nhóm chung như ở thẻ nói để ghi
+        let house = House.shared
+        if let hit = house.groupMentioned(in: text) {
+            let roles = House.speechRoles(hit.rest, in: hit.group)
+            if let q = QuickParse.spoken(roles.rest) ?? QuickParse.expense(roles.rest) {
+                guard let msg = await house.voiceSpend(in: hit.group, amount: q.amount, note: q.note, payer: roles.payer, shares: roles.shares) else {
+                    return .result(dialog: IntentDialog(stringLiteral: L("Chưa ghi được vào %@. Mở Payso để thử lại.", hit.group.name)))
+                }
+                return .result(dialog: IntentDialog(stringLiteral: msg.text + "."))
+            }
+        }
         // Câu trả lời ghép lúc chạy nên đi qua L() được (tiêu đề và câu hỏi ở trên là chữ tĩnh của hệ thống, giữ tiếng Việt):
         // từng câu trọn vẹn một khoá, không ghép nửa Việt nửa Anh với tên danh mục / nhãn ngân sách đã dịch
         guard let e = store.quickAdd(text, spoken: true) else {

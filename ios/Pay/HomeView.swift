@@ -1308,7 +1308,11 @@ struct ToastView: View {
             .task(id: t.id) {
                 // 3 giây: đủ để kịp bấm Hoàn tác, không nằm lâu che màn hình. Bị huỷ giữa chừng (thanh được dựng lại, vd lúc màn
                 // hình Sửa vừa đóng) thì thôi, task mới sẽ đếm lại: không kiểm tra thì thanh vừa hiện đã tắt ngay
-                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                var wait = 3.0
+                #if DEBUG
+                if UserDefaults.standard.bool(forKey: "toastHold") { wait = 30 }   // "-toastHold YES": kịp bấm Hoàn tác trên máy ảo
+                #endif
+                do { try await Task.sleep(for: .seconds(wait)) } catch { return }
                 if store.toast?.id == t.id { store.toast = nil }
             }
         }

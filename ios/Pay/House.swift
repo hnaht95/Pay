@@ -948,16 +948,100 @@ final class House: ObservableObject {
         return (g, rest)
     }
 
-    /// Ghi nhanh một khoản chung vào nhóm `g` (từ giọng nói): mình trả, chia đều cả nhóm. Trả về phần của mình nếu lưu được.
-    func quickSpend(in g: HouseGroup, amount: Int, note: String, cat: String) async -> (id: String, mine: Int)? {
+    /// Ghi nhanh một khoản chung vào nhóm `g` (từ giọng nói). Không nói ai trả thì mình trả; không nói chia cho ai thì chia đều
+    /// cả nhóm. Trả về mã khoản và phần của mình (0 nếu mình không nằm trong phần chia) nếu lưu được.
+    func quickSpend(in g: HouseGroup, amount: Int, note: String, cat: String, payer: String? = nil, shares: [String]? = nil) async -> (id: String, mine: Int)? {
         guard let me = g.me else { return nil }
-        let shares = g.members.map(\.id)
+        let shares = shares ?? g.members.map(\.id)
         let back = currentID
         currentID = g.id
         defer { currentID = back }
         let id = UUID().uuidString
-        guard await addSpend(id: id, amount: amount, note: note, payer: me, shares: shares, cat: cat) else { return nil }
-        return Settle.split(amount, shares, seed: id)[me].map { (id, $0) }
+        guard await addSpend(id: id, amount: amount, note: note, payer: payer ?? me, shares: shares, cat: cat) else { return nil }
+        return (id, Settle.split(amount, shares, seed: id)[me] ?? 0)
+    }
+
+    /// Ghi bằng giọng nói (thẻ voice, Siri) một khoản vào nhóm `g`, phần của mình ghi luôn vào chi tiêu cá nhân.
+    /// Trả về câu báo và việc hoàn tác (xoá cả khoản chung lẫn phần cá nhân); nil nếu không lưu được
+    /// text: câu đầy đủ (Siri đọc); short: câu ngắn cho thanh báo có nút Hoàn tác ("Tùng của +500.000 · Hạnh trả")
+    func voiceSpend(in g: HouseGroup, amount: Int, note: String, payer: String?, shares: [String]?) async -> (text: String, short: String, undo: () -> Void)? {
+        let store = Store.shared
+        let cat = store.guessCategory(note)
+        guard let (spend, mine) = await quickSpend(in: g, amount: amount, note: note, cat: cat, payer: payer, shares: shares) else { return nil }
+        var personal: String?
+        if mine > 0 {
+            store.add(amount: mine, note: note.isEmpty ? g.name : note, cat: cat, acct: Store.groupLink(spend), toast: false)
+            personal = store.all.last { $0.acct == Store.groupLink(spend) }?.id
+        }
+        var text = mine > 0 ? L("Đã ghi %@ vào %@ · bạn %@", fmt(amount), g.name, fmt(mine)) : L("Đã ghi %@ vào %@", fmt(amount), g.name)
+        var short = "\(g.name) +\(fmt(amount))"
+        if let p = payer, p != g.me, let n = g.members.first(where: { $0.id == p })?.name {
+            text += " · " + L("%@ trả", n); short += " · " + L("%@ trả", n)
+        } else if mine > 0 { short += " · " + L("bạn %@", fmt(mine)) }
+        let gid = g.id
+        return (text, short, { [weak self] in
+            if let personal { store.remove(id: personal, toast: false) }
+            Task { await self?.undoQuickSpend(spend, in: gid) }
+        })
+    }
+
+    /// Hoàn tác khoản vừa ghi bằng giọng nói vào nhóm `group` (không cần đang mở nhóm đó)
+    func undoQuickSpend(_ id: String, in group: String) async {
+        let back = currentID
+        currentID = group
+        defer { currentID = back }
+        await delete(id)
+    }
+
+    /// Đọc trong câu nói ai trả và chia cho ai, rồi bỏ các chữ đó khỏi câu (phần còn lại là số tiền và ghi chú):
+    /// - "Hạnh trả", "Hạnh ứng", "do Hạnh trả", "tôi trả" -> người trả
+    /// - "chia cho tôi với Hạnh", "chia Hạnh, Vy và mình", "chia đôi với Hạnh" (mình + Hạnh) -> phần chia
+    /// Tên người so không dấu, không phân biệt hoa thường; "tôi / mình / tao / tớ" (đúng dấu) là chính mình. Không có thì nil.
+    static func speechRoles(_ text: String, in g: HouseGroup) -> (rest: String, payer: String?, shares: [String]?) {
+        var words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        func key(_ w: String) -> String { strip(w).trimmingCharacters(in: .punctuationCharacters) }
+        let meWords: Set<String> = ["tôi", "mình", "tao", "tớ", "me"]
+        let byLength = g.members.sorted { $0.name.count > $1.name.count }
+        /// Người được nhắc ở vị trí i: (mã, số chữ của tên)
+        func member(at i: Int) -> (id: String, len: Int)? {
+            let w = words[i].lowercased().trimmingCharacters(in: .punctuationCharacters)
+            if let me = g.me, meWords.contains(w) { return (me, 1) }
+            for m in byLength {
+                let parts = m.name.split(whereSeparator: \.isWhitespace).map { key(String($0)) }
+                guard !parts.isEmpty, i + parts.count <= words.count else { continue }
+                if (0..<parts.count).allSatisfy({ key(words[i + $0]) == parts[$0] }) { return (m.id, parts.count) }
+            }
+            return nil
+        }
+        // Phần chia: sau chữ "chia"
+        var shares: [String]?
+        if let c = words.firstIndex(where: { key($0) == "chia" }) {
+            var j = c + 1, pair = false, found: [String] = [], lastName = c
+            while j < words.count {
+                let k = key(words[j])
+                if ["cho", "deu", "giua", "ra"].contains(k) { j += 1; lastName = j - 1; continue }
+                if k == "doi" { pair = true; j += 1; lastName = j - 1; continue }
+                if let m = member(at: j) { if !found.contains(m.id) { found.append(m.id) }; j += m.len; lastName = j - 1; continue }
+                if ["va", "voi", ""].contains(k) { j += 1; continue }   // "và", "với", dấu phẩy đứng riêng
+                break
+            }
+            if pair, let me = g.me, !found.contains(me) { found.insert(me, at: 0) }
+            if !found.isEmpty { shares = found }
+            words.removeSubrange(c...lastName)   // bỏ cả "chia đều" không kèm tên (chia đều cả nhóm, như mặc định)
+        }
+        // Người trả: tên ngay trước "trả" / "ứng" / "bao"
+        var payer: String?
+        var i = 0
+        while i < words.count {
+            if let m = member(at: i), i + m.len < words.count, ["tra", "ung", "bao"].contains(key(words[i + m.len])) {
+                payer = m.id
+                let from = i > 0 && key(words[i - 1]) == "do" ? i - 1 : i
+                words.removeSubrange(from...(i + m.len))
+                break
+            }
+            i += 1
+        }
+        return (words.joined(separator: " "), payer, shares)
     }
 
     /// Sửa một khoản chung (số tiền, ghi chú, ai trả, chia cho ai, danh mục); giữ nguyên ngày.

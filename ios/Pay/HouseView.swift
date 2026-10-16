@@ -166,8 +166,15 @@ struct HouseView: View {
         } message: {
             Text(house.isOwner ? L("Mọi người trong nhóm sẽ mất sổ chung này. Không hoàn tác được.") : L("Sổ chung vẫn còn ở người tạo nhóm, họ mời lại được."))
         }
+        // Hộp hỏi chốt sổ gắn ở gốc màn: gắn ngay trên thẻ chốt sổ (nằm trong danh sách cuộn) thì bấm nút không bật lên
+        .confirmationDialog(L("Chốt sổ đợt này?"), isPresented: $confirmClose, titleVisibility: .visible) {
+            Button(L("Chốt sổ")) { Task { await house.closeBook() }; Haptic.tap() }
+            Button(L("Huỷ"), role: .cancel) {}
+        } message: {
+            Text(L("Các khoản chi tới giờ gom vào một đợt đã chốt (vẫn xem lại được), đợt mới bắt đầu từ 0. Cả nhóm cùng thấy."))
+        }
         // Bảng Thông báo đang mở thì hộp này hiện trên bảng đó (xem `inbox`): gắn ở đây sẽ không bật lên được vì bảng đang che
-        .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: payAsked(!showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
+        .confirmationDialog(payTitle, isPresented: payAsked(!showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
         .sheet(item: $editingMember) { HouseMemberEditor(member: $0).environmentObject(store).sheetGrabber() }
         .onDisappear { if film == nil { house.open(nil) } }   // (phim vẽ lại màn hình mỗi khung: không tính là đóng)
         .onChange(of: house.currentID) { _, _ in repicking = false }   // sang nhóm khác: thôi chọn lại "tôi là ai"
@@ -192,6 +199,9 @@ struct HouseView: View {
         Binding(get: { paying != nil && on }, set: { if !$0 { paying = nil } })
     }
 
+    /// Người trả: "đã chuyển"; người nhận tự báo: "đã nhận"
+    private var payTitle: String { paying.map { $0.from == house.me } == false ? L("Xác nhận đã nhận?") : L("Xác nhận đã chuyển?") }
+
     @ViewBuilder private var payActions: some View {
         if let t = paying {
             if t.from == house.me {
@@ -205,8 +215,10 @@ struct HouseView: View {
 
     @ViewBuilder private var payMessage: some View {
         if let t = paying {
-            Text(t.from == house.me ? L("%@ sẽ nhận thông báo để xác nhận đã nhận tiền.", house.memberName(t.to))
-                                    : L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from)))
+            // Người nhận chỉ có tên (không dùng Payso): không ai nhận thông báo, lần trả ghi là xong luôn (xem House.settle)
+            Text(t.from != house.me ? L("Ghi nhận bạn đã nhận tiền từ %@.", house.memberName(t.from))
+                 : house.current?.usesApp(t.to) == false ? L("%@ không dùng Payso nên lần trả được ghi là xong luôn.", house.memberName(t.to))
+                 : L("%@ sẽ nhận thông báo để xác nhận đã nhận tiền.", house.memberName(t.to)))
         }
     }
 
@@ -574,7 +586,8 @@ struct HouseView: View {
     // MARK: Nhóm
 
     @ViewBuilder private var ready: some View {
-        let net = Settle.balances(house.spends, house.settles)
+        // Khoản / lần trả vừa vuốt xoá (còn chờ Hoàn tác) không tính nữa: số dư đổi ngay theo, không chờ 3,6 giây
+        let net = Settle.balances(house.spends.filter { !hidden.contains($0.id) }, house.settles.filter { !hidden.contains($0.id) })
         let transfers = Settle.transfers(net)
         let me = house.me ?? ""
         let mine = net[me] ?? 0
@@ -842,12 +855,6 @@ struct HouseView: View {
             .padding(18)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .padding(.top, 10)
-            .confirmationDialog(L("Chốt sổ đợt này?"), isPresented: $confirmClose, titleVisibility: .visible) {
-                Button(L("Chốt sổ")) { Task { await house.closeBook() }; Haptic.tap() }
-                Button(L("Huỷ"), role: .cancel) {}
-            } message: {
-                Text(L("Các khoản chi tới giờ gom vào một đợt đã chốt (vẫn xem lại được), đợt mới bắt đầu từ 0. Cả nhóm cùng thấy."))
-            }
         }
     }
 
@@ -1108,7 +1115,7 @@ struct HouseView: View {
         // "Cần xác nhận" phải có ngay trên bảng (ở màn nhóm thì bấm xong không thấy gì)
         .overlay(alignment: .bottom) { ToastView().padding(.bottom, 24) }
         .overlay { if house.busy { ProgressView().controlSize(.large) } }
-        .confirmationDialog(L("Xác nhận đã chuyển?"), isPresented: payAsked(showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
+        .confirmationDialog(payTitle, isPresented: payAsked(showInbox), titleVisibility: .visible) { payActions } message: { payMessage }
         .environmentObject(store)
         .sheetGrabber()   // không có nút Xong: kéo xuống là đóng
     }
@@ -1646,20 +1653,24 @@ struct HouseSpendEditor: View {
                     categories.padding(.top, 12)
 
                     label(L("Ai ứng tiền"))
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(house.members) { m in
-                                personChip(m, on: payer == m.id, sub: nil) { payer = m.id }
+                    ScrollViewReader { row in
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(house.members) { m in
+                                    personChip(m, on: payer == m.id, sub: nil) { payer = m.id }.id(m.id)
+                                }
                             }
+                            .padding(.horizontal, 18)
                         }
-                        .padding(.horizontal, 18)
+                        // Sửa khoản do người ở cuối hàng ứng tiền: cuộn tới người đó, kẻo trông như chưa chọn ai
+                        .onChange(of: payer, initial: true) { _, id in row.scrollTo(id, anchor: .center) }
                     }
                     .padding(.horizontal, -18)
 
                     HStack {
                         label(own.isEmpty ? L("Chia đều cho") : L("Chia cho"))
                         Spacer()
-                        Button(shares.count == house.members.count ? L("Bỏ chọn") : L("Cả nhà")) {
+                        Button(shares.count == house.members.count ? L("Bỏ chọn") : L("Cả nhóm")) {
                             if shares.count == house.members.count { shares = []; ownText = [:]; target = nil }
                             else { shares = Set(house.members.map(\.id)) }
                         }
@@ -1835,6 +1846,7 @@ struct HouseSpendEditor: View {
     }
 
     private var categories: some View {
+        ScrollViewReader { row in
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(Category.all) { c in
@@ -1849,9 +1861,13 @@ struct HouseSpendEditor: View {
                         .background(on ? c.color : Color.primary.opacity(0.05), in: Capsule())
                     }
                     .buttonStyle(Pressable())
+                    .id(c.k)
                 }
             }
             .padding(.horizontal, 18)
+        }
+        // Danh mục đang chọn (khoản đang sửa, hoặc đoán theo ghi chú) có thể nằm ngoài màn: cuộn tới cho thấy
+        .onChange(of: cat, initial: true) { _, k in row.scrollTo(k, anchor: .center) }
         }
         .padding(.horizontal, -18)
     }

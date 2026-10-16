@@ -1061,7 +1061,9 @@ final class House: ObservableObject {
 
     /// Ghi một lần trả. Người trả báo thì chờ người nhận xác nhận; người nhận tự bấm "Đã nhận" thì xong luôn.
     func settle(_ t: HouseTransfer) async {
-        let status = t.from == me && t.to != me && (current?.usesApp(t.to) ?? true) ? "wait" : "ok"
+        // Ai báo thay người nhận (người trả, hoặc người thứ ba ghi "Đã trả" giữa hai người khác) thì chờ người nhận xác nhận, nếu
+        // người nhận dùng Payso. Chỉ chính người nhận tự báo, hoặc người nhận chỉ có tên, thì xong luôn
+        let status = t.to != me && (current?.usesApp(t.to) ?? true) ? "wait" : "ok"
         if demo, let i = cur {
             groups[i].settles.insert(HouseSettle(id: UUID().uuidString, from: t.from, to: t.to, amount: t.amount, date: Date(), status: status), at: 0)
             return

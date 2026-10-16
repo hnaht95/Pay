@@ -132,6 +132,7 @@ extension English {
 
         // Xác nhận chuyển
         "Xác nhận đã chuyển?": "Confirm transfer?",
+        "Xác nhận đã nhận?": "Confirm received?",
         "Đã chuyển %@": "Sent %@",
         "Chưa chuyển": "Not yet",
         "Đã nhận %@": "Received %@",
@@ -305,6 +306,7 @@ extension English {
         "Chỉ chính người này mới sửa được.": "Only this person can edit this.",
         "Người này dùng Payso: chỉ chính họ mới đổi được tên, ảnh và tài khoản.": "This person uses Payso: only they can change their name, photo and account.",
         "Chưa có": "None",
+        "%@ không dùng Payso nên lần trả được ghi là xong luôn.": "%@ doesn't use Payso, so the payment is recorded as done.",
         "%@ dùng Payso nên tự đặt tên, ảnh và tài khoản nhận tiền của mình.": "%@ uses Payso and sets their own name, photo and receiving account.",
         "Đổi tên, ảnh hay tài khoản thì cả nhóm sẽ được báo.": "The group is notified when the name, photo or account changes.",
         "đổi tên thành %@": "changed their name to %@",

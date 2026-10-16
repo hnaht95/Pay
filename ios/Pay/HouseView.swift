@@ -2003,16 +2003,16 @@ struct HouseSpendEditor: View {
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// Dòng mã giảm giá: chữ "Mã giảm giá" bên trái, ô số ngắn nền xanh lá bên phải (chạm để gõ bằng bàn phím số của app),
-    /// chia đều cho người trong phần chia
+    /// Dòng mã giảm giá: chữ nhỏ bên trái (biểu tượng phiếu giảm giá), ô số bên phải cùng kiểu các dòng người phía trên
+    /// (nền xám nhạt, bo 18, cao 54). Chạm ô để gõ bằng bàn phím số của app; giảm giá chia đều cho người trong phần chia
     private var discountRow: some View {
         let typing = target == Self.discountKey
-        return HStack(spacing: 10) {
-            Image(systemName: "tag.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.goodInk)
+        return HStack(spacing: 8) {
+            Image(systemName: "ticket").font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 1) {
-                Text(L("Mã giảm giá")).font(.system(size: 17, weight: .semibold))
+                Text(L("Mã giảm giá")).font(.system(size: 15)).foregroundStyle(.secondary)
                 if discount > 0, !shares.isEmpty {
-                    Text(L("chia đều %d người", shares.count)).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(L("chia đều %d người", shares.count)).font(.system(size: 13)).foregroundStyle(.tertiary)
                 }
             }
             Spacer(minLength: 8)
@@ -2022,8 +2022,10 @@ struct HouseSpendEditor: View {
                 withAnimation(Self.padAnim) { padShown = true }
             } label: {
                 HStack(spacing: 3) {
-                    Text(discount > 0 ? "−" + fmt(discount) : "0").font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(discount > 0 || typing ? Palette.goodInk : Palette.goodInk.opacity(0.5))
+                    Spacer(minLength: 0)
+                    Text(discount > 0 ? "−" + fmt(discount) : "0").font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(discount > 0 ? Palette.goodInk : Color.secondary)
+                        .lineLimit(1)
                     if typing {
                         TimelineView(.periodic(from: .now, by: 0.55)) { t in
                             let lit = Int(t.date.timeIntervalSinceReferenceDate / 0.55) % 2 == 0
@@ -2031,15 +2033,17 @@ struct HouseSpendEditor: View {
                         }
                     }
                 }
-                .padding(.horizontal, 14).frame(minWidth: 96, minHeight: 40)
-                .background(Color(hex: 0x61BE6E).opacity(typing ? 0.3 : 0.18), in: Capsule())
-                .overlay { if typing { Capsule().strokeBorder(Palette.goodInk.opacity(0.5), lineWidth: 1) } }
-                .contentShape(Capsule())
+                .padding(.horizontal, 16).frame(width: 150, height: 54)
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    if typing { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Palette.goodInk.opacity(0.6), lineWidth: 1) }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .buttonStyle(Pressable())
             .accessibilityLabel(L("Mã giảm giá"))
         }
-        .padding(.leading, 10).padding(.trailing, 8).frame(height: 54)
+        .padding(.leading, 8)
     }
 
     /// Dòng dưới các viên tên: hướng dẫn nhấn giữ, hoặc báo số riêng chưa khớp tổng kèm nút đặt lại tổng

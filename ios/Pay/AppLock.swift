@@ -36,6 +36,13 @@ final class AppLock: ObservableObject {
 
     /// Mở app lần đầu: khoá luôn
     func launch() {
+        #if DEBUG
+        // "-lockPreview YES": chỉ hiện lớp che (không hỏi Face ID) để xem trên máy ảo, nơi màn nhập mật mã che kín cả màn
+        if UserDefaults.standard.bool(forKey: "lockPreview") {
+            Task { try? await Task.sleep(for: .seconds(1.5)); show() }
+            return
+        }
+        #endif
         guard enabled else { return }
         needsAuth = true
         failed = false
@@ -99,23 +106,20 @@ final class AppLock: ObservableObject {
     }
 }
 
-/// Màn khoá: nền màu trang và logo, hộp Face ID của iOS bật lên ngay trên đó. Chỉ khi Face ID không mở được (huỷ, sai)
-/// mới hiện chữ "đang khoá" và nút mở khoá để thử lại
+/// Màn khoá: làm mờ đậm nội dung app phía sau (nhìn ra màn mình đang dùng nhưng không đọc được số), hộp Face ID của iOS
+/// bật lên ngay trên đó. Chỉ khi Face ID không mở được (huỷ, sai) mới hiện chữ "đang khoá" và nút mở khoá để thử lại
 private struct AppLockView: View {
     @EnvironmentObject var lock: AppLock
 
     var body: some View {
         ZStack {
-            Palette.bg.ignoresSafeArea()
-            // Logo và chữ ở phần trên, nút ở dưới: hộp Face ID của iOS hiện giữa màn, không che chúng
-            VStack(spacing: 14) {
-                Spacer().frame(maxHeight: 160)
-                Image("logo-pay").resizable().scaledToFit().frame(height: 44)
-                if lock.needsAuth && lock.failed {
-                    Text(L("Payso đang khoá")).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                if lock.needsAuth && lock.failed {
+            LockBlur().ignoresSafeArea()
+            if lock.needsAuth && lock.failed {
+                VStack(spacing: 14) {
+                    Spacer().frame(maxHeight: 160)
+                    Image(systemName: "lock.fill").font(.system(size: 28, weight: .semibold))
+                    Text(L("Payso đang khoá")).font(.system(size: 17, weight: .semibold))
+                    Spacer()
                     Button { Task { await lock.unlock() } } label: {
                         Label(L("Mở khoá bằng %@", AppLock.methodName), systemImage: "faceid")
                             .font(.system(size: 17, weight: .semibold))
@@ -126,7 +130,14 @@ private struct AppLockView: View {
                     .buttonStyle(Pressable())
                     .padding(.horizontal, 16).padding(.bottom, 8)
                 }
+                .foregroundStyle(.secondary)
             }
         }
     }
+}
+
+/// Lớp kính mờ đậm của hệ thống (đổi theo sáng / tối): chữ số to phía sau cũng không đọc được
+private struct LockBlur: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView { UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial)) }
+    func updateUIView(_ v: UIVisualEffectView, context: Context) {}
 }

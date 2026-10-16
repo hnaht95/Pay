@@ -2008,7 +2008,7 @@ struct HouseSpendEditor: View {
     private var discountRow: some View {
         let typing = target == Self.discountKey
         return HStack(spacing: 8) {
-            Image(systemName: "ticket").font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
+            Image("icon-discount").renderingMode(.template).resizable().frame(width: 22, height: 22).foregroundStyle(Palette.goodInk)
             VStack(alignment: .leading, spacing: 1) {
                 Text(L("Mã giảm giá")).font(.system(size: 15)).foregroundStyle(.secondary)
                 if discount > 0, !shares.isEmpty {

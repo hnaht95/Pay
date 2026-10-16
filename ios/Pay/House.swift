@@ -653,14 +653,35 @@ final class House: ObservableObject {
             p.permission = .readWrite
             s.addParticipant(p)
             do {
-                let r = try await db.modifyRecords(saving: [s], deleting: [], savePolicy: .ifServerRecordUnchanged)
+                // Lưu bằng CKModifyRecordsOperation, không dùng db.modifyRecords(saving:…): hàm async đó văng ngay trong CloudKit
+                // (EXC_BREAKPOINT) khi lưu lời mời có người tham gia bằng link một lần (iOS 27.2, 16/10/2026)
+                let saved = try await saveShare(s)
                 // Hàm gốc của iOS 18; bản bọc Swift oneTimeURL(for:) chỉ có từ iOS 26
-                guard let saved = try r.saveResults[s.recordID]?.get() as? CKShare,
-                      let url = saved.__oneTimeURL(forParticipantID: p.participantID) else { throw CKError(.internalError) }
+                guard let url = saved.__oneTimeURL(forParticipantID: p.participantID) else { throw CKError(.internalError) }
                 return (url, p.participantID)
             } catch let e as CKError where e.code == .serverRecordChanged && attempt == 0 { continue }
         }
         throw CKError(.serverRecordChanged)
+    }
+
+    /// Lưu lời mời (CKShare) bằng thao tác CloudKit kiểu cũ, chỉ ghi khi bản trên iCloud chưa bị đổi; trả về bản đã lưu
+    private func saveShare(_ s: CKShare) async throws -> CKShare {
+        try await withCheckedThrowingContinuation { (c: CheckedContinuation<CKShare, Error>) in
+            let op = CKModifyRecordsOperation(recordsToSave: [s], recordIDsToDelete: nil)
+            op.savePolicy = .ifServerRecordUnchanged
+            var saved: Result<CKRecord, Error>?
+            op.perRecordSaveBlock = { _, r in saved = r }
+            op.modifyRecordsResultBlock = { r in
+                switch (saved, r) {
+                case (.some(.success(let x)), _):
+                    if let share = x as? CKShare { c.resume(returning: share) } else { c.resume(throwing: CKError(.internalError)) }
+                case (.some(.failure(let e)), _): c.resume(throwing: e)
+                case (nil, .failure(let e)): c.resume(throwing: e)
+                case (nil, .success): c.resume(throwing: CKError(.internalError))
+                }
+            }
+            db.add(op)
+        }
     }
 
     /// Người có link một lần này đã vào nhóm chưa
@@ -679,7 +700,7 @@ final class House: ObservableObject {
         let unused = s.participants.filter { pids.contains($0.participantID) && $0.acceptanceStatus == .pending }
         guard !unused.isEmpty else { return }
         unused.forEach { s.removeParticipant($0) }
-        _ = try? await db.modifyRecords(saving: [s], deleting: [], savePolicy: .ifServerRecordUnchanged)
+        _ = try? await saveShare(s)
     }
 
     /// Vào nhóm từ link mời quét được (mã QR nhóm, hoặc link chủ nhóm gửi qua mã của mình)

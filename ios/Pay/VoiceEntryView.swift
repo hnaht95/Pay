@@ -558,46 +558,27 @@ struct VoiceEntryView: View {
             .animation(.snappy, value: live?.amount)
             if let l = live {
                 let c = Category.get(l.cat)
+                // Câu nhắc tới nhiều danh mục ("mua cát cho mèo"): chữ đã nghe một dòng riêng ở trên, bên dưới là một hàng các
+                // danh mục để chọn (đang chọn tô màu, chạm danh mục khác là đổi). Chỉ một danh mục thì danh mục và chữ chung một dòng
+                let others = Array(Category.matches(l.note).filter { $0 != l.cat }.prefix(3))
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        HStack(spacing: 6) {
-                            CategoryIcon(c: c, size: 18)
-                            Text(c.name).font(.system(size: 15, weight: .semibold))
+                    if others.isEmpty {
+                        HStack(spacing: 8) {
+                            chip(c, on: true)
+                            details(l)
                         }
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(c.color, in: Capsule())
-                        .foregroundStyle(c.ink)
-                        // Câu nói có ngày khác hôm nay / quẹt thẻ: hiện nhỏ để biết sẽ ghi vào đâu
-                        if let d = l.date, !Calendar.current.isDateInToday(d) {
-                            Text(dayLabel(d)).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        if l.credit {
-                            Image(systemName: "creditcard").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
-                                .accessibilityLabel(L("Thẻ tín dụng"))
-                        }
-                        if !l.note.isEmpty {
-                            Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                    }
-                    // Câu nhắc tới nhiều danh mục ("mua cát cho mèo"): hiện các danh mục còn lại, chạm là đổi
-                    let others = Category.matches(l.note).filter { $0 != l.cat }.prefix(3)
-                    if !others.isEmpty {
-                        HStack(spacing: 6) {
-                            Text(L("Hay là")).font(.system(size: 13)).foregroundStyle(.secondary)
-                            ForEach(Array(others), id: \.self) { k in
-                                let o = Category.get(k)
-                                Button { switchCategory(to: k) } label: {
-                                    HStack(spacing: 5) {
-                                        CategoryIcon(c: o, size: 16)
-                                        Text(o.name).font(.system(size: 15, weight: .medium))
-                                    }
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(Palette.pill, in: Capsule())
-                                    .foregroundStyle(.primary)
+                    } else {
+                        HStack(spacing: 8) { details(l) }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                chip(c, on: true)
+                                ForEach(others, id: \.self) { k in
+                                    Button { switchCategory(to: k) } label: { chip(Category.get(k), on: false) }
+                                        .buttonStyle(Pressable())
                                 }
-                                .buttonStyle(Pressable())
                             }
                         }
+                        .scrollClipDisabled()
                     }
                 }
             } else {
@@ -605,6 +586,32 @@ struct VoiceEntryView: View {
                 Text(hint).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(2)
                     .contentTransition(.opacity)
             }
+        }
+    }
+
+    /// Viên danh mục: đang chọn thì nền màu danh mục, chưa chọn thì nền xám nhạt
+    private func chip(_ c: Category, on: Bool) -> some View {
+        HStack(spacing: 6) {
+            CategoryIcon(c: c, size: 18)
+            Text(c.name).font(.system(size: 15, weight: on ? .semibold : .medium))
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(on ? c.color : Palette.pill, in: Capsule())
+        .foregroundStyle(on ? c.ink : Color.primary)
+    }
+
+    /// Ngày (nếu khác hôm nay), dấu thẻ tín dụng và ghi chú đã nghe
+    @ViewBuilder private func details(_ l: (amount: Int, note: String, cat: String, date: Date?, credit: Bool)) -> some View {
+        // Câu nói có ngày khác hôm nay / quẹt thẻ: hiện nhỏ để biết sẽ ghi vào đâu
+        if let d = l.date, !Calendar.current.isDateInToday(d) {
+            Text(dayLabel(d)).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).lineLimit(1)
+        }
+        if l.credit {
+            Image(systemName: "creditcard").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+                .accessibilityLabel(L("Thẻ tín dụng"))
+        }
+        if !l.note.isEmpty {
+            Text(l.note.capFirst).font(.system(size: 15)).foregroundStyle(.secondary).lineLimit(1)
         }
     }
 
@@ -733,7 +740,7 @@ struct VoiceEntryView: View {
                         return
                     }
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    store.show(msg.short, undo: msg.undo)
+                    store.show(msg.short, detail: msg.detail, undo: msg.undo)
                     leave()
                 }
                 return

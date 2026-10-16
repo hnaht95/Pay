@@ -119,6 +119,7 @@ extension English {
         "Chưa có khoản chung nào. Bấm Thêm khoản chung khi bạn ứng tiền cho cả nhà.": "No shared expenses yet. Tap Add shared expense when you pay for the group.",
         "%@ ứng · chia %d người · %@": "%@ paid · split %d ways · %@",
         "bạn %@": "you %@",
+        "Bạn trả · phần bạn %@": "You paid · your share %@",
         "Xoá khoản này": "Delete this expense",
         "Cả nhóm sẽ không thấy khoản này nữa": "The whole group will no longer see it",
         "Chờ xác nhận": "Awaiting confirmation",

@@ -173,6 +173,8 @@ struct Toast: Identifiable {
     let id = UUID()
     let message: String
     let undo: (() -> Void)?
+    /// Dòng phụ nhỏ, mờ dưới câu chính (vd "Hạnh trả")
+    var detail: String? = nil
     /// Báo lỗi: hiện biểu tượng cảnh báo thay cho dấu tích
     var error = false
 }
@@ -493,8 +495,8 @@ final class Store: ObservableObject {
         persist()
     }
 
-    func show(_ message: String, undo: (() -> Void)? = nil) {
-        toast = Toast(message: message, undo: undo)
+    func show(_ message: String, detail: String? = nil, undo: (() -> Void)? = nil) {
+        toast = Toast(message: message, undo: undo, detail: detail)
     }
 
     /// Báo việc không làm được: thông báo có biểu tượng cảnh báo, không có Hoàn tác

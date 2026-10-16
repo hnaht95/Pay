@@ -1276,8 +1276,13 @@ struct ToastView: View {
                 // Báo lỗi (vd lưu khoản chung thất bại) thì không vẽ dấu tích thành công
                 Image(systemName: t.error ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").font(.system(size: 18))
                 // Câu dài (vd "Sẽ tự ghi ngày 28 hằng tháng, lần tới 28/11", câu báo lỗi) xuống dòng thứ hai thay vì bị cắt "…"
-                Text(t.message).font(.system(size: 17, weight: .medium))
-                    .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(t.message).font(.system(size: 17, weight: .medium))
+                        .lineLimit(2).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    if let d = t.detail {
+                        Text(d).font(.system(size: 13)).opacity(0.6).lineLimit(1)
+                    }
+                }
                 if let undo = t.undo {
                     // Nút thật nằm trong thanh: nền tròn riêng, dễ nhấn (cao 48)
                     // Hoàn tác có hiệu ứng: hàng vừa xoá trượt / hiện lại vào chỗ cũ, các hàng dưới dịch xuống nhường chỗ

@@ -963,8 +963,8 @@ final class House: ObservableObject {
 
     /// Ghi bằng giọng nói (thẻ voice, Siri) một khoản vào nhóm `g`, phần của mình ghi luôn vào chi tiêu cá nhân.
     /// Trả về câu báo và việc hoàn tác (xoá cả khoản chung lẫn phần cá nhân); nil nếu không lưu được
-    /// text: câu đầy đủ (Siri đọc); short: câu ngắn cho thanh báo có nút Hoàn tác ("Tùng của +500.000 · Hạnh trả")
-    func voiceSpend(in g: HouseGroup, amount: Int, note: String, payer: String?, shares: [String]?) async -> (text: String, short: String, undo: () -> Void)? {
+    /// text: câu đầy đủ (Siri đọc); short + detail: thanh báo có nút Hoàn tác ("Tùng của +500.000", dòng nhỏ "Hạnh trả")
+    func voiceSpend(in g: HouseGroup, amount: Int, note: String, payer: String?, shares: [String]?) async -> (text: String, short: String, detail: String?, undo: () -> Void)? {
         let store = Store.shared
         let cat = store.guessCategory(note)
         guard let (spend, mine) = await quickSpend(in: g, amount: amount, note: note, cat: cat, payer: payer, shares: shares) else { return nil }
@@ -974,12 +974,14 @@ final class House: ObservableObject {
             personal = store.all.last { $0.acct == Store.groupLink(spend) }?.id
         }
         var text = mine > 0 ? L("Đã ghi %@ vào %@ · bạn %@", fmt(amount), g.name, fmt(mine)) : L("Đã ghi %@ vào %@", fmt(amount), g.name)
-        var short = "\(g.name) +\(fmt(amount))"
+        let short = "\(g.name) +\(fmt(amount))"
+        var detail: String?
         if let p = payer, p != g.me, let n = g.members.first(where: { $0.id == p })?.name {
-            text += " · " + L("%@ trả", n); short += " · " + L("%@ trả", n)
-        } else if mine > 0 { short += " · " + L("bạn %@", fmt(mine)) }
+            text += " · " + L("%@ trả", n); detail = L("%@ trả", n)
+            if mine > 0 { detail! += " · " + L("bạn %@", fmt(mine)) }
+        } else if mine > 0 { detail = L("Bạn trả · phần bạn %@", fmt(mine)) }
         let gid = g.id
-        return (text, short, { [weak self] in
+        return (text, short, detail, { [weak self] in
             if let personal { store.remove(id: personal, toast: false) }
             Task { await self?.undoQuickSpend(spend, in: gid) }
         })

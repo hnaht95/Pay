@@ -775,6 +775,8 @@ extension View {
 
     /// Hàng khoản chi trong List: vuốt sang trái hiện nút Xoá (chạm vào hàng để sửa), không kẻ dòng, nền trong suốt.
     func expenseSwipe(delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete)) }
+    /// Chỉ cho vuốt xoá khi `on` (vd khoản chung người khác thêm thì không xoá được)
+    func expenseSwipe(if on: Bool, delete: @escaping () -> Void) -> some View { modifier(ExpenseSwipe(delete: delete, enabled: on)) }
 }
 
 /// Kéo ngang theo tay (translation, và khi thả: translation + vận tốc ngang). iOS 18+: cử chỉ kéo của UIKit chỉ bắt đầu khi
@@ -831,6 +833,8 @@ private struct HorizontalPan: UIGestureRecognizerRepresentable {
 /// mép màn đều ~18pt (đo trên máy ảo iOS 18 và 27)
 private struct ExpenseSwipe: ViewModifier {
     let delete: () -> Void
+    /// false: giữ nguyên dáng hàng nhưng không có nút xoá khi vuốt (vd khoản chung người khác thêm)
+    var enabled = true
     /// Tâm hàng lúc đứng yên (xa bên phải nhất từng thấy) và đã rung cho lần vuốt này chưa
     @State private var restX: CGFloat?
     @State private var buzzed = false
@@ -849,6 +853,7 @@ private struct ExpenseSwipe: ViewModifier {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if enabled {
                 Button {
                     Haptic.tap(.medium)
                     delete()
@@ -858,6 +863,7 @@ private struct ExpenseSwipe: ViewModifier {
                 }
                 .tint(Self.tint)
                 .accessibilityLabel(L("Xoá"))
+                }
             }
     }
 

@@ -70,7 +70,7 @@ extension English {
 
         // Bạn là ai
         "Bạn là ai trong nhóm?": "Who are you in this group?",
-        "Chỉ để biết phần nào là của bạn trên máy này.": "Just so this device knows which share is yours.",
+        "Chọn đúng tên của bạn. Đã chọn thì không đổi được.": "Pick your own name. You can't change it later.",
         "Thêm tôi vào nhóm": "Add me to the group",
 
         // Thêm người, rời nhóm
@@ -246,12 +246,11 @@ extension English {
         "Không ai nợ ai, cả nhóm đã trả xong.": "Nobody owes anyone, the group is settled up.",
         "Gửi từ Payso": "Sent from Payso",
         // Đổi "tôi là ai", xoá thành viên
-        "Đổi người là tôi": "Change who I am",
         "Đổi người là bạn": "Change who you are",
         "Chọn đúng người là bạn. Người đang chọn sẽ trống lại cho chủ thật nhận.": "Pick the right person. The one you picked before becomes free for its real owner.",
         "Đang chọn": "Current",
         "Đã có người nhận": "Taken",
-        "%@ đã được một tài khoản iCloud khác nhận. Người đó đổi sang người khác thì bạn mới chọn được.": "%@ is already claimed by another iCloud account. They need to switch to someone else before you can pick it.",
+        "%@ đã được một tài khoản iCloud khác nhận.": "%@ is already taken by another iCloud account.",
         "Xoá khỏi nhóm": "Remove from group",
         "Xoá %@ khỏi nhóm?": "Remove %@ from the group?",
         "Người này đã có khoản chi hoặc lần trả trong sổ nên không xoá được: các khoản cũ và số dư sẽ không còn khớp.": "This person already has expenses or payments in the group, so they can't be removed: past expenses and balances would no longer add up.",
@@ -283,5 +282,31 @@ extension English {
         "Đã mời. Máy kia sẽ tự vào nhóm": "Invited. Their phone will join automatically",
         "Mã mời đã được dùng hoặc đã hết hạn. Nhờ chủ nhóm mở mã mới.": "This invite was already used or has expired. Ask the owner for a new code.",
         "Tạo xong, mời mọi người bằng mã QR hoặc qua Tin nhắn, Zalo. Người được mời cần cài Payso và đăng nhập iCloud. Muốn vào nhóm người khác đã tạo thì quét mã nhóm hoặc bấm vào lời mời họ gửi.": "Then invite people with a QR code or via Messages, Zalo. They need Payso and iCloud. To join someone else's group, scan its code or tap the invite they sent.",
+
+        // Ai được sửa khoản chung, báo khi sửa / xoá
+        "Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được.": "Only the person who added this or the group owner can edit it.",
+        "Chỉ người thêm khoản này hoặc chủ nhóm mới xoá được.": "Only the person who added this or the group owner can delete it.",
+        "Chỉ %@ (người thêm) hoặc chủ nhóm mới sửa được khoản này.": "Only %@ (who added it) or the group owner can edit this.",
+        "Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được": "Only the person who added it or the group owner can edit",
+        "Không sửa được": "Can't edit",
+        "Cả nhóm sẽ được báo": "Everyone in the group will be notified",
+        "%@ thêm": "added by %@",
+        "%@ đã sửa": "edited by %@",
+        "đã sửa": "edited",
+        "%@ sửa khoản chung": "%@ edited a shared expense",
+        "Một người trong nhóm": "Someone in the group",
+        "Phần bạn %@.": "Your share %@.",
+        "Bạn không chịu khoản này.": "You're not part of this one.",
+        "Một khoản chung đã bị xoá": "A shared expense was deleted",
+        "Bạn đã chọn mình là ai trong nhóm này, không đổi được.": "You've already picked who you are in this group. It can't be changed.",
+        "Tài khoản iCloud của bạn đã là %@ trong nhóm này, không đổi được.": "Your iCloud account is already %@ in this group. It can't be changed.",
+        "Trong nhóm đã có người tên %@. Đặt tên khác để khỏi nhầm.": "Someone in the group is already called %@. Pick another name to avoid mix-ups.",
+        "Trong nhóm đã có người tên này. Đặt tên khác để khỏi nhầm.": "Someone in the group already has this name. Pick another to avoid mix-ups.",
+        "Chỉ chính người này mới sửa được.": "Only this person can edit this.",
+        "Người này dùng Payso: chỉ chính họ mới đổi được tên, ảnh và tài khoản.": "This person uses Payso: only they can change their name, photo and account.",
+        "Đổi tên, ảnh hay tài khoản thì cả nhóm sẽ được báo.": "The group is notified when the name, photo or account changes.",
+        "đổi tên thành %@": "changed their name to %@",
+        "đổi ảnh đại diện": "changed their photo",
+        "đổi tài khoản nhận tiền": "changed their payment account",
     ]
 }

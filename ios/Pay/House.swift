@@ -161,6 +161,8 @@ struct HouseGroup: Identifiable {
     var tone: Int?
     var photo: Data?
     var records: [CKRecord.ID: CKRecord] = [:]
+    /// Chỉ dữ liệu mẫu (-houseDemo): mã khoản → Apple ID giả của người đã thêm (bản ghi thật thì iCloud cho biết)
+    var demoCreators: [String: String] = [:]
 
     /// > 0: nhóm còn nợ mình; < 0: mình còn phải trả
     var myNet: Int { me.map { Settle.balances(spends, settles)[$0] ?? 0 } ?? 0 }
@@ -183,6 +185,31 @@ struct HouseGroup: Identifiable {
     /// Lần trả còn chờ người nhận xác nhận (người nhận chỉ là tên thì không tính là chờ)
     var waiting: [HouseSettle] { settles.filter { $0.status == "wait" && usesApp($0.to) } }
     var lastActivity: Date { max(spends.first?.date ?? .distantPast, settles.first?.date ?? .distantPast) }
+
+    /// Mã người dùng iCloud đã tạo / sửa lần cuối một mục. Mục của chính mình thì iCloud trả về CKCurrentUserDefaultName
+    func creator(_ id: String) -> String? { demoCreators[id] ?? records[CKRecord.ID(recordName: id, zoneID: zone)]?.creatorUserRecordID?.recordName }
+    func editor(_ id: String) -> String? { records[CKRecord.ID(recordName: id, zoneID: zone)]?.lastModifiedUserRecordID?.recordName }
+
+    /// Ai được sửa / xoá một khoản chung: người đã thêm khoản đó, và chủ nhóm (sửa được tất cả).
+    /// Chưa rõ ai thêm (dữ liệu mẫu, khoản chưa có trên iCloud) thì không chặn
+    func canEdit(_ id: String) -> Bool {
+        guard !isOwner, let who = creator(id) else { return true }
+        return who == CKCurrentUserDefaultName
+    }
+
+    /// Tên thành viên gắn với một tài khoản iCloud (qua "tôi là ai"); của chính mình thì "Bạn"
+    func userName(_ user: String?) -> String? {
+        guard let user else { return nil }
+        if user == CKCurrentUserDefaultName { return L("Bạn") }
+        return members.first { $0.user == user }?.name
+    }
+
+    /// Khoản đã bị sửa sau khi thêm: trả về tên người sửa (hoặc chuỗi rỗng nếu không rõ ai), nil nếu chưa sửa lần nào
+    func editedBy(_ id: String) -> String? {
+        guard let r = records[CKRecord.ID(recordName: id, zoneID: zone)], let c = r.creationDate, let m = r.modificationDate,
+              m.timeIntervalSince(c) > 5 else { return nil }
+        return userName(r.lastModifiedUserRecordID?.recordName) ?? ""
+    }
 
     /// Người này đã có trong sổ (ứng tiền, được chia, chuyển / nhận tiền): xoá đi thì các khoản cũ và số dư thành "Người đã xoá"
     func inUse(_ id: String) -> Bool {
@@ -369,7 +396,8 @@ final class House: ObservableObject {
                         HouseSettle(id: "s2", from: "a", to: "c", amount: 50_000, date: ago(0.1), status: "wait")]
         home.me = "c"
         var trip = HouseGroup(zone: CKRecordZone.ID(zoneName: "nha-demo2"), scope: .shared, isOwner: false, name: L("Đi Đà Lạt"))
-        trip.members = [HouseMember(id: "c", name: "Minh"), HouseMember(id: "x", name: "Khoa"), HouseMember(id: "y", name: "Vy")]
+        trip.members = [HouseMember(id: "c", name: "Minh"), HouseMember(id: "x", name: "Khoa", user: "demo-khoa"), HouseMember(id: "y", name: "Vy")]
+        trip.demoCreators = ["t2": "demo-khoa"]   // Khoa thêm "Lẩu gà lá é": máy này (không phải chủ nhóm) không sửa được
         trip.spends = [HouseSpend(id: "t1", amount: 1_800_000, note: L("Homestay 2 đêm"), payer: "c", shares: ["c", "x", "y"], date: ago(12), cat: "di"),
                        HouseSpend(id: "t2", amount: 450_000, note: L("Lẩu gà lá é"), payer: "x", shares: ["c", "x", "y"], date: ago(11), cat: "an")]
         trip.me = "c"
@@ -727,7 +755,24 @@ final class House: ObservableObject {
 
     // MARK: Sửa dữ liệu (nhóm đang mở)
 
+    /// Tên đã có người khác dùng trong nhóm đang mở (không phân biệt hoa thường, bỏ khoảng trắng thừa; dấu vẫn tính: Minh ≠ Mình)
+    func nameTaken(_ n: String, except id: String? = nil) -> Bool {
+        let k = Self.nameKey(n)
+        return !k.isEmpty && members.contains { $0.id != id && Self.nameKey($0.name) == k }
+    }
+    private static func nameKey(_ n: String) -> String {
+        n.split(whereSeparator: \.isWhitespace).joined(separator: " ").lowercased()
+    }
+
+    /// Ai được sửa tên, ảnh, tài khoản nhận tiền của một thành viên: người dùng Payso thì chỉ chính họ (kể cả chủ nhóm cũng không
+    /// sửa hộ, nhất là tài khoản nhận tiền); người chỉ có tên (không dùng Payso) thì ai trong nhóm cũng ghi giúp được
+    func canEditMember(_ id: String) -> Bool {
+        guard let m = members.first(where: { $0.id == id }) else { return false }
+        return m.user == nil || id == me
+    }
+
     func addMember(_ n: String) async -> String? {
+        if nameTaken(n) { Store.shared.showError(L("Trong nhóm đã có người tên %@. Đặt tên khác để khỏi nhầm.", n)); return nil }
         if demo, let i = cur { let id = UUID().uuidString; groups[i].members.append(HouseMember(id: id, name: n)); return id }
         guard let zone else { return nil }
         let r = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: UUID().uuidString, zoneID: zone))
@@ -737,15 +782,18 @@ final class House: ObservableObject {
 
     /// Sửa tên và tài khoản nhận tiền của một thành viên.
     /// photo: nil = giữ nguyên, Data rỗng = bỏ ảnh
-    func updateMember(_ id: String, name n: String, bin: String?, acct: String?, photo: Data? = nil) async {
+    @discardableResult
+    func updateMember(_ id: String, name n: String, bin: String?, acct: String?, photo: Data? = nil) async -> Bool {
+        if nameTaken(n, except: id) { Store.shared.showError(L("Trong nhóm đã có người tên %@. Đặt tên khác để khỏi nhầm.", n)); return false }
+        guard canEditMember(id) else { Store.shared.showError(L("Chỉ chính người này mới sửa được.")); return false }
         if demo, let g = cur {
             if let i = groups[g].members.firstIndex(where: { $0.id == id }) {
                 groups[g].members[i].name = n; groups[g].members[i].bin = bin; groups[g].members[i].acct = acct
                 if let photo { groups[g].members[i].photo = photo.isEmpty ? nil : photo }
             }
-            return
+            return true
         }
-        guard let r = record(id) else { stale(); return }
+        guard let r = record(id) else { stale(); return false }
         r["name"] = n; r["bin"] = bin; r["acct"] = acct
         if let photo {
             if photo.isEmpty { r["photo"] = nil } else {
@@ -754,7 +802,7 @@ final class House: ObservableObject {
                 r["photo"] = CKAsset(fileURL: url)
             }
         }
-        _ = await run([r], strict: true)
+        return await run([r], strict: true)
     }
 
     /// Đổi tên và ảnh đại diện của một nhóm (nhóm bất kỳ, không cần đang mở). Cả nhóm cùng thấy.
@@ -804,13 +852,21 @@ final class House: ObservableObject {
         guard let gid = currentID else { return false }
         let old = me
         if old == id { return true }
-        // Đổi người: tải lại trước để biết đúng ai đang được Apple ID nào nhận (người kia có thể vừa nhận trên máy họ)
-        if old != nil, !demo { await load(prompt: false) }
+        // Đã chọn "tôi là ai" thì không đổi sang người khác được: tránh nhận làm người khác để ghi hộ, sửa hộ
+        if old != nil {
+            Store.shared.showError(L("Bạn đã chọn mình là ai trong nhóm này, không đổi được."))
+            return false
+        }
         // Nhóm đang mở có thể vừa đổi trong lúc chờ (thêm mình xong mới nhận): không lấy mã thành viên của nhóm khác làm "tôi"
         guard currentID == gid, let m = members.first(where: { $0.id == id }) else { return false }
         let u = demo ? nil : await myUser()
+        // Apple ID này đã nhận một người khác trong nhóm (ở máy khác, hoặc trước khi cài lại app): giữ người đó
+        if let u, let mine = members.first(where: { $0.user == u }), mine.id != id {
+            Store.shared.showError(L("Tài khoản iCloud của bạn đã là %@ trong nhóm này, không đổi được.", mine.name))
+            return false
+        }
         if let taken = m.user, taken != u {
-            Store.shared.showError(L("%@ đã được một tài khoản iCloud khác nhận. Người đó đổi sang người khác thì bạn mới chọn được.", m.name))
+            Store.shared.showError(L("%@ đã được một tài khoản iCloud khác nhận.", m.name))
             return false
         }
         guard currentID == gid else { return false }
@@ -907,6 +963,7 @@ final class House: ObservableObject {
     /// Sửa một khoản chung (số tiền, ghi chú, ai trả, chia cho ai, danh mục); giữ nguyên ngày.
     func updateSpend(_ e: HouseSpend) async -> Bool {
         if demo, let i = cur, let j = groups[i].spends.firstIndex(where: { $0.id == e.id }) { groups[i].spends[j] = e; return true }
+        guard current?.canEdit(e.id) ?? true else { Store.shared.showError(L("Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được.")); return false }
         guard let r = record(e.id) else { stale(); return false }
         guard knows(e.shares + [e.payer]) else { stale(); return false }
         r["amount"] = Int64(e.amount); r["note"] = e.note; r["payer"] = e.payer; r["shares"] = e.shares; r["cat"] = e.cat
@@ -1120,6 +1177,15 @@ final class House: ObservableObject {
         dropGenericAlerts()
     }
 
+    /// Khoản chung máy này vừa xoá: không tự báo "đã bị xoá" cho chính mình
+    private var deletedHere: Set<String> = []
+
+    /// Dấu nội dung một khoản chung (đổi là có người sửa) kèm tên + số tiền để còn báo khi khoản bị xoá
+    private static func spendSig(_ e: HouseSpend) -> String {
+        [String(e.amount), e.note, e.payer, e.shares.sorted().joined(separator: ","), e.cat, e.fixedField.joined(separator: ",")]
+            .joined(separator: "\u{1F}")
+    }
+
     /// Báo những lần trả liên quan tới mình mà máy này chưa báo: có người báo đã chuyển cho mình,
     /// người nhận xác nhận hoặc báo chưa nhận được tiền mình chuyển. Lần đầu mở nhóm thì chỉ ghi nhớ, không báo dồn.
     private func notifyChanges(_ gi: Int) {
@@ -1179,6 +1245,78 @@ final class House: ObservableObject {
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "spend.\(e.id)", content: c, trigger: nil))
         }
         UserDefaults.standard.set(Array(seenSpends), forKey: spendKey)
+
+        // Khoản chung bị người khác sửa hoặc xoá: báo cho mọi người trong nhóm (kể cả khi đang mở app), kèm số cũ → số mới
+        let sigKey = "house.spendSigs.\(g.id)"
+        let oldSigs = UserDefaults.standard.dictionary(forKey: sigKey) as? [String: String]
+        var sigs: [String: String] = [:]
+        for e in g.spends { sigs[e.id] = Self.spendSig(e) }
+        if let oldSigs {
+            func title(_ note: String, _ cat: String, _ amount: Int) -> String { "\(note.isEmpty ? Category.get(cat).name : note.capFirst) · \(fmt(amount))" }
+            for e in g.spends {
+                guard let o = oldSigs[e.id], o != sigs[e.id] else { continue }
+                // Mình sửa (ở máy này hay máy khác của mình) thì không báo
+                guard let who = g.editor(e.id), who != CKCurrentUserDefaultName else { continue }
+                let old = o.components(separatedBy: "\u{1F}")
+                let oldAmount = Int(old.first ?? "") ?? e.amount
+                let c = UNMutableNotificationContent()
+                c.sound = .default
+                c.subtitle = g.name
+                c.userInfo = ["group": g.id]
+                c.title = L("%@ sửa khoản chung", g.userName(who) ?? L("Một người trong nhóm"))
+                let part = e.shares.contains(me) ? Settle.parts(e)[me] ?? 0 : 0
+                var body = oldAmount != e.amount ? title(e.note, e.cat, oldAmount) + " → " + fmt(e.amount) : title(e.note, e.cat, e.amount)
+                body += ". " + (part > 0 ? L("Phần bạn %@.", fmt(part)) : L("Bạn không chịu khoản này."))
+                c.body = body
+                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "edit.\(e.id).\(sigs[e.id]!.hashValue)", content: c, trigger: nil))
+            }
+            for (id, o) in oldSigs where sigs[id] == nil && !deletedHere.contains(id) {
+                let f = o.components(separatedBy: "\u{1F}")
+                guard f.count >= 5 else { continue }
+                let c = UNMutableNotificationContent()
+                c.sound = .default
+                c.subtitle = g.name
+                c.userInfo = ["group": g.id]
+                c.title = L("Một khoản chung đã bị xoá")
+                c.body = title(f[1], f[4], Int(f[0]) ?? 0)
+                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "del.\(id)", content: c, trigger: nil))
+            }
+        }
+        UserDefaults.standard.set(sigs, forKey: sigKey)
+
+        // Thành viên đổi tên, ảnh hoặc tài khoản nhận tiền: báo cả nhóm (người tự đổi thì không báo cho chính mình)
+        let memKey = "house.memberSigs.\(g.id)"
+        let oldMem = UserDefaults.standard.dictionary(forKey: memKey) as? [String: String]
+        var mem: [String: String] = [:]
+        for m in g.members { mem[m.id] = Self.memberSig(m) }
+        if let oldMem {
+            for m in g.members {
+                guard let o = oldMem[m.id], o != mem[m.id] else { continue }
+                guard let who = g.editor(m.id), who != CKCurrentUserDefaultName else { continue }
+                let a = o.components(separatedBy: "\u{1F}"), b = mem[m.id]!.components(separatedBy: "\u{1F}")
+                guard a.count == 4, b.count == 4 else { continue }
+                var what: [String] = []
+                if a[0] != b[0] { what.append(L("đổi tên thành %@", m.name)) }
+                if a[1] != b[1] { what.append(L("đổi ảnh đại diện")) }
+                if a[2] != b[2] || a[3] != b[3] { what.append(L("đổi tài khoản nhận tiền")) }
+                guard !what.isEmpty else { continue }
+                let c = UNMutableNotificationContent()
+                c.sound = .default
+                c.subtitle = g.name
+                c.userInfo = ["group": g.id]
+                c.title = a[0].isEmpty ? m.name : a[0]
+                c.body = what.joined(separator: ", ").capFirst + "."
+                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "member.\(m.id).\(mem[m.id]!.hashValue)", content: c, trigger: nil))
+            }
+        }
+        UserDefaults.standard.set(mem, forKey: memKey)
+    }
+
+    /// Dấu tên / ảnh / tài khoản của một thành viên (ảnh tính bằng một mã ngắn của dữ liệu ảnh, giống nhau giữa các lần mở app)
+    private static func memberSig(_ m: HouseMember) -> String {
+        var h: UInt32 = 2166136261
+        m.photo?.forEach { h = (h ^ UInt32($0)) &* 16777619 }
+        return [m.name, m.photo == nil ? "" : String(h), m.bin ?? "", m.acct ?? ""].joined(separator: "\u{1F}")
     }
 
     /// Thông báo có chữ do iCloud gửi thẳng (câu chung "Nhóm chung có cập nhật mới"): nhận ra nhờ khoá "ck" trong dữ liệu kèm theo
@@ -1208,7 +1346,11 @@ final class House: ObservableObject {
         }
         guard let g = current else { return }
         let gid = g.id, rid = CKRecord.ID(recordName: id, zoneID: g.zone)
+        if g.records[rid]?.recordType == "Spend", !g.canEdit(id) {
+            Store.shared.showError(L("Chỉ người thêm khoản này hoặc chủ nhóm mới xoá được.")); return
+        }
         busy = true; defer { busy = false }
+        deletedHere.insert(id)
         do {
             _ = try await container.database(with: g.scope).modifyRecords(saving: [], deleting: [rid])
             edits += 1

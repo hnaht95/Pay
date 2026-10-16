@@ -265,15 +265,11 @@ struct HouseView: View {
                     .frame(width: 36, height: 36).background(Palette.pill, in: Circle())
             } else if inGroup {
                 Menu {
-                    if house.isOwner, qrInvite {
-                        Button(L("Mã QR vào nhóm"), systemImage: "qrcode") { showGroupQR = true }
-                    }
-                    Button(house.isOwner ? L("Mời thành viên") : L("Người trong nhóm"), systemImage: "person.badge.plus") { invite() }
-                    Button(L("Thêm người"), systemImage: "plus") { claimAfterAdd = false; addingMember = true }
+                    // Thêm người chỉ ở nút "Thêm người" dưới Cả nhóm (mã QR, quét mã, gửi lời mời, chỉ thêm tên); ở đây xem / gỡ người đã mời
+                    Button(L("Người trong nhóm"), systemImage: "person.2") { invite() }
                     Button(L("Đổi ảnh, màu, tên nhóm"), systemImage: "paintpalette") { editingGroup = house.current }
                     if house.me != nil {
                         Button(L("Gửi tóm tắt ai trả ai"), systemImage: "square.and.arrow.up") { shareSummary(house.current) }
-                        Button(L("Đổi người là tôi"), systemImage: "person.crop.circle.badge.questionmark") { withAnimation(.snappy) { repicking = true } }
                     }
                     Button(house.isOwner ? L("Xoá nhóm") : L("Rời nhóm"), systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { confirmLeave = true }
                 } label: {
@@ -503,7 +499,7 @@ struct HouseView: View {
         return AppMenuSpec(icon: AnyView(groupIcon(g)), title: g.name.isEmpty ? L("Nhóm chung") : g.name,
                            subtitle: L("%d người · %d khoản chung", g.members.count, g.spends.count), items: [
             AppMenuItem(icon: "arrow.right", title: L("Mở nhóm")) { house.open(g.id) },
-            AppMenuItem(icon: "person.badge.plus", title: g.isOwner ? L("Mời thành viên") : L("Người trong nhóm")) { house.open(g.id); invite() },
+            AppMenuItem(icon: "person.2.fill", title: L("Người trong nhóm")) { house.open(g.id); invite() },
             AppMenuItem(icon: "paintpalette.fill", title: L("Đổi ảnh, màu, tên nhóm")) { editingGroup = g },
             AppMenuItem(icon: "square.and.arrow.up", title: L("Gửi tóm tắt ai trả ai"), subtitle: L("Qua Zalo, Messenger, Tin nhắn…")) { shareSummary(g) },
             archived ? AppMenuItem(icon: "tray.and.arrow.up", title: L("Bỏ lưu trữ")) { house.setArchived(g.id, false) }
@@ -521,7 +517,7 @@ struct HouseView: View {
 
     @ViewBuilder private var pickMe: some View {
         Text(repicking ? L("Đổi người là bạn") : L("Bạn là ai trong nhóm?")).font(.system(size: 21, weight: .bold)).padding(.top, 10)
-        Text(repicking ? L("Chọn đúng người là bạn. Người đang chọn sẽ trống lại cho chủ thật nhận.") : L("Chỉ để biết phần nào là của bạn trên máy này."))
+        Text(repicking ? L("Chọn đúng người là bạn. Người đang chọn sẽ trống lại cho chủ thật nhận.") : L("Chọn đúng tên của bạn. Đã chọn thì không đổi được."))
             .font(.system(size: 15)).foregroundStyle(.secondary).padding(.top, 4)
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(house.members) { m in
@@ -923,12 +919,14 @@ struct HouseView: View {
     private func spendRow(_ e: HouseSpend) -> some View {
         let c = Category.get(e.cat)
         let payer = house.memberName(e.payer)
-        return TapHold(tap: { editingSpend = e }, hold: { spendMenu(e) }) {
+        let can = house.current?.canEdit(e.id) ?? true
+        let edited = house.current?.editedBy(e.id) != nil
+        return TapHold(tap: { if can { editingSpend = e } else { cannotEdit(e) } }, hold: { spendMenu(e) }) {
         HStack(spacing: 14) {
             CategoryBadge(c: c, side: 52, radius: 16, iconSize: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.rowTitle).lineLimit(1)
-                Text(L("%@ trả · %@", e.payer == house.me ? L("Bạn") : payer, day(e.date)))
+                Text(L("%@ trả · %@", e.payer == house.me ? L("Bạn") : payer, day(e.date)) + (edited ? " · " + L("đã sửa") : ""))
                     .font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
@@ -945,18 +943,32 @@ struct HouseView: View {
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         // Vuốt xoá có sẵn của iOS, giống hệt Gần đây ở trang chủ (cùng nút tròn đỏ, rung, hàng trượt ra mép màn)
-        .expenseSwipe(delete: { softDelete(e.id) })
+        // Khoản người khác thêm (mình không phải chủ nhóm): không vuốt xoá được
+        .expenseSwipe(if: can, delete: { softDelete(e.id) })
+    }
+
+    /// Ai thêm khoản này (tên thành viên gắn với Apple ID đã tạo nó)
+    private func addedBy(_ e: HouseSpend) -> String? { house.current.flatMap { $0.userName($0.creator(e.id)) } }
+
+    private func cannotEdit(_ e: HouseSpend) {
+        Haptic.tap()
+        store.showError(addedBy(e).map { L("Chỉ %@ (người thêm) hoặc chủ nhóm mới sửa được khoản này.", $0) }
+                        ?? L("Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được."))
     }
 
     private func spendMenu(_ e: HouseSpend) {
         let c = Category.get(e.cat)
             menu = AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
                                title: "\(e.note.isEmpty ? c.name : e.note.capFirst) · \(fmt(e.amount))",
-                               subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date)),
-                               items: [AppMenuItem(icon: "pencil", title: L("Sửa khoản này")) { editingSpend = e },
-                                       AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
-                                   softDelete(e.id)
-                               }])
+                               subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date))
+                                   + (addedBy(e).map { " · " + L("%@ thêm", $0) } ?? "")
+                                   + (house.current?.editedBy(e.id).map { $0.isEmpty ? " · " + L("đã sửa") : " · " + L("%@ đã sửa", $0) } ?? ""),
+                               items: house.current?.canEdit(e.id) ?? true
+                                   ? [AppMenuItem(icon: "pencil", title: L("Sửa khoản này"), subtitle: L("Cả nhóm sẽ được báo")) { editingSpend = e },
+                                      AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
+                                          softDelete(e.id)
+                                      }]
+                                   : [AppMenuItem(icon: "lock.fill", title: L("Không sửa được"), subtitle: L("Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được")) {}])
     }
 
     /// Xoá có Hoàn tác: ẩn ngay, hiện "Đã xoá · Hoàn tác" như khoản chi của mình; hết thanh mà không hoàn tác mới xoá thật
@@ -1009,7 +1021,8 @@ struct HouseView: View {
     /// Xoá thì khoản nợ quay lại, nên người ngoài không được lặng lẽ xoá lần trả đã xác nhận của người khác
     private func canDelete(_ s: HouseSettle) -> Bool {
         let me = house.me, g = house.current
-        let party = s.from == me || s.to == me || !(g?.usesApp(s.from) ?? true) && !(g?.usesApp(s.to) ?? true)
+        // Chủ nhóm xoá được mọi lần trả; người khác chỉ lần trả của mình (hoặc giữa hai người chỉ có tên)
+        let party = house.isOwner || s.from == me || s.to == me || !(g?.usesApp(s.from) ?? true) && !(g?.usesApp(s.to) ?? true)
         return party && s.date > (house.closes.first?.date ?? .distantPast)
     }
 
@@ -1380,6 +1393,8 @@ struct HouseMemberEditor: View {
     @State private var confirmRemove = false
 
     private static let banks = BankData.names.sorted { $0.value.lowercased() < $1.value.lowercased() }
+    private var canEdit: Bool { house.canEditMember(member.id) }
+    private var duplicate: Bool { house.nameTaken(name, except: member.id) }
 
     var body: some View {
         NavigationStack {
@@ -1406,7 +1421,15 @@ struct HouseMemberEditor: View {
                 // Gắn ở cả mục (không ở hàng): BlurForm (iOS 18–25) dựng lại từng hàng, mất các tuỳ chỉnh gắn trên hàng
                 .listRowBackground(Color.clear)
                 .cardless()
-                Section(L("Tên")) { TextField(L("Tên"), text: $name) }
+                Section {
+                    TextField(L("Tên"), text: $name)
+                } header: {
+                    Text(L("Tên"))
+                } footer: {
+                    if !canEdit { Text(L("Người này dùng Payso: chỉ chính họ mới đổi được tên, ảnh và tài khoản.")) }
+                    else if duplicate { Text(L("Trong nhóm đã có người tên này. Đặt tên khác để khỏi nhầm.")).foregroundStyle(Palette.danger) }
+                    else { Text(L("Đổi tên, ảnh hay tài khoản thì cả nhóm sẽ được báo.")) }
+                }
                 Section {
                     // Danh sách dài: mở trang riêng để cuộn
                     PickLink(title: L("Ngân hàng"), selection: $bin,
@@ -1438,6 +1461,7 @@ struct HouseMemberEditor: View {
                 Text(member.user != nil ? L("Người này đang dùng Payso: máy của họ sẽ phải chọn lại mình là ai.") : L("Cả nhóm sẽ không thấy người này nữa."))
             }
             .textCase(nil)   // tiêu đề mục viết thường ở mọi bản iOS (iOS 18 trở xuống tự viết hoa)
+            .disabled(!canEdit)
             .screenTitle(member.id == house.me ? L("Bạn") : member.name)
             .navigationBarTitleDisplayMode(.inline)
             // Huỷ / Lưu ở đáy, hai nút to như các màn sửa khác
@@ -1452,12 +1476,14 @@ struct HouseMemberEditor: View {
                         let p: Data? = photoChanged ? (photo ?? Data()) : nil
                         saving = true
                         Task {
-                            await house.updateMember(member.id, name: n.isEmpty ? member.name : n,
-                                                     bin: bin.isEmpty ? nil : bin, acct: a.isEmpty ? nil : a, photo: p)
-                            dismiss()
+                            // Trùng tên / không có quyền: báo lỗi, giữ bảng mở để sửa lại
+                            if await house.updateMember(member.id, name: n.isEmpty ? member.name : n,
+                                                        bin: bin.isEmpty ? nil : bin, acct: a.isEmpty ? nil : a, photo: p) { dismiss() }
+                            saving = false
                         }
                     }
-                    .opacity(saving ? 0.5 : 1)
+                    .disabled(!canEdit || duplicate)
+                    .opacity(saving || !canEdit || duplicate ? 0.5 : 1)
                 }
                 .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, -18)
             }

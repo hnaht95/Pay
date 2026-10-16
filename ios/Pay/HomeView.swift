@@ -1290,7 +1290,7 @@ struct ToastView: View {
 
     @ViewBuilder private var bar: some View {
         if let t = store.toast {
-            HStack(spacing: 14) {
+            HStack(spacing: 18) {
                 // Báo lỗi (vd lưu khoản chung thất bại) thì không vẽ dấu tích thành công
                 // Báo lỗi mới có biểu tượng cảnh báo; thông báo thường chỉ có chữ (bỏ dấu tích đầu thanh)
                 if t.error { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 18)) }
@@ -1327,7 +1327,9 @@ struct ToastView: View {
                 }
             }
             .foregroundStyle(Palette.ctaInk)
-            .padding(.leading, 20).padding(.trailing, t.undo == nil ? 22 : 7).padding(.vertical, t.undo == nil ? 15 : 7)
+            // Có nút tròn Hoàn tác: nút cách đều mép trên, dưới, phải 8 (đồng tâm với đầu bo tròn của thanh); chữ lùi vào 26 cho cân
+            // với khoảng nút chiếm bên phải. Không có nút: lề trái phải gần bằng nhau
+            .padding(.leading, t.undo == nil ? 22 : 26).padding(.trailing, t.undo == nil ? 22 : 8).padding(.vertical, t.undo == nil ? 15 : 8)
             // Phim: mờ từng phần (chữ, nền, bóng) thay vì mờ cả khối — khối có bóng mà mờ thì không vẽ ra PDF được
             .opacity(shown)
             .background(Palette.cta.opacity(shown), in: Capsule())

@@ -13,6 +13,9 @@ final class AppLock: ObservableObject {
     var enabled: Bool { UserDefaults.standard.bool(forKey: Self.key) }
     /// Đã vào nền: lần quay lại phải mở khoá (không chỉ bỏ lớp che)
     @Published private(set) var needsAuth = false
+    /// Đã hỏi Face ID mà không mở được (huỷ, sai): lúc đó mới hiện chữ "đang khoá" và nút mở khoá. Bình thường màn khoá chỉ là
+    /// nền trơn có logo, hộp Face ID bật lên ngay trên đó, nhận mặt xong là vào thẳng app
+    @Published private(set) var failed = false
     private var window: UIWindow?
     private var authenticating = false
 
@@ -35,6 +38,7 @@ final class AppLock: ObservableObject {
     func launch() {
         guard enabled else { return }
         needsAuth = true
+        failed = false
         show()
     }
 
@@ -43,6 +47,7 @@ final class AppLock: ObservableObject {
         switch p {
         case .background:
             needsAuth = true
+            failed = false
             show()
         case .inactive:
             show()   // che khi ở màn đa nhiệm; hộp Face ID cũng làm app sang inactive: đã che sẵn nên không sao
@@ -58,6 +63,7 @@ final class AppLock: ObservableObject {
         authenticating = true
         defer { authenticating = false }
         let ok = (try? await LAContext().evaluatePolicy(.deviceOwnerAuthentication, localizedReason: L("Mở khoá Payso"))) ?? false
+        failed = !ok
         if ok { needsAuth = false; hide() }
     }
 
@@ -93,7 +99,8 @@ final class AppLock: ObservableObject {
     }
 }
 
-/// Màn khoá: nền màu trang, logo, và nút mở khoá khi đã vào nền (chỉ che thì không có nút)
+/// Màn khoá: nền màu trang và logo, hộp Face ID của iOS bật lên ngay trên đó. Chỉ khi Face ID không mở được (huỷ, sai)
+/// mới hiện chữ "đang khoá" và nút mở khoá để thử lại
 private struct AppLockView: View {
     @EnvironmentObject var lock: AppLock
 
@@ -104,11 +111,11 @@ private struct AppLockView: View {
             VStack(spacing: 14) {
                 Spacer().frame(maxHeight: 160)
                 Image("logo-pay").resizable().scaledToFit().frame(height: 44)
-                if lock.needsAuth {
+                if lock.needsAuth && lock.failed {
                     Text(L("Payso đang khoá")).font(.system(size: 17, weight: .semibold)).foregroundStyle(.secondary)
                 }
                 Spacer()
-                if lock.needsAuth {
+                if lock.needsAuth && lock.failed {
                     Button { Task { await lock.unlock() } } label: {
                         Label(L("Mở khoá bằng %@", AppLock.methodName), systemImage: "faceid")
                             .font(.system(size: 17, weight: .semibold))

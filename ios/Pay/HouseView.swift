@@ -50,6 +50,8 @@ struct HouseView: View {
     @State private var showJoin = false
     @State private var scanningJoin = false
     @State private var scannedJoin: String?
+    /// Ảnh hoá đơn của một khoản chung đang xem to (ai trong nhóm cũng xem được)
+    @State private var spendPhoto: UIImage?
     /// Thêm người từ màn "Bạn là ai": thêm xong nhận luôn là mình
     @State private var claimAfterAdd = false
     /// Đang chọn lại "tôi là ai" (lúc trước chọn nhầm người): hiện lại màn "Bạn là ai trong nhóm?"
@@ -118,6 +120,9 @@ struct HouseView: View {
         .sheet(isPresented: $adding) { HouseSpendEditor().environmentObject(store).sheetGrabber() }
         .sheet(isPresented: $showGroupQR) { if #available(iOS 18.0, *) { GroupQRSheet().sheetGrabber() } }
         .sheet(isPresented: $showJoin) { JoinByCodeSheet().sheetGrabber() }
+        .fullScreenCover(isPresented: Binding(get: { spendPhoto != nil }, set: { if !$0 { spendPhoto = nil } })) {
+            PhotoViewer(image: spendPhoto, retake: {}, remove: {}, editable: false)
+        }
         .fullScreenCover(isPresented: $scanningJoin, onDismiss: {
             guard let s = scannedJoin else { return }
             scannedJoin = nil
@@ -938,7 +943,10 @@ struct HouseView: View {
         HStack(spacing: 14) {
             CategoryBadge(c: c, side: 52, radius: 16, iconSize: 28)
             VStack(alignment: .leading, spacing: 3) {
-                Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.rowTitle).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(e.note.isEmpty ? c.name : e.note.capFirst).font(.rowTitle).lineLimit(1)
+                    if e.photo != nil { Image(systemName: "photo").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary) }
+                }
                 Text(L("%@ trả · %@", e.payer == house.me ? L("Bạn") : payer, day(e.date)) + (edited ? " · " + L("đã sửa") : ""))
                     .font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
             }
@@ -976,12 +984,14 @@ struct HouseView: View {
                                subtitle: L("%@ ứng · chia %d người · %@", house.memberName(e.payer), Set(e.shares).count, day(e.date))
                                    + (addedBy(e).map { " · " + L("%@ thêm", $0) } ?? "")
                                    + (house.current?.editedBy(e.id).map { $0.isEmpty ? " · " + L("đã sửa") : " · " + L("%@ đã sửa", $0) } ?? ""),
-                               items: house.current?.canEdit(e.id) ?? true
+                               items: (e.photo.flatMap { u in (try? Data(contentsOf: u)).flatMap(UIImage.init(data:)) }.map { img in
+                                          [AppMenuItem(icon: "photo.fill", title: L("Xem ảnh hoá đơn")) { spendPhoto = img }] } ?? [])
+                                   + (house.current?.canEdit(e.id) ?? true
                                    ? [AppMenuItem(icon: "pencil", title: L("Sửa khoản này"), subtitle: L("Cả nhóm sẽ được báo")) { editingSpend = e },
                                       AppMenuItem(icon: "trash.fill", title: L("Xoá khoản này"), subtitle: L("Cả nhóm sẽ không thấy khoản này nữa"), danger: true) {
                                           softDelete(e.id)
                                       }]
-                                   : [AppMenuItem(icon: "lock.fill", title: L("Không sửa được"), subtitle: L("Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được")) {}])
+                                   : [AppMenuItem(icon: "lock.fill", title: L("Không sửa được"), subtitle: L("Chỉ người thêm khoản này hoặc chủ nhóm mới sửa được")) {}]))
     }
 
     /// Xoá có Hoàn tác: ẩn ngay, hiện "Đã xoá · Hoàn tác" như khoản chi của mình; hết thanh mà không hoàn tác mới xoá thật
@@ -1600,8 +1610,8 @@ struct HouseSpendEditor: View {
     @State private var saving = false
     /// Lần lưu vừa rồi không thành: hiện thanh báo lỗi ngay trên bảng này (thanh ở màn nhóm bị bảng che)
     @State private var failed = false
-    /// Bàn phím số của app đang hiện (ẩn khi gõ ghi chú, chạm số tiền thì hiện lại)
-    @State private var padShown = true
+    /// Bàn phím số của app đang hiện: mở bảng thì chưa hiện, chạm ô số tiền mới hiện (ẩn khi gõ ghi chú)
+    @State private var padShown = false
     /// Số tiền riêng từng người đang gõ (mã thành viên → chữ số). Không có = người đó chia đều phần còn lại
     @State private var ownText: [String: String] = [:]
     /// Bàn phím số đang gõ cho ai: nil = tổng tiền, mã thành viên = số riêng của người đó (nhấn giữ viên tên để chọn)
@@ -1615,18 +1625,29 @@ struct HouseSpendEditor: View {
     /// Nhịp hiện / ẩn bàn phím số: trượt từ dưới lên, lò xo có nảy nhẹ ở cuối
     private static let padAnim: Animation = .spring(response: 0.42, dampingFraction: 0.66)
     @FocusState private var noteFocused: Bool
+    /// Nói để điền (nút micro cạnh ô ghi chú, như màn nhập khoản chi): "350k lẩu" điền số tiền, ghi chú, danh mục
+    @StateObject private var dictation = VoiceListener()
+    @State private var dictating = false
+    /// Ảnh hoá đơn của khoản (cả nhóm cùng xem); đổi / bỏ thì lưu lúc bấm Lưu
+    @State private var photo: UIImage?
+    @State private var photoChanged = false
+    @State private var viewingPhoto = false
+    @State private var scanningReceipt = false
+    /// Ô ghi chú cao bằng chừng này, nút micro và ô ảnh vuông cùng cỡ
+    private static let noteH: CGFloat = 54
 
-    private var amount: Int { Int(amountText.filter(\.isNumber).prefix(12)) ?? 0 }
+    /// Số tiền gõ được là cả phép tính (vd quy đổi ngoại tệ 120 × 3520), xem Calc
+    private var amount: Int { Calc.value(amountText) ?? 0 }
     /// Số riêng hợp lệ đang có: của người đang được chọn, lớn hơn 0
     private var own: [String: Int] {
         var out: [String: Int] = [:]
-        for (id, t) in ownText where shares.contains(id) { if let v = Int(t.filter(\.isNumber).prefix(12)), v > 0 { out[id] = v } }
+        for (id, t) in ownText where shares.contains(id) { if let v = Calc.value(t), v > 0 { out[id] = v } }
         return out
     }
     private var ownSum: Int { own.values.reduce(0, +) }
     /// Mã giảm giá của cả đơn (vd đặt cơm chung): chia đều cho những người trong phần chia, trừ vào tiền món của từng người
     @State private var discountText = ""
-    private var discount: Int { Int(discountText.filter(\.isNumber).prefix(12)) ?? 0 }
+    private var discount: Int { Calc.value(discountText) ?? 0 }
     /// Tổng trước giảm giá: số riêng (tiền món) của từng người tính trên tổng này
     private var gross: Int { amount + discount }
     /// Số riêng khớp với tổng: không quá tổng, và nếu ai cũng có số riêng thì cộng lại phải đúng bằng tổng; giảm giá không làm
@@ -1683,17 +1704,28 @@ struct HouseSpendEditor: View {
                     .onTapGesture { noteFocused = false; target = nil; withAnimation(Self.padAnim) { padShown = true } }
                     .animation(.snappy(duration: 0.15), value: amount)
                     .padding(.top, 8)
+                    // Đang gõ phép tính (tổng, số riêng hay giảm giá): hiện cả biểu thức, số to ở trên / trong ô là kết quả
+                    if padShown, Calc.isExpr(padDigits.wrappedValue) {
+                        Text(Calc.pretty(padDigits.wrappedValue) + " = " + fmt(Calc.value(padDigits.wrappedValue) ?? 0))
+                            .font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary).monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                            .padding(.horizontal, 18).padding(.top, 6)
+                    }
 
-                    TextField(L("Ghi chú, ví dụ: đi chợ"), text: $note)
-                        .focused($noteFocused)
-                        .font(.system(size: 17))
-                        .padding(.horizontal, 18).padding(.vertical, 15)
-                        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .padding(.top, 16)
-                        .onChange(of: note) { _, v in
-                            guard !catPicked else { return }
-                            let g = store.guessCategory(v); if g != "khac" { cat = g }
-                        }
+                    HStack(spacing: 8) {
+                        TextField(dictating ? L("Đang nghe…") : L("Ghi chú, ví dụ: đi chợ"), text: $note)
+                            .focused($noteFocused)
+                            .font(.system(size: 17))
+                            .padding(.horizontal, 18).frame(height: Self.noteH)
+                            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .onChange(of: note) { _, v in
+                                guard !catPicked else { return }
+                                let g = store.guessCategory(v); if g != "khac" { cat = g }
+                            }
+                        micTile
+                        photoTile
+                    }
+                    .padding(.top, 16)
 
                     categories.padding(.top, 12)
 
@@ -1791,7 +1823,7 @@ struct HouseSpendEditor: View {
 
                 // Bàn phím số luôn nằm sẵn trong tấm; hiện / ẩn bằng chiều cao và độ trượt (đổi được mượt, không phụ thuộc hiệu ứng
                 // chèn / gỡ phần tử trong thanh đáy). Hiện: phím trượt từ dưới hàng nút Huỷ / Lưu lên, nảy nhẹ; ẩn: trượt ngược xuống
-                NumberPad(digits: padDigits) { noteFocused = false }
+                NumberPad(digits: padDigits, ops: true) { noteFocused = false }
                     .frame(height: 248)
                     .padding(.bottom, 6)
                     .offset(y: padShown ? 0 : 150)
@@ -1879,11 +1911,29 @@ struct HouseSpendEditor: View {
         .onChange(of: [ownSum, discount, own.count, shares.count]) { _, _ in
             if !own.isEmpty, own.count == shares.count, ownSum > discount { amountText = String(ownSum - discount) }
         }
+        .fullScreenCover(isPresented: $scanningReceipt) {
+            ReceiptCamera { img in
+                scanningReceipt = false
+                guard let img else { return }
+                Haptic.tap()
+                withAnimation(.snappy) { photo = img; photoChanged = true }
+            }
+        }
+        .fullScreenCover(isPresented: $viewingPhoto) {
+            PhotoViewer(image: photo, retake: {
+                viewingPhoto = false
+                Task { try? await Task.sleep(for: .milliseconds(350)); scanningReceipt = true }
+            }, remove: {
+                viewingPhoto = false
+                withAnimation(.snappy) { photo = nil; photoChanged = true }
+            }, editable: true)
+        }
         .onAppear {
             if let e = editing {
                 amountText = String(e.amount); note = e.note; cat = e.cat; catPicked = true
                 payer = e.payer; shares = Set(e.shares); ownText = e.fixed.mapValues { String($0) }
                 padShown = false
+                if let u = e.photo, let d = try? Data(contentsOf: u) { photo = UIImage(data: d) }
             } else {
                 payer = house.me ?? house.members.first?.id ?? ""
                 shares = Set(house.members.map(\.id))
@@ -2073,6 +2123,76 @@ struct HouseSpendEditor: View {
         }
     }
 
+    /// Nút micro cạnh ô ghi chú: chạm để nói "350k lẩu", ngừng nói là điền số tiền, ghi chú, danh mục; chạm lần nữa thì dừng
+    private var micTile: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        return Button { dictating ? dictation.finish() : startDictation() } label: {
+            (dictating ? Palette.danger.opacity(0.15) : Color.primary.opacity(0.05))
+                .overlay {
+                    Image(systemName: dictating ? "waveform" : "mic.fill").font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(dictating ? Palette.danger : .secondary)
+                        .symbolEffect(.variableColor.iterative, isActive: dictating)
+                }
+                .frame(width: Self.noteH, height: Self.noteH)
+                .clipShape(shape)
+                .contentShape(shape)
+        }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(dictating ? L("Dừng nghe") : L("Nói để điền"))
+        .onChange(of: dictation.text) { _, t in if dictating, !t.isEmpty { liveDictation(t) } }
+        .onChange(of: dictation.phase) { _, p in
+            if case .failed(let why) = p { dictating = false; store.showError(why) }
+            if p == .denied { dictating = false; store.showError(L("Cần quyền micro")) }
+        }
+        .onDisappear { dictation.cancel() }
+    }
+
+    /// Ô ảnh hoá đơn cạnh nút micro: có ảnh thì hiện ảnh (chạm để xem to / chụp lại / bỏ), chưa có thì chạm để chụp hoặc chọn ảnh
+    private var photoTile: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        return Button {
+            noteFocused = false
+            if photo != nil { viewingPhoto = true } else if Pro.shared.allow(.photos) { scanningReceipt = true }
+        } label: {
+            Color.primary.opacity(0.05)
+                .overlay {
+                    if let photo { Image(uiImage: photo).resizable().scaledToFill() }
+                    else { Image(systemName: "camera.aperture").font(.system(size: 22, weight: .medium)).foregroundStyle(.secondary) }
+                }
+                .frame(width: Self.noteH, height: Self.noteH)
+                .clipShape(shape)
+                .contentShape(shape)
+        }
+        .buttonStyle(Pressable())
+        .accessibilityLabel(photo != nil ? L("Ảnh hoá đơn") : L("Chụp hoá đơn"))
+    }
+
+    private func startDictation() {
+        noteFocused = false
+        Haptic.tap()
+        withAnimation(.snappy) { dictating = true; padShown = false }
+        dictation.onFinish = { said in applyDictation(said) }
+        Task {
+            await dictation.start()
+            if dictation.phase != .listening && dictating { if case .idle = dictation.phase { dictating = false } }
+        }
+    }
+
+    /// Đang nói: đọc được số tiền thì điền ngay vào ô số tiền, ô ghi chú chỉ còn phần chữ
+    private func liveDictation(_ t: String) {
+        if let q = QuickParse.spoken(t) ?? QuickParse.expense(t) { target = nil; amountText = String(q.amount); note = q.note }
+        else { note = t }
+    }
+
+    private func applyDictation(_ said: String) {
+        withAnimation(.snappy) { dictating = false }
+        let t = said.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        guard let q = QuickParse.spoken(t) ?? QuickParse.expense(t) else { note = t; return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.snappy) { target = nil; amountText = String(q.amount); note = q.note }
+    }
+
     private func save() {
         guard !saving else { return }
         saving = true; failed = false
@@ -2080,16 +2200,20 @@ struct HouseSpendEditor: View {
         let a = amount, n = note.trimmingCharacters(in: .whitespaces), c = cat, p = payer, s = Array(shares), mine = myShare
         let f = discount > 0 ? parts : own
         let log = logMine
+        // Ảnh: nén trước (gửi lên iCloud riêng, sau khi khoản đã lưu)
+        let pic: Data?? = photoChanged ? .some(photo.flatMap(House.spendPhotoData)) : .none
         Task {
             if var e = editing {
                 e.amount = a; e.note = n; e.cat = c; e.payer = p; e.shares = s; e.fixed = f
                 guard await house.updateSpend(e) else { saving = false; failed = true; return }
                 store.syncGroupShare(e.id, mine: mine)   // phần của mình đã ghi vào chi tiêu cá nhân đổi theo
+                if let pic, !(await house.setSpendPhoto(e.id, pic)) { store.showError(L("Đã lưu khoản nhưng chưa lưu được ảnh. Thử lại sau.")) }
                 dismiss(); return
             }
             // Không lưu được: ở lại bảng, mở lại nút Lưu, House đã đưa lỗi lên thanh báo
             guard await house.addSpend(id: newID, amount: a, note: n, payer: p, shares: s, cat: c, fixed: f) else { saving = false; failed = true; return }
             if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c, acct: Store.groupLink(newID)) }
+            if let pic, let data = pic, !(await house.setSpendPhoto(newID, data)) { store.showError(L("Đã lưu khoản nhưng chưa lưu được ảnh. Thử lại sau.")) }
             dismiss()
         }
     }

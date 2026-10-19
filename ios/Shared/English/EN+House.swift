@@ -346,5 +346,8 @@ extension English {
         "đổi tên thành %@": "changed their name to %@",
         "đổi ảnh đại diện": "changed their photo",
         "đổi tài khoản nhận tiền": "changed their payment account",
+        "Đã lưu khoản nhưng chưa lưu được ảnh. Thử lại sau.": "Saved, but the photo couldn't be uploaded. Try again later.",
+        "Xem ảnh hoá đơn": "View receipt photo",
+        "Đang nghe…": "Listening…",
     ]
 }

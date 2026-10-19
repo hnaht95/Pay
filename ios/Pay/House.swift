@@ -56,6 +56,8 @@ struct HouseSpend: Identifiable, Hashable {
     /// Số tiền riêng của một số người trong `shares` (mã thành viên → số tiền), vd mỗi người gọi một món giá khác nhau.
     /// Người trong `shares` mà không có ở đây thì chia đều phần còn lại. Trống = chia đều cả khoản
     var fixed: [String: Int] = [:]
+    /// Ảnh hoá đơn của khoản (trường `photo` của bản ghi Spend, cả nhóm cùng xem): tệp iCloud đã tải về máy
+    var photo: URL? = nil
 
     /// Trên iCloud: danh sách chuỗi "mã=số tiền" (trường `fixed` của bản ghi Spend)
     var fixedField: [String] { fixed.filter { $0.value > 0 }.map { "\($0.key)=\($0.value)" }.sorted() }
@@ -566,7 +568,8 @@ final class House: ObservableObject {
                 sp.append(HouseSpend(id: id, amount: (r["amount"] as? Int64).map(Int.init) ?? 0, note: r["note"] as? String ?? "",
                                      payer: r["payer"] as? String ?? "", shares: r["shares"] as? [String] ?? [],
                                      date: r["date"] as? Date ?? r.creationDate ?? Date(), cat: r["cat"] as? String ?? "khac",
-                                     fixed: HouseSpend.fixed(from: r["fixed"] as? [String] ?? [])))
+                                     fixed: HouseSpend.fixed(from: r["fixed"] as? [String] ?? []),
+                                     photo: (r["photo"] as? CKAsset)?.fileURL))
             case "Settle":
                 let s = HouseSettle(id: id, from: r["from"] as? String ?? "", to: r["to"] as? String ?? "",
                                     amount: (r["amount"] as? Int64).map(Int.init) ?? 0, date: r["date"] as? Date ?? Date(),
@@ -1310,6 +1313,37 @@ final class House: ObservableObject {
         let f = e.fixedField
         if !f.isEmpty { r["fixed"] = f } else if r["fixed"] != nil { r["fixed"] = nil }
         return await run([r], strict: true)
+    }
+
+    /// Đặt / bỏ ảnh hoá đơn của một khoản chung (data nil = bỏ ảnh). Lưu riêng sau khi khoản đã lưu: ảnh lỗi (mạng, iCloud
+    /// chưa có trường `photo`) thì khoản vẫn còn, chỉ báo chưa lưu được ảnh
+    func setSpendPhoto(_ id: String, _ data: Data?) async -> Bool {
+        if demo, let i = cur, let j = groups[i].spends.firstIndex(where: { $0.id == id }) {
+            var url: URL?
+            if let data { url = FileManager.default.temporaryDirectory.appendingPathComponent("spend-\(id).jpg"); try? data.write(to: url!) }
+            groups[i].spends[j].photo = url
+            return true
+        }
+        guard current?.canEdit(id) ?? false, let r = record(id) else { return false }
+        if let data {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("spend-\(id)-\(UUID().uuidString.prefix(6)).jpg")
+            guard (try? data.write(to: url)) != nil else { return false }
+            r["photo"] = CKAsset(fileURL: url)
+        } else {
+            r["photo"] = nil
+        }
+        // Không qua run(): lỗi ảnh không đưa thanh báo lỗi chung lên, bảng nhập tự báo "chưa lưu được ảnh"
+        busy = true; defer { busy = false }
+        do { try await save([r]); return true } catch { return false }
+    }
+
+    /// Ảnh hoá đơn nén gọn để gửi lên iCloud: cạnh dài tối đa 1600 điểm ảnh, JPEG
+    static func spendPhotoData(_ img: UIImage) -> Data? {
+        let side = max(img.size.width, img.size.height), scale = min(1, 1600 / max(side, 1))
+        let size = CGSize(width: (img.size.width * scale).rounded(), height: (img.size.height * scale).rounded())
+        let fmt = UIGraphicsImageRendererFormat(); fmt.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: fmt).image { _ in img.draw(in: CGRect(origin: .zero, size: size)) }
+            .jpegData(compressionQuality: 0.7)
     }
 
     /// id: mã của khoản mới, cũng là "hạt" chia số lẻ (ai chịu 1đ dư): bảng nhập tạo sẵn để phần của mình hiện trên bảng và phần

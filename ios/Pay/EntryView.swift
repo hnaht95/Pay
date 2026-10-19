@@ -617,11 +617,14 @@ struct NumberPad: View {
     @Binding var digits: String
     /// Phim: phím đang được nhấn (sáng nền như khi bấm thật)
     var lit: String? = nil
+    /// Có cột phép tính ÷ × − + (vd quy đổi ngoại tệ: 120 × 3520). digits khi đó là cả biểu thức, giá trị xem Calc.value
+    var ops = false
     /// Gọi mỗi lần bấm phím (vd bỏ chọn ô ghi chú)
     var onPress: () -> Void = {}
 
     var body: some View {
-        let rows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["000", "0", "del"]]
+        let rows = ops ? [["1", "2", "3", "÷"], ["4", "5", "6", "×"], ["7", "8", "9", "−"], ["000", "0", "del", "+"]]
+                       : [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["000", "0", "del"]]
         VStack(spacing: 4) {
             ForEach(rows, id: \.self) { row in
                 HStack(spacing: 4) {
@@ -629,6 +632,7 @@ struct NumberPad: View {
                         Button { press(k) } label: {
                             Group {
                                 if k == "del" { Image(systemName: "delete.left").font(.system(size: 26)) }
+                                else if Calc.ops.contains(k) { Text(k).font(.system(size: 30, weight: .medium)).foregroundStyle(Palette.goodInk) }
                                 else { Text(k).font(.system(size: k == "000" ? 26 : 32, weight: .medium)) }
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -657,10 +661,66 @@ struct NumberPad: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onPress()
         withAnimation(.snappy(duration: 0.15)) {
-            if k == "del" { digits = String(digits.dropLast()) }
-            else if digits.isEmpty && (k == "0" || k == "000") { return }
-            else if digits.count + k.count <= 12 { digits += k }
+            if k == "del" { digits = String(digits.dropLast()); return }
+            // Phép tính: chỉ sau một số; bấm phép khác ngay sau phép tính thì thay phép cũ
+            if Calc.ops.contains(k) {
+                guard let last = digits.last else { return }
+                if Calc.ops.contains(String(last)) { digits = String(digits.dropLast()) + k }
+                else if digits.count < 30 { digits += k }
+                return
+            }
+            // Số mới (đầu chuỗi hoặc ngay sau phép tính) không bắt đầu bằng 0; mỗi số tối đa 12 chữ số
+            let current = digits.split(omittingEmptySubsequences: false, whereSeparator: { Calc.ops.contains(String($0)) }).last ?? ""
+            if current.isEmpty && (k == "0" || k == "000") { return }
+            if current.count + k.count <= 12 && digits.count + k.count <= 30 { digits += k }
         }
+    }
+}
+
+/// Biểu thức gõ trên bàn phím số có phép tính: "120×3520+15000". Nhân chia trước, cộng trừ sau; kết quả làm tròn tới đồng
+enum Calc {
+    static let ops: Set<String> = ["+", "−", "×", "÷"]
+
+    /// Có phép tính trong chuỗi (để hiện dòng biểu thức nhỏ)
+    static func isExpr(_ s: String) -> Bool { s.contains { ops.contains(String($0)) } }
+
+    /// Giá trị của biểu thức, không âm; phép tính đang gõ dở ở cuối thì bỏ qua. Chuỗi rỗng / chia cho 0: nil
+    static func value(_ s: String) -> Int? {
+        var t = s
+        while let l = t.last, ops.contains(String(l)) { t.removeLast() }
+        guard !t.isEmpty else { return nil }
+        var nums: [Double] = [], opsSeen: [Character] = [], cur = ""
+        for ch in t {
+            if ops.contains(String(ch)) { guard let v = Double(cur) else { return nil }; nums.append(v); opsSeen.append(ch); cur = "" }
+            else if ch.isNumber { cur.append(ch) }
+        }
+        guard let v = Double(cur) else { return nil }
+        nums.append(v)
+        // Nhân chia trước
+        var terms: [Double] = [nums[0]], signs: [Character] = []
+        for (i, op) in opsSeen.enumerated() {
+            let n = nums[i + 1]
+            switch op {
+            case "×": terms[terms.count - 1] *= n
+            case "÷": guard n != 0 else { return nil }; terms[terms.count - 1] /= n
+            default: terms.append(n); signs.append(op)
+            }
+        }
+        var total = terms[0]
+        for (i, op) in signs.enumerated() { total += op == "+" ? terms[i + 1] : -terms[i + 1] }
+        guard total.isFinite, total < 1e15 else { return nil }
+        return max(0, Int(total.rounded()))
+    }
+
+    /// Biểu thức để đọc: số có dấu chấm ngăn hàng nghìn, phép tính có cách hai bên ("120 × 3.520")
+    static func pretty(_ s: String) -> String {
+        var out = "", cur = ""
+        func flush() { if let v = Int(cur) { out += fmt(v) } else { out += cur }; cur = "" }
+        for ch in s {
+            if ops.contains(String(ch)) { flush(); out += " \(ch) " } else { cur.append(ch) }
+        }
+        flush()
+        return out
     }
 }
 
@@ -1236,7 +1296,7 @@ private struct PeekWheel: View {
 }
 
 /// Xem ảnh hoá đơn to, kèm Chụp lại / Xoá ảnh (khi đang sửa) và Đóng
-private struct PhotoViewer: View {
+struct PhotoViewer: View {
     let image: UIImage?
     let retake: () -> Void
     let remove: () -> Void

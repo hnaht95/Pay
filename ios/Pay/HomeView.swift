@@ -512,7 +512,7 @@ struct HomeView: View {
 
     /// Một ô của lưới so le ở mục Gần đây (height: ô cuối cột, cao theo đường đáy chung thay vì theo tỉ lệ ảnh)
     private func gridTile(_ e: Expense, height: CGFloat? = nil) -> some View {
-        TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+        TapHold(tap: { if e.isAdjust { balanceOpen = true } else if let m = groupShareMenu(e, store: store) { menu = m } else { entry = .edit(e) } },
                 hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
             ExpenseTile(e: e, free: true, height: height)
         }
@@ -578,6 +578,8 @@ struct HomeView: View {
                     // Ô nửa hàng đứng lẻ ở cuối vẫn chỉ rộng nửa hàng
                     if row.count == 1, let c = row[0], !store.isWide(c.k) { Color.clear.frame(maxWidth: .infinity) }
                 }
+                // Hai ô cùng hàng cao bằng nhau: ô có hạn mức cao hơn thì ô bên cạnh giãn theo
+                .fixedSize(horizontal: false, vertical: true)
             }
             addTile
         }
@@ -614,20 +616,25 @@ struct HomeView: View {
             Spacer(minLength: 14)
             // Tên mờ 70% (pha màu nền); số tiền giữ đậm rõ cho dễ đọc
             Text(c.name).font(.system(size: 15, weight: .medium)).opacity(0.7)
-            Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
-                .foregroundStyle(s?.level == .over ? s!.color : c.ink)
+            // Số tiền luôn màu chữ của ô (đỏ trên nền cam / đỏ thì chìm); vượt hạn mức thì thêm dấu cảnh báo
+            HStack(spacing: 5) {
+                Text(fmt(total)).font(.system(size: 19, weight: .bold)).lineLimit(1).minimumScaleFactor(0.6)
+                if s?.level == .over { Image(systemName: "exclamationmark.circle.fill").font(.system(size: 16, weight: .semibold)) }
+            }
+            // Có hạn mức: vạch đã dùng / hạn mức ngay dưới số tiền (cách đều lề ô, không sát góc bo) và dòng "Còn … / Vượt …".
+            // Ô cao thêm cho vừa; ô cùng hàng giãn theo (hàng dùng fixedSize) nên lưới vẫn thẳng
+            if let s {
+                BudgetBar(s: s, height: 5, track: c.ink.opacity(0.18), fill: c.ink.opacity(s.level == .ok ? 0.7 : 1), keepFill: true)
+                    .padding(.top, 10)
+                Text(s.label).font(.system(size: 13, weight: s.level == .over ? .bold : .medium)).opacity(s.level == .over ? 1 : 0.7)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .padding(.top, 5)
+            }
         }
         .foregroundStyle(c.ink)
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: wide ? 180 : 140, alignment: .leading)
-        // Vạch nằm trong lề dưới của ô: không đổi chiều cao, ô cạnh bên không có hạn mức vẫn cao bằng
-        .overlay(alignment: .bottom) {
-            if let s {
-                BudgetBar(s: s, height: 4, track: c.ink.opacity(0.15), fill: c.ink.opacity(0.7))
-                    .padding(.horizontal, 16).padding(.bottom, 7)
-                    .accessibilityLabel(L("Hạn mức %@, %@", fmt(s.budget), s.label))
-            }
-        }
+        .frame(maxWidth: .infinity, minHeight: wide ? 180 : 140, maxHeight: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
         .background(c.color, in: RoundedRectangle(cornerRadius: Self.tileRadius, style: .continuous))
     }
 
@@ -699,7 +706,7 @@ struct HomeView: View {
             List {
                 ForEach(list) { e in
                     // Khoản điều chỉnh số dư: chạm mở bảng số dư (không sửa như khoản chi)
-                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { entry = .edit(e) } },
+                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else if let m = groupShareMenu(e, store: store) { menu = m } else { entry = .edit(e) } },
                             hold: { menu = expenseMenu(e, store: store) { entry = .editNow(e) } }) {
                         ExpenseRow(e: e, showDay: true, now: now, repeats: store.rule(for: e) != nil)
                     }
@@ -980,6 +987,29 @@ struct ExpenseRow: View {
 
     /// Dòng phụ thay cho tên danh mục (vd "Số dư sau: …" ở Các lần điều chỉnh)
     var sub: String? = nil
+    /// Khoản chung gốc nếu khoản này là phần của mình ghi từ nhóm
+    private var linked: (group: HouseGroup, spend: HouseSpend)? {
+        guard sub == nil, e.acct?.hasPrefix("h:") == true else { return nil }
+        return House.shared.linkedSpend(e)
+    }
+    /// Tên nhóm chung (khoản ghi từ nhóm)
+    private var group: String? { sub == nil ? House.shared.linkedGroupName(e) : nil }
+    /// Ghi chú của khoản chung gốc (khoản ghi từ nhóm); bản cũ ghi chữ mặc định "Nhà chung" thì coi như không có ghi chú
+    private var groupNote: String? {
+        guard group != nil else { return nil }
+        let n = (linked?.spend.note ?? e.n ?? "").trimmingCharacters(in: .whitespaces)
+        return n.isEmpty || n == L("Nhà chung") || n == group ? nil : n.capFirst
+    }
+    /// Tên hàng: ghi chú, không có thì tên danh mục. Khoản ghi từ nhóm: ghi chú của khoản chung, không có thì tên nhóm
+    private var title: String {
+        if let group { return groupNote ?? group }
+        return e.n?.isEmpty == false ? e.n!.capFirst : c.name
+    }
+    /// Dòng phụ của khoản ghi từ nhóm: "Phần bạn · <tên nhóm>" (tiêu đề đã là tên nhóm thì thay bằng danh mục)
+    private var groupSub: String? {
+        guard let group else { return nil }
+        return L("Phần bạn · %@", groupNote != nil ? group : c.name)
+    }
 
     init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false, sub: String? = nil) {
         self.e = e; self.showDay = showDay; self.now = now; self.repeats = repeats; self.sub = sub
@@ -1018,7 +1048,7 @@ struct ExpenseRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     // Tên dài thì xuống dòng thứ hai thay vì bị cắt "…"
-                    Text((e.n?.isEmpty == false ? e.n!.capFirst : c.name)).font(.rowTitle)
+                    Text(title).font(.rowTitle)
                         .lineLimit(2).multilineTextAlignment(.leading).lineSpacing(-1)
                     if repeats {
                         Image(systemName: "repeat").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
@@ -1028,9 +1058,16 @@ struct ExpenseRow: View {
                         Image(systemName: "creditcard.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                             .accessibilityLabel(L("Thẻ tín dụng"))
                     }
+                    if group != nil {
+                        Image(systemName: "person.2.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                            .accessibilityLabel(L("Nhóm chung"))
+                    }
                 }
-                // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục)
-                if let sub {
+                // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục).
+                // Khoản ghi từ nhóm chung: "Phần của bạn · <tên nhóm>" để biết đây chỉ là phần mình trong khoản chung
+                if let groupSub {
+                    Text(groupSub).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                } else if let sub {
                     Text(sub).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                 } else if e.n?.isEmpty == false {
                     Text(c.name).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)

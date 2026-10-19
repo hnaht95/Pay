@@ -669,6 +669,14 @@ final class House: ObservableObject {
 
     var cloud: CKContainer { container }
 
+    /// Khoản chung gốc của một khoản chi cá nhân ghi từ nhóm (acct = "h:<mã khoản chung>", xem Store.groupLink)
+    func linkedSpend(_ e: Expense) -> (group: HouseGroup, spend: HouseSpend)? {
+        guard let a = e.acct, a.hasPrefix("h:") else { return nil }
+        let id = String(a.dropFirst(2))
+        for g in groups { if let s = g.spends.first(where: { $0.id == id }) { return (g, s) } }
+        return nil
+    }
+
     // MARK: Mời bằng mã QR
 
     /// Chủ nhóm: một link mời dùng một lần (iOS 18). Mỗi link chỉ một người vào được, nên nhóm vẫn riêng tư: không phải bật
@@ -1375,6 +1383,15 @@ final class House: ObservableObject {
     /// mã khoản → "mã nhóm|phần lần cuối đã khớp". Chỉ trên máy này. Biết khoản thuộc nhóm nào mới dám coi khoản vắng mặt là đã bị
     /// xoá (nhóm đọc lỗi, đã rời hay chưa tải về thì không phải)
     private var links: [String: String] = UserDefaults.standard.dictionary(forKey: "house.links") as? [String: String] ?? [:]
+
+    /// Tên nhóm của một khoản chi cá nhân ghi từ nhóm, kể cả khi khoản chung gốc chưa tải / đã bị xoá (nhớ theo sổ links)
+    func linkedGroupName(_ e: Expense) -> String? {
+        guard let a = e.acct, a.hasPrefix("h:") else { return nil }
+        let id = String(a.dropFirst(2))
+        let gid = linkedSpend(e)?.group.id ?? links[id]?.split(separator: "|").first.map(String.init)
+        guard let g = groups.first(where: { $0.id == gid }) else { return nil }
+        return g.name.isEmpty ? L("Nhóm chung") : g.name
+    }
 
     private func link(_ spend: String, group: String, part: Int) {
         let v = "\(group)|\(part)"

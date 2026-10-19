@@ -53,7 +53,7 @@ struct HistoryView: View {
                             // Lưới ảnh 3 cột như mục Gần đây ở trang chủ: cả ngày là một hàng của List
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
                                 ForEach(list) { e in
-                                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
+                                    TapHold(tap: { if e.isAdjust { balanceOpen = true } else if let m = groupShareMenu(e, store: store) { menu = m } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                         ExpenseTile(e: e)
                                     }
                                 }
@@ -64,7 +64,7 @@ struct HistoryView: View {
                         } else {
                             ForEach(list) { e in
                                 // Chạm: mở xem; "Sửa khoản này" trong bảng nhấn giữ: vào thẳng trạng thái sửa
-                                TapHold(tap: { if e.isAdjust { balanceOpen = true } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
+                                TapHold(tap: { if e.isAdjust { balanceOpen = true } else if let m = groupShareMenu(e, store: store) { menu = m } else { editing = .edit(e) } }, hold: { menu = expenseMenu(e, store: store) { editing = .editNow(e) } }) {
                                     ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                                 }
                                 .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })

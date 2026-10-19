@@ -2212,7 +2212,7 @@ struct HouseSpendEditor: View {
             }
             // Không lưu được: ở lại bảng, mở lại nút Lưu, House đã đưa lỗi lên thanh báo
             guard await house.addSpend(id: newID, amount: a, note: n, payer: p, shares: s, cat: c, fixed: f) else { saving = false; failed = true; return }
-            if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? L("Nhà chung") : n, cat: c, acct: Store.groupLink(newID)) }
+            if log, let mine, mine > 0 { store.add(amount: mine, note: n.isEmpty ? house.name : n, cat: c, acct: Store.groupLink(newID)) }
             if let pic, let data = pic, !(await house.setSpendPhoto(newID, data)) { store.showError(L("Đã lưu khoản nhưng chưa lưu được ảnh. Thử lại sau.")) }
             dismiss()
         }

@@ -349,5 +349,11 @@ extension English {
         "Đã lưu khoản nhưng chưa lưu được ảnh. Thử lại sau.": "Saved, but the photo couldn't be uploaded. Try again later.",
         "Xem ảnh hoá đơn": "View receipt photo",
         "Đang nghe…": "Listening…",
+        "%@ trả · chia %d người · phần bạn %@": "%@ paid · split %d ways · your share %@",
+        "Phần bạn · %@": "Your share · %@",
+        "Mở trong nhóm": "Open in group",
+        "Sửa khoản này trong nhóm %@": "Edit it in the %@ group",
+        "Bỏ khỏi chi tiêu của bạn": "Remove from your spending",
+        "Khoản trong nhóm vẫn giữ nguyên": "The group expense stays as is",
     ]
 }

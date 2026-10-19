@@ -37,12 +37,14 @@ struct BudgetBar: View {
     var track: Color = Color.primary.opacity(0.1)
     /// Màu riêng khi chưa vượt / sắp vượt (người dùng chọn); sắp vượt / vượt vẫn cam / đỏ để cảnh báo
     var fill: Color? = nil
+    /// Luôn tô màu `fill`, kể cả sắp vượt / vượt (vd trên ô danh mục nền màu: cam / đỏ chìm vào nền, cảnh báo nằm ở chữ)
+    var keepFill = false
 
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
                 Capsule().fill(track)
-                Capsule().fill(s.level == .ok ? (fill ?? s.color) : s.color).frame(width: max(height, g.size.width * min(s.ratio, 1)))
+                Capsule().fill(s.level == .ok || keepFill ? (fill ?? s.color) : s.color).frame(width: max(height, g.size.width * min(s.ratio, 1)))
             }
         }
         .frame(height: height)

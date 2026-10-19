@@ -161,9 +161,30 @@ extension EnvironmentValues {
     }
 }
 
-/// Bảng nhấn giữ của một khoản chi: Sửa, Lặp hằng tháng / Bỏ lặp, Xoá.
-@MainActor
-func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppMenuSpec {
+/// Khoản chi cá nhân ghi từ một khoản chung: không sửa ở đây (số tiền đi theo khoản trong nhóm), chỉ xem khoản gốc
+/// (tổng, ai trả, chia mấy người, phần của mình) và mở nhóm. nil nếu không phải khoản ghi từ nhóm
+@MainActor func groupShareMenu(_ e: Expense, store: Store) -> AppMenuSpec? {
+    guard let (g, sp) = House.shared.linkedSpend(e) else { return nil }
+    let c = Category.get(sp.cat)
+    let payer = sp.payer == g.me ? L("Bạn") : g.members.first { $0.id == sp.payer }?.name ?? L("Người đã xoá")
+    let group = g.name.isEmpty ? L("Nhóm chung") : g.name
+    return AppMenuSpec(icon: AnyView(CategoryBadge(c: c, side: 56, radius: 18, iconSize: 30)),
+                       title: "\(sp.note.isEmpty ? c.name : sp.note.capFirst) · \(fmt(sp.amount))",
+                       subtitle: L("%@ trả · chia %d người · phần bạn %@", payer, Set(sp.shares).count, fmt(e.a)),
+                       items: [
+        AppMenuItem(icon: "person.2.fill", title: L("Mở trong nhóm"), subtitle: L("Sửa khoản này trong nhóm %@", group)) {
+            House.shared.open(g.id)
+            QuickAction.shared.openHouse = true
+        },
+        AppMenuItem(icon: "trash.fill", title: L("Bỏ khỏi chi tiêu của bạn"), subtitle: L("Khoản trong nhóm vẫn giữ nguyên"), danger: true) {
+            store.remove(id: e.id)
+        },
+    ])
+}
+
+/// Bảng nhấn giữ của một khoản chi: Sửa, Lặp hằng tháng / Bỏ lặp, Xoá. Khoản ghi từ nhóm chung: bảng chi tiết khoản gốc
+@MainActor func expenseMenu(_ e: Expense, store: Store, edit: @escaping () -> Void) -> AppMenuSpec {
+    if let m = groupShareMenu(e, store: store) { return m }
     let c = Category.get(e.c)
     let f = DateFormatter(); f.dateFormat = "HH:mm, dd/MM"
     if Lang.isEnglish { f.locale = Lang.locale; f.dateFormat = "HH:mm, MMM d" }

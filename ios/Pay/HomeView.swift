@@ -1000,15 +1000,10 @@ struct ExpenseRow: View {
         let n = (linked?.spend.note ?? e.n ?? "").trimmingCharacters(in: .whitespaces)
         return n.isEmpty || n == L("Nhà chung") || n == group ? nil : n.capFirst
     }
-    /// Tên hàng: ghi chú, không có thì tên danh mục. Khoản ghi từ nhóm: ghi chú của khoản chung, không có thì tên nhóm
+    /// Tên hàng: ghi chú, không có thì tên danh mục. Khoản ghi từ nhóm: ghi chú của khoản chung (như trong nhóm)
     private var title: String {
-        if let group { return groupNote ?? group }
+        if group != nil { return groupNote ?? c.name }
         return e.n?.isEmpty == false ? e.n!.capFirst : c.name
-    }
-    /// Dòng phụ của khoản ghi từ nhóm: "Phần bạn · <tên nhóm>" (tiêu đề đã là tên nhóm thì thay bằng danh mục)
-    private var groupSub: String? {
-        guard let group else { return nil }
-        return L("Phần bạn · %@", groupNote != nil ? group : c.name)
     }
 
     init(e: Expense, showDay: Bool = false, now: Date = Date(), repeats: Bool = false, sub: String? = nil) {
@@ -1065,8 +1060,14 @@ struct ExpenseRow: View {
                 }
                 // Tên danh mục dưới tên khoản, cỡ bằng ngày giờ bên phải (khoản không ghi chú thì tên đã là danh mục).
                 // Khoản ghi từ nhóm chung: "Phần của bạn · <tên nhóm>" để biết đây chỉ là phần mình trong khoản chung
-                if let groupSub {
-                    Text(groupSub).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                if let group {
+                    // "Phần bạn | <tên nhóm>": vạch dọc mảnh như cột ngày | giờ bên phải
+                    HStack(spacing: 9) {
+                        Text(L("Phần bạn")).fixedSize()
+                        Rectangle().fill(Color.primary.opacity(0.18)).frame(width: 1, height: 13)
+                        Text(group).lineLimit(1)
+                    }
+                    .font(.rowSub).foregroundStyle(.secondary)
                 } else if let sub {
                     Text(sub).font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
                 } else if e.n?.isEmpty == false {

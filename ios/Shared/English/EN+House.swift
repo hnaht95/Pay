@@ -350,7 +350,7 @@ extension English {
         "Xem ảnh hoá đơn": "View receipt photo",
         "Đang nghe…": "Listening…",
         "%@ trả · chia %d người · phần bạn %@": "%@ paid · split %d ways · your share %@",
-        "Phần bạn · %@": "Your share · %@",
+        "Phần bạn": "Your share",
         "Mở trong nhóm": "Open in group",
         "Sửa khoản này trong nhóm %@": "Edit it in the %@ group",
         "Bỏ khỏi chi tiêu của bạn": "Remove from your spending",

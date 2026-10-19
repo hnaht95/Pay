@@ -1870,6 +1870,8 @@ struct HouseSpendEditor: View {
             }
             }
         }
+        // Gõ ghi chú: bàn phím iOS trượt lên che hai nút Huỷ / Lưu, màn không bị đẩy lên (ô ghi chú ở trên cao nên vẫn thấy)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .padding(.horizontal, 18)
         .background(Palette.surface.ignoresSafeArea())
         .overlay(alignment: .bottom) { if failed { ToastView().padding(.bottom, 84) } }   // ngay trên nút Lưu

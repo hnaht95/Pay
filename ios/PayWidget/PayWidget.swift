@@ -135,7 +135,7 @@ struct ScanControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "ScanControl") {
             ControlWidgetButton(action: ScanIntent()) {
-                Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
+                Label(L("Quét QR"), systemImage: "qrcode")
             }
         }
         .displayName("\(L("Payso: Quét QR"))")

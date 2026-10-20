@@ -112,32 +112,23 @@ struct SpendView: View {
                 QuickButtons(tone: tone).frame(width: 118)
             }
         case .accessoryCircular:
-            // Có ngân sách: vòng tròn đầy dần theo phần đã tiêu trong tháng, giữa là biểu tượng quét
-            if let b = e.s.budgetStatus {
-                Gauge(value: min(b.ratio, 1)) { Image(systemName: "qrcode.viewfinder").font(.system(size: 17, weight: .semibold)) }
-                    .gaugeStyle(.accessoryCircularCapacity)
-                    .widgetURL(QuickKind.scan.url)
-                    .accessibilityLabel(L("Quét QR"))
-            } else {
-                ZStack {
-                    AccessoryWidgetBackground()
-                    Image(systemName: "qrcode.viewfinder").font(.system(size: 24, weight: .semibold))
-                }
-                .widgetURL(QuickKind.scan.url)
+            // Nút tròn có nền, giữa là biểu tượng mã QR như nút Quét QR trong app (không vòng tiến độ ngân sách), cùng kiểu nút micro
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "qrcode").font(.system(size: 22, weight: .semibold))
             }
+            .widgetURL(QuickKind.scan.url)
+            .accessibilityLabel(L("Quét QR"))
         case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L("Hôm nay đã chi")).font(.system(size: 12, weight: .medium)).opacity(0.75).lineLimit(1)
-                Text(fmt(e.s.today)).font(.system(size: 24, weight: .bold)).kerning(-0.5).minimumScaleFactor(0.6).lineLimit(1)
-                if let b = e.s.budgetStatus {
-                    // Thanh ngân sách tháng: phần đã tiêu
-                    Gauge(value: min(b.ratio, 1)) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity)
-                        .accessibilityLabel(b.label)
-                } else {
-                    Text(L("Tháng: %@", fmt(e.s.month))).font(.system(size: 12)).opacity(0.75).lineLimit(1)
-                }
+            // Nền mờ như hai nút tròn bên cạnh (không nền thì chữ chìm vào ảnh màn hình khoá)
+            // Hai dòng, không thanh tiến độ: tiêu đề nhỏ, số tiền to. Khung màn hình khoá thấp, thêm dòng thứ ba thì số tiền bị co
+            VStack(alignment: .leading, spacing: 1) {
+                Text(L("Hôm nay đã chi")).font(.system(size: 13, weight: .medium)).opacity(0.75).lineLimit(1)
+                Text(fmt(e.s.today)).font(.system(size: 26, weight: .bold)).kerning(-0.5).minimumScaleFactor(0.6).lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background { AccessoryWidgetBackground().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)) }
             .widgetURL(QuickKind.scan.url)
         case .accessoryInline:
             Label(L("Hôm nay %@", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(QuickKind.scan.url)
@@ -197,7 +188,7 @@ struct QuickButtons: View {
     var body: some View {
         VStack(spacing: 8) {
             Link(destination: QuickKind.scan.url) {
-                Label(L("Quét QR"), systemImage: "qrcode.viewfinder")
+                Label(L("Quét QR"), systemImage: "qrcode")
                     .font(.system(size: 15, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
                     .foregroundStyle(tone.onPlate(flat))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -252,7 +243,8 @@ struct VoiceView: View {
         if family == .accessoryCircular {
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "mic.fill").font(.system(size: 24, weight: .semibold))
+                // Micro đặc và cao hơn khung quét QR: nhỏ hơn vài điểm thì hai nút tròn nhìn bằng nhau
+                Image(systemName: "mic.fill").font(.system(size: 20, weight: .semibold))
             }
             .accessibilityLabel(L("Nói để ghi"))
         } else {
@@ -347,7 +339,7 @@ struct MyQRView: View {
                     if let b = e.s.budgetStatus { InkBar(ratio: b.ratio, ink: ink).padding(.top, 3) }
                     Spacer(minLength: 6)
                     HStack(spacing: 6) {
-                        quick("qrcode.viewfinder", .scan, L("Quét QR"), primary: true)
+                        quick("qrcode", .scan, L("Quét QR"), primary: true)
                         quick("mic.fill", .voice, L("Nói để ghi"))
                         quick("plus", .add, L("Nhập"))
                     }

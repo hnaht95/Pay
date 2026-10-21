@@ -191,5 +191,7 @@ extension English {
         "Không thấy số tài khoản trong nội dung đã chép.": "No account number found in the copied text.",
         "Tìm ngân hàng": "Search banks",
         "Ngân hàng của STK %@": "Bank for account %@",
+        "Chưa nhập": "Not set",
+        "Chưa nhập số dư, chạm để nhập": "Balance not set, tap to enter",
     ]
 }

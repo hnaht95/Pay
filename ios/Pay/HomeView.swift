@@ -428,7 +428,8 @@ struct HomeView: View {
             // Hai cột cùng hàng: trái đã chi cả tháng / ngân sách (vượt thì số chi đỏ), phải số dư (chạm để đặt / chỉnh).
             // Hai bên luôn cùng một cỡ chữ: số dài quá thì cả hai cùng hạ một nấc, không bên nào co riêng, không xuống hàng
             ViewThatFits(in: .horizontal) {
-                ForEach([17, 15, 13] as [CGFloat], id: \.self) { size in
+                // Chữ nhỏ dần tới khi vừa; nấc 11 cho số hàng chục tỷ (chi, ngân sách và số dư cùng dài)
+                ForEach([17, 15, 13, 11] as [CGFloat], id: \.self) { size in
                     HStack(alignment: .top, spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(L("Đã chi")).font(.system(size: 13)).foregroundStyle(.secondary)
@@ -479,31 +480,32 @@ struct HomeView: View {
         let b = store.balance, debt = store.cardDebt
         return VStack(alignment: .trailing, spacing: 4) {
         Button {
-            guard b != nil, !balanceShown else { balanceOpen = true; return }
+            // Chạm lần đầu: hiện số (chưa đặt thì hiện "Chưa nhập"); đang hiện thì chạm để đặt / chỉnh
+            guard !balanceShown else { balanceOpen = true; return }
             withAnimation(.snappy(duration: 0.2)) { balanceShown = true }
             hideBalance?.cancel()
             hideBalance = Task { try? await Task.sleep(for: .seconds(8)); if !Task.isCancelled { withAnimation(.snappy(duration: 0.2)) { balanceShown = false } } }
         } label: {
             VStack(alignment: .trailing, spacing: 3) {
                 Text(L("Số dư")).font(.system(size: 13)).foregroundStyle(.secondary)
-                if let b {
-                    // Số và chấm chồng lên nhau, chỉ đổi độ mờ: khung luôn rộng bằng bên dài hơn nên hiện / che không làm cột đổi
-                    // bề ngang. Đổi chữ thẳng thì bề ngang đổi theo, cả hàng (ViewThatFits) dàn lại giữa chừng hiệu ứng, số trượt từ
-                    // mép ngoài thẻ vào / ra
-                    ZStack(alignment: .trailing) {
+                // Số (hoặc "Chưa nhập" khi chưa đặt) và chấm chồng lên nhau, chỉ đổi độ mờ: khung luôn rộng bằng bên dài hơn nên hiện /
+                // che không làm cột đổi bề ngang. Đổi chữ thẳng thì bề ngang đổi theo, cả hàng (ViewThatFits) dàn lại giữa chừng hiệu
+                // ứng, số trượt từ mép ngoài thẻ vào / ra
+                ZStack(alignment: .trailing) {
+                    if let b {
                         Text(fmt(b)).foregroundStyle(b < 0 ? Palette.danger : Color.primary).opacity(balanceShown ? 1 : 0)
-                        Text("••••••").foregroundStyle(Color.primary).opacity(balanceShown ? 0 : 1)
+                    } else {
+                        Text(L("Chưa nhập")).foregroundStyle(.secondary).opacity(balanceShown ? 1 : 0)
                     }
-                    .font(.system(size: size, weight: .semibold))
-                } else {
-                    Text(L("Nhập số dư")).font(.system(size: size, weight: .semibold)).foregroundStyle(.secondary)
+                    Text("••••••").foregroundStyle(Color.primary).opacity(balanceShown ? 0 : 1)
                 }
+                .font(.system(size: size, weight: .semibold))
             }
             .lineLimit(1).fixedSize()
             .contentShape(Rectangle())
         }
         .buttonStyle(Pressable())
-        .accessibilityLabel(b == nil ? L("Nhập số dư") : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
+        .accessibilityLabel(b == nil ? (balanceShown ? L("Chưa nhập số dư, chạm để nhập") : L("Số dư, chạm để hiện")) : balanceShown ? L("Số dư %@", fmt(b!)) : L("Số dư, chạm để hiện"))
             // Chi tiêu thẻ tín dụng chưa trả: viên riêng dưới số dư, luôn hiện số (không che như số dư); chạm để trả thẻ. Là một viên
             // có nền, cách số dư một khoảng, để không bấm nhầm sang số dư ngay trên. Không có thì không có viên này
             if debt > 0 {

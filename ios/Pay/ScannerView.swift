@@ -7,6 +7,8 @@ struct ScannerView: View {
     /// Dòng nhắc trên cùng (quét mã nhóm chung thì khác quét mã của quán)
     var hint = L("Đưa mã QR của quán vào khung")
     let onCode: (String) -> Void
+    /// Có thì hiện nút "Dán STK": đọc số tài khoản bạn bè nhắn ("MB 0123456789 200k") từ bộ nhớ tạm, không cần mã QR
+    var onPaste: ((VietQR) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var photo: PhotosPickerItem?
     @State private var error: String?
@@ -51,7 +53,8 @@ struct ScannerView: View {
                 // Nút đèn pin: tròn kính mờ, giữa màn, ngay trên hai nút dưới (không đè khung ngắm)
                 if hasTorch { torchButton.padding(.bottom, 20) }
                 HStack(spacing: 12) {
-                    PhotosPicker(selection: $photo, matching: .images) { pill(L("Chọn ảnh QR")) }
+                    if onPaste != nil { Button { paste() } label: { pill(L("Dán STK")) }.buttonStyle(Pressable()) }
+                    PhotosPicker(selection: $photo, matching: .images) { pill(L("Ảnh QR")) }
                     Button { done = true; dismiss() } label: { pill(L("Đóng")) }.buttonStyle(Pressable())
                 }
                 .padding(.horizontal, 16).padding(.bottom, 12)
@@ -92,6 +95,20 @@ struct ScannerView: View {
         Text(s).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 68)
             .background(.white.opacity(0.18), in: Capsule())
+    }
+
+    /// Dán: mã VietQR đã chép thì xử lý như quét được; dòng chữ có số tài khoản thì đọc ngân hàng, số tài khoản, số tiền
+    private func paste() {
+        guard !done else { return }
+        let text = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if text.isEmpty { error = L("Chưa chép gì. Chép dòng có số tài khoản (vd \"MB 0123456789 200k\") rồi bấm Dán STK."); return }
+        if VietQR.parse(text)?.acct != nil { found(text); return }
+        guard let q = VietQR.fromText(text), let onPaste else {
+            error = L("Không thấy số tài khoản trong nội dung đã chép."); return
+        }
+        done = true
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        onPaste(q)
     }
 
     private func found(_ code: String) {
@@ -141,13 +158,13 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
         super.viewDidLoad()
         view.backgroundColor = .black
         AVCaptureDevice.requestAccess(for: .video) { ok in
-            DispatchQueue.main.async { ok ? self.configure() : self.onError?(L("Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".")) }
+            DispatchQueue.main.async { ok ? self.configure() : self.onError?(L("Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Ảnh QR\".")) }
         }
     }
 
     private func configure() {
         guard let device = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
-            onError?(L("Không mở được camera. Bấm \"Chọn ảnh QR\" để dùng ảnh chụp màn hình."))
+            onError?(L("Không mở được camera. Bấm \"Ảnh QR\" để dùng ảnh chụp màn hình."))
             return
         }
         session.addInput(input)
@@ -191,5 +208,35 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
         guard !done, let s = (objects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
         done = true
         onCode?(s)
+    }
+}
+
+extension VietQR: Identifiable { var id: String { raw } }
+
+/// Chọn ngân hàng cho số tài khoản vừa dán mà dòng chữ không ghi ngân hàng: ngân hàng hay dùng lên đầu, có ô tìm
+struct BankPickSheet: View {
+    let acct: String
+    let pick: (String) -> Void
+    @State private var query = ""
+    private static let common = ["970436", "970422", "970407", "970415", "970418", "970405", "970416", "970432", "970423", "970403"]
+
+    private var list: [(bin: String, name: String)] {
+        let all = BankData.names.map { (bin: $0.key, name: $0.value) }
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        if !q.isEmpty { return all.filter { $0.name.lowercased().contains(q) }.sorted { $0.name < $1.name } }
+        let top = Self.common.compactMap { b in BankData.names[b].map { (bin: b, name: $0) } }
+        return top + all.filter { !Self.common.contains($0.bin) }.sorted { $0.name.lowercased() < $1.name.lowercased() }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(list, id: \.bin) { b in
+                Button { pick(b.bin) } label: { Text(b.name).foregroundStyle(.primary) }
+            }
+            .tint(.primary)   // tên ngân hàng màu chữ thường, không xanh như nút mặc định
+            .searchable(text: $query, prompt: L("Tìm ngân hàng"))
+            .navigationTitle(L("Ngân hàng của STK %@", acct))
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }

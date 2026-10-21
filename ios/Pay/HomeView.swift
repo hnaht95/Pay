@@ -44,6 +44,9 @@ struct HomeView: View {
     /// Thẻ nói để ghi mở bằng vuốt lên từ nút Quét QR: khung của nút, thẻ biến hình từ đó ra thay vì trượt lên từ đáy
     @State private var voiceFrom: CGRect?
     @State private var scanned: String?
+    /// Số tài khoản vừa dán ở màn quét (Dán STK); chưa rõ ngân hàng thì hỏi chọn ngân hàng trước
+    @State private var pasted: VietQR?
+    @State private var pickingBankFor: VietQR?
     /// "Bây giờ" để tính hôm nay / tháng này; cập nhật khi app quay lại hoặc qua nửa đêm, nếu không màn hình
     /// mở lại sáng hôm sau vẫn hiện số của hôm qua
     @State private var now = Date()
@@ -164,6 +167,11 @@ struct HomeView: View {
             ReceiptFlow(store: store) { receiptScan = false }
         }
         .fullScreenCover(isPresented: $scanning, onDismiss: {
+            if let q = pasted {
+                pasted = nil
+                if q.bin == nil { pickingBankFor = q } else { entry = .scan(q) }
+                return
+            }
             guard let s = scanned else { return }
             scanned = nil
             // Mã QR nhóm chung (link mời của iCloud): vào nhóm luôn, không mở màn nhập khoản chi
@@ -175,7 +183,15 @@ struct HomeView: View {
             }
             entry = VietQR.parse(s).flatMap { $0.acct != nil ? EntryMode.scan($0) : nil } ?? .raw(s)
         }) {
-            ScannerView { code in scanned = code; scanning = false }
+            ScannerView(onCode: { code in scanned = code; scanning = false }, onPaste: { q in pasted = q; scanning = false })
+        }
+        .sheet(item: $pickingBankFor) { q in
+            BankPickSheet(acct: q.acct ?? "") { bin in
+                pickingBankFor = nil
+                var q = q; q.bin = bin; q.raw = "paste:\(bin):\(q.acct ?? ""):\(q.amount ?? 0)"
+                Task { try? await Task.sleep(for: .milliseconds(350)); entry = .scan(q) }
+            }
+            .sheetGrabber()
         }
         .sheet(isPresented: $showHistory) { HistoryView().environmentObject(store).sheetCorners() }
         .sheet(item: $listing) { HistoryView(category: $0.k).environmentObject(store).sheetCorners() }

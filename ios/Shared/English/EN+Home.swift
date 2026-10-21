@@ -177,12 +177,19 @@ extension English {
         "Tắt đèn pin": "Turn off flashlight",
         "Đóng": "Close",
         "Không đọc được mã QR trong ảnh": "Couldn't read a QR code in this photo",
-        "Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh QR\".":
-            "Allow Payso to use the camera in iPhone Settings, or tap \"Choose QR photo\".",
-        "Không mở được camera. Bấm \"Chọn ảnh QR\" để dùng ảnh chụp màn hình.":
-            "Couldn't open the camera. Tap \"Choose QR photo\" to use a screenshot.",
+        "Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Ảnh QR\".":
+            "Allow Payso to use the camera in iPhone Settings, or tap \"QR photo\".",
+        "Không mở được camera. Bấm \"Ảnh QR\" để dùng ảnh chụp màn hình.":
+            "Couldn't open the camera. Tap \"QR photo\" to use a screenshot.",
 
         // VietQR
         "Ngân hàng %@": "Bank %@",
+        // Dán số tài khoản ở màn quét
+        "Dán STK": "Paste acct",
+        "Ảnh QR": "QR photo",
+        "Chưa chép gì. Chép dòng có số tài khoản (vd \"MB 0123456789 200k\") rồi bấm Dán STK.": "Nothing copied. Copy a line with an account number (e.g. \"MB 0123456789 200k\") and tap Paste acct.",
+        "Không thấy số tài khoản trong nội dung đã chép.": "No account number found in the copied text.",
+        "Tìm ngân hàng": "Search banks",
+        "Ngân hàng của STK %@": "Bank for account %@",
     ]
 }

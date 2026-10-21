@@ -149,5 +149,6 @@ extension English {
 
         // Ngân sách
         "Còn %@": "%@ left",
+        "triệu": "mil",
     ]
 }

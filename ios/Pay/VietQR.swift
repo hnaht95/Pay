@@ -46,6 +46,75 @@ struct VietQR: Hashable {
         if let add = top["62"] { q.purpose = (tlv(add)["08"] ?? "").trimmingCharacters(in: .whitespaces) }
         return q
     }
+    /// Tên / tên viết tắt ngân hàng hay gặp trong tin nhắn ("MB 0123456789 200k") -> mã BIN. Ghép từ tên ngắn và mã của
+    /// BankData, thêm vài cách gọi quen
+    private static let bankWords: [String: String] = {
+        var out: [String: String] = [:]
+        for (bin, name) in BankData.names { out[fold(name)] = bin }
+        for (bin, code) in BankData.codes { out[fold(code)] = bin }
+        let extra: [String: String] = [
+            "mb": "970422", "mbbank": "970422", "quandoi": "970422",
+            "vcb": "970436", "vietcom": "970436", "ngoaithuong": "970436",
+            "ctg": "970415", "vietin": "970415", "viettin": "970415", "congthuong": "970415",
+            "tcb": "970407", "techcom": "970407", "agri": "970405", "agribank": "970405",
+            "vpb": "970432", "tpb": "970423", "stb": "970403", "sacom": "970403", "hdb": "970437",
+            "momo": "971025", "timo": "963388", "cake": "546034", "msb": "970426", "shb": "970443",
+            "eximbank": "970431", "eib": "970431", "seabank": "970440", "lpbank": "970449", "lienviet": "970449",
+        ]
+        for (k, v) in extra where BankData.names[v] != nil { out[k] = v }
+        return out
+    }()
+
+    /// Chữ thường, bỏ dấu, chỉ giữ chữ và số: "MB Bank" -> "mbbank", "Vietin" -> "vietin"
+    private static func fold(_ s: String) -> String {
+        s.replacingOccurrences(of: "đ", with: "d").replacingOccurrences(of: "Đ", with: "D")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi"))
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    /// Dòng bạn bè nhắn để chuyển tiền (dán ở màn quét): "MB 0123456789 200k", "STK 1903 4567 8901 Techcombank NGUYEN VAN A".
+    /// Cần một số tài khoản (6–19 chữ số liền, cho phép cách nhau bởi dấu cách / chấm / gạch). Ngân hàng nhận theo tên hoặc tên
+    /// viết tắt; không rõ thì bin = nil (màn hình hỏi chọn ngân hàng). Số tiền đọc như ô nhập nhanh, nếu có
+    static func fromText(_ text: String) -> VietQR? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, t.count <= 300, !t.hasPrefix("000201") else { return nil }
+        // Số tài khoản: một nhóm 6–19 chữ số ("0123456789", "107-8765-4321"), hoặc vài nhóm ngắn (≤ 5 chữ số) liền nhau cách bởi
+        // dấu cách ("1903 4567 8901"). Không gộp số dài với số đứng sau: "0123456789 200k", "0987654321 1tr2" là STK + số tiền
+        let tokens = t.split(whereSeparator: \.isWhitespace).map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ",:;()")) }
+        func digitsOnly(_ w: String) -> String? {
+            guard let f = w.first, f.isNumber, w.allSatisfy({ $0.isNumber || $0 == "-" || $0 == "." }) else { return nil }
+            // Kiểu tiền "1.500.000" không phải số tài khoản
+            if w.wholeMatch(of: #/[0-9]{1,3}(?:\.[0-9]{3})+/#) != nil { return nil }
+            return w.filter(\.isNumber)
+        }
+        var cands: [(acct: String, from: Int, to: Int)] = [], run = "", runStart = 0
+        for (i, w) in tokens.enumerated() {
+            let d = digitsOnly(w)
+            if let d, d.count <= 5 {
+                if run.isEmpty { runStart = i }
+                run += d
+                continue
+            }
+            if (6...19).contains(run.count) { cands.append((run, runStart, i - 1)) }
+            run = ""
+            if let d, (6...19).contains(d.count) { cands.append((d, i, i)) }
+        }
+        if (6...19).contains(run.count) { cands.append((run, runStart, tokens.count - 1)) }
+        guard let pick = cands.max(by: { $0.acct.count < $1.acct.count }) else { return nil }
+        let acct = pick.acct
+        let rest = (tokens[..<pick.from] + tokens[(pick.to + 1)...]).joined(separator: " ")
+        // Ngân hàng: từng chữ, rồi từng cặp chữ liền nhau ("MB Bank", "Viet in")
+        let words = rest.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+        var bin: String?
+        for (i, w) in words.enumerated() {
+            if let b = bankWords[fold(w)] { bin = b; break }
+            if i + 1 < words.count, let b = bankWords[fold(w + words[i + 1])] { bin = b; break }
+        }
+        // Số tiền: bỏ tên ngân hàng và các chữ STK / số tài khoản rồi đọc như ô nhập nhanh
+        let amount = QuickParse.expense(rest)?.amount
+        let raw = "paste:\(bin ?? "?"):\(acct):\(amount ?? 0)"
+        return VietQR(raw: raw, bin: bin, acct: acct, amount: amount, name: "", purpose: "")
+    }
 }
 
 struct BankApp: Identifiable, Hashable {

@@ -25,6 +25,22 @@ enum SelfTest {
         let income = ["nhận lương", "lương tháng 10", "được chuyển", "tiền thưởng tết", "hoàn tiền"]
         for s in income { check("khoản thu: \(s)", Category.isIncome(store.guessEntry(s)), store.guessEntry(s)) }
         check("giao dịch thẻ luôn là chi: Phở Lương Sơn", !Category.isIncome(store.guessCategory("Phở Lương Sơn")))
+
+        // Dán số tài khoản (màn quét › Dán STK): ngân hàng, số tài khoản, số tiền
+        let pastes: [(String, String?, String, Int?)] = [
+            ("MB 0123456789 200k", "970422", "0123456789", 200_000),
+            ("STK 1903 4567 8901 Techcombank NGUYEN VAN A", "970407", "190345678901", nil),
+            ("vcb 1012345678 - 1.500.000", "970436", "1012345678", 1_500_000),
+            ("Vietinbank: 107-8765-4321, 350k tiền ăn", "970415", "10787654321", 350_000),
+            ("MB Bank 9999888877", "970422", "9999888877", nil),
+            ("0987654321 1tr2", nil, "0987654321", 1_200_000),
+        ]
+        for (t, bin, acct, amt) in pastes {
+            let q = VietQR.fromText(t)
+            check("dán STK: \(t)", q?.bin == bin && q?.acct == acct && q?.amount == amt,
+                  "\(q?.bin ?? "nil") \(q?.acct ?? "nil") \(q?.amount.map(String.init) ?? "nil")")
+        }
+        check("dán chữ không có STK → nil", VietQR.fromText("ăn trưa 35k") == nil)
         // Học danh mục cho đúng câu
         store.learnCategory("trả lương giúp việc", "hd")
         check("đã học: trả lương giúp việc → hd", store.guessEntry("trả lương giúp việc") == "hd", store.guessEntry("trả lương giúp việc"))

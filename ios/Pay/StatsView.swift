@@ -24,7 +24,8 @@ struct StatsView: View {
     @State private var byMonth = false
     @Namespace private var scopeNS
     /// Một ngày được chọn trong tuần (nil = cả tuần)
-    @State private var day: Date?
+    /// Ngày đang xem số liệu; mở màn ở chế độ Ngày thì là hôm nay (phim giới thiệu xem theo tháng nên đặt lại nil)
+    @State private var day: Date? = Calendar.current.startOfDay(for: Date())
     /// Khoản lớn nhất: đang mở rộng ra mọi khoản của kỳ
     @State private var showAllBig = false
     @State private var showAllIncome = false
@@ -59,6 +60,8 @@ struct StatsView: View {
     static let heroBg = Color(hex: 0xC9D9A4)
     static let heroInk = Color(hex: 0x1F6B47)
     static let heroPill = Color(hex: 0xE8F0D2)
+    /// Đỏ khi vượt ngân sách trên nền pistachio (giữ nguyên ở chế độ tối như nền)
+    static let heroDanger = Color(hex: 0xB42318)
 
     var body: some View {
         let _ = dayTick
@@ -109,6 +112,7 @@ struct StatsView: View {
         }
         // Khoảng dưới vạch tiêu đề (tới dòng tháng) bằng khoảng trên vạch (tới chữ tiêu đề)
         .padding(.horizontal, 16).padding(.top, 20).padding(.bottom, 32)
+        .onAppear { if film != nil { day = nil } }   // phim giới thiệu xem theo tháng
     }
 
     // MARK: Đầu trang: khoảng ngày + Hôm nay, chọn Tuần / Tháng / Năm, rồi thanh chọn ngày / tháng / năm
@@ -143,26 +147,32 @@ struct StatsView: View {
         let sorted = byDay.values.sorted()
         let top = max(sorted.isEmpty ? 1 : sorted[min(sorted.count - 1, sorted.count * 9 / 10)], 1)
         // Cuộn vào vùng khoá (bản miễn phí): tiêu đề giữ tháng đang xem số liệu, không theo ngày bị khoá
-        let shown = (centerDay.map { locked($0) } ?? false) ? month : (centerDay ?? today)
+        // Tháng ở tiêu đề: theo ngày đang chọn (chọn 3/7 ở mép dải mà giữa dải còn là tháng 6 thì vẫn ghi tháng 7);
+        // chưa chọn ngày thì theo ngày giữa dải
+        let shown = day ?? ((centerDay.map { locked($0) } ?? false) ? month : (centerDay ?? today))
         return VStack(alignment: .leading, spacing: 12) {
+            // Một hàng: tên tháng bên trái; nút tròn về hôm nay / tháng này (khi đang xem ngày / tháng khác) và công tắc Ngày / Tháng
+            // bên phải. Không ghi đơn vị: số trong viên ngày là nghìn đồng, viên tháng là triệu đồng, nhìn là hiểu
             HStack(spacing: 8) {
                 Text(byMonth ? monthYear(month) : monthYear(shown)).font(.system(size: 17, weight: .semibold))
+                    .lineLimit(1).minimumScaleFactor(0.8)
                     .contentTransition(.numericText())
                     .animation(.snappy, value: monthYear(shown))
-                Spacer()
+                Spacer(minLength: 8)
                 if (!byMonth && (!cal.isDate(shown, equalTo: today, toGranularity: .month) || (day != nil && !cal.isDateInToday(day!))))
                     || (byMonth && !cal.isDate(month, equalTo: today, toGranularity: .month)) {
                     Button { withAnimation(.snappy) { goToday() } } label: {
-                        Text(byMonth ? L("Tháng này") : L("Hôm nay")).font(.system(size: 13, weight: .semibold))
+                        Image(systemName: "arrow.uturn.backward").font(.system(size: 13, weight: .bold))
                             .foregroundStyle(.primary)
-                            .padding(.horizontal, 12).frame(height: 30)
-                            .background(Capsule().fill(Self.card))
+                            .frame(width: 38, height: 38)
+                            .background(Circle().fill(Self.card))
                     }
                     .buttonStyle(Pressable())
-                    .transition(.opacity)
+                    .transition(.scale.combined(with: .opacity))
+                    .accessibilityLabel(byMonth ? L("Tháng này") : L("Hôm nay"))
                 }
+                scopeToggle
             }
-            .frame(height: 30)
             .padding(.horizontal, 20)
             if byMonth { monthStrip } else {
             ScrollView(.horizontal) {
@@ -189,8 +199,6 @@ struct StatsView: View {
             // Hai mép: nhoè dần như mép cuộn của iOS (kính mờ tan dần), không phủ màu nền lên
 
             }
-            // Công tắc Ngày / Tháng ngay dưới dải, giữa màn
-            scopeToggle.frame(maxWidth: .infinity)
         }
         // Không nền thẻ, dải ngày tràn ra hai mép màn hình (bù lại lề 16 của trang); chữ tiêu đề vẫn thẳng lề
         .padding(.horizontal, -16)
@@ -198,7 +206,7 @@ struct StatsView: View {
             // Cuộn sang tháng khác: số liệu theo tháng đó; ngày đang chọn ở tháng khác thì bỏ chọn
             guard let c = centerDay, !cal.isDate(c, equalTo: month, toGranularity: .month), !locked(c) else { return }
             showMonth(c)
-            if let d = day, !cal.isDate(d, equalTo: c, toGranularity: .month) { day = nil }
+            if let d = day, !cal.isDate(d, equalTo: c, toGranularity: .month) { day = cal.startOfDay(for: c) }
         }
     }
 
@@ -209,17 +217,19 @@ struct StatsView: View {
     /// Nút chuyển dải trên cùng giữa Ngày và Tháng (hai chữ trong một viên, phần đang chọn nền đen)
     private var scopeToggle: some View {
         HStack(spacing: 2) {
-            ForEach([false, true], id: \.self) { m in
-                let on = byMonth == m
+            // 0 Ngày (dải ngày), 1 Tháng (dải tháng)
+            ForEach(0..<2, id: \.self) { m in
+                let on = (byMonth ? 1 : 0) == m
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        byMonth = m
-                        day = nil
+                        byMonth = m == 1
+                        // Ngày: số liệu bên dưới luôn theo một ngày (ngày đang ở giữa dải, mặc định hôm nay); Tháng: cả tháng
+                        day = m == 0 ? cal.startOfDay(for: centerDay ?? Date()) : nil
                     }
                 } label: {
-                    Text(m ? L("Tháng") : L("Ngày")).font(.system(size: 15, weight: .semibold))
+                    Text([L("Ngày"), L("Tháng")][m]).font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(on ? Self.inkText : Color.primary.opacity(0.6))
-                        .padding(.horizontal, 22).frame(height: 40)
+                        .padding(.horizontal, 14).frame(height: 32)
                         // Nền đen trượt qua lại giữa hai nút (cùng một khối nhờ matchedGeometryEffect)
                         .background {
                             if on { Capsule().fill(Self.ink).matchedGeometryEffect(id: "scopePill", in: scopeNS) }
@@ -315,6 +325,15 @@ struct StatsView: View {
                         }
                     }
                     .padding(4)
+                    // Số tiền trong khối, tính bằng triệu đồng cho mọi viên tháng (đơn vị ghi cạnh tiêu đề)
+                    .overlay(alignment: .bottom) {
+                        if spent > 0 {
+                            Text(Self.millions(spent)).font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()
+                                .foregroundStyle(on ? Self.inkText.opacity(0.75) : Color.primary.opacity(0.7))
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                                .padding(.horizontal, 3).padding(.bottom, 9)
+                        }
+                    }
                 }
                 .frame(width: pillW, height: Self.pillHeight)
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
@@ -334,7 +353,7 @@ struct StatsView: View {
         return Button {
             if lock { Pro.shared.allow(.history); return }
             withAnimation(.snappy(duration: 0.2)) {
-                if on { day = nil } else {
+                if on { return } else {   // chế độ Ngày luôn có một ngày được chọn
                     day = d
                     if !cal.isDate(d, equalTo: month, toGranularity: .month) { showMonth(d) }
                 }
@@ -367,6 +386,20 @@ struct StatsView: View {
                         }
                     }
                     .padding(4)
+                    // Số tiền trong khối, tính bằng nghìn đồng cho mọi viên (đơn vị ghi cạnh tiêu đề tháng)
+                    .overlay(alignment: .bottom) {
+                        if spent > 0 {
+                            // Từ 10 triệu: số triệu ở trên, chữ "triệu" nhỏ ở dưới (viết theo nghìn thì quá dài cho viên)
+                            VStack(spacing: 0) {
+                                Text(spent >= 10_000_000 ? fmt((spent + 500_000) / 1_000_000) : Self.thousands(spent))
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded)).monospacedDigit()
+                                if spent >= 10_000_000 { Text(L("triệu")).font(.system(size: 10, weight: .semibold, design: .rounded)) }
+                            }
+                            .foregroundStyle(on ? Self.inkText.opacity(0.75) : Color.primary.opacity(0.7))
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                                .padding(.horizontal, 3).padding(.bottom, 9)
+                        }
+                    }
                 }
                 .frame(width: pillW, height: Self.pillHeight)
                 .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(on ? Self.ink : Self.card))
@@ -387,7 +420,7 @@ struct StatsView: View {
     }
 
     private func goToday() {
-        day = nil
+        day = byMonth ? nil : cal.startOfDay(for: Date())
         centerDay = cal.startOfDay(for: Date())
         showMonth(Date())
     }
@@ -746,17 +779,20 @@ struct StatsView: View {
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Self.heroInk.opacity(0.15))
-                        Capsule().fill(over ? Palette.danger : Self.heroInk)
+                        Capsule().fill(over ? Self.heroDanger : Self.heroInk)
                             .frame(width: max(6, g.size.width * min(Double(spent) / Double(limit), 1)))
                     }
                 }
                 .frame(height: 6)
                 HStack {
+                    // Vượt: đỏ đậm (nền ô luôn sáng, đỏ thường của app ở chế độ tối là đỏ nhạt, chìm vào nền pistachio)
                     Text(L("Đã dùng %ld%% của %@", pct, fmt(limit)))
-                        .foregroundStyle(over ? Palette.danger : Self.heroInk.opacity(0.8))
+                        .foregroundStyle(over ? Self.heroDanger : Self.heroInk.opacity(0.8))
+                        .fontWeight(over ? .semibold : .regular)
                     Spacer()
                     Text(over ? L("Vượt %@", fmt(spent - limit)) : L("Còn %@/ngày", fmt((limit - spent) / daysLeft / 1000 * 1000)))
-                        .foregroundStyle(over ? Palette.danger : Self.heroInk.opacity(0.8))
+                        .foregroundStyle(over ? Self.heroDanger : Self.heroInk.opacity(0.8))
+                        .fontWeight(over ? .semibold : .regular)
                 }
                 .font(.system(size: 13))
             }
@@ -771,7 +807,9 @@ struct StatsView: View {
         let h = total > 0 ? max(18, 88 * min(Double(total) / Double(top), 1)) : 4
         return Button {
             withAnimation(.snappy) {
+                // Chạm cột tháng: xem cả tháng đó (đang ở chế độ Ngày thì chuyển sang Tháng)
                 day = nil
+                byMonth = true
                 showMonth(m)
                 // Dải ngày cuộn tới ngày cuối của tháng đó (tháng này thì tới hôm nay)
                 let last = cal.date(byAdding: .day, value: -1, to: cal.dateInterval(of: .month, for: m)!.end)!
@@ -892,6 +930,19 @@ struct StatsView: View {
             RoundedRectangle(cornerRadius: 3).fill(style).frame(width: 12, height: 12)
             Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
         }
+    }
+
+    /// Số tiền ghi trong viên ngày / tháng: luôn tính bằng nghìn đồng, không đuôi (748, 1.523, 23.250), để mọi viên cùng một
+    /// đơn vị mà so bằng mắt; đơn vị ghi một lần cạnh tiêu đề tháng
+    static func thousands(_ v: Int) -> String {
+        return fmt((v + 500) / 1000)
+    }
+    /// Viên tháng: triệu đồng, một chữ số thập phân (23,3), số 5 chữ số kiểu nghìn đồng không vừa viên
+    static func millions(_ v: Int) -> String {
+        // Làm tròn theo trăm nghìn trước (23.250.000 → 23,3), chia thẳng thì số thực 23,249… bị làm tròn xuống
+        // Từ 100 triệu: bỏ phần thập phân (125, 1.250) cho vừa viên
+        if v >= 100_000_000 { return fmt((v + 500_000) / 1_000_000) }
+        return (Double((v + 50_000) / 100_000) / 10).formatted(.number.precision(.fractionLength(1)).locale(Lang.isEnglish ? Lang.locale : Locale(identifier: "vi_VN")))
     }
 
     // MARK: Theo danh mục

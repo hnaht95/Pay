@@ -178,7 +178,7 @@ enum BankLauncher {
             // "invalid accountName" (đã thử 10/2026), cả lần chuyển hỏng. Bỏ dấu, bỏ ký tự lạ; không còn gì thì không gửi tên
             let bn = Self.plainName(qr.name)
             if !bn.isEmpty { url += "&bn=\(enc(bn))" }
-            url += "&url=\(enc(returnURL))"
+            url += "&url=\(enc(returnURL))&fr=Payso"   // fr: tên app hiện trên màn chuyển của VietQR
             // Từ 10/2026 trang dl.vietqr.io chỉ đưa link điền sẵn cho trình duyệt thật (trang tự chạy rồi đổi vé lấy link). Chạy chính
             // trang đó trong một khung web của app (không nhảy sang Safari, không phải bấm "Mở" thêm): trang chuyển sang link app
             // ngân hàng thì app bắt lấy và mở thẳng. Không được (mạng lỗi, hết lượt…) thì mở app ngân hàng trơn, chép sẵn số tài khoản

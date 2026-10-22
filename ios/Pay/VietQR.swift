@@ -136,7 +136,8 @@ enum BankLauncher {
     static let qrPayLinks: [String: String] = [
         "mb": "mbbank://applink", "bidv": "dl.bidvsmartbanking.vn://applink", "cake": "cake.vn://applink",
         "msb": "msbdigibank://applink", "tpb": "hydro://applink", "timo": "timo://applink",
-        "icb": "vietinbankipay://host.qrTransfer", "acb": "acbone://applink", "ocb": "newomni-app://applink",
+        // ACB ONE nhận link này nhưng chỉ mở màn quét QR, không điền sẵn (thử trên máy thật 22/10/2026): ACB đi qua dl.vietqr.io
+        "icb": "vietinbankipay://host.qrTransfer", "ocb": "newomni-app://applink",
         "vib-2": "myvib2://applink",
     ]
 

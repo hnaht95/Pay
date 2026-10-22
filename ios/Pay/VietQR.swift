@@ -142,7 +142,12 @@ enum BankLauncher {
             if !bn.isEmpty { url += "&bn=\(enc(bn))" }
             url += "&url=\(enc(returnURL))"
             if let deep = await signedDeeplink(url), let u = URL(string: deep), await UIApplication.shared.open(u) { return }
-            if let u = URL(string: url) { await UIApplication.shared.open(u) }   // dự phòng: để Safari xử lý
+            // Không lấy được link điền sẵn (từ 10/2026 trang dl.vietqr.io chỉ còn trả "acbone://" trơn): mở thẳng app ngân hàng
+            // và chép sẵn số tài khoản để dán, không đẩy qua trang web trung gian (phải bấm "Mở" thêm một lần mới sang app)
+            UIPasteboard.general.string = acct
+            Store.shared.show(L("Đã chép số tài khoản %@. Dán vào app ngân hàng", acct))
+            if let u = URL(string: app.scheme), await UIApplication.shared.open(u) { return }
+            if let u = URL(string: url) { await UIApplication.shared.open(u) }   // app chưa cài: trang web dẫn tới App Store
             return
         }
         if let u = URL(string: app.scheme), await UIApplication.shared.open(u) { return }
@@ -154,12 +159,24 @@ enum BankLauncher {
         guard let u = URL(string: url) else { return nil }
         var req = URLRequest(url: u, timeoutInterval: 8)
         req.setValue(iPhoneUA, forHTTPHeaderField: "User-Agent")
-        guard let (data, _) = try? await URLSession.shared.data(for: req), let html = String(data: data, encoding: .utf8),
-              let r = html.range(of: #"const DEEPLINK = '([^']+)'"#, options: .regularExpression) else { return nil }
-        let line = html[r]
-        guard let start = line.firstIndex(of: "'") else { return nil }
-        let link = String(line[line.index(after: start)..<line.index(before: line.endIndex)])
-        return link.contains("://") ? link : nil
+        guard let (data, _) = try? await URLSession.shared.data(for: req), let html = String(data: data, encoding: .utf8)
+        else { return nil }
+        // Kiểu cũ: const DEEPLINK = 'acbone://…'
+        if let r = html.range(of: #"const DEEPLINK = '([^']+)'"#, options: .regularExpression) {
+            let line = html[r]
+            if let start = line.firstIndex(of: "'") {
+                let link = String(line[line.index(after: start)..<line.index(before: line.endIndex)])
+                if link.contains("://") { return link }
+            }
+        }
+        // Kiểu mới: var C={"fallback":"acbone://…"}. Chỉ dùng khi link có kèm thông tin chuyển (có "?"): "acbone://" trơn chỉ
+        // mở app, không điền sẵn gì, coi như không lấy được
+        if let r = html.range(of: #""(?:deeplink|fallback)":"([^"]+)""#, options: .regularExpression) {
+            let part = html[r]
+            let link = String(part.split(separator: ":", maxSplits: 1)[1].dropFirst().dropLast()).replacingOccurrences(of: "\\/", with: "/")
+            if link.contains("://"), link.contains("?") { return link }
+        }
+        return nil
     }
 
     /// "Nguyễn Văn Á - CN.1" → "NGUYEN VAN A CN 1"

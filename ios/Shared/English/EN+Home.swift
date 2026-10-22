@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Đã chép số tài khoản %@. Dán vào app ngân hàng": "Copied account %@. Paste it in your bank app",
         "Quay lại": "Back",
         "Bản thử: mở khoá Pro": "Test build: unlock Pro",
         "Lưu & mở Bank": "Save & open bank",

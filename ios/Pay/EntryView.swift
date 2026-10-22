@@ -151,7 +151,13 @@ struct EntryView: View {
             }
             .padding(.top, 24)
 
-            keypad.padding(.vertical, 8)
+            // Đang gõ ghi chú: ẩn bàn phím số (như màn khoản chung), chỉ còn bàn phím chữ của iOS; chạm ô số tiền thì hiện lại
+            if noteFocused && film == nil {
+                Spacer(minLength: 0)
+            } else {
+                keypad.padding(.vertical, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
             // Hàng nút sát đáy, cách mép dưới 16 điểm bằng lề hai bên (như hai nút Nhập / Quét QR ở màn hình chính):
             // vùng an toàn dưới 34 điểm, lùi xuống 18
             actions.padding(.bottom, -18)
@@ -160,6 +166,7 @@ struct EntryView: View {
         // Bàn phím chữ (đang gõ ghi chú) phủ lên bàn phím số và các nút, bố cục đứng yên. Để iOS co vùng an toàn thì nội dung
         // không co nổi tới mức đó: phần đầu trượt lên dưới thanh trạng thái, nút Lưu vẫn chìm dưới bàn phím
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .animation(.snappy, value: noteFocused)
         .background(Palette.surface.ignoresSafeArea())
         .onAppear(perform: setup)
         .onAppear {

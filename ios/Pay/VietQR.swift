@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import WebKit
 
 /// Nội dung một mã VietQR (chuẩn EMVCo).
 struct VietQR: Hashable {
@@ -127,9 +128,8 @@ struct BankApp: Identifiable, Hashable {
 enum BankLauncher {
     /// Trang quay về sau khi chuyển khoản (VietQR chỉ nhận https). Trang này mở lại app bằng sochipay://
     static let returnURL = "https://hnaht95.github.io/Pay/back.html"
-    private static let iPhoneUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
 
-    /// Mở app ngân hàng. App có fill: lấy deeplink có chữ ký từ dl.vietqr.io rồi mở thẳng (ACB One điền sẵn người nhận + số tiền).
+    /// Mở app ngân hàng. App có fill: chạy trang dl.vietqr.io trong khung web của app để lấy link có chữ ký, mở thẳng app (ACB One điền sẵn người nhận + số tiền).
     @MainActor
     static func open(_ app: BankApp, qr: VietQR?, amount: Int?) async {
         if app.fill, let qr, let acct = qr.acct, let bin = qr.bin, let code = BankData.codes[bin] {
@@ -141,10 +141,11 @@ enum BankLauncher {
             let bn = Self.plainName(qr.name)
             if !bn.isEmpty { url += "&bn=\(enc(bn))" }
             url += "&url=\(enc(returnURL))"
-            if let deep = await signedDeeplink(url), let u = URL(string: deep), await UIApplication.shared.open(u) { return }
-            // Không lấy được link điền sẵn (từ 10/2026 trang dl.vietqr.io chỉ còn trả "acbone://" trơn): mở thẳng app ngân hàng
-            // và chép sẵn số tài khoản để dán, không đẩy qua trang web trung gian (phải bấm "Mở" thêm một lần mới sang app)
+            // Từ 10/2026 trang dl.vietqr.io chỉ đưa link điền sẵn cho trình duyệt thật (trang tự chạy rồi đổi vé lấy link). Chạy chính
+            // trang đó trong một khung web của app (không nhảy sang Safari, không phải bấm "Mở" thêm): trang chuyển sang link app
+            // ngân hàng thì app bắt lấy và mở thẳng. Không được (mạng lỗi, hết lượt…) thì mở app ngân hàng trơn, chép sẵn số tài khoản
             UIPasteboard.general.string = acct
+            if let u = URL(string: url), let link = await BankWebClaim.run(u, timeout: 8), await UIApplication.shared.open(link) { return }
             Store.shared.show(L("Đã chép số tài khoản %@. Dán vào app ngân hàng", acct))
             if let u = URL(string: app.scheme), await UIApplication.shared.open(u) { return }
             if let u = URL(string: url) { await UIApplication.shared.open(u) }   // app chưa cài: trang web dẫn tới App Store
@@ -152,31 +153,6 @@ enum BankLauncher {
         }
         if let u = URL(string: app.scheme), await UIApplication.shared.open(u) { return }
         if let u = URL(string: "https://dl.vietqr.io/pay?app=\(app.id)") { await UIApplication.shared.open(u) }   // chưa cài app -> App Store
-    }
-
-    /// Trang dl.vietqr.io chứa `const DEEPLINK = 'acbone://...'` — lấy ra để mở thẳng app, khỏi qua Safari.
-    private static func signedDeeplink(_ url: String) async -> String? {
-        guard let u = URL(string: url) else { return nil }
-        var req = URLRequest(url: u, timeoutInterval: 8)
-        req.setValue(iPhoneUA, forHTTPHeaderField: "User-Agent")
-        guard let (data, _) = try? await URLSession.shared.data(for: req), let html = String(data: data, encoding: .utf8)
-        else { return nil }
-        // Kiểu cũ: const DEEPLINK = 'acbone://…'
-        if let r = html.range(of: #"const DEEPLINK = '([^']+)'"#, options: .regularExpression) {
-            let line = html[r]
-            if let start = line.firstIndex(of: "'") {
-                let link = String(line[line.index(after: start)..<line.index(before: line.endIndex)])
-                if link.contains("://") { return link }
-            }
-        }
-        // Kiểu mới: var C={"fallback":"acbone://…"}. Chỉ dùng khi link có kèm thông tin chuyển (có "?"): "acbone://" trơn chỉ
-        // mở app, không điền sẵn gì, coi như không lấy được
-        if let r = html.range(of: #""(?:deeplink|fallback)":"([^"]+)""#, options: .regularExpression) {
-            let part = html[r]
-            let link = String(part.split(separator: ":", maxSplits: 1)[1].dropFirst().dropLast()).replacingOccurrences(of: "\\/", with: "/")
-            if link.contains("://"), link.contains("?") { return link }
-        }
-        return nil
     }
 
     /// "Nguyễn Văn Á - CN.1" → "NGUYEN VAN A CN 1"
@@ -189,5 +165,61 @@ enum BankLauncher {
 
     private static func enc(_ s: String) -> String {
         s.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(CharacterSet(charactersIn: "-._~"))) ?? s
+    }
+}
+
+
+/// Mở trang dl.vietqr.io trong một tấm web nhỏ của app (trình duyệt thật, người dùng thấy màn chuyển của VietQR) và chờ trang tự
+/// chuyển sang link app ngân hàng (vd "acbone://…" có điền sẵn). Bắt link đó thay vì để khung web mở, rồi đóng tấm.
+/// Trả về link bắt được, nil nếu quá hạn hoặc trang không chuyển (khi đó tấm cũng đóng)
+@MainActor
+final class BankWebClaim: NSObject, WKNavigationDelegate {
+    private var done: CheckedContinuation<URL?, Never>?
+    private weak var sheet: UIViewController?
+    private static var current: BankWebClaim?
+
+    static func run(_ url: URL, timeout: Double) async -> URL? {
+        guard let top = topController() else { return nil }
+        let me = BankWebClaim()
+        current = me
+        let web = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        web.navigationDelegate = me
+        let vc = UIViewController()
+        vc.view = web
+        vc.sheetPresentationController?.detents = [.medium()]
+        vc.sheetPresentationController?.prefersGrabberVisible = true
+        me.sheet = vc
+        top.present(vc, animated: true)
+        web.load(URLRequest(url: url))
+        let link = await withCheckedContinuation { (c: CheckedContinuation<URL?, Never>) in
+            me.done = c
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(timeout))
+                me.finish(nil)
+            }
+        }
+        current = nil
+        return link
+    }
+
+    private func finish(_ link: URL?) {
+        guard let c = done else { return }
+        done = nil
+        sheet?.dismiss(animated: true)
+        c.resume(returning: link)
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+        guard let u = action.request.url, let scheme = u.scheme?.lowercased() else { decisionHandler(.allow); return }
+        if scheme == "http" || scheme == "https" || scheme == "about" || scheme == "data" { decisionHandler(.allow); return }
+        // Link app ngân hàng: chỉ nhận link có kèm thông tin chuyển; link trơn ("acbone://", trang hết lượt) để phương án dự phòng lo
+        decisionHandler(.cancel)
+        finish(u.absoluteString.contains("?") || (u.host?.isEmpty == false) ? u : nil)
+    }
+
+    private static func topController() -> UIViewController? {
+        guard var top = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController else { return nil }
+        while let p = top.presentedViewController { top = p }
+        return top
     }
 }

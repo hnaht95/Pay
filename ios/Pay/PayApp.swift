@@ -52,6 +52,13 @@ struct PayApp: App {
                     FilmTouches.install()
                     await FilmExport.runIfAsked(store: store, quick: quick)
                     SelfTest.runIfAsked(store: store)
+                    // "-bankClaimTest <link dl.vietqr.io>": chạy trang trong khung web, in ra link app ngân hàng bắt được
+                    if let t = UserDefaults.standard.string(forKey: "bankClaimTest"), let u = URL(string: t) {
+                        try? await Task.sleep(for: .seconds(1))
+                        let link = await BankWebClaim.run(u, timeout: 8)
+                        print("BANKCLAIM", link?.absoluteString ?? "nil")
+                        try? (link?.absoluteString ?? "nil").write(to: URL.documentsDirectory.appending(path: "bankclaim.txt"), atomically: true, encoding: .utf8)
+                    }
                     #endif
                     // Kiểm tra quyền Pro và lắng nghe giao dịch (mua trên máy khác, gia hạn, hoàn tiền)
                     await Pro.shared.refresh()

@@ -130,15 +130,26 @@ enum BankLauncher {
     static let returnURL = "https://hnaht95.github.io/Pay/back.html"
 
     /// Mở app ngân hàng. App có fill: chạy trang dl.vietqr.io trong khung web của app để lấy link có chữ ký, mở thẳng app (ACB One điền sẵn người nhận + số tiền).
-    /// Link mở thẳng màn chuyển khoản theo mã QR của app ngân hàng (cùng kiểu link Zalo dùng):
-    /// `<scheme>applink?targetPage=QRPay&qrContent=<VietQR>` (VietinBank: đường dẫn host.qrTransfer). Không cần máy chủ hay chữ ký;
-    /// chỉ các app đã thấy mở ra điền sẵn (danh sách như app Nếp và dự án mã nguồn mở 6pm, 10/2026). Mã app → đầu link
+    /// Link mở thẳng màn chuyển khoản theo mã QR của app ngân hàng: chính các link Zalo / ZaloPay dùng để giao mã VietQR cho app
+    /// ngân hàng (không cần máy chủ hay chữ ký; theo bảng của các dự án mã nguồn mở caulongdi và 6pm, 10/2026). "{qr}" là mã
+    /// VietQR đã mã hoá cho URL. Mã app (BankData.apps) → mẫu link
     static let qrPayLinks: [String: String] = [
-        "mb": "mbbank://applink", "bidv": "dl.bidvsmartbanking.vn://applink", "cake": "cake.vn://applink",
-        "msb": "msbdigibank://applink", "tpb": "hydro://applink", "timo": "timo://applink",
-        // ACB ONE nhận link này nhưng chỉ mở màn quét QR, không điền sẵn (thử trên máy thật 22/10/2026): ACB đi qua dl.vietqr.io
-        "icb": "vietinbankipay://host.qrTransfer", "ocb": "newomni-app://applink",
-        "vib-2": "myvib2://applink",
+        "acb": "acbone://ZaloPay/external/transactions/v1/qrcode?qrCode={qr}",
+        "mb": "mbbank://applink?targetPage=QRPay&qrContent={qr}",
+        "icb": "vietinbankipay://host.qrTransfer?targetPage=QRPay&qrContent={qr}",
+        "tcb": "tcb://applink?targetPage=QRPay&qrContent={qr}",
+        "vpb": "vpbankneo://applink?targetPage=DLPay&qrContent={qr}",
+        "msb": "msbmbank://applink?targetPage=QRPay&qrContent={qr}",
+        "bidv": "dl.bidvsmartbanking.vn://applink?targetPage=QRPay&qrContent={qr}",
+        "ocb": "newomni-app://applink?targetPage=QRPay&qrContent={qr}",
+        "vib-2": "myvib2://applink?targetPage=QRPay&qrContent={qr}",
+        "timo": "timo://applink?targetPage=QRPay&qrContent={qr}",
+        "cake": "cake.vn://zalopay?qr_value={qr}",
+        "tpb": "hydro://ZaloPay/{qr}",
+        "stb": "sacombankpay://zalopay?qr_value={qr}",
+        "shb": "saha://zalopay?qr_value={qr}",
+        "eib": "eximbankomnimobile://ZaloPay/{qr}",
+        "pvcb": "pvcb://ZaloPay/{qr}",
     ]
 
     /// Mã VietQR đưa cho app ngân hàng: mã quét được giữ nguyên nếu đã đúng số tiền (mã cửa hàng thì luôn giữ nguyên);
@@ -155,9 +166,9 @@ enum BankLauncher {
     @MainActor
     static func open(_ app: BankApp, qr: VietQR?, amount: Int?) async {
         // Mở thẳng màn chuyển khoản theo mã QR (nhanh, không qua web). App chưa cài thì đi tiếp các cách dưới
-        if let head = qrPayLinks[app.id], let qr, let p = payload(qr, amount: amount),
+        if let tpl = qrPayLinks[app.id], let qr, let p = payload(qr, amount: amount),
            let q = p.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
-           let u = URL(string: "\(head)?targetPage=QRPay&qrContent=\(q)"), await UIApplication.shared.open(u) { return }
+           let u = URL(string: tpl.replacingOccurrences(of: "{qr}", with: q)), await UIApplication.shared.open(u) { return }
         if app.fill, let qr, let acct = qr.acct, let bin = qr.bin, let code = BankData.codes[bin] {
             var url = "https://dl.vietqr.io/pay?app=\(app.id)&ba=\(enc(acct))@\(code)"
             if let amount, amount > 0 { url += "&am=\(amount)" }

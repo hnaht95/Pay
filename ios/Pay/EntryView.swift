@@ -216,15 +216,15 @@ struct EntryView: View {
         .opacity(showWeb ? 0 : 1)
         // Khoản quét QR trả qua VietQR (vd ACB): phần đầu cao cố định, hai nội dung thay nhau. Lúc trang VietQR đang lấy
         // sẵn link mở app ngân hàng, trang đó (cả quảng cáo của VietQR) chiếm trọn phần đầu, không khung; xong thì trả lại
-        // tiêu đề. Trang dựng to hơn rồi thu 75% để thấy trọn sơ đồ và quảng cáo, không bị cắt
+        // tiêu đề. Trang dựng to hơn rồi thu 70%: sơ đồ ở trên, quảng cáo (gắn đáy trang) ở dưới, không đè nhau
         .frame(maxWidth: .infinity)
         .frame(height: casso ? Self.cassoH : nil)
         .overlay {
             if showWeb {
                 GeometryReader { g in
                     BankPrefetchWeb()
-                        .frame(width: g.size.width / 0.75, height: g.size.height / 0.75)
-                        .scaleEffect(0.75, anchor: .topLeading)
+                        .frame(width: g.size.width / Self.cassoZoom, height: g.size.height / Self.cassoZoom)
+                        .scaleEffect(Self.cassoZoom, anchor: .topLeading)
                 }
                 .background(Color.white)
                 .clipped()
@@ -235,8 +235,10 @@ struct EntryView: View {
         .padding(.top, 8)
     }
 
-    /// Cao phần đầu màn quét QR đi qua VietQR: vừa tiêu đề + dòng phụ, vừa trang VietQR (thu 75%) có sơ đồ và quảng cáo
-    private static let cassoH: CGFloat = 112
+    /// Cao phần đầu màn quét QR đi qua VietQR: trang VietQR cần ~250px (sơ đồ + dòng trạng thái + quảng cáo gắn đáy) để
+    /// quảng cáo không đè sơ đồ; thu 70% còn ~172. Tiêu đề + dòng phụ nằm giữa khoảng đó
+    private static let cassoH: CGFloat = 172
+    private static let cassoZoom: CGFloat = 0.7
 
     /// Màn xác nhận khoản quét QR, app ngân hàng đi qua VietQR (lấy sẵn link được)
     private var casso: Bool {

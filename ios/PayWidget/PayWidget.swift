@@ -7,6 +7,7 @@ struct PayWidgets: WidgetBundle {
     var body: some Widget {
         SpendWidget()
         VoiceWidget()
+        QuickLockWidget()
         MyQRWidget()
         if #available(iOS 18.0, *) {
             VoiceControl()
@@ -66,6 +67,26 @@ struct VoiceWidget: Widget {
             .configurationDisplayName(L("Nói để ghi"))
             .description(L("Chạm là Payso nghe luôn, nói \"35k cafe\" là ghi."))
             .supportedFamilies([.systemSmall, .accessoryCircular])
+    }
+}
+
+// MARK: Nút nhanh màn hình khoá: Quét QR, nói, chụp hoá đơn trong một khung chữ nhật
+
+struct QuickLockWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "QuickLockWidget", provider: QuickLockProvider()) { _ in QuickLockView() }
+            .configurationDisplayName(L("Nút nhanh"))
+            .description(L("Quét QR, nói để ghi, chụp hoá đơn ngay từ màn hình khoá."))
+            .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+struct QuickLockProvider: TimelineProvider {
+    struct Entry: TimelineEntry { let date: Date }
+    func placeholder(in context: Context) -> Entry { Entry(date: Date()) }
+    func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) { completion(Entry(date: Date())) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
+        completion(Timeline(entries: [Entry(date: Date())], policy: .never))
     }
 }
 

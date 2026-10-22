@@ -120,23 +120,16 @@ struct SpendView: View {
             .widgetURL(QuickKind.scan.url)
             .accessibilityLabel(L("Quét QR"))
         case .accessoryRectangular:
-            // Một khung gồm cả ba: số đã chi hôm nay bên trái (chạm là mở app), nút Quét QR và nút micro tròn bên phải (nút có tác
-            // vụ riêng, iOS 17+). Số tiền vừa phải để còn chỗ cho hai nút; nền mờ cả khung cho chữ không chìm vào ảnh màn hình khoá
-            HStack(spacing: 6) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(L("Hôm nay đã chi")).font(.system(size: 11, weight: .medium)).opacity(0.75).lineLimit(1).minimumScaleFactor(0.8)
-                    Text(fmt(e.s.today)).font(.system(size: 18, weight: .bold)).kerning(-0.3).minimumScaleFactor(0.6).lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Button(intent: ScanIntent()) { lockButton("qrcode", size: 15) }
-                    .buttonStyle(.plain).accessibilityLabel(L("Quét QR"))
-                Button(intent: VoiceIntent()) { lockButton("mic.fill", size: 14) }
-                    .buttonStyle(.plain).accessibilityLabel(L("Nói để ghi"))
+            // Nửa trái hàng widget màn hình khoá: số đã chi hôm nay, chạm là mở app. Nửa phải đặt widget "Nút nhanh" (Quét QR, nói,
+            // chụp hoá đơn): iOS không cho widget màn hình khoá rộng hết hàng, hai khung chữ nhật cạnh nhau là rộng nhất có thể
+            VStack(alignment: .leading, spacing: 1) {
+                Text(L("Hôm nay đã chi")).font(.system(size: 12, weight: .medium)).opacity(0.75).lineLimit(1)
+                Text(fmt(e.s.today)).font(.system(size: 22, weight: .bold)).kerning(-0.4).minimumScaleFactor(0.6).lineLimit(1)
             }
-            .padding(.leading, 10).padding(.trailing, 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .background { AccessoryWidgetBackground().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-            .widgetURL(URL(string: "sochipay://"))   // chạm ngoài hai nút: chỉ mở app
+            .widgetURL(URL(string: "sochipay://"))   // chỉ mở app
         case .accessoryInline:
             Label(L("Hôm nay %@", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(URL(string: "sochipay://"))
         default:   // nhỏ: chạm vào là quét QR luôn
@@ -148,13 +141,6 @@ struct SpendView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .widgetURL(QuickKind.scan.url)
         }
-    }
-
-    /// Nút tròn nhỏ trong khung màn hình khoá (đậm hơn nền khung một chút)
-    private func lockButton(_ symbol: String, size: CGFloat) -> some View {
-        Image(systemName: symbol).font(.system(size: size, weight: .semibold))
-            .frame(width: 34, height: 34)
-            .background(Circle().fill(.white.opacity(0.18)))
     }
 
     /// Số đã chi hôm nay, dưới là ngân sách còn lại (kèm thanh) hoặc tổng tháng
@@ -369,5 +355,29 @@ struct MyQRView: View {
                     .lineLimit(1).minimumScaleFactor(0.6)
             }
         }
+    }
+}
+
+
+/// Widget "Nút nhanh" màn hình khoá: ba nút tròn Quét QR, nói để ghi, chụp hoá đơn (nút có tác vụ riêng, iOS 17+)
+struct QuickLockView: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(intent: ScanIntent()) { circle("qrcode", 18) }.buttonStyle(.plain).accessibilityLabel(L("Quét QR"))
+                .frame(maxWidth: .infinity)
+            Button(intent: VoiceIntent()) { circle("mic.fill", 17) }.buttonStyle(.plain).accessibilityLabel(L("Nói để ghi"))
+                .frame(maxWidth: .infinity)
+            Button(intent: PhotoIntent()) { circle("camera.fill", 16) }.buttonStyle(.plain).accessibilityLabel(L("Chụp hoá đơn"))
+                .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { AccessoryWidgetBackground().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+        .containerBackground(for: .widget) { Color.clear }
+    }
+
+    private func circle(_ symbol: String, _ size: CGFloat) -> some View {
+        Image(systemName: symbol).font(.system(size: size, weight: .semibold))
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(.white.opacity(0.18)))
     }
 }

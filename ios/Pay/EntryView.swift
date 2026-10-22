@@ -44,7 +44,8 @@ struct EntryView: View {
     /// Khoản chi trả bằng thẻ tín dụng (xem Expense.cr): không trừ số dư ngay, cộng vào nợ thẻ
     @State private var credit = false
 
-    private var amount: Int { Int(film?.entry?.digits ?? digits) ?? 0 }
+    /// digits có thể là biểu thức (bàn phím có ÷ × − +, vd 120×3520): số tiền là kết quả
+    private var amount: Int { Calc.value(film?.entry?.digits ?? digits) ?? 0 }
     /// Link mở app ngân hàng lấy sẵn qua VietQR (xem BankPrefetch)
     @ObservedObject private var prefetch = BankPrefetch.shared
     private var shownNote: String { film?.entry?.note ?? note }
@@ -105,6 +106,14 @@ struct EntryView: View {
             .contentShape(Rectangle())
             .onTapGesture { noteFocused = false; withAnimation(.snappy) { editing = true } }
             .padding(.top, 8)
+            // Đang gõ phép tính (vd quy đổi ngoại tệ 120 × 3.520): hiện cả biểu thức, số to trong ô là kết quả (như màn khoản chung)
+            if film == nil, Calc.isExpr(digits) {
+                Text(Calc.pretty(digits) + " = " + fmt(amount))
+                    .font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, -14)
+            }
 
             Group { if film != nil { filmChips } else { chips } }.padding(.top, 28)
 
@@ -463,7 +472,7 @@ struct EntryView: View {
     // MARK: Bàn phím số
 
     private var keypad: some View {
-        NumberPad(digits: $digits, lit: film?.entry?.key) { noteFocused = false }
+        NumberPad(digits: $digits, lit: film?.entry?.key, ops: true) { noteFocused = false }
         .frame(maxHeight: 320)
         .frame(maxHeight: .infinity)
         // Chưa bấm Sửa: bàn phím mờ và không nhận chạm

@@ -79,6 +79,7 @@ Hiệu ứng mép cuộn của hệ thống (iOS 26+) bị **tắt ở mọi nơ
 - **Không dùng `ultraThinMaterial` / kính mờ của iOS đè lên nội dung**: nó luôn kèm lớp phủ trắng / đen, trông đục như sữa.
 - Thanh nút đáy của tấm (`bottomBar`, Huỷ / Lưu): dải màu nền nhạt dần (`EdgeFade`), nút nằm yên khi bàn phím hiện.
 - Thẻ Nói để ghi: không phủ, không nhoè nền phía sau.
+- Bàn phím số của app (`NumberPad`): màn Nhập khoản chi và Khoản chung có cột phép tính ÷ × − + (chữ xanh lá) bên phải; đang gõ phép tính thì dưới ô số tiền có dòng biểu thức nhỏ màu phụ ("120 × 3.520 = 422.400"), số to là kết quả. Số dư, Trả thẻ, QR nhận tiền giữ bàn phím 3 cột.
 
 `variableBlur` là hàm nội bộ của Apple: được dùng cho TestFlight. Nếu App Store từ chối, đổi `ClearBlur` sang nhoè đều (chỉ một chỗ trong `Chrome.swift`).
 

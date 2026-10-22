@@ -136,7 +136,7 @@ enum BankData {
         "970439": "pbvn",
     ]
 
-    /// fill = app nhận sẵn người nhận + số tiền qua dl.vietqr.io
+    /// fill = app mở ra điền sẵn người nhận + số tiền (link QRPay, xem BankLauncher.qrPayLinks; hoặc qua dl.vietqr.io)
     static let apps: [BankApp] = [
         BankApp(id: "acb", name: "ACB One", scheme: "acbone://", fill: true),
         BankApp(id: "vpb", name: "VPBank NEO", scheme: "vpbankneo://", fill: false),
@@ -147,12 +147,13 @@ enum BankData {
         BankApp(id: "vba", name: "Agribank E-Mobile Banking", scheme: "agribankmobile://", fill: false),
         BankApp(id: "tcb", name: "Techcombank Mobile", scheme: "tcb://", fill: false),
         BankApp(id: "vcb", name: "Vietcombank", scheme: "vietcombankmobile://", fill: false),
-        BankApp(id: "cake", name: "CAKE - Digital Banking", scheme: "cake.vn://", fill: false),
-        BankApp(id: "tpb", name: "TPBank Mobile", scheme: "hydro://", fill: false),
+        BankApp(id: "cake", name: "CAKE - Digital Banking", scheme: "cake.vn://", fill: true),
+        BankApp(id: "tpb", name: "TPBank Mobile", scheme: "hydro://", fill: true),
         BankApp(id: "lpb", name: "Liên Việt 24h", scheme: "lv24h://", fill: false),
-        BankApp(id: "timo", name: "Timo Digital Bank", scheme: "plus://", fill: false),
+        BankApp(id: "timo", name: "Timo Digital Bank", scheme: "plus://", fill: true),
         BankApp(id: "vib", name: "MyVIB", scheme: "myvib://", fill: false),
-        BankApp(id: "vib-2", name: "MyVIB 2.0", scheme: "myvib2://", fill: false),
+        BankApp(id: "vib-2", name: "MyVIB 2.0", scheme: "myvib2://", fill: true),
+        BankApp(id: "msb", name: "MSB mBank", scheme: "msbdigibank://", fill: true),
         BankApp(id: "hdb", name: "HDBank", scheme: "hdbankmobile://", fill: false),
         BankApp(id: "scb", name: "SCB Mobile Banking", scheme: "scbmobilebanking://", fill: false),
         BankApp(id: "shb", name: "SHB SAHA", scheme: "shbmobile://", fill: false),

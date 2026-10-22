@@ -130,8 +130,33 @@ enum BankLauncher {
     static let returnURL = "https://hnaht95.github.io/Pay/back.html"
 
     /// Mở app ngân hàng. App có fill: chạy trang dl.vietqr.io trong khung web của app để lấy link có chữ ký, mở thẳng app (ACB One điền sẵn người nhận + số tiền).
+    /// Link mở thẳng màn chuyển khoản theo mã QR của app ngân hàng (cùng kiểu link Zalo dùng):
+    /// `<scheme>applink?targetPage=QRPay&qrContent=<VietQR>` (VietinBank: đường dẫn host.qrTransfer). Không cần máy chủ hay chữ ký;
+    /// chỉ các app đã thấy mở ra điền sẵn (danh sách như app Nếp và dự án mã nguồn mở 6pm, 10/2026). Mã app → đầu link
+    static let qrPayLinks: [String: String] = [
+        "mb": "mbbank://applink", "bidv": "dl.bidvsmartbanking.vn://applink", "cake": "cake.vn://applink",
+        "msb": "msbdigibank://applink", "tpb": "hydro://applink", "timo": "timo://applink",
+        "icb": "vietinbankipay://host.qrTransfer", "acb": "acbone://applink", "ocb": "newomni-app://applink",
+        "vib-2": "myvib2://applink",
+    ]
+
+    /// Mã VietQR đưa cho app ngân hàng: mã quét được giữ nguyên nếu đã đúng số tiền (mã cửa hàng thì luôn giữ nguyên);
+    /// không thì dựng lại mã chuyển nhanh tới tài khoản với số tiền và nội dung
+    static func payload(_ qr: VietQR, amount: Int?) -> String? {
+        let raw = qr.raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isQR = raw.hasPrefix("000201")
+        if isQR, qr.amount == amount || amount == nil || amount == 0 || !raw.contains("QRIBFTTA") { return raw }
+        guard let bin = qr.bin, let acct = qr.acct else { return isQR ? raw : nil }
+        let note = plainName(qr.purpose).prefix(25)
+        return MyQR(bin: bin, acct: acct, amount: amount ?? 0, note: String(note)).payload
+    }
+
     @MainActor
     static func open(_ app: BankApp, qr: VietQR?, amount: Int?) async {
+        // Mở thẳng màn chuyển khoản theo mã QR (nhanh, không qua web). App chưa cài thì đi tiếp các cách dưới
+        if let head = qrPayLinks[app.id], let qr, let p = payload(qr, amount: amount),
+           let q = p.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
+           let u = URL(string: "\(head)?targetPage=QRPay&qrContent=\(q)"), await UIApplication.shared.open(u) { return }
         if app.fill, let qr, let acct = qr.acct, let bin = qr.bin, let code = BankData.codes[bin] {
             var url = "https://dl.vietqr.io/pay?app=\(app.id)&ba=\(enc(acct))@\(code)"
             if let amount, amount > 0 { url += "&am=\(amount)" }

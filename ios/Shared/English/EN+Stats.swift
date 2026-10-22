@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let stats: [String: String] = [
+        "Ngày này chưa ghi khoản chi nào.": "Nothing spent this day.",
+        "Chi trong ngày": "Spent this day",
         // ghi chú của dữ liệu mẫu quay phim (Store.filmSeed)
         "ăn trưa": "lunch", "cà phê": "coffee", "ăn sáng": "breakfast", "ăn tối": "dinner",
         "trà sữa": "milk tea", "đi chợ": "groceries", "tiền nhà": "rent", "điện nước": "power & water",

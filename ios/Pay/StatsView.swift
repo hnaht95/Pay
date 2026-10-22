@@ -100,6 +100,8 @@ struct StatsView: View {
         VStack(spacing: 20) {
             if film != nil { monthTabs } else { periodHeader }
             hero(items, prev)
+            // Chọn một ngày: ngay dưới ô tổng là từng khoản chi của ngày đó (sớm nhất trước), chạm để sửa
+            if day != nil, film == nil { dayCard(items) }
             // Số dư đầu kỳ → cuối kỳ và thu / chi của kỳ (như báo cáo của Money Lover), rồi từng khoản thu
             let incomes = store.incomes.filter { $0.date >= span.start && $0.date < span.end }
             if film == nil { balanceCard(spent: sum(items), got: sum(incomes)) }
@@ -107,7 +109,7 @@ struct StatsView: View {
             grid(items, prev)
             if !items.isEmpty {
                 categoryCard(items)
-                recentCard(items)
+                if day == nil { recentCard(items) }   // xem một ngày: đã có danh sách đủ các khoản ở trên
             }
         }
         // Khoảng dưới vạch tiêu đề (tới dòng tháng) bằng khoảng trên vạch (tới chữ tiêu đề)
@@ -1192,6 +1194,49 @@ struct StatsView: View {
                 }
             }
             .padding(.horizontal, 18).padding(.vertical, 4)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
+        }
+    }
+
+    /// Các khoản chi của ngày đang chọn, theo giờ: tên, danh mục · giờ, số tiền; chạm để sửa. Chưa chi gì thì báo một dòng
+    private func dayCard(_ items: [Expense]) -> some View {
+        let rows = items.sorted { $0.date < $1.date }
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L("Chi trong ngày")).font(.system(size: 16, weight: .semibold))
+                Spacer()
+                if !rows.isEmpty { Text(L("%ld khoản", rows.count)).font(.system(size: 15)).foregroundStyle(.secondary) }
+            }
+            .padding(.horizontal, 4)
+            VStack(spacing: 0) {
+                if rows.isEmpty {
+                    Text(L("Ngày này chưa ghi khoản chi nào.")).font(.rowSub).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
+                }
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, e in
+                    let c = Category.get(e.c)
+                    Button { editing = .edit(e) } label: {
+                        HStack(alignment: .center, spacing: 12) {
+                            CategoryIcon(c: c, size: 22).frame(width: 36, height: 36)
+                                .background(c.color, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(e.n?.isEmpty == false ? e.n!.capFirst : c.name).font(.rowTitle).lineLimit(1)
+                                Text("\(c.name) · \(f.string(from: e.date))").font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            Text(fmt(e.a)).font(.rowAmount).monospacedDigit()
+                        }
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(Pressable()).foregroundStyle(.primary)
+                    .overlay(alignment: .bottom) {
+                        if i < rows.count - 1 { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
+                    }
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 4)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
         }
     }

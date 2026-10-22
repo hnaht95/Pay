@@ -359,25 +359,15 @@ struct MyQRView: View {
 }
 
 
-/// Widget "Nút nhanh" màn hình khoá: ba nút tròn Quét QR, nói để ghi, chụp hoá đơn (nút có tác vụ riêng, iOS 17+)
-struct QuickLockView: View {
+/// Nút chụp hoá đơn tròn ở màn hình khoá (cùng kiểu nút Quét QR và nút micro): chạm là mở Payso vào thẳng camera
+struct PhotoLockView: View {
     var body: some View {
-        HStack(spacing: 0) {
-            Button(intent: ScanIntent()) { circle("qrcode", 18) }.buttonStyle(.plain).accessibilityLabel(L("Quét QR"))
-                .frame(maxWidth: .infinity)
-            Button(intent: VoiceIntent()) { circle("mic.fill", 17) }.buttonStyle(.plain).accessibilityLabel(L("Nói để ghi"))
-                .frame(maxWidth: .infinity)
-            Button(intent: PhotoIntent()) { circle("camera.fill", 16) }.buttonStyle(.plain).accessibilityLabel(L("Chụp hoá đơn"))
-                .frame(maxWidth: .infinity)
+        ZStack {
+            AccessoryWidgetBackground()
+            Image(systemName: "camera.fill").font(.system(size: 19, weight: .semibold))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background { AccessoryWidgetBackground().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)) }
+        .widgetURL(QuickKind.photo.url)
+        .accessibilityLabel(L("Chụp hoá đơn"))
         .containerBackground(for: .widget) { Color.clear }
-    }
-
-    private func circle(_ symbol: String, _ size: CGFloat) -> some View {
-        Image(systemName: symbol).font(.system(size: size, weight: .semibold))
-            .frame(width: 44, height: 44)
-            .background(Circle().fill(.white.opacity(0.18)))
     }
 }

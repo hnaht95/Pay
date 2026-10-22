@@ -2,6 +2,7 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Chạm là mở camera chụp hoá đơn.": "Tap to open the camera for a receipt.",
         "Quét QR, nói để ghi, chụp hoá đơn ngay từ màn hình khoá.": "Scan QR, speak or snap a receipt right from the Lock Screen.",
         "Nút nhanh": "Quick buttons",
         "Đã chép số tài khoản %@. Dán vào app ngân hàng": "Copied account %@. Paste it in your bank app",

@@ -7,7 +7,7 @@ struct PayWidgets: WidgetBundle {
     var body: some Widget {
         SpendWidget()
         VoiceWidget()
-        QuickLockWidget()
+        PhotoLockWidget()
         MyQRWidget()
         if #available(iOS 18.0, *) {
             VoiceControl()
@@ -70,14 +70,14 @@ struct VoiceWidget: Widget {
     }
 }
 
-// MARK: Nút nhanh màn hình khoá: Quét QR, nói, chụp hoá đơn trong một khung chữ nhật
+// MARK: Nút chụp hoá đơn tròn ở màn hình khoá
 
-struct QuickLockWidget: Widget {
+struct PhotoLockWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "QuickLockWidget", provider: QuickLockProvider()) { _ in QuickLockView() }
-            .configurationDisplayName(L("Nút nhanh"))
-            .description(L("Quét QR, nói để ghi, chụp hoá đơn ngay từ màn hình khoá."))
-            .supportedFamilies([.accessoryRectangular])
+        StaticConfiguration(kind: "PhotoLockWidget", provider: QuickLockProvider()) { _ in PhotoLockView() }
+            .configurationDisplayName(L("Chụp hoá đơn"))
+            .description(L("Chạm là mở camera chụp hoá đơn."))
+            .supportedFamilies([.accessoryCircular])
     }
 }
 

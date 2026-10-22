@@ -134,7 +134,8 @@ enum BankLauncher {
     /// ngân hàng (không cần máy chủ hay chữ ký; theo bảng của các dự án mã nguồn mở caulongdi và 6pm, 10/2026). "{qr}" là mã
     /// VietQR đã mã hoá cho URL. Mã app (BankData.apps) → mẫu link
     static let qrPayLinks: [String: String] = [
-        "acb": "acbone://ZaloPay/external/transactions/v1/qrcode?qrCode={qr}",
+        // ACB ONE: cả link kiểu applink lẫn acbone://ZaloPay/… đều chỉ mở màn quét QR (thử trên máy thật 22/10/2026), ACB cần
+        // chữ ký đối tác: đi qua dl.vietqr.io trong khung web (link có chữ ký của Casso)
         "mb": "mbbank://applink?targetPage=QRPay&qrContent={qr}",
         "icb": "vietinbankipay://host.qrTransfer?targetPage=QRPay&qrContent={qr}",
         "tcb": "tcb://applink?targetPage=QRPay&qrContent={qr}",

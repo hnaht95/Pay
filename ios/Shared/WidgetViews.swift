@@ -120,18 +120,25 @@ struct SpendView: View {
             .widgetURL(QuickKind.scan.url)
             .accessibilityLabel(L("Quét QR"))
         case .accessoryRectangular:
-            // Nền mờ như hai nút tròn bên cạnh (không nền thì chữ chìm vào ảnh màn hình khoá)
-            // Hai dòng, không thanh tiến độ: tiêu đề nhỏ, số tiền to. Khung màn hình khoá thấp, thêm dòng thứ ba thì số tiền bị co
-            VStack(alignment: .leading, spacing: 1) {
-                Text(L("Hôm nay đã chi")).font(.system(size: 13, weight: .medium)).opacity(0.75).lineLimit(1)
-                Text(fmt(e.s.today)).font(.system(size: 26, weight: .bold)).kerning(-0.5).minimumScaleFactor(0.6).lineLimit(1)
+            // Một khung gồm cả ba: số đã chi hôm nay bên trái (chạm là mở app), nút Quét QR và nút micro tròn bên phải (nút có tác
+            // vụ riêng, iOS 17+). Số tiền vừa phải để còn chỗ cho hai nút; nền mờ cả khung cho chữ không chìm vào ảnh màn hình khoá
+            HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(L("Hôm nay đã chi")).font(.system(size: 11, weight: .medium)).opacity(0.75).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(fmt(e.s.today)).font(.system(size: 18, weight: .bold)).kerning(-0.3).minimumScaleFactor(0.6).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button(intent: ScanIntent()) { lockButton("qrcode", size: 15) }
+                    .buttonStyle(.plain).accessibilityLabel(L("Quét QR"))
+                Button(intent: VoiceIntent()) { lockButton("mic.fill", size: 14) }
+                    .buttonStyle(.plain).accessibilityLabel(L("Nói để ghi"))
             }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.leading, 10).padding(.trailing, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { AccessoryWidgetBackground().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)) }
-            .widgetURL(QuickKind.scan.url)
+            .widgetURL(URL(string: "sochipay://"))   // chạm ngoài hai nút: chỉ mở app
         case .accessoryInline:
-            Label(L("Hôm nay %@", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(QuickKind.scan.url)
+            Label(L("Hôm nay %@", fmt(e.s.today)), systemImage: "creditcard.fill").widgetURL(URL(string: "sochipay://"))
         default:   // nhỏ: chạm vào là quét QR luôn
             VStack(alignment: .leading, spacing: 0) {
                 CardMarks(ink: ink)
@@ -141,6 +148,13 @@ struct SpendView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .widgetURL(QuickKind.scan.url)
         }
+    }
+
+    /// Nút tròn nhỏ trong khung màn hình khoá (đậm hơn nền khung một chút)
+    private func lockButton(_ symbol: String, size: CGFloat) -> some View {
+        Image(systemName: symbol).font(.system(size: size, weight: .semibold))
+            .frame(width: 34, height: 34)
+            .background(Circle().fill(.white.opacity(0.18)))
     }
 
     /// Số đã chi hôm nay, dưới là ngân sách còn lại (kèm thanh) hoặc tổng tháng

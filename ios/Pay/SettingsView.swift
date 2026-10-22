@@ -316,6 +316,8 @@ struct SettingsView: View {
         }
     }
 
+    @AppStorage("acbScanMode") private var acbScanMode = false
+
     // MARK: Ngân hàng
 
     private var bankSection: some View {
@@ -324,10 +326,19 @@ struct SettingsView: View {
                 (L("Mở sẵn người nhận + số tiền"), BankData.apps.filter(\.fill).map { ($0.id, $0.name) }),
                 (L("Chỉ mở app (quét lại QR)"), BankData.apps.filter { !$0.fill }.map { ($0.id, $0.name) }),
             ]) { row(L("App ngân hàng")) }
+            // ACB ONE chỉ điền sẵn qua VietQR (chờ vài giây): cho chọn mở thẳng màn quét QR của ACB, quét lại mã là xong
+            if store.appId == "acb" {
+                Toggle(isOn: $acbScanMode) { row(L("Mở màn quét QR của ACB")) }
+                    .tint(Palette.goodInk)
+            }
         } header: {
             Text(L("Thanh toán"))
         } footer: {
-            Text(store.bankApp.fill ? L("Sau khi quét, Payso mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
+            if store.appId == "acb", acbScanMode {
+                Text(L("Payso mở ngay màn quét QR trong ACB ONE, bạn quét lại mã là ACB điền sẵn. Không phải chờ VietQR."))
+            } else {
+                Text(store.bankApp.fill ? L("Sau khi quét, Payso mở sẵn người nhận và số tiền trong app ngân hàng, không phải quét lại.") : L("App này chỉ mở được, bạn sẽ quét lại mã QR trong app ngân hàng."))
+            }
         }
     }
 

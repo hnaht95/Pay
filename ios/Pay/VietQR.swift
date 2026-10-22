@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SwiftUI
 import WebKit
 
 /// Nội dung một mã VietQR (chuẩn EMVCo).
@@ -170,15 +171,13 @@ enum BankLauncher {
         if let tpl = qrPayLinks[app.id], let qr, let p = payload(qr, amount: amount),
            let q = p.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
            let u = URL(string: tpl.replacingOccurrences(of: "{qr}", with: q)), await UIApplication.shared.open(u) { return }
-        if app.fill, let qr, let acct = qr.acct, let bin = qr.bin, let code = BankData.codes[bin] {
-            var url = "https://dl.vietqr.io/pay?app=\(app.id)&ba=\(enc(acct))@\(code)"
-            if let amount, amount > 0 { url += "&am=\(amount)" }
-            if !qr.purpose.isEmpty { url += "&tn=\(enc(qr.purpose))" }
-            // dl.vietqr.io chỉ nhận tên người nhận gồm chữ không dấu, số và dấu cách: có dấu hay ký tự như - . & là báo
-            // "invalid accountName" (đã thử 10/2026), cả lần chuyển hỏng. Bỏ dấu, bỏ ký tự lạ; không còn gì thì không gửi tên
-            let bn = Self.plainName(qr.name)
-            if !bn.isEmpty { url += "&bn=\(enc(bn))" }
-            url += "&url=\(enc(returnURL))&fr=Payso"   // fr: tên app hiện trên màn chuyển của VietQR
+        // Cài đặt › "Mở màn quét QR của ACB": mở thẳng màn quét QR trong ACB ONE (tức thì, không qua Casso), quét lại mã là điền sẵn
+        if app.id == "acb", UserDefaults.standard.bool(forKey: "acbScanMode"), let qr, let p = payload(qr, amount: amount),
+           let q = p.addingPercentEncoding(withAllowedCharacters: .alphanumerics),
+           let u = URL(string: "acbone://ZaloPay/external/transactions/v1/qrcode?qrCode=\(q)"), await UIApplication.shared.open(u) { return }
+        // Link có chữ ký đã lấy sẵn (hoặc đang lấy) ở màn xác nhận (BankPrefetch) cho đúng lần trả này: mở ngay / chờ nốt
+        if let qr, let link = await BankPrefetch.shared.link(app: app, qr: qr, amount: amount), await UIApplication.shared.open(link) { return }
+        if let qr, let acct = qr.acct, let url = cassoURL(app, qr: qr, amount: amount)?.absoluteString {
             // Từ 10/2026 trang dl.vietqr.io chỉ đưa link điền sẵn cho trình duyệt thật (trang tự chạy rồi đổi vé lấy link). Chạy chính
             // trang đó trong một khung web của app (không nhảy sang Safari, không phải bấm "Mở" thêm): trang chuyển sang link app
             // ngân hàng thì app bắt lấy và mở thẳng. Không được (mạng lỗi, hết lượt…) thì mở app ngân hàng trơn, chép sẵn số tài khoản
@@ -191,6 +190,23 @@ enum BankLauncher {
         }
         if let u = URL(string: app.scheme), await UIApplication.shared.open(u) { return }
         if let u = URL(string: "https://dl.vietqr.io/pay?app=\(app.id)") { await UIApplication.shared.open(u) }   // chưa cài app -> App Store
+    }
+
+    /// App này đi qua dl.vietqr.io (Casso) để điền sẵn: app có autofill mà không có link mở thẳng
+    static func viaCasso(_ app: BankApp) -> Bool { app.fill && qrPayLinks[app.id] == nil }
+
+    /// Link dl.vietqr.io cho một lần trả (nil nếu thiếu số tài khoản / ngân hàng)
+    static func cassoURL(_ app: BankApp, qr: VietQR, amount: Int?) -> URL? {
+        guard app.fill, let acct = qr.acct, let bin = qr.bin, let code = BankData.codes[bin] else { return nil }
+        var url = "https://dl.vietqr.io/pay?app=\(app.id)&ba=\(enc(acct))@\(code)"
+        if let amount, amount > 0 { url += "&am=\(amount)" }
+        if !qr.purpose.isEmpty { url += "&tn=\(enc(qr.purpose))" }
+        // dl.vietqr.io chỉ nhận tên người nhận gồm chữ không dấu, số và dấu cách: có dấu hay ký tự như - . & là báo
+        // "invalid accountName" (đã thử 10/2026), cả lần chuyển hỏng. Bỏ dấu, bỏ ký tự lạ; không còn gì thì không gửi tên
+        let bn = Self.plainName(qr.name)
+        if !bn.isEmpty { url += "&bn=\(enc(bn))" }
+        url += "&url=\(enc(returnURL))&fr=Payso"   // fr: tên app hiện trên màn chuyển của VietQR
+        return URL(string: url)
     }
 
     /// "Nguyễn Văn Á - CN.1" → "NGUYEN VAN A CN 1"
@@ -260,4 +276,89 @@ final class BankWebClaim: NSObject, WKNavigationDelegate {
         while let p = top.presentedViewController { top = p }
         return top
     }
+}
+
+
+/// Lấy sẵn link có chữ ký của dl.vietqr.io ngay ở màn xác nhận khoản quét QR, trong lúc người dùng còn xem số tiền: trang của
+/// VietQR chạy trong một khung nhỏ hiện rõ trên màn (đúng chính sách dùng miễn phí: người dùng thấy trang và dòng quảng cáo),
+/// bắt được link app ngân hàng thì giữ lại cho chính lần trả đó (tối đa 2 phút). Bấm "Lưu & mở Bank" là mở ngay
+@MainActor
+final class BankPrefetch: NSObject, ObservableObject, WKNavigationDelegate {
+    static let shared = BankPrefetch()
+    enum State: Equatable { case idle, loading, ready, failed }
+    @Published private(set) var state: State = .idle
+    private(set) var key: String?
+    private var got: URL?
+    private var gotAt = Date.distantPast
+    private var waiters: [CheckedContinuation<URL?, Never>] = []
+    private var timeout: Task<Void, Never>?
+
+    lazy var web: WKWebView = {
+        let w = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        w.navigationDelegate = self
+        w.scrollView.isScrollEnabled = false
+        w.isOpaque = false
+        return w
+    }()
+
+    static func key(_ app: BankApp, _ qr: VietQR, _ amount: Int?) -> String {
+        [app.id, qr.bin ?? "", qr.acct ?? "", String(amount ?? 0), qr.purpose].joined(separator: "|")
+    }
+
+    /// Bắt đầu lấy link cho lần trả này (đã có / đang lấy đúng lần này thì thôi)
+    func start(app: BankApp, qr: VietQR, amount: Int?) {
+        let k = Self.key(app, qr, amount)
+        if k == key, state == .loading || (state == .ready && Date().timeIntervalSince(gotAt) < 120) { return }
+        guard let url = BankLauncher.cassoURL(app, qr: qr, amount: amount) else { return }
+        finish(nil)
+        key = k; got = nil; state = .loading
+        web.load(URLRequest(url: url))
+        timeout?.cancel()
+        timeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, let self, self.state == .loading else { return }
+            self.state = .failed
+            self.finish(nil)
+        }
+    }
+
+    /// Link của đúng lần trả này: có sẵn thì trả ngay, đang lấy thì chờ nốt (tối đa tới hạn 10 giây), không thì nil
+    func link(app: BankApp, qr: VietQR, amount: Int?) async -> URL? {
+        guard Self.key(app, qr, amount) == key else { return nil }
+        if state == .ready, let got, Date().timeIntervalSince(gotAt) < 120 { return got }
+        guard state == .loading else { return nil }
+        return await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func reset() {
+        web.stopLoading()
+        key = nil; got = nil; state = .idle
+        finish(nil)
+    }
+
+    private func finish(_ link: URL?) {
+        let w = waiters; waiters = []
+        w.forEach { $0.resume(returning: link) }
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+        guard let u = action.request.url, let scheme = u.scheme?.lowercased() else { decisionHandler(.allow); return }
+        if ["http", "https", "about", "data"].contains(scheme) { decisionHandler(.allow); return }
+        decisionHandler(.cancel)
+        timeout?.cancel()
+        // Link trơn ("acbone://", hết lượt tự điền) không dùng: để lúc bấm đi đường dự phòng
+        if u.absoluteString.contains("?") {
+            got = u; gotAt = Date(); state = .ready
+            finish(u)
+        } else {
+            state = .failed
+            finish(nil)
+        }
+    }
+}
+
+/// Khung web hiện trang VietQR đang lấy link (người dùng thấy trang và dòng quảng cáo của VietQR)
+struct BankPrefetchWeb: UIViewRepresentable {
+    func makeUIView(context: Context) -> WKWebView { BankPrefetch.shared.web }
+    func updateUIView(_ v: WKWebView, context: Context) {}
 }

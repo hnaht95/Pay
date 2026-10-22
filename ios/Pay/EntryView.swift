@@ -45,6 +45,8 @@ struct EntryView: View {
     @State private var credit = false
 
     private var amount: Int { Int(film?.entry?.digits ?? digits) ?? 0 }
+    /// Link mở app ngân hàng lấy sẵn qua VietQR (xem BankPrefetch)
+    @ObservedObject private var prefetch = BankPrefetch.shared
     private var shownNote: String { film?.entry?.note ?? note }
     private var shownCat: String? { film?.entry.map { $0.cat } ?? cat }
 
@@ -489,6 +491,9 @@ struct EntryView: View {
                 }
             case .scan(let q):
                 let app = store.bankApp
+                let prefetching = film == nil && BankLauncher.viaCasso(app) && amount > 0 && !UserDefaults.standard.bool(forKey: "acbScanMode")
+                VStack(spacing: 10) {
+                if prefetching { prefetchCard(app) }
                 // Hai nút cùng một hàng, cùng cao: Lưu (chỉ ghi) bên trái, Lưu & mở app ngân hàng bên phải (rộng hơn)
                 HStack(spacing: 12) {
                     Button { saveScan(q); dismiss() } label: {
@@ -507,6 +512,15 @@ struct EntryView: View {
                         Task { try? await Task.sleep(for: .milliseconds(350)); await BankLauncher.open(app, qr: q, amount: a) }
                     }
                     .filmPressed(film?.pressed["bank"] ?? 0)
+                }
+                }
+                // Lấy sẵn link có chữ ký khi số tiền đã đứng yên một nhịp (gõ tiếp thì lấy lại). Gắn ở khối luôn hiện: khung lấy sẵn
+                // lúc chưa chạy là EmptyView, gắn vào đó thì việc này không bao giờ chạy
+                .task(id: prefetching ? "\(app.id)|\(amount)" : "") {
+                    guard prefetching else { return }
+                    try? await Task.sleep(for: .milliseconds(700))
+                    guard !Task.isCancelled else { return }
+                    prefetch.start(app: app, qr: q, amount: amount)
                 }
             case .edit(var e), .editNow(var e):
                 // Huỷ và Sửa / Lưu thay đổi cùng một hàng. Xoá khoản: vuốt trái ở danh sách hoặc nhấn giữ
@@ -531,6 +545,26 @@ struct EntryView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Khung nhỏ trên hai nút: trang VietQR đang lấy link mở app ngân hàng (thấy trang và quảng cáo của VietQR); xong thì báo
+    /// sẵn sàng. Lỗi thì ẩn, lúc bấm đi đường dự phòng
+    @ViewBuilder private func prefetchCard(_ app: BankApp) -> some View {
+        switch prefetch.state {
+        case .ready:
+            Label(L("%@ đã sẵn sàng, mở là điền sẵn", app.name), systemImage: "checkmark.circle.fill")
+                .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.goodInk)
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .background(Palette.goodInk.opacity(0.1), in: Capsule())
+                .transition(.opacity)
+        case .loading:
+            BankPrefetchWeb()
+                .frame(height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .transition(.opacity)
+        default:
+            EmptyView()
         }
     }
 

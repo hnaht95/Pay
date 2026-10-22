@@ -2,6 +2,8 @@ import Foundation
 
 extension English {
     static let settings: [String: String] = [
+        "Payso mở ngay màn quét QR trong ACB ONE, bạn quét lại mã là ACB điền sẵn. Không phải chờ VietQR.": "Payso opens ACB ONE's QR scanner right away; scan the code again and ACB fills it in. No VietQR wait.",
+        "Mở màn quét QR của ACB": "Open ACB's QR scanner",
         "Bảo mật": "Security",
         "Khoá bằng %@": "Lock with %@",
         "mật mã": "passcode",

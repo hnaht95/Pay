@@ -240,6 +240,9 @@ struct HomeView: View {
             case "history": showHistory = true
             case "house": showHouse = true
             case "entry": entry = .new(cat: nil)
+            // Màn xác nhận khoản quét QR: mã mẫu 2.000đ tới 113366668888 (Vietcombank) của tài liệu VietQR
+            case "scanentry":
+                if let q = VietQR.parse(MyQR(bin: "970436", acct: "113366668888", amount: 2000, note: "Payso thu").payload ?? "") { entry = .scan(q) }
             case "camera": receiptScan = true
             case "balance", "balancelog": balanceOpen = true
             case "card", "cardlog": cardOpen = true

@@ -203,7 +203,8 @@ struct EntryView: View {
     // MARK: Phần đầu
 
     private var head: some View {
-        VStack(spacing: 2) {
+        let showWeb = casso && prefetch.state == .loading
+        return VStack(spacing: 2) {
             // Tiêu đề ở giữa. Màn mở dạng tấm (không phủ kín màn hình): đóng bằng vuốt xuống như các tấm khác,
             // không có mũi tên quay lại hay vuốt từ mép trái
             Text(title).font(.system(size: 21, weight: .bold)).lineLimit(1)
@@ -211,32 +212,31 @@ struct EntryView: View {
                 .frame(maxWidth: .infinity, minHeight: 46)
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
             if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(1) }
-            if casso {
-                Label(L("%@ đã sẵn sàng, mở là điền sẵn", store.bankApp.name), systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.goodInk)
-                    .padding(.top, 6)
-                    .opacity(prefetch.state == .ready ? 1 : 0)
-            }
         }
-        // Khoản quét QR trả qua VietQR (vd ACB): phần đầu cao cố định. Lúc trang VietQR đang lấy sẵn link mở app ngân hàng,
-        // trang đó (cả quảng cáo của VietQR) phủ kín khung này, đè lên "Trả cho …"; xong thì trả lại tiêu đề và báo sẵn sàng
+        .opacity(showWeb ? 0 : 1)
+        // Khoản quét QR trả qua VietQR (vd ACB): phần đầu cao cố định, hai nội dung thay nhau. Lúc trang VietQR đang lấy
+        // sẵn link mở app ngân hàng, trang đó (cả quảng cáo của VietQR) chiếm trọn phần đầu, không khung; xong thì trả lại
+        // tiêu đề. Trang dựng to hơn rồi thu 75% để thấy trọn sơ đồ và quảng cáo, không bị cắt
+        .frame(maxWidth: .infinity)
         .frame(height: casso ? Self.cassoH : nil)
         .overlay {
-            if casso, prefetch.state == .loading {
-                let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-                BankPrefetchWeb()
-                    .clipShape(shape)
-                    .overlay { shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 1) }
-                    .padding(.horizontal, 16)
-                    .transition(.opacity)
+            if showWeb {
+                GeometryReader { g in
+                    BankPrefetchWeb()
+                        .frame(width: g.size.width / 0.75, height: g.size.height / 0.75)
+                        .scaleEffect(0.75, anchor: .topLeading)
+                }
+                .background(Color.white)
+                .clipped()
+                .transition(.opacity)
             }
         }
         .animation(.snappy, value: prefetch.state)
         .padding(.top, 8)
     }
 
-    /// Cao phần đầu màn quét QR đi qua VietQR: vừa tiêu đề + dòng phụ + dòng sẵn sàng, vừa khung quảng cáo của trang VietQR
-    private static let cassoH: CGFloat = 104
+    /// Cao phần đầu màn quét QR đi qua VietQR: vừa tiêu đề + dòng phụ, vừa trang VietQR (thu 75%) có sơ đồ và quảng cáo
+    private static let cassoH: CGFloat = 112
 
     /// Màn xác nhận khoản quét QR, app ngân hàng đi qua VietQR (lấy sẵn link được)
     private var casso: Bool {

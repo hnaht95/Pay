@@ -130,7 +130,7 @@ Nút đổi kiểu ở mục Gần đây và ở Lịch sử, chung một lựa 
 
 - Camera toàn màn, khung ngắm vuông bo 36, ngoài khung phủ tối. Đáy: hai nút dạng viên (Chọn ảnh QR · Đóng).
 - Nút đèn pin: tròn kính mờ 56, giữa màn, ngay trên hai nút đáy (không đè khung ngắm). `flashlight.off.fill` trắng / `flashlight.on.fill` vàng khi bật. Máy không có đèn thì ẩn; rời màn quét thì tắt đèn.
-- Màn xác nhận khoản quét QR, app ngân hàng đi qua VietQR (vd ACB): phần đầu cao cố định 104 (tiêu đề "Trả cho …" + dòng phụ + dòng "… đã sẵn sàng" xanh lá). Lúc lấy sẵn link, trang VietQR (cả quảng cáo) phủ kín khung đó, bo 20, cách mép 16; xong thì trả lại tiêu đề. Bên dưới không nhảy.
+- Màn xác nhận khoản quét QR, app ngân hàng đi qua VietQR (vd ACB): phần đầu cao cố định 112 (tiêu đề "Trả cho …" + dòng phụ, giữa khung). Hai nội dung thay nhau, không khung: lúc lấy sẵn link, trang VietQR (thu 75% để thấy trọn sơ đồ và quảng cáo, nền trắng) chiếm trọn phần đầu, tiêu đề ẩn; xong thì trả lại tiêu đề, không có dòng báo. Bên dưới không nhảy.
 
 ## 11. Chỗ vẫn để hệ thống vẽ
 

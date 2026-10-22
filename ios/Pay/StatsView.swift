@@ -1198,10 +1198,10 @@ struct StatsView: View {
         }
     }
 
-    /// Các khoản chi của ngày đang chọn, theo giờ: tên, danh mục · giờ, số tiền; chạm để sửa. Chưa chi gì thì báo một dòng
+    /// Các khoản chi của ngày đang chọn: cùng kiểu hàng với Gần đây ở trang chủ (thẻ, ô biểu tượng, giờ), mới nhất trước;
+    /// chạm để xem / sửa, vuốt trái để xoá. Chưa chi gì thì báo một dòng
     private func dayCard(_ items: [Expense]) -> some View {
-        let rows = items.sorted { $0.date < $1.date }
-        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        let rows = items.sorted { $0.date > $1.date }
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(L("Chi trong ngày")).font(.system(size: 16, weight: .semibold))
@@ -1209,35 +1209,18 @@ struct StatsView: View {
                 if !rows.isEmpty { Text(L("%ld khoản", rows.count)).font(.system(size: 15)).foregroundStyle(.secondary) }
             }
             .padding(.horizontal, 4)
-            VStack(spacing: 0) {
-                if rows.isEmpty {
-                    Text(L("Ngày này chưa ghi khoản chi nào.")).font(.rowSub).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
-                }
-                ForEach(Array(rows.enumerated()), id: \.element.id) { i, e in
-                    let c = Category.get(e.c)
-                    Button { editing = .edit(e) } label: {
-                        HStack(alignment: .center, spacing: 12) {
-                            CategoryIcon(c: c, size: 22).frame(width: 36, height: 36)
-                                .background(c.color, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(e.n?.isEmpty == false ? e.n!.capFirst : c.name).font(.rowTitle).lineLimit(1)
-                                Text("\(c.name) · \(f.string(from: e.date))").font(.rowSub).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            Spacer(minLength: 8)
-                            Text(fmt(e.a)).font(.rowAmount).monospacedDigit()
-                        }
-                        .padding(.vertical, 10)
-                        .contentShape(Rectangle())
+            if rows.isEmpty {
+                Text(L("Ngày này chưa ghi khoản chi nào.")).font(.rowSub).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 18).padding(.vertical, 14)
+                    .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
+            } else {
+                SwipeCards(items: rows, rowHeight: ExpenseRow.rowHeight) { e in
+                    TapHold(tap: { editing = .edit(e) }, hold: { editing = .editNow(e) }) {
+                        ExpenseRow(e: e, repeats: store.rule(for: e) != nil)
                     }
-                    .buttonStyle(Pressable()).foregroundStyle(.primary)
-                    .overlay(alignment: .bottom) {
-                        if i < rows.count - 1 { Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 0.5) }
-                    }
+                    .expenseSwipe(delete: { withAnimation(.snappy(duration: 0.3)) { store.remove(id: e.id) } })
                 }
             }
-            .padding(.horizontal, 16).padding(.vertical, 4)
-            .background(Palette.card, in: RoundedRectangle(cornerRadius: ExpenseRow.radius, style: .continuous))
         }
     }
 

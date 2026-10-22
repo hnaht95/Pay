@@ -254,6 +254,8 @@ final class Store: ObservableObject {
         }
         #if DEBUG
         // "-filmSeed YES": sáu tháng chi tiêu mẫu, không đồng bộ iCloud (để quay phim giới thiệu)
+        // "-seedYear YES": 12 tháng chi tiêu mẫu (giờ thật, lương mỗi tháng), để xem Thống kê đủ một năm trên máy ảo
+        if UserDefaults.standard.bool(forKey: "seedYear") { all = Self.yearSeed(); cats = [:]; budget = 9_000_000; cloudOn = false; return }
         if UserDefaults.standard.bool(forKey: "filmSeed") { all = Self.filmSeed(); cats = [:];
             // "-filmFlat YES": xem thử bộ màu phẳng trên các danh mục có sẵn
             if UserDefaults.standard.bool(forKey: "filmFlat") {
@@ -911,6 +913,48 @@ extension Store {
                 add(day.addingTimeInterval(11 * 3600), "hd", "internet", 220_000)
             }
             if rng.next() % 100 < 6 { add(day.addingTimeInterval(20 * 3600), "mua", "shopee", Int(rng.next() % 600 + 150) * 1000) }
+        }
+        return out.sorted { $0.t > $1.t }
+    }
+}
+
+extension Store {
+    /// 12 tháng chi tiêu mẫu tới hôm qua: mỗi khoản đúng giờ hay chi (sáng, trưa, tối), cuối tuần chi nhiều hơn, tháng Tết và
+    /// tháng du lịch tăng vọt, hoá đơn ngày 5, lương ngày 1
+    static func yearSeed() -> [Expense] {
+        var rng = SeedRandom(seed: 11)
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let start = cal.date(byAdding: .month, value: -12, to: today)!
+        let days = cal.dateComponents([.day], from: start, to: today).day ?? 365
+        // danh mục, ghi chú, giờ, khoảng tiền (nghìn), % ngày thường, % cuối tuần
+        let daily: [(String, String, Double, ClosedRange<Int>, Int, Int)] = [
+            ("an", L("ăn sáng"), 7.5, 25...45, 70, 50), ("cafe", L("cà phê"), 9, 30...55, 75, 60),
+            ("an", L("ăn trưa"), 12, 40...75, 90, 60), ("cafe", L("trà sữa"), 15.5, 35...65, 20, 35),
+            ("di", "grab", 18, 25...110, 45, 30), ("an", L("ăn tối"), 19.5, 60...250, 35, 70),
+            ("mua", L("đi chợ"), 17, 120...450, 15, 45), ("mua", "shopee", 21, 120...900, 6, 10)]
+        var out: [Expense] = []
+        func add(_ d: Date, _ h: Double, _ c: String, _ n: String, _ a: Int) {
+            let t = d.addingTimeInterval(h * 3600 + Double(rng.next() % 40) * 60).timeIntervalSince1970 * 1000
+            out.append(Expense(id: "year-\(out.count)", t: t, a: a, n: n, c: c, acct: nil, u: t))
+        }
+        for back in stride(from: days, through: 1, by: -1) {
+            let day = cal.date(byAdding: .day, value: -back, to: today)!
+            let weekend = cal.isDateInWeekend(day)
+            let m = cal.component(.month, from: day), dom = cal.component(.day, from: day)
+            let boost = m == 2 ? 1.6 : m == 7 ? 1.3 : 1.0   // Tết, đi chơi hè
+            for item in daily where Int(rng.next() % 100) < (weekend ? item.5 : item.4) {
+                let k = Int(rng.next() % UInt64(item.3.count)) + item.3.lowerBound
+                add(day, item.2, item.0, item.1, Int(Double(k) * boost) * 1000)
+            }
+            if dom == 5 {
+                add(day, 9, "hd", L("tiền nhà"), 3_500_000)
+                add(day, 10, "hd", L("điện nước"), Int(rng.next() % 400 + 420) * 1000)
+                add(day, 11, "hd", "internet", 220_000)
+            }
+            if dom == 1 { add(day, 8, "in-luong", L("lương tháng %d", m), 18_000_000) }
+            if m == 2 && dom == 8 { add(day, 10, "mua", L("quà Tết"), 2_400_000) }
+            if m == 7 && dom == 14 { add(day, 7, "di", L("vé máy bay"), 3_200_000) }
         }
         return out.sorted { $0.t > $1.t }
     }

@@ -210,9 +210,38 @@ struct EntryView: View {
                 .padding(.horizontal, 52)
                 .frame(maxWidth: .infinity, minHeight: 46)
             // Khoản đã ghi: ngày giờ nằm trong ô số tiền (chạm để đổi), không lặp lại dưới tiêu đề
-            if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
+            if let sub, !isEdit { Text(sub).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(1) }
+            if casso {
+                Label(L("%@ đã sẵn sàng, mở là điền sẵn", store.bankApp.name), systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.goodInk)
+                    .padding(.top, 6)
+                    .opacity(prefetch.state == .ready ? 1 : 0)
+            }
         }
+        // Khoản quét QR trả qua VietQR (vd ACB): phần đầu cao cố định. Lúc trang VietQR đang lấy sẵn link mở app ngân hàng,
+        // trang đó (cả quảng cáo của VietQR) phủ kín khung này, đè lên "Trả cho …"; xong thì trả lại tiêu đề và báo sẵn sàng
+        .frame(height: casso ? Self.cassoH : nil)
+        .overlay {
+            if casso, prefetch.state == .loading {
+                let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+                BankPrefetchWeb()
+                    .clipShape(shape)
+                    .overlay { shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 1) }
+                    .padding(.horizontal, 16)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.snappy, value: prefetch.state)
         .padding(.top, 8)
+    }
+
+    /// Cao phần đầu màn quét QR đi qua VietQR: vừa tiêu đề + dòng phụ + dòng sẵn sàng, vừa khung quảng cáo của trang VietQR
+    private static let cassoH: CGFloat = 104
+
+    /// Màn xác nhận khoản quét QR, app ngân hàng đi qua VietQR (lấy sẵn link được)
+    private var casso: Bool {
+        if case .scan = mode, film == nil, BankLauncher.viaCasso(store.bankApp), !UserDefaults.standard.bool(forKey: "acbScanMode") { return true }
+        return false
     }
 
     /// Chiều cao ô ghi chú, cũng là cạnh ô ảnh hoá đơn bên cạnh
@@ -502,7 +531,6 @@ struct EntryView: View {
                 let app = store.bankApp
                 let prefetching = film == nil && BankLauncher.viaCasso(app) && amount > 0 && !UserDefaults.standard.bool(forKey: "acbScanMode")
                 VStack(spacing: 10) {
-                if prefetching { prefetchCard(app) }
                 // Hai nút cùng một hàng, cùng cao: Lưu (chỉ ghi) bên trái, Lưu & mở app ngân hàng bên phải (rộng hơn)
                 HStack(spacing: 12) {
                     Button { saveScan(q); dismiss() } label: {
@@ -554,26 +582,6 @@ struct EntryView: View {
                     }
                 }
             }
-        }
-    }
-
-    /// Khung nhỏ trên hai nút: trang VietQR đang lấy link mở app ngân hàng (thấy trang và quảng cáo của VietQR); xong thì báo
-    /// sẵn sàng. Lỗi thì ẩn, lúc bấm đi đường dự phòng
-    @ViewBuilder private func prefetchCard(_ app: BankApp) -> some View {
-        switch prefetch.state {
-        case .ready:
-            Label(L("%@ đã sẵn sàng, mở là điền sẵn", app.name), systemImage: "checkmark.circle.fill")
-                .font(.system(size: 14, weight: .medium)).foregroundStyle(Palette.goodInk)
-                .frame(maxWidth: .infinity, minHeight: 36)
-                .background(Palette.goodInk.opacity(0.1), in: Capsule())
-                .transition(.opacity)
-        case .loading:
-            BankPrefetchWeb()
-                .frame(height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .transition(.opacity)
-        default:
-            EmptyView()
         }
     }
 

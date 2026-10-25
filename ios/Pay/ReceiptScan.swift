@@ -111,12 +111,18 @@ struct ReceiptCamera: View {
                 // Lớp kính mờ che hình trong lúc lật: nửa đầu hình cũ mờ đi, nửa sau hình camera mới hiện dần ra
                 .overlay { Rectangle().fill(.ultraThinMaterial).environment(\.colorScheme, .dark).opacity(flipVeil ? 1 : 0) }
                 .rotation3DEffect(.degrees(flipAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+            #if DEBUG
+            // Máy ảo không có camera: "-camDemo <đường dẫn ảnh>" hiện ảnh đó trong khung xem (ảnh App Store)
+            if let path = UserDefaults.standard.string(forKey: "camDemo"), let img = UIImage(contentsOfFile: path) {
+                Image(uiImage: img).resizable().scaledToFill()
+            }
+            #endif
             // Chụp: khung xem tối sầm thoáng qua (như màn trập của Camera), chỉ trong khung, phần còn lại của màn để nguyên
             Color.black.opacity(flash ? 0.85 : 0).allowsHitTesting(false)
             // Lưới chia ba (như lưới của Camera iOS): giúp đặt hoá đơn thẳng và giữa khung. Không có trong ảnh chụp
             ThirdsGrid().allowsHitTesting(false)
             // Bộ lọc khác "Gốc": khung xem vẽ lại từng hình đã qua bộ lọc (giống ảnh sẽ chụp)
-            if let e = cam.error {
+            if let e = cam.error, UserDefaults.standard.string(forKey: "camDemo") == nil {
                 Text(e).font(.system(size: 16, weight: .medium)).foregroundStyle(.white).multilineTextAlignment(.center).padding(28)
             }
             // Vòng tiêu cự (đang vuốt trái / phải ở chỗ số tiêu cự): nửa vòng tròn chia vạch như Camera của iOS

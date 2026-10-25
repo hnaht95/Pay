@@ -42,7 +42,7 @@ TIỆN Ở MỌI NƠI
 • Tự ghi khi trả bằng Apple Pay qua Phím tắt (Pro).
 
 PAYSO PRO
-Bản miễn phí đủ để ghi chép mỗi ngày: quét QR, nói để ghi, nhóm chung, thống kê 3 tháng gần nhất, 2 danh mục tự tạo. Payso Pro mở thêm:
+Bản miễn phí đủ để ghi chép mỗi ngày: quét QR, nói để ghi, nhóm chung, thống kê 3 tháng gần nhất, 6 danh mục sẵn có và tạo thêm 2 danh mục riêng. Payso Pro mở thêm:
 • Xem toàn bộ lịch sử: thống kê từ khoản chi đầu tiên, không giới hạn 3 tháng.
 • Đồng bộ iCloud: dữ liệu giống nhau trên mọi iPhone của bạn.
 • Khoản định kỳ: tiền nhà, điện, internet tự ghi mỗi tháng.
@@ -68,7 +68,7 @@ https://peakapp.vn/pay/support
 https://peakapp.vn/pay/privacy
 
 ## Bản quyền
-© 2026 Thanh Nguyen
+© 2026 Thành Nguyễn
 
 ## Danh mục
 Chính: Tài chính (Finance) · Phụ: Năng suất (Productivity)

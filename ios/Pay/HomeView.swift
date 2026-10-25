@@ -242,7 +242,8 @@ struct HomeView: View {
             case "entry": entry = .new(cat: nil)
             // Màn xác nhận khoản quét QR: mã mẫu 2.000đ tới 113366668888 (Vietcombank) của tài liệu VietQR
             case "scanentry":
-                if let q = VietQR.parse(MyQR(bin: "970436", acct: "113366668888", amount: 2000, note: "Payso thu").payload ?? "") { entry = .scan(q) }
+                // Quán ăn có tên trên mã (như mã VietQR in sẵn ở quầy), số tiền đã có: ảnh App Store và so sánh giao diện
+                entry = .scan(VietQR(raw: "demo-scan", bin: "970436", acct: "0071001234567", amount: 85000, name: "COM TAM CALI", purpose: ""))
             case "camera": receiptScan = true
             case "balance", "balancelog": balanceOpen = true
             case "card", "cardlog": cardOpen = true

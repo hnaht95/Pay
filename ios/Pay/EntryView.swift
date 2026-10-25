@@ -260,7 +260,7 @@ struct EntryView: View {
     /// Ô ảnh hoá đơn cạnh ô ghi chú, vuông, cao bằng ô ghi chú: có ảnh thì hiện ảnh (chạm để xem to / chụp lại / xoá),
     /// chưa có thì icon camera (chạm để chụp hoặc chọn ảnh). Màn quét QR / mã lạ không có ô này
     @ViewBuilder private var photoTile: some View {
-        if isNewEntry || isEdit {
+        if isNewEntry || isEdit || isScan {
             let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
             Button { if photo != nil { viewingPhoto = true } else if Pro.shared.allow(.photos) { scanningReceipt = true } } label: {
                 Color.primary.opacity(0.05)
@@ -283,7 +283,7 @@ struct EntryView: View {
     /// Nút micro cạnh ô ghi chú (cùng cỡ ô ảnh): chạm để nói "35k cafe", ngừng nói là điền số tiền, ghi chú, danh mục; chạm lần
     /// nữa khi đang nghe là dừng và điền phần đã nghe. Đang nghe: nền đỏ nhạt, chấm micro nhấp nháy, ô ghi chú hiện chữ đang nghe
     @ViewBuilder private var micTile: some View {
-        if (isNewEntry || isEdit) && film == nil {
+        if (isNewEntry || isEdit || isScan) && film == nil {
             let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
             Button { dictating ? dictation.finish() : startDictation() } label: {
                 (dictating ? Palette.danger.opacity(0.15) : Color.primary.opacity(0.05))
@@ -406,6 +406,12 @@ struct EntryView: View {
     /// Nhập mới (tay hoặc từ hoá đơn)
     private var isNewEntry: Bool {
         switch mode { case .new, .receipt: return true; default: return false }
+    }
+
+    /// Màn trả sau khi quét QR / dán STK: cũng có micro và ảnh hoá đơn cạnh ô ghi chú như màn nhập
+    private var isScan: Bool {
+        if case .scan = mode { return true }
+        return false
     }
 
     private var isEdit: Bool {
@@ -643,6 +649,7 @@ struct EntryView: View {
         let typed = !trimmed.isEmpty && trimmed != q.purpose.trimmingCharacters(in: .whitespaces)
         if let key { store.remember(key, Memo(c: finalCat, n: typed ? trimmed : old?.n)) }
         store.add(amount: amount, note: name, cat: finalCat, acct: key)
+        if let photo, let id = store.all.last?.id { ReceiptPhotos.save(photo, id: id) }
     }
 
     private func setup() {

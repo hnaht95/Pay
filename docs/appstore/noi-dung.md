@@ -4,17 +4,17 @@
 Payso - Ghi chi tiêu
 
 ## Phụ đề (30 ký tự)
-Nói là ghi, quét là trả
+Sổ chi tiêu, nói là ghi
 
 ## Dòng quảng cáo (170 ký tự)
-Quét mã VietQR, mở sẵn app ngân hàng với số tiền và người nhận, khoản chi tự ghi vào sổ. Nói "50k cà phê" là xong. Chia tiền nhóm, ai trả ai rõ ràng.
+Nói "50k cà phê" là ghi xong. Quét mã VietQR ở quán để ghi khoản chi rồi mở app ngân hàng của bạn. Chia tiền nhóm, ai trả ai rõ ràng.
 
 ## Mô tả (4.000 ký tự)
 Payso giúp bạn ghi chi tiêu mà không phải nhớ ghi.
 
-QUÉT QR LÀ TRẢ, TỰ GHI SỔ
-• Quét mã VietQR ở quán: Payso mở sẵn app ngân hàng với người nhận, số tiền và nội dung, bạn chỉ cần xác nhận.
-• Khoản chi được ghi luôn, danh mục được nhớ theo từng người nhận.
+QUÉT VIETQR ĐỂ GHI KHOẢN CHI
+• Quét mã VietQR ở quán: Payso ghi khoản chi rồi mở app ngân hàng của chính bạn với người nhận và số tiền điền sẵn. Bạn tự xác nhận chuyển khoản trong app ngân hàng.
+• Danh mục được nhớ theo từng người nhận.
 • Bạn bè nhắn số tài khoản? Chép rồi bấm Dán STK, không cần mã QR.
 
 GHI NHANH BẰNG GIỌNG NÓI, ẢNH HOÁ ĐƠN
@@ -35,6 +35,7 @@ BIẾT TIỀN ĐI ĐÂU
 
 RIÊNG TƯ
 • Dữ liệu nằm trên máy của bạn; đồng bộ qua iCloud của chính bạn (Pro). Không quảng cáo, không bán dữ liệu.
+• Payso không giữ tiền, không xử lý thanh toán, không kết nối hay đăng nhập tài khoản ngân hàng.
 • Khoá bằng Face ID.
 
 TIỆN Ở MỌI NƠI
@@ -74,6 +75,8 @@ https://peakapp.vn/pay/privacy
 Chính: Tài chính (Finance) · Phụ: Năng suất (Productivity)
 
 ## Ghi chú cho người duyệt (App Review Notes)
+Payso is a personal expense tracker. It does not hold, process or transmit money and never connects to bank accounts. Scanning a VietQR code only records the expense and opens the user's own banking app via its URL scheme; the transfer is confirmed by the user inside that app.
+
 Payso does not require an account or sign-in. Data is stored on device (iCloud sync is a Pro feature).
 
 How to test:

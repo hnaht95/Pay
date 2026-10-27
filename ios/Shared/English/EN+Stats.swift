@@ -85,7 +85,7 @@ extension English {
         "Có ảnh hoá đơn": "Has receipt photo",
         "Xoá ảnh": "Remove photo",
         "Chụp lại": "Retake",
-        "Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Chọn ảnh\".": "Allow Payso to use the camera in iPhone Settings, or tap \"Choose photo\".",
+        "Hãy cho phép Payso dùng camera trong Cài đặt, hoặc bấm \"Chọn ảnh\".": "Allow Payso to use the camera in Settings, or tap \"Choose photo\".",
         "Không mở được camera. Bấm \"Chọn ảnh\" để dùng ảnh có sẵn.": "Couldn't open the camera. Tap \"Choose photo\" to use an existing photo.",
         "Không đọc được tổng tiền trên hoá đơn": "Couldn't find the total on the receipt",
         "%ld ngày không chi tiêu": "%ld no-spend days",

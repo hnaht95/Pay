@@ -350,7 +350,7 @@ struct HouseView: View {
         case .loading:
             ProgressView().frame(maxWidth: .infinity).padding(.top, 120)
         case .noAccount:
-            message("icloud.slash", L("Chưa đăng nhập iCloud"), L("Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt của iPhone rồi mở lại."))
+            message("icloud.slash", L("Chưa đăng nhập iCloud"), L("Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt rồi mở lại."))
         case .failed(let why):
             message("exclamationmark.triangle", L("Chưa tải được nhóm"), why)
             primaryButton(L("Thử lại")) { Task { await house.load() } }.padding(.top, 16)

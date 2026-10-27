@@ -181,8 +181,8 @@ extension English {
         "Tắt đèn pin": "Turn off flashlight",
         "Đóng": "Close",
         "Không đọc được mã QR trong ảnh": "Couldn't read a QR code in this photo",
-        "Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Ảnh QR\".":
-            "Allow Payso to use the camera in iPhone Settings, or tap \"QR photo\".",
+        "Hãy cho phép Payso dùng camera trong Cài đặt, hoặc bấm \"Ảnh QR\".":
+            "Allow Payso to use the camera in Settings, or tap \"QR photo\".",
         "Không mở được camera. Bấm \"Ảnh QR\" để dùng ảnh chụp màn hình.":
             "Couldn't open the camera. Tap \"QR photo\" to use a screenshot.",
 

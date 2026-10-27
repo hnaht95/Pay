@@ -158,7 +158,7 @@ final class CameraController: UIViewController, AVCaptureMetadataOutputObjectsDe
         super.viewDidLoad()
         view.backgroundColor = .black
         AVCaptureDevice.requestAccess(for: .video) { ok in
-            DispatchQueue.main.async { ok ? self.configure() : self.onError?(L("Hãy cho phép Payso dùng camera trong Cài đặt của iPhone, hoặc bấm \"Ảnh QR\".")) }
+            DispatchQueue.main.async { ok ? self.configure() : self.onError?(L("Hãy cho phép Payso dùng camera trong Cài đặt, hoặc bấm \"Ảnh QR\".")) }
         }
     }
 

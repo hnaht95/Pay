@@ -56,7 +56,7 @@ extension English {
 
         // Trạng thái tải
         "Chưa đăng nhập iCloud": "Not signed in to iCloud",
-        "Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt của iPhone rồi mở lại.": "Groups are stored in iCloud. Sign in to iCloud in your iPhone's Settings, then open this again.",
+        "Nhóm chung lưu trên iCloud. Đăng nhập iCloud trong Cài đặt rồi mở lại.": "Groups are stored in iCloud. Sign in to iCloud in Settings, then open this again.",
         "Chưa tải được nhóm": "Couldn't load groups",
         "Thử lại": "Try again",
 

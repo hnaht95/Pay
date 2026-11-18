@@ -2,6 +2,18 @@ import Foundation
 
 extension English {
     static let home: [String: String] = [
+        "Tự ghi từ thông báo ngân hàng": "Log from bank notifications",
+        "Mở app Phím tắt, chọn thẻ Tự động hoá, bấm + rồi chọn Thông báo.": "Open Shortcuts, go to Automation, tap + and choose Notification.",
+        "Chọn các app ngân hàng, ví muốn theo dõi (VCB, Techcombank, MB, MoMo…), đặt Chạy ngay (không cần xác nhận), bấm Tiếp.": "Choose the bank and wallet apps to watch (VCB, Techcombank, MB, MoMo…), set Run Immediately (no confirmation), tap Next.",
+        "Chọn Tác vụ mới, tìm Payso, chọn Ghi từ thông báo ngân hàng.": "Choose New Blank Automation, search Payso, pick Log from bank notification.",
+        "Chạm ô Nội dung, chọn biến Thông báo.": "Tap the Text field and pick the Notification variable.",
+        "Bấm Xong. Từ giờ mỗi thông báo biến động số dư: tiền ra thành khoản chi, tiền vào thành khoản thu, ghi chú lấy nội dung chuyển khoản, danh mục đoán theo nội dung.": "Tap Done. From now on every balance notification is logged: money out as an expense, money in as income, with the transfer description as the note and a category guessed from it.",
+        "Cần bật thông báo biến động số dư trong app ngân hàng và thông báo phải về iPhone này. Tin OTP, khuyến mãi không được ghi. Giao dịch đã tự ghi từ Ví hoặc từ thông báo khác trong 3 phút thì không ghi lại. Khoản tự ghi sửa hoặc xoá như khoản thường.": "Turn on balance notifications in your bank app; they must arrive on this iPhone. OTP and promo messages are skipped. A transaction already logged from Wallet or another notification in the last 3 minutes isn't logged again. Edit or delete auto-logged entries like any other.",
+        "Tự ghi từ thông báo ngân hàng cần Payso Pro. Mở Payso để nâng cấp.": "Logging from bank notifications needs Payso Pro. Open Payso to upgrade.",
+        "Không phải thông báo giao dịch, không ghi.": "Not a transaction notification; nothing logged.",
+        "Đã ghi %@ rồi, không ghi lại.": "%@ was already logged; not logged again.",
+        "Đã ghi khoản thu %@.": "Logged income of %@.",
+        "Chuyển khoản": "Transfer",
         "Chạm là mở camera chụp hoá đơn.": "Tap to open the camera for a receipt.",
         "Quét QR, nói để ghi, chụp hoá đơn ngay từ màn hình khoá.": "Scan QR, speak or snap a receipt right from the Lock Screen.",
         "Nút nhanh": "Quick buttons",

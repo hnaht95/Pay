@@ -114,6 +114,7 @@ Nút đổi kiểu ở mục Gần đây và ở Lịch sử, chung một lựa 
 
 - Tấm bo 38 ở mọi bản iOS (`sheetCorners`). Không có nút Xong, kéo xuống để đóng.
 - Bảng nhấn giữ (`AppMenu`): đầu bảng là ô 56 (biểu tượng / màu), tên, dòng phụ. Biểu tượng dòng chọn là icon vòng tròn của SF Symbols, màu chữ, không nền. Dòng xoá chữ đỏ.
+- Màn hướng dẫn cài tự động hoá trong Cài đặt › Tự động (Tự ghi khi trả Apple Pay, Tự ghi từ thông báo ngân hàng): một mục các bước, mỗi bước số thứ tự 15 bold rounded trong vòng 24 nền `Palette.pill`, chữ 15; lưu ý để ở chân mục. Dùng chung hàm `step` trong `SettingsView.swift`.
 
 ## 10. Màn chụp hoá đơn (`ReceiptScan.swift`)
 

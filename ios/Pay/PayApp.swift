@@ -89,6 +89,8 @@ struct PayShortcuts: AppShortcutsProvider {
                     shortTitle: "Chụp hoá đơn", systemImageName: "camera.fill")
         AppShortcut(intent: CardPaymentIntent(), phrases: ["Ghi giao dịch thẻ bằng \(.applicationName)"],
                     shortTitle: "Ghi giao dịch thẻ", systemImageName: "creditcard")
+        AppShortcut(intent: BankNoticeIntent(), phrases: ["Ghi thông báo ngân hàng bằng \(.applicationName)"],
+                    shortTitle: "Ghi từ thông báo ngân hàng", systemImageName: "bell.badge")
         AppShortcut(intent: AddIntent(), phrases: ["Nhập chi tiêu bằng \(.applicationName)", "\(.applicationName) nhập khoản chi"],
                     shortTitle: "Nhập khoản chi", systemImageName: "plus")
     }

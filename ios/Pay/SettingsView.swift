@@ -359,6 +359,7 @@ struct SettingsView: View {
                 }), displayedComponents: .hourAndMinute) { row(L("Giờ nhắc")) }
             }
             NavigationLink { ApplePayHelp() } label: { row(L("Tự ghi khi trả Apple Pay")) }
+            NavigationLink { BankNoticeHelp() } label: { row(L("Tự ghi từ thông báo ngân hàng")) }
             Toggle(isOn: $saveShots) { row(L("Lưu ảnh chụp vào app Ảnh")) }
         } header: {
             Text(L("Tự động"))
@@ -1398,15 +1399,36 @@ struct ApplePayHelp: View {
         .screenTitle(L("Tự ghi khi trả Apple Pay"))
         .navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    private func step(_ n: Int, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("\(n)").font(.system(size: 15, weight: .bold, design: .rounded))
-                .frame(width: 24, height: 24).background(Palette.pill, in: Circle())
-            Text(text).font(.system(size: 15))
+/// Cách cài tự động hoá Phím tắt để mỗi thông báo biến động số dư của app ngân hàng / ví là Payso tự ghi một khoản
+struct BankNoticeHelp: View {
+    var body: some View {
+        BlurForm {
+            Section {
+                step(1, L("Mở app Phím tắt, chọn thẻ Tự động hoá, bấm + rồi chọn Thông báo."))
+                step(2, L("Chọn các app ngân hàng, ví muốn theo dõi (VCB, Techcombank, MB, MoMo…), đặt Chạy ngay (không cần xác nhận), bấm Tiếp."))
+                step(3, L("Chọn Tác vụ mới, tìm Payso, chọn Ghi từ thông báo ngân hàng."))
+                step(4, L("Chạm ô Nội dung, chọn biến Thông báo."))
+                step(5, L("Bấm Xong. Từ giờ mỗi thông báo biến động số dư: tiền ra thành khoản chi, tiền vào thành khoản thu, ghi chú lấy nội dung chuyển khoản, danh mục đoán theo nội dung."))
+            } footer: {
+                Text(L("Cần bật thông báo biến động số dư trong app ngân hàng và thông báo phải về iPhone này. Tin OTP, khuyến mãi không được ghi. Giao dịch đã tự ghi từ Ví hoặc từ thông báo khác trong 3 phút thì không ghi lại. Khoản tự ghi sửa hoặc xoá như khoản thường."))
+            }
         }
-        .padding(.vertical, 4)
+        .softTopEdge(fade: Color(.systemGroupedBackground), back: true)
+        .screenTitle(L("Tự ghi từ thông báo ngân hàng"))
+        .navigationBarTitleDisplayMode(.inline)
     }
+}
+
+/// Một bước trong màn hướng dẫn cài tự động hoá: số thứ tự trong vòng tròn và câu hướng dẫn
+private func step(_ n: Int, _ text: String) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 12) {
+        Text("\(n)").font(.system(size: 15, weight: .bold, design: .rounded))
+            .frame(width: 24, height: 24).background(Palette.pill, in: Circle())
+        Text(text).font(.system(size: 15))
+    }
+    .padding(.vertical, 4)
 }
 
 /// Vòng tích đặc của app Shot (Tabler circle-check): hình tròn đặc, dấu tích khoét rỗng

@@ -125,6 +125,29 @@ enum SelfTest {
         for (s, v) in amounts { check("số tiền thẻ \"\(s)\" → \(v.map(String.init) ?? "nil")", CardPaymentIntent.parse(s) == v, "\(CardPaymentIntent.parse(s) ?? -1)") }
         for s in ["Refund", "Hoàn tiền", "hoàn", "Shopee - hoàn tiền", "REFUND Apple"] { check("hoàn tiền: \(s)", CardPaymentIntent.isRefund(s)) }
         for s in ["Hoàn Kiếm Coffee", "Highlands", ""] { check("không phải hoàn tiền: \(s)", !CardPaymentIntent.isRefund(s)) }
+        // Thông báo biến động số dư: số tiền giao dịch (không lấy số dư), tiền ra / vào, nội dung
+        let notices: [(String, BankNotice.Txn?)] = [
+            ("Số dư TK VCB 1012345678 -50,000 VND lúc 18-11-2026 10:05:12. Số dư 1,234,567 VND. Ref MBVCB.1234567.abc. ND: thanh toan Pho Thin",
+             .init(amount: 50_000, income: false, note: "thanh toan Pho Thin")),
+            ("Số dư TK VCB 1234 +2,000,000 VND lúc 18-11-2026 08:00:00. Số dư 3,234,567 VND. ND: NGUYEN VAN A chuyen tien",
+             .init(amount: 2_000_000, income: true, note: "NGUYEN VAN A chuyen tien")),
+            ("TK 19031234567890\nSố tiền: -125,000 VND\nSố dư: 4,500,000 VND\nND: Highlands Coffee",
+             .init(amount: 125_000, income: false, note: "Highlands Coffee")),
+            ("TK 0123xxx789|GD: -35,000VND 18/11/26 12:01|SD: 980,000VND|ND: grab an trua",
+             .init(amount: 35_000, income: false, note: "grab an trua")),
+            ("ACB: TK 12345(VND) - 80,000 luc 10:00 18/11/2026. So du 1,234,567. GD: CK cafe sang",
+             .init(amount: 80_000, income: false, note: "CK cafe sang")),
+            ("Tài khoản 1234 vừa giảm 250.000 VND vào 18/11/2026 19:30. Số dư khả dụng: 5.000.000 VND. Nội dung: tien dien thang 11",
+             .init(amount: 250_000, income: false, note: "tien dien thang 11")),
+            ("Bạn đã thanh toán thành công 45.000đ cho Circle K", .init(amount: 45_000, income: false, note: "Circle K")),
+            ("Nhận tiền thành công +300.000đ từ TRAN THI B", .init(amount: 300_000, income: true, note: "TRAN THI B")),
+            ("Mã OTP của bạn là 123456, giao dịch 1.000.000 VND", nil),
+            ("Ưu đãi hoàn tiền 20% tại Shopee đến hết 30/11", nil),
+        ]
+        for (t, want) in notices {
+            let got = BankNotice.parse(t)
+            check("thông báo NH: \(t.prefix(40))", got == want, "\(got.map { "\($0.amount) \($0.income) [\($0.note)]" } ?? "nil")")
+        }
 
         // MARK: Chia tiền nhóm
         for (amt, n) in [(100_000, 3), (1, 3), (999_999, 7), (50_000, 4)] {

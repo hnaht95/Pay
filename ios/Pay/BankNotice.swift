@@ -17,7 +17,8 @@ enum BankNotice {
         let signed = #"(?<![\w.,])([+-])\s?(\d{1,3}(?:[.,]\d{3})+|\d{4,})(?:[.,]\d{1,2})?(?!\d)"#
         for m in matches(signed, in: text) where !afterBalance(m.range, in: fold) {
             guard let v = Int(m.groups[1].filter(\.isNumber)), v > 0 else { continue }
-            return Txn(amount: v, income: m.groups[0] == "+", note: note(text, fold))
+            let income = m.groups[0] == "+"
+            return Txn(amount: v, income: income, note: note(text, fold, income: income))
         }
         // 2. Không có dấu: chữ cho biết hướng ("giảm", "thanh toán" / "tăng", "nhận") và số tiền đầu tiên không phải số dư
         let out = #"giam|bi tru|da tru|thanh toan|chi tieu|chuyen tien thanh cong|chuyen di|ghi no|debit|paid|payment"#
@@ -29,12 +30,14 @@ enum BankNotice {
         let head = String(fold[..<m.range.lowerBound])
         let lastOut = lastMatch(out, in: head), lastIn = lastMatch(inn, in: head)
         guard lastOut != nil || lastIn != nil else { return nil }
-        return Txn(amount: v, income: (lastIn ?? -1) > (lastOut ?? -1), note: note(text, fold))
+        let income = (lastIn ?? -1) > (lastOut ?? -1)
+        return Txn(amount: v, income: income, note: note(text, fold, income: income))
     }
 
     /// Nội dung giao dịch: phần sau "ND:", "Nội dung:", "Description:", "GD:" (đến hết dòng / dấu "|"); ví điện tử không có
-    /// nhãn thì "cho X" / "từ X" (X viết hoa). Bỏ mã tham chiếu đầu nội dung kiểu "MBVCB.1234567.", dấu cách thừa
-    static func note(_ text: String, _ fold: String) -> String {
+    /// nhãn thì "cho X" / "từ X" (X viết hoa); không có cả hai thì đoạn chữ cuối cùng không có số (VPBank NEO để nội dung trơn
+    /// sau số dư). Bỏ mã tham chiếu đầu nội dung kiểu "MBVCB.1234567.", dấu cách thừa, rồi bỏ phần chữ mặc định của lệnh chuyển
+    static func note(_ text: String, _ fold: String, income: Bool) -> String {
         var start: Int?
         // Bản bỏ dấu dài bằng văn bản gốc tính theo ký tự (bỏ dấu, đ → d không đổi số ký tự)
         // "GD:" có app dùng cho nội dung (ACB), có app dùng cho số tiền (MB "GD: -35,000VND"): xét sau cùng, bỏ khi theo sau là số
@@ -44,13 +47,42 @@ enum BankNotice {
         } else if let r = text.range(of: #"\b(?:cho|tới|đến|từ)\s+(?=[\p{Lu}0-9])"#, options: .regularExpression) {
             start = text.distance(from: text.startIndex, to: r.upperBound)
         }
-        guard let start, start <= text.count else { return "" }
-        var s = String(text[text.index(text.startIndex, offsetBy: start)...])
-        if let cut = s.firstIndex(where: { "|\n".contains($0) }) { s = String(s[..<cut]) }
+        var s: String
+        if let start, start <= text.count {
+            s = String(text[text.index(text.startIndex, offsetBy: start)...])
+            if let cut = s.firstIndex(where: { "|\n".contains($0) }) { s = String(s[..<cut]) }
+        } else {
+            // Không nhãn: đoạn cuối (tách theo dòng, "|", ";", ". ") có chữ, không có số, không phải chữ mẫu của ngân hàng
+            let parts = text.components(separatedBy: CharacterSet(charactersIn: "|\n;"))
+                .flatMap { $0.components(separatedBy: ". ") }
+            s = parts.last(where: { p in
+                let f = strip(p)
+                return p.contains(where: \.isLetter) && !p.contains(where: \.isNumber)
+                    && f.range(of: #"so du|tai khoan|bien dong|giao dich|thong bao|\btk\b|\bvnd\b"#, options: .regularExpression) == nil
+            }) ?? ""
+        }
         if let r = s.range(of: #"^\s*[A-Z]{2,}[.\-]?\d{4,}[.\-]\d+[.\-]?"#, options: .regularExpression) { s.removeSubrange(r) }
         s = s.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: " .,;:-"))
-        return String(s.prefix(80))
+        return String(plain(s, income: income).prefix(80))
+    }
+
+    /// Bỏ chữ mặc định ngân hàng điền khi chuyển khoản: "NGUYEN VAN THANH chuyen tien an sang" → "an sang". Tên viết hoa đứng
+    /// trước "chuyen tien" / "chuyen khoan" / "CK" là người gửi: khoản chi thì đó là chính mình nên bỏ, khoản thu thì giữ tên người
+    /// gửi ("NGUYEN VAN A chuyen tien" → "NGUYEN VAN A"). Tên viết hoa không kèm chữ chuyển tiền (cửa hàng "HIGHLANDS COFFEE") giữ
+    static func plain(_ s: String, income: Bool) -> String {
+        let boiler = #"(?i:chuyen tien|chuyen khoan|chuyển tiền|chuyển khoản|ck|ct|tra tien|trả tiền)\b"#
+        var out = s
+        // Tên viết hoa (phân biệt hoa thường, chữ cái lẻ "B" cũng tính) ngay trước chữ chuyển tiền
+        if let r = out.range(of: #"^((?:[A-Z]+\s+){2,6}?)"# + boiler, options: .regularExpression),
+           let name = out.range(of: #"^(?:[A-Z]+\s+){2,6}?(?="# + boiler + ")", options: .regularExpression) {
+            let who = out[name].trimmingCharacters(in: .whitespaces)
+            out = String(out[r.upperBound...]).trimmingCharacters(in: CharacterSet(charactersIn: " .,;:-"))
+            if income { out = out.isEmpty ? who : who + " · " + out }
+        } else if let r = out.range(of: "^" + boiler, options: .regularExpression) {
+            out = String(out[r.upperBound...])
+        }
+        return out.trimmingCharacters(in: CharacterSet(charactersIn: " .,;:-"))
     }
 
     /// Số đứng ngay sau "Số dư:" / "SD:" / "Số dư khả dụng" (chỉ cách bởi dấu hai chấm, khoảng trắng, "VND"): là số dư, không
@@ -104,7 +136,9 @@ struct BankNoticeIntent: AppIntent {
             && e.isIncome == t.income && abs(now - e.t) < CardPaymentIntent.dupWindow }) {
             return .result(dialog: IntentDialog(stringLiteral: L("Đã ghi %@ rồi, không ghi lại.", fmt(t.amount))))
         }
-        let cat = t.income ? store.guessIncome(t.note) : store.guessCategory(t.note)
+        // Ghi chú không đoán được thì dò từ khoá trên cả thông báo ("an sang" lọt ở chỗ ngân hàng không gắn nhãn)
+        var cat = t.income ? store.guessIncome(t.note) : store.guessCategory(t.note)
+        if !t.income, cat == "khac" { cat = Category.guess(text) }
         let note = t.note.isEmpty ? (t.income ? L("Được chuyển") : L("Chuyển khoản")) : t.note
         store.add(amount: t.amount, note: note, cat: cat, toast: false, idPrefix: Self.idPrefix)
         return .result(dialog: IntentDialog(stringLiteral: t.income ? L("Đã ghi khoản thu %@.", fmt(t.amount)) : L("Đã ghi %@ %@.", fmt(t.amount), note)))
